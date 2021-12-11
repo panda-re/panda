@@ -12,6 +12,7 @@ dynamic_symbols
 edge_coverage
 filereadmon
 forcedexec
+gdb
 hooks
 hooks2
 libfi
@@ -31,10 +32,13 @@ pri
 pri_dwarf
 pri_simple
 proc_start_linux
+proc_trace
 recctrl
 replaymovie
+rust_skeleton
 scissors
 signal
+snake_hook
 stringsearch
 syscalls2
 syscalls_logger

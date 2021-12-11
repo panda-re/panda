@@ -52,10 +52,10 @@ def copy_objs():
         llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
 
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
-    arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
+    arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']
     if pypi_build:
-        # XXX need to drop aarch64/mipsel/ppc to fit into pypi
-        arches = ['arm', 'i386', 'x86_64', 'mipsel']
+        # Nobody really wants mips32 anymore, shrink our distribution size by dropping
+        arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips64']
 
     for arch in arches:
         libname = "libpanda-"+arch+".so"
@@ -126,7 +126,7 @@ class custom_install(install_orig):
             create_datatypes(install=True)
             copy_objs()
         except ImportError:
-            assert(os.path.isfile("pandare/data/pypanda/include/panda_datatypes.h")), \
+            assert(os.path.isfile("pandare/include/panda_datatypes.h")), \
                             "panda_datatypes.h missing and can't be generated"
             assert(os.path.isfile("pandare/autogen/panda_datatypes.py")), \
                             "panda_datatypes.py missing and can't be generated"
@@ -139,8 +139,18 @@ class custom_install(install_orig):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+# Determine system version of protoc - we'll need python protobuf of matching version
+from subprocess import check_output, CalledProcessError
+try:
+    pc_version = check_output(["protoc", "--version"]).decode()
+    pc_version = pc_version.split(" ")[1]
+    print(f"Detected protoc version {pc_version}")
+except CalledProcessError:
+    print("ERROR: protoc not installed. Install with sudo apt install protoc")
+    raise
+
 setup(name='pandare',
-      version='0.1.1.2',
+      version='0.1.1.5',
       description='Python Interface to PANDA',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -156,7 +166,7 @@ setup(name='pandare',
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           ]},
-      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf'],
+      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf=='+pc_version],
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
      )

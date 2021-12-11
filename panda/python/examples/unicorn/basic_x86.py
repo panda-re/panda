@@ -6,7 +6,7 @@
 import capstone
 import os
 
-from pandare import Panda, ffi
+from pandare import Panda
 
 X86_CODE   = b"\x40\x01\xC3\x41" # inc eax; add ebx, eax; inc ecx;
 ADDRESS = 0x1000

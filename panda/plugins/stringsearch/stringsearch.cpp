@@ -258,14 +258,14 @@ bool init_plugin(void *self) {
 
     const char *prefix = panda_parse_string_opt(args, "name", "", "prefix of filename containing search strings, which must have the suffix _search_strings.txt");
     if (strlen(prefix) > 0) {
-        char stringsfile[128] = {};
-        sprintf(stringsfile, "%s_search_strings.txt", prefix);
+        std::string stringsfile = prefix;
+        stringsfile += "_search_strings.txt";
 
-        printf ("search strings file [%s]\n", stringsfile);
+        printf ("search strings file [%s]\n", stringsfile.c_str());
 
         std::ifstream search_strings(stringsfile);
         if (!search_strings) {
-            printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile);
+            printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile.c_str());
             return false;
         }
 
@@ -310,9 +310,9 @@ bool init_plugin(void *self) {
         }
     }
 
-    char matchfile[128] = {};
-    sprintf(matchfile, "%s_string_matches.txt", prefix);
-    mem_report = fopen(matchfile, "w");
+    std::string matchfile = prefix;
+    matchfile += "_string_matches.txt";
+    mem_report = fopen(matchfile.c_str(), "w");
     if(!mem_report) {
         printf("Couldn't write report:\n");
         perror("fopen");

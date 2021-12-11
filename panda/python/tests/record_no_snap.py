@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from pandare import Panda, blocking
-from pandare.extras.proc_write_capture import ProcWriteCapture
+from pandare import Panda
+from pandare.extras import ProcWriteCapture
 
 
 # Take a recording without first reverting to a snapshot
@@ -13,7 +13,7 @@ panda = Panda(generic=arch)
 
 rec_name = "test_ls"
 
-@blocking
+@panda.queue_blocking
 def record_no_revert():
     # Normally record_cmd will do the revert, but we want to modify the guest
     # after the snapshot and before the recording starts
@@ -26,7 +26,6 @@ def record_no_revert():
 
 
 print("Queue up recording...")
-panda.queue_async(record_no_revert)
 panda.run()
 
 print("Running replay")
@@ -36,6 +35,6 @@ pwc = ProcWriteCapture(panda, "ls", log_dir = "./pwc_log")
 panda.run_replay(rec_name)
 
 # Check pwc output for newdir
-with open("./pwc_log/ls/_dev_ttyS0.stdout") as f:
+with open("./pwc_log/console.out") as f:
     assert ("newdir" in f.read()), "Missing newdir in output"
 

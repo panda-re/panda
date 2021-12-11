@@ -76,16 +76,20 @@ std::string format_hex(uint64_t n) {
 }
 
 /* Symbolic helper functions */
-bool is_concrete_byte(z3::expr byte) {
 
+/*
+ * Is the input byte expr concrete or symbolic?
+ */
+bool is_concrete_byte(z3::expr byte) {
     z3::expr zero = context.bv_val(0, 8);
     z3::expr simplified = (zero == byte).simplify();
-
     return simplified.is_true() || simplified.is_false() ||
            byte.is_true() || byte.is_false();
-
 }
 
+/* 
+ * Get the SymLabel field in shadow TaintData. Allocate if not exists
+ */
 SymLabelP get_or_alloc_sym_label(Shad *shad, uint64_t addr) {
     if (!shad->query_full(addr)->sym) {
         shad->query_full(addr)->sym = new SymLabel();
@@ -93,12 +97,16 @@ SymLabelP get_or_alloc_sym_label(Shad *shad, uint64_t addr) {
     return shad->query_full(addr)->sym;
 }
 
-z3::expr get_byte(z3::expr *ptr, uint8_t offset, uint8_t concrete_byte, bool* symbolic) {
-
+/* 
+ * Get symbolic expr of the byte from both concrete and symbolic input 
+ * Set *symbolic to true if value if byte is symbolic 
+ */
+z3::expr get_byte(std::shared_ptr<z3::expr> ptr, uint8_t offset, uint8_t concrete_byte, bool* symbolic) {
     if (ptr == nullptr)
         return context.bv_val(concrete_byte, 8);
 
     if (ptr->is_bool()) {
+        // A boolean icmp result is possible
         if (ptr->is_true()) {
             assert(concrete_byte == 1);
             return context.bv_val(1, 8);
@@ -108,17 +116,24 @@ z3::expr get_byte(z3::expr *ptr, uint8_t offset, uint8_t concrete_byte, bool* sy
             return context.bv_val(0, 8);
         }
         else {
+            // Value can be either true or false, regard as symbolic
             if (symbolic) *symbolic = true;
             return ite(*ptr, context.bv_val(1, 8), context.bv_val(0, 8));
         }
     }
-
-    z3::expr expr = ptr->extract(8*offset + 7, 8*offset).simplify();
-    if (symbolic) *symbolic = true;
-    // assert(!is_concrete_byte(expr));
-    return expr;
+    else {
+        // A byte vector result 
+        z3::expr expr = ptr->extract(8*offset + 7, 8*offset).simplify();
+        if (symbolic) *symbolic = true;
+        // assert(!is_concrete_byte(expr));
+        return expr;
+    }
 }
 
+/*
+ * Given shadow memory and bytes input, return the symbolic value
+ * If result is symbolic, update *symbolic to true.
+ */
 z3::expr bytes_to_expr(Shad *shad, uint64_t src, uint64_t size,
         uint64_t concrete, bool* symbolic) {
     z3::expr expr(context);
@@ -126,6 +141,7 @@ z3::expr bytes_to_expr(Shad *shad, uint64_t src, uint64_t size,
         auto src_tdp = shad->query_full(src+i)->sym;
         uint8_t concrete_byte = (concrete >> (8*i))&0xff;
         if (i == 0) {
+            // Optimization: try reuse full_expr metadata stored in index 0
             if (src_tdp && src_tdp->full_size > size) {
                 *symbolic = true; //?
                 return src_tdp->full_expr->extract(size*8-1, 0).simplify();
@@ -148,6 +164,7 @@ z3::expr bytes_to_expr(Shad *shad, uint64_t src, uint64_t size,
             }
         }
         else {
+            // Concatenate the byte to obtain full symbolic expr
             if (src_tdp)
                 expr = concat(get_byte(src_tdp->expr, src_tdp->offset, concrete_byte, symbolic), expr);
             else
@@ -157,26 +174,44 @@ z3::expr bytes_to_expr(Shad *shad, uint64_t src, uint64_t size,
     return expr.simplify();
 }
 
-void invalidate_full(Shad *shad, uint64_t src, uint64_t size) {
-    auto src_tdp = shad->query_full(src)->sym;
-    if (src_tdp) {
-        src_tdp->full_expr = nullptr;
-        src_tdp->full_size = 0;
-        shad->query_full(src)->sym = nullptr;
+/*
+ * Invalidate the full metadata in SymLabel.
+ * This is useful when copying smaller to larger buffer. 
+ */
+void invalidate_full(Shad *shad, uint64_t addr, uint64_t size) {
+    auto tdp = shad->query_full(addr)->sym;
+    if (tdp) {
+        tdp->full_expr = nullptr;
+        tdp->full_size = 0;
+        for (int i = 0; i < size; i++) {
+            auto byte_tdp = shad->query_full(addr+i)->sym;
+            if (byte_tdp) {
+                byte_tdp->expr = nullptr;
+                byte_tdp->offset = 0;
+                byte_tdp->full_expr = nullptr;
+                byte_tdp->full_size = 0;
+                // delete byte_tdp;
+                shad->query_full(addr+i)->sym = nullptr;
+            }
+        }
     }
 }
 
+/*
+ * Copy symbolic metadata from srd shadow region to dest
+ */
 void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src, 
         uint64_t src, uint64_t size) {
-
     if (size == 255)
         assert(false);
-    CDEBUG(std::cerr << "copy_symbols shad src " << src << " dst " << dest << "\n");
+    CDEBUG(std::cerr << "copy_symbols shad src " << src << " dst " << dest << " size " << size << "\n");
     for (uint64_t i = 0; i < size; i++) {
 
         // When copy src bytes without symbolic data, make sure to clean dest byte
         if (!shad_src->query_full(src+i)->sym) {
-            shad_src->query_full(dest+i)->sym = nullptr;
+            if (shad_dest->query_full(dest+i)->sym)
+                delete shad_dest->query_full(dest+i)->sym;
+            shad_dest->query_full(dest+i)->sym = nullptr;
             continue;
         }
             
@@ -184,10 +219,11 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         auto dst_tdp = get_or_alloc_sym_label(shad_dest, dest+i);
         assert(src_tdp && dst_tdp);
 
+        // Handle full_expr and full_size for the metadata at index 0
         if (i == 0) {
             if (src_tdp->full_size > size) {
                 // large to small
-                dst_tdp->full_expr = new z3::expr(
+                dst_tdp->full_expr = std::make_shared<z3::expr>(
                     src_tdp->full_expr->extract(8*size-1, 0).simplify());
                 dst_tdp->full_size = size;
             }
@@ -197,19 +233,29 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                 dst_tdp->full_size = src_tdp->full_size;
             }
         }
-
         dst_tdp->expr = src_tdp->expr;
         dst_tdp->offset = src_tdp->offset;
+        if (dst_tdp->expr) {
+            CDEBUG(std::cerr << "expr[" << (int)dst_tdp->offset << "]: " << *dst_tdp->expr << std::endl);
+        }
     }
 }
 
+/*
+ * Update dest shadow memory region with symbolic metadata
+ */
 void expr_to_bytes(z3::expr expr, Shad *shad, uint64_t dest, 
         uint64_t size) {
-    z3::expr *ptr = new z3::expr(expr);
+    // Check whether expr is concrete
+    if (expr.is_numeral()) {
+        invalidate_full(shad, dest, size);
+        return;
+    }
+    std::shared_ptr<z3::expr> ptr = std::make_shared<z3::expr>(expr);
     for (uint64_t i = 0; i < size; i++) {
         auto dst_tdp = get_or_alloc_sym_label(shad, dest+i);
         if (i == 0 && size != 1) {
-            dst_tdp->full_expr = new z3::expr(expr);
+            dst_tdp->full_expr = ptr;
             dst_tdp->full_size = size;
         }
         dst_tdp->expr = ptr;
@@ -217,8 +263,10 @@ void expr_to_bytes(z3::expr expr, Shad *shad, uint64_t dest,
     }
 }
 
+/*
+ * Compute result of integer compare instruction
+ */
 z3::expr icmp_compute(uint64_t pred, z3::expr expr1, z3::expr expr2) {
-
     llvm::CmpInst::Predicate p = (llvm::CmpInst::Predicate) pred;
     switch(p) {
         case llvm::ICmpInst::ICMP_EQ:
@@ -254,6 +302,9 @@ z3::expr icmp_compute(uint64_t pred, z3::expr expr1,
     return icmp_compute(pred, expr1, expr2);
 }
 
+/*
+ * Compute result of bit operation instruction
+ */
 z3::expr bitop_compute(unsigned opcode, z3::expr expr1, z3::expr expr2) {
     switch(opcode) {
         case llvm::Instruction::And:
@@ -276,6 +327,7 @@ z3::expr bitop_compute(unsigned opcode, z3::expr expr1,
 }
 
 /* taint2 functions */
+
 PPP_PROT_REG_CB(on_taint_prop);
 PPP_CB_BOILERPLATE(on_taint_prop);
 
@@ -563,20 +615,16 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
         case llvm::Instruction::And:
         case llvm::Instruction::Or:
         case llvm::Instruction::Xor: {
-
-            invalidate_full(shad, dest, src_size);
             for (int i = 0; i < src_size; i++) {
                 uint8_t byte1 = (val1 >> (8*i))&0xff;
                 uint8_t byte2 = (val2 >> (8*i))&0xff;
                 bool symbolic = false;
                 z3::expr expr1 = bytes_to_expr(shad, src1+i, 1, byte1, &symbolic);
                 z3::expr expr2 = bytes_to_expr(shad, src2+i, 1, byte2, &symbolic);
-                if (!symbolic) continue;
                 z3::expr expr = bitop_compute(opcode, expr1, expr2);
                 // simplify because one input may be constant
                 expr = expr.simplify();
-                if (!is_concrete_byte(expr))
-                    expr_to_bytes(expr, shad, dest+i, 1);
+                expr_to_bytes(expr, shad, dest+i, 1);
             }
             break;
         }
@@ -671,7 +719,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         CDEBUG(std::cerr << "Value 2: " << expr2 << "\n");
         z3::expr expr = icmp_compute(pred, expr1, expr2);
         auto sym = get_or_alloc_sym_label(shad, dest);
-        sym->expr = new z3::expr(expr);
+        sym->expr = std::make_shared<z3::expr>(expr);
         sym->offset = 0;
         break;
     }
@@ -699,7 +747,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         CDEBUG(std::cerr << "overflow: " << overflow << "\n");
         auto dst_tdp = get_or_alloc_sym_label(shad, dest+src_size);
         if (!overflow.is_true() && !overflow.is_false()) {
-            dst_tdp->expr = new z3::expr(overflow);
+            dst_tdp->expr = std::make_shared<z3::expr>(overflow);
             dst_tdp->offset = 0;
         }
         break;
@@ -824,8 +872,8 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         val = (operands[0] ? operands[0] : operands[1])->getValue().getLimitedValue();
     }
     else {
-        std::cerr << "opcode: " << opcode << "\n";
-        std::cerr << "size: " << operands.size() << "\n";
+        CINFO(std::cerr << "opcode: " << opcode << "\n");
+        CINFO(std::cerr << "size: " << operands.size() << "\n");
     }
 
     switch (opcode) {
@@ -841,7 +889,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             z3::expr expr = icmp_compute(pred, expr1, val, src_size);
 
             auto sym = get_or_alloc_sym_label(shad, dest);
-            sym->expr = new z3::expr(expr);
+            sym->expr = std::make_shared<z3::expr>(expr);
             sym->offset = 0;
             break;
         }
@@ -903,7 +951,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             break;
         }
         default:
-            llvm::errs() << "Untracked taint_mix opcode: " << opcode << "\n";
+            CINFO(llvm::errs() << "Untracked taint_mix opcode: " << opcode << "\n");
             break;
     }
 
@@ -1006,7 +1054,7 @@ void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 (top_byte & 0x80) == context.bv_val(0x80, 8), 
                 context.bv_val(0xff, 8), context.bv_val(0, 8));
         expr = expr.simplify();
-        z3::expr *ptr = new z3::expr(expr);
+        std::shared_ptr<z3::expr> ptr = std::make_shared<z3::expr>(expr);
         for (uint64_t i = dest + src_size; i < dest + dest_size; i++) {
             auto dst_tdp = get_or_alloc_sym_label(shad, i);
             dst_tdp->expr = ptr;
@@ -1171,8 +1219,8 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
     taint_log_labels(shad_src, addr_src, size);
     concolic_copy(shad_dest, addr_dest, shad_src, addr_src, size, 0, 0, {});
     // Taint propagation notifications.
-    Addr dest_addr = get_addr_from_shad(shad_dest, dest);
-    Addr src_addr = get_addr_from_shad(shad_src, src);
+    Addr dest_addr = get_addr_from_shad(shad_dest, addr_dest);
+    Addr src_addr = get_addr_from_shad(shad_src, addr_src);
     PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
 }
 
@@ -1308,6 +1356,10 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     }
 }
 
+/*
+ * Copy src shadow memory to dest region, with the type and metadata of
+ * the LLVM instruction
+ */
 void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                      uint64_t src, uint64_t size, uint64_t opcode,
                      uint64_t instruction_flags,
@@ -1350,8 +1402,8 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         case llvm::Instruction::Or:
         case llvm::Instruction::Xor: {
             CDEBUG(llvm::errs() << "Value: " << val << '\n');
+            // It's possible that src == dest. Update symbol at byte-level
             bool symbolic = false;
-            invalidate_full(shad_dest, dest, size);
             for (int i = 0; i < size; i++) {
                 uint8_t mask = (val >> (8*i))&0xff;
                 // concrete value does not matter here (just use 0)
@@ -1360,25 +1412,24 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                 z3::expr expr = bitop_compute(opcode, expr1, mask, 1);
                 // simplify because one input is constant
                 expr = expr.simplify();
+                CDEBUG(std::cerr << "expr opt: " << expr << std::endl);
                 expr_to_bytes(expr, shad_dest, dest+i, 1);
-
             }
+            CDEBUG(std::cerr << "binopt result: " << bytes_to_expr(shad_dest, dest, size, 0, &symbolic) << std::endl);
             break;
         }
         // shift by zero bits got here
         case llvm::Instruction::Shl:
         case llvm::Instruction::LShr:
         case llvm::Instruction::AShr:
-        case llvm::Instruction::SExt:
-            // Higher bits handled by caller
+        case llvm::Instruction::SExt:   // Higher bits handled by caller
         case llvm::Instruction::Trunc:
         case llvm::Instruction::ZExt:
         case llvm::Instruction::Load:
         case llvm::Instruction::Store:
         case llvm::Instruction::IntToPtr:
         case llvm::Instruction::PtrToInt:
-        case 0:
-            // From host_copy, host_memcpy
+        case 0: // From host_copy, host_memcpy
         case llvm::Instruction::ExtractValue:
             // Assuming extract value from following result
             // llvm.uadd.with.overflow.i8

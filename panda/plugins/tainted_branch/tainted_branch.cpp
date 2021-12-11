@@ -57,6 +57,7 @@ void uninit_plugin(void *);
 
 bool summary = false;
 bool liveness = false;
+bool ignore_helpers = false;
 
 #include <map>
 #include <set>
@@ -86,7 +87,12 @@ int taint_branch_aux(Tlabel ln, void *stuff) {
 }
 
 
-void tbranch_on_branch_taint2(Addr a, uint64_t size, bool *tainted) {
+void tbranch_on_branch_taint2(Addr a, uint64_t size, bool from_helper,
+		bool *tainted) {
+	if (ignore_helpers && from_helper) {
+		return;
+	}
+
     // a is an llvm reg
     assert (a.typ == LADDR);
     // count number of tainted bytes on this reg
@@ -151,7 +157,12 @@ int taint_branch_csv_aux(Tlabel tl, void *stuff) {
 // panda callback used for CSV output
 // input a is the address type and value (only LADDR is acceptable)
 // input size is the number of bytes in the item being reported
-void tbranch_on_branch_to_csv(Addr a, uint64_t size, bool *tainted) {
+void tbranch_on_branch_to_csv(Addr a, uint64_t size, bool from_helper,
+		bool *tainted) {
+	if (ignore_helpers && from_helper) {
+		return;
+	}
+
     // a is an llvm reg
     assert (a.typ == LADDR);
     // count number of tainted bytes on this reg
@@ -197,6 +208,8 @@ bool init_plugin(void *self) {
     liveness = panda_parse_bool_opt(args, "liveness", "track liveness of input bytes");
     csv_filename = panda_parse_string_opt(args, "csvfile", NULL,
             "name of CSV file, if CSV output desired");
+    ignore_helpers = panda_parse_bool_opt(args, "ignore_helpers",
+    		"ignore reports from helper functions");
 
     if (NULL != csv_filename) {
         if (liveness) {

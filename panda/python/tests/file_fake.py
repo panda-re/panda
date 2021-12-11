@@ -2,8 +2,8 @@
 # Test to ensure the file_hook plugin is working
 
 import sys
-from pandare import *
-from pandare.extras.file_faker import FileFaker, FakeFile
+from pandare import Panda
+from pandare.extras import FileFaker, FakeFile
 
 arch = sys.argv[1] if len(sys.argv) > 1 else "i386"
 panda = Panda(generic=arch)
@@ -15,7 +15,7 @@ faker.replace_file("/foo", FakeFile(fake_str))
 
 new_str = "This is some new data"
 
-@blocking
+@panda.queue_blocking
 def read_it():
     global new_str
 
@@ -29,6 +29,5 @@ def read_it():
 
     panda.end_analysis()
 
-panda.queue_async(read_it)
 panda.run()
 print("Successfully faked file /foo")

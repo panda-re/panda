@@ -1,7 +1,9 @@
 #!/bin/bash
 # This script installs dependencies then builds panda.
-# Note that it doesn't actually install panda, just the dependencies.
+# Note that it doesn't actually *install* panda, it just install dependencies and *builds* panda.
 # If you want to install run `make install` in the build directory after this runs
+
+set -ex
 
 # Tested for architectures listed in panda/panda/dependencies/
 
@@ -73,6 +75,7 @@ if [ $version -eq 18 ]; then
   $SUDO apt-get update
 fi
 
+
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
 # This will give us "./panda/dependencies/ubuntu:20.04" where ubuntu:20.04_build.txt or 20.04_base.txt exists
@@ -86,8 +89,37 @@ else
   exit 1
 fi
 
-# PyPanda dependencies - install system-wide so we can install pypanda system-wide
-$SUDO python3 -m pip install pycparser "protobuf==3.0.0" "cffi>=1.14.3" colorama
+progress "Installing Rust..."
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+# Expose cargo to the running shell/env
+. $HOME/.cargo/env
+
+# Because libz3-dev for Ubuntu 18 is really old, we download and install z3 github release v-4.8.7
+if [ "$version" -eq 18 ]; then
+  echo "Installing z3 on Ubuntu 18"
+  wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.7/z3-4.8.7-x64-ubuntu-16.04.zip -O z3-4.8.7-x64-ubuntu-16.04.zip
+  unzip z3-4.8.7-x64-ubuntu-16.04.zip
+  $SUDO cp -r z3-4.8.7-x64-ubuntu-16.04/* /usr/local/
+  rm -rf z3-4.8.7-x64-ubuntu-16.04
+  rm z3-4.8.7-x64-ubuntu-16.04.zip
+fi
+
+# Because libcapstone for Ubuntu 18 or 20 is really old, we download and install the v4.0.2 release if it's not present
+if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
+  echo "Installing libcapstone v4"
+  pushd /tmp && \
+  curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
+  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && $SUDO make install && cd /tmp && \
+  rm -rf /tmp/capstone-4.0.2
+  $SUDO ldconfig
+  popd
+fi
+
+# PyPANDA needs CFFI from pip (the version in apt is too old)
+# Install system-wide since PyPANDA install will also be system-wide
+$SUDO python3 -m pip install pip
+$SUDO python3 -m pip install "cffi>1.14.3"
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true

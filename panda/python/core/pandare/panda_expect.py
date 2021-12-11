@@ -6,22 +6,29 @@ import select
 import sys
 import string
 
-from datetime import datetime
+from time import monotonic
 from errno import EAGAIN, EWOULDBLOCK
 from colorama import Fore, Style
 
 class TimeoutExpired(Exception): pass
 
 class Expect(object):
-    def __init__(self, name, filelike=None, expectation=None, logfile_base=None, consume_first=False):
+    '''
+    Class to manage typing commands into consoles and waiting for responses.
+
+    Designed to be used with the qemu monitor and serial consoles for Linux guests.
+
+    '''
+    def __init__(self, name, filelike=None, expectation=None, logfile_base=None, consume_first=False, unansi=False):
         '''
-        To debug, set logfile_base to something like '/tmp/log' and then look at logs written to /tmp/log_monitor.txt and /tmp/log_serial.txt
+        To debug, set logfile_base to something like '/tmp/log' and then look at logs written to /tmp/log_monitor.txt and /tmp/log_serial.txt. Or directyl access
         '''
 
         self.name = name
         self.logfile = None
+
         if logfile_base:
-            self.logfile = open(f"{logfile_base}_{name}.txt", "wb")
+            self.set_logging(f"{logfile_base}_{name}.txt")
 
         if filelike is None: # Must later use connect(filelike)
             self.fd = None
@@ -36,9 +43,8 @@ class Expect(object):
         self.update_expectation(expectation)
 
         # If consumed_first is false, we'll consume a message before anything else. Requires self.expectation to be set
-        self.consumed_first = True
-        if consume_first:
-            self.consumed_first = False
+        self.consumed_first = not consume_first
+        self.use_unansi = unansi
 
     def update_expectation(self, expectation):
         if isinstance(expectation, bytes):
@@ -46,6 +52,9 @@ class Expect(object):
         self.last_prompt = expectation # approximation
         self.expectation_re = re.compile(expectation)
         self.expectation_ends_re = re.compile(r'(.*)' + expectation)
+
+    def set_logging(self, name):
+        self.logfile = open(name, "wb")
 
     def connect(self, filelike):
         if type(filelike) == int:
@@ -100,7 +109,7 @@ class Expect(object):
         # Join prior lines into a single text element in our reformatted list
         reformatted = []
         if len(self.prior_lines):
-            reformatted = [('text', '\n'.join(self.prior_lines))]
+            reformatted = [('text', ['\n'.join(self.prior_lines)])]
 
         # Then split current line into the tuple format describe above
         msg = self.current_line
@@ -345,11 +354,11 @@ class Expect(object):
             raise RuntimeError("Must connect() prior to expect()")
 
         self.current_line = bytearray()
-        start_time = datetime.now()
+        start_time = monotonic()
         time_passed = 0
         while (timeout is None or time_passed < timeout) and self.running:
             if timeout is not None:
-                time_passed = (datetime.now() - start_time).total_seconds()
+                time_passed = (monotonic() - start_time)
                 time_left = timeout - time_passed
             else:
                 time_left = float("inf")
@@ -376,8 +385,12 @@ class Expect(object):
                 # Translate the current_line buffer into plaintext, then determine if we're finished (bc we see new prompt)
                 # note this drops the echo'd command
                 if self.current_line.endswith(b"\n"):
-                    # End of line - need to unansi and move into prior_lines
-                    self.unansi()
+                    # End of line - need to potentially unansi and move into prior_lines
+                    if self.use_unansi:
+                        self.unansi()
+                    else:
+                        self.prior_lines.append(self.current_line[:-1].decode(errors='ignore'))
+                        self.current_line = bytearray()
 
                     # Now we have command\nresults..........\nprompt
                     #self.logfile.write(b"\n UNANSIs to: " + repr(self.prior_lines).encode()+b"\n")

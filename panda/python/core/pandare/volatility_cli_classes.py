@@ -17,7 +17,6 @@ from volatility.framework import automagic, constants, contexts, exceptions, int
 from volatility.framework.automagic import linux
 from volatility.framework.layers.linear import LinearlyMappedLayer
 from volatility.framework.objects import utility
-from .ffi_importer import ffi
 import argparse
 import shlex
 import inspect
@@ -76,15 +75,15 @@ class CommandLineMoreEfficient(interfaces.plugins.FileConsumerInterface):
 
     def run(self):
         # we aren't really doing logging, but you can change these numbers to get more details
-        vollog = logging.getLogger(__name__)
-        vollog = logging.getLogger()
-       # vollog.setLevel(1000)
+        self.vollog = logging.getLogger(__name__)
+        self.vollog = logging.getLogger()
+       # self.vollog.setLevel(1000)
         console = logging.StreamHandler()
         #console.setLevel(logging.WARNING)
         formatter = logging.Formatter(
             '%(levelname)-8s %(name)-12s: %(message)s')
         console.setFormatter(formatter)
-        vollog.addHandler(console)
+        self.vollog.addHandler(console)
         volatility.framework.require_interface_version(1, 0, 0)
         # also change here for log level
         #console.setLevel(1000)
@@ -128,25 +127,25 @@ class CommandLineRunFullCommand(interfaces.plugins.FileConsumerInterface):
     def run(self, argstring):
         # Make sure we log everything
 
-        vollog = logging.getLogger()
-        #vollog.setLevel(1)
+        self.vollog = logging.getLogger()
+        #self.vollog.setLevel(1)
         # Trim the console down by default
         console = logging.StreamHandler()
         #console.setLevel(logging.FATAL)
         formatter = logging.Formatter(
             '%(levelname)-8s %(name)-12s: %(message)s')
         console.setFormatter(formatter)
-        vollog.addHandler(console)
+        self.vollog.addHandler(console)
         # Make sure we log everything
-        vollog = logging.getLogger()
-        #vollog.setLevel(1)
+        self.vollog = logging.getLogger()
+        #self.vollog.setLevel(1)
         # Trim the console down by default
         console = logging.StreamHandler()
         #console.setLevel(logging.WARNING)
         formatter = logging.Formatter(
             '%(levelname)-8s %(name)-12s: %(message)s')
         console.setFormatter(formatter)
-        vollog.addHandler(console)
+        self.vollog.addHandler(console)
         arg_arr = shlex.split(argstring)
         """Executes the command line module, taking the system arguments,
             determining the plugin to run and then running it."""
@@ -239,17 +238,17 @@ class CommandLineRunFullCommand(interfaces.plugins.FileConsumerInterface):
             file_formatter = logging.Formatter(datefmt='%y-%m-%d %H:%M:%S',
                                                fmt='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
             file_logger.setFormatter(file_formatter)
-            vollog.addHandler(file_logger)
-            vollog.info("Logging started")
+            self.vollog.addHandler(file_logger)
+            self.vollog.info("Logging started")
         if partial_args.verbosity < 3:
             console.setLevel(30 - (partial_args.verbosity * 10))
         else:
             console.setLevel(10 - (partial_args.verbosity - 2))
         #console.setLevel(0)
 
-        vollog.info("Volatility plugins path: {}".format(
+        self.vollog.info("Volatility plugins path: {}".format(
             volatility.plugins.__path__))
-        vollog.info("Volatility symbols path: {}".format(
+        self.vollog.info("Volatility symbols path: {}".format(
             volatility.symbols.__path__))
 
         # Set the PARALLELISM
@@ -267,7 +266,7 @@ class CommandLineRunFullCommand(interfaces.plugins.FileConsumerInterface):
         if failures:
             parser.epilog = "The following plugins could not be loaded (use -vv to see why): " + \
                 ", ".join(sorted(failures))
-            vollog.info(parser.epilog)
+            self.vollog.info(parser.epilog)
         automagics = automagic.available(ctx)
 
         plugin_list = framework.list_plugins()
@@ -303,7 +302,7 @@ class CommandLineRunFullCommand(interfaces.plugins.FileConsumerInterface):
         if args.plugin is None:
             parser.error("Please select a plugin to run")
 
-        vollog.log(constants.LOGLEVEL_VVV,
+        self.vollog.log(constants.LOGLEVEL_VVV,
                    "Cache directory used: {}".format(constants.CACHE_PATH))
 
         plugin = plugin_list[args.plugin]
@@ -358,7 +357,7 @@ class CommandLineRunFullCommand(interfaces.plugins.FileConsumerInterface):
         #	return (ctx, automagics, plugin, base_config_path, progress_callback, self)
 
             if args.write_config:
-                vollog.debug("Writing out configuration data to config.json")
+                self.vollog.debug("Writing out configuration data to config.json")
                 with open("config.json", "w") as f:
                     json.dump(dict(constructed.build_configuration()),
                               f, sort_keys=True, indent=2)
@@ -452,10 +451,10 @@ class CommandLineRunFullCommand(interfaces.plugins.FileConsumerInterface):
         if not os.path.exists(output_filename):
             with open(output_filename, "wb") as current_file:
                 current_file.write(filedata.data.getvalue())
-                vollog.log(
+                self.vollog.log(
                     logging.INFO, "Saved stored plugin file: {}".format(output_filename))
         else:
-            vollog.warning(
+            self.vollog.warning(
                 "Refusing to overwrite an existing file: {}".format(output_filename))
 
     def populate_requirements_argparse(self, parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup],

@@ -73,6 +73,7 @@ Arguments
 * `mode` - Output mode, one of `asid-block`, `osi-block`, or `edge` (default:
 `asid-block`). Note that `edge` requires OSI.
 * `full` - When `true`, logs each record every time it is generated (default:
+* `summary` - When `true`, only report total distinct blocks executed per process. Requires OSI and a mode of `osi-block` (default:
 `false`)
 * `start_disabled` - When `true`, does not start data collection when the
 plugin is initialized (default: `false`)
@@ -80,6 +81,8 @@ plugin is initialized (default: `false`)
 matches this argument (requires OSI). Note this filter is done at runtime, not
 instrumentation time.
 * `pc` - Filter option, only instrument blocks within a given range. Format: 
+`<Start PC in Hex or Decimal>-<End PC in Hex or Decimal>`.
+* `exclude_pc` - Filter option, do not instrument blocks which fall at least partially within a given range.  Format:
 `<Start PC in Hex or Decimal>-<End PC in Hex or Decimal>`.
 * `privilege` - Filter option, only instrument blocks executed with the
 specified privileges. Either: `user` or `kernel`.

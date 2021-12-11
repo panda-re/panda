@@ -155,7 +155,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
 
     // p->ppid = taskd->real_parent->pid
     err = struct_get(cpu, &p->ppid, task_addr,
-                     {ki.task.real_parent_offset, ki.task.pid_offset});
+                     {ki.task.real_parent_offset, ki.task.tgid_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
     p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
@@ -521,10 +521,16 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-    target_ptr_t ts_current = p->taskd;
     char *filename = NULL;
+    target_ptr_t ts_current;
     //const char *err = NULL;
 
+    if (p == NULL) {
+        //err = "Null OsiProc argument";
+        goto end;
+    }
+
+    ts_current = p->taskd;
     if (ts_current == 0) {
         //err = "can't get task";
         goto end;
@@ -549,6 +555,15 @@ end:
     //    LOG_ERROR("%s -- (pid=%d, fd=%d)", err, (int)p->pid, fd);
     //}
     return filename;
+}
+
+
+target_ptr_t ext_get_file_dentry(CPUState *env, target_ptr_t file_struct) {
+	return get_file_dentry(env, file_struct);
+} 
+
+target_ptr_t ext_get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
+	return get_file_struct_ptr(env, task_struct, fd);
 }
 
 
@@ -694,7 +709,7 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 }
 #endif
 
-#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
 // Keep track of which tasks have entered execve. Note that we simply track
 // based on the task struct. This works because the other threads in the thread
@@ -747,7 +762,12 @@ static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
  */
 bool init_plugin(void *self) {
     // Register callbacks to the PANDA core.
-#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+#if defined(TARGET_MIPS64)
+        printf("No OSI for mips64\n");
+        return false;
+#endif
+
+#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
     {
         // Whenever we load a snapshot, we need to find cpu offsets again
         // (particularly if KASLR is enabled) and we also may need to re-initialize
@@ -783,10 +803,13 @@ bool init_plugin(void *self) {
     if (!kconf_file) {
         // Search build dir and installed location for kernelinfo.conf
         gchar *progname = realpath(qemu_file, NULL);
-        gchar *progdir = g_path_get_dirname(progname);
+        gchar *progdir = NULL;
+        if(progname != NULL) {
+            progdir = g_path_get_dirname(progname);
+        }
         gchar *kconffile_canon = NULL;
 
-        if (kconffile_canon == NULL) {  // from build dir
+        if (kconffile_canon == NULL && progdir != NULL) {  // from build dir
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
             LOG_INFO("Looking for kconf_file attempt %u: %s", 1, kconf_file);

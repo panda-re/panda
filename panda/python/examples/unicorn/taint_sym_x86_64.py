@@ -4,7 +4,7 @@ import time
 import keystone
 import capstone
 
-from pandare import Panda, ffi
+from pandare import Panda
 CODE = b"""
 jmp .start
 
@@ -85,8 +85,24 @@ def after(cpu, tb, rc):
             assert(panda.taint_check_ram(addr)), f"Dest[{idx}] is not tainted"
             tq = panda.taint_get_ram(addr)
             taint_labels = tq.get_labels()
-            print(hex(addr), taint_labels)
+            print("Taint", hex(addr), taint_labels)
+            # Get DEST memory symbol
+            expr = panda.taint_sym_query_ram(addr)
+            assert expr != None
+            print(f"Memory[{hex(addr)}] => {type(expr)}: {expr}")
 
+        # Get the RDX symbol 
+        reg_num = panda.arch.registers['RDX']
+        expr = panda.taint_sym_query_reg(reg_num)
+        assert expr != None
+        print("RDX symbolic value =>", expr)
+
+        # Get Path Constrains
+        pcs = panda.taint_sym_path_constraints()
+        metas = panda.taint_sym_branch_meta()
+        assert len(pcs) > 0
+        assert len(pcs) == len(metas)
+        [print('PC', hex(meta),'\t', pc) for pc, meta in zip(pcs, metas)]
         os._exit(0) # TODO: we need a better way to stop here
 
 # Before every instruction, disassemble it with capstone

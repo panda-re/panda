@@ -17,6 +17,23 @@ TCGOp *find_first_guest_insn()
     return first_guest_insn_mark;
 }
 
+// return the op right before exit
+TCGOp *find_last_guest_insn()
+{
+    TCGOp *last_op = NULL;
+    TCGOp *op = NULL;
+    TCGOp *last_guest_insn_mark = NULL; 
+    for (int oi = tcg_ctx.gen_op_buf[0].next; oi != 0; oi = op->next) {
+        op = &tcg_ctx.gen_op_buf[oi];
+        if (INDEX_op_exit_tb == op->opc) {
+            last_guest_insn_mark = last_op;
+            break;
+        }
+        last_op = op;
+    }
+    return last_guest_insn_mark;
+}
+
 TCGOp *find_guest_insn_by_addr(target_ulong addr)
 {
     TCGOp *op = NULL;

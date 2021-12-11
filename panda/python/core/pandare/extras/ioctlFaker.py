@@ -3,7 +3,8 @@
 import sys
 import logging
 
-from pandare import ffi
+from cffi import FFI
+ffi = FFI()
 
 # TODO: only for logger, should probably move it to a separate file
 if __name__ == '__main__': # Script run directly
@@ -119,7 +120,7 @@ class Ioctl():
             self_str = ""
 
         bits = self.cmd.bits
-        direction = panda.ffi.string(panda.ffi.cast("enum ioctl_direction", bits.direction))
+        direction = ffi.string(ffi.cast("enum ioctl_direction", bits.direction))
         ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd=0x{bits.cmd_num:x},type=0x{bits.type_num:x}"
         if (self.guest_ptr == None):
             self_str += f"ioctl({ioctl_desc}) -> {self.original_ret_code}"
@@ -249,13 +250,13 @@ if __name__ == "__main__":
     Bash will issue ioctls on /dev/ttys0 - this is just a simple test to make sure they're being captured
     '''
 
-    from pandare import blocking, Panda
+    from pandare import Panda
 
     # No arguments, x86_64. Otherwise argument should be guest arch
     generic_type = sys.argv[1] if len(sys.argv) > 1 else "x86_64"
     panda = Panda(generic=generic_type)
 
-    @blocking
+    @panda.queue_blocking
     def run_cmd():
 
         # Setup faker
@@ -273,6 +274,5 @@ if __name__ == "__main__":
         assert(len(normal_rets)), "No normal returns"
         panda.end_analysis()
 
-    panda.queue_async(run_cmd)
     panda.run()
     print("Success")

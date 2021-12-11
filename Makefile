@@ -19,6 +19,7 @@ GIT_VERSION := '$(shell git describe --dirty --always)'
 BUILD_DATE  := '$(shell date)'
 QEMU_CFLAGS  +=-DGIT_VERSION=\"$(GIT_VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
 QEMU_CXXFLAGS+=-DGIT_VERSION=\"$(GIT_VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
+QEMU_CFLAGS += $(call cc-disable-warning, psabi)
 
 git-submodule-update:
 

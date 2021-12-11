@@ -6,7 +6,7 @@ Module for reading and writing PANDAlog (plog) files from Python.
 import zlib
 import struct
 import pandare.plog_pb2
-from google.protobuf.message import Message
+#from google.protobuf.message import Message
 
 class PLogReader:
     '''

@@ -1636,6 +1636,23 @@ static void disas_system(DisasContext *s, uint32_t insn)
         case 4: /* C5.6.130 MSR (immediate) */
             handle_msr_i(s, insn, op1, op2, crm);
             break;
+        case 5: /* PANDA hypercall */
+            /* 'msr S0_0_c5_c0_0, xzr' is used to reach this point:
+                  msr: l=0
+                  S0_0_c5_c0_0: op0=0,op1=0,crn=5,crm=0,op2=0
+                  xzr: rt=31
+            */
+            gen_a64_set_pc_im(s->pc);
+            gen_helper_panda_guest_hypercall(cpu_env);
+
+            /* End block here. This enables using hypercalls to
+             * implement advanced functionality. E.g. to switch
+             * runtime from TCG to LLVM.
+             */
+            /* Is this correct? */
+            gen_goto_tb(s, 0, s->pc);
+
+            break;
         default:
             unallocated_encoding(s);
             break;

@@ -9,6 +9,7 @@ if version_info[0] < 3:
     exit(0)
 
 import socket
+import select
 import threading
 
 
@@ -27,17 +28,16 @@ from time import time
 from math import ceil
 from inspect import signature
 from struct import pack_into
-from shlex import quote as shlex_quote
+from shlex import quote as shlex_quote, split as shlex_split
 from time import sleep
 from cffi import FFI
 
-from .ffi_importer import ffi, set_ffi
-from .utils import progress, make_iso, debug, blocking, GArrayIterator, plugin_list
+from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
+from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -51,12 +51,15 @@ class Panda():
 
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            serial_kwargs=None,
             os_version=None,
             qcow=None, # Qcow file to load
             os="linux",
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
-            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
-            extra_args=[]):
+            raw_monitor=False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
+            extra_args=None,
+            catch_exceptions=True, # Should we catch and end_analysis() when python code raises an exception?
+            libpanda_path=None):
         '''
         Construct a new `Panda` object.  Note that multiple Panda objects cannot coexist in the same Python instance.
         Args:
@@ -66,9 +69,14 @@ class Panda():
             expect_prompt: Regular expression describing the prompt exposed by the guest
                     on a serial console. Used so we know when a running command has finished
                     with its output.
+            serial_kwargs: dict of additional arguments to pass to pandare.Expect (see signature of its constructor).
+                    Note that `expect_prompt` is already passed to Expect as "expectation".
+                    If not explicitly given, "unansi" is set to True (simulates a subset of ANSI codes and attempts to
+                    remove command strings repeated by the shell from the shell output).
             os_version: analagous to PANDA's -os argument (e.g, linux-32-debian:3.2.0-4-686-pae")
             os: type of OS (e.g. "linux")
             qcow: path to a qcow file to load
+            catch_exceptions: Should we catch exceptions raised by python code and end_analysis() and then print a backtrace (Default: True)
             raw_monitor: When set, don't specify a -monitor. arg Allows for use of
                     -nographic in args with ctrl-A+C for interactive qemu prompt. Experts only!
             extra_args: extra arguments to pass to PANDA as either a string or an
@@ -86,9 +94,15 @@ class Panda():
         self.lambda_cnt = 0
         self.__sighandler = None
         self.ending = False # True during end_analysis
+        self.cdrom = None
+        self.catch_exceptions=catch_exceptions
 
-        if isinstance(extra_args, str): # Extra args can be a string or array
-            extra_args = extra_args.split()
+        self.serial_unconsumed_data = b''
+
+        if isinstance(extra_args, str): # Extra args can be a string or array. Use shlex to preserve quoted substrings
+            extra_args = shlex_split(extra_args)
+        elif extra_args is None:
+            extra_args = []
 
         # If specified, use a generic (x86_64, i386, arm, etc) qcow from MIT and ignore
         if generic:                                 # other args. See details in qcows.py
@@ -99,8 +113,9 @@ class Panda():
             self.mem      = q.default_mem # Might clobber a specified argument, but required if you want snapshots
             self.qcow     = Qcows.get_qcow(generic)
             self.expect_prompt = q.prompt
+            self.cdrom    = q.cdrom
             if q.extra_args:
-                extra_args.extend(q.extra_args.split(" "))
+                extra_args.extend(shlex_split(q.extra_args))
 
         if self.qcow: # Otherwise we shuld be able to do a replay with no qcow but this is probably broken
             if not (exists(self.qcow)):
@@ -123,18 +138,25 @@ class Panda():
             self.arch = Aarch64Arch(self)
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
+        elif self.arch_name in ["mips64"]:
+            self.arch = Mips64Arch(self)
         else:
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
 
-        self.build_dir  = self._find_build_dir()
+        self.build_dir  = self._find_build_dir(self.arch_name)
         environ["PANDA_DIR"] = self.build_dir
-        self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch_name))
+
+        if libpanda_path:
+            self.libpanda_path = libpanda_path
+        else:
+            self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch_name))
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
 
         self.ffi = self._do_types_import()
+
         self.libpanda = self.ffi.dlopen(self.libpanda_path)
-        self.C = ffi.dlopen(None)
+        self.C = self.ffi.dlopen(None)
 
         # set OS name if we have one
         if self.os:
@@ -142,12 +164,16 @@ class Panda():
 
         # Setup argv for panda
         self.panda_args = [self.panda]
-        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm, so 'pc-bios' is a misleading name
+        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm/mips, so 'pc-bios' is a misleading name
         self.panda_args.append("-L")
         self.panda_args.append(biospath)
 
         if self.qcow:
-            self.panda_args.append(self.qcow)
+            if self.arch_name == 'mips64':
+                # XXX: mips64 needs virtio interface for the qcow
+                self.panda_args.extend(["-drive", f"file={self.qcow},if=virtio"])
+            else:
+                self.panda_args.append(self.qcow)
 
         self.panda_args += extra_args
 
@@ -155,10 +181,13 @@ class Panda():
         self.panda_args.extend(['-m', self.mem])
 
         # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
-        if self.expect_prompt:
+        if self.expect_prompt or (serial_kwargs is not None and serial_kwargs.get('expectation')):
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.serial_console = Expect('serial', expectation=self.expect_prompt, consume_first=False)
+            expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': True}
+            if serial_kwargs:
+                expect_kwargs.update(serial_kwargs)
+            self.serial_console = Expect('serial', **expect_kwargs)
             self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
         else:
             self.serial_file = None
@@ -210,17 +239,35 @@ class Panda():
     # /__init__
 
     def _do_types_import(self):
-        # Import objects from panda_datatypes which are configured by the environment variables
-        # Store these objects in self.callback and self.callback_dictionary
-        global ffi
+        '''
+        Import objects from panda_datatypes which are configured by the environment variables(?)
+        Check the DATATTYPES_VERSION to detect if panda_datatypes.py has gotten stale.
+
+        Store these objects in self.callback and self.callback_dictionary
+
+        Returns a handle to the FFI object for the libpanda object
+        '''
+
+        required_datatypes_version = 1.1
+        version_err = "Your panda_datatypes.py is out of date (has version {} but PANDA " \
+                      "requires version {}). Please reinstall pypanda or re-run "\
+                      "create_panda_datatypes.py."
+        try:
+            from .autogen.panda_datatypes import DATATYPES_VERSION
+        except ImportError:
+            raise RuntimeError(version_err.format(None, required_datatypes_version))
+
+        if required_datatypes_version != DATATYPES_VERSION:
+            raise RuntimeError(version_err.format(DATATYPES_VERSION, required_datatypes_version))
+
+
         from importlib import import_module
+        from .autogen.panda_datatypes import get_cbs
         panda_arch_support = import_module(f".autogen.panda_{self.arch_name}_{self.bits}",package='pandare')
+
         ffi = panda_arch_support.ffi
-        self.ffi = ffi
-        set_ffi(ffi)
-        from .autogen.panda_datatypes import pcb, C, callback_dictionary # XXX: What is C and do we need it?
-        self.callback_dictionary = callback_dictionary
-        self.callback = pcb
+        self.callback, self.callback_dictionary = get_cbs(ffi)
+
         return ffi
 
     def _initialize_panda(self):
@@ -230,14 +277,15 @@ class Panda():
         '''
         self.libpanda._panda_set_library_mode(True)
 
-        cenvp = ffi.new("char**", ffi.new("char[]", b""))
-        len_cargs = ffi.cast("int", len(self.panda_args))
-        panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
+        cenvp = self.ffi.new("char**", self.ffi.new("char[]", b""))
+        len_cargs = self.ffi.cast("int", len(self.panda_args))
+        panda_args_ffi = [self.ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
         self.libpanda.panda_init(len_cargs, panda_args_ffi, cenvp)
 
         # Now we've run qemu init so we can connect to the sockets for the monitor and serial
         if self.serial_console and not self.serial_console.is_connected():
             self.serial_socket.connect(self.serial_file)
+            self.serial_socket.settimeout(None)
             self.serial_console.connect(self.serial_socket)
         if not self.raw_monitor and not self.monitor_console.is_connected():
             self.monitor_socket.connect(self.monitor_file)
@@ -249,6 +297,7 @@ class Panda():
 
         self._initialized_panda = True
 
+        
 
     def __main_loop_wait_cb(self):
         '''
@@ -267,7 +316,8 @@ class Panda():
         except KeyboardInterrupt:
             self.end_analysis()
 
-    def _find_build_dir(self):
+    @staticmethod
+    def _find_build_dir(arch_name):
         '''
         Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
         1) check relative to file (in the case of installed packages)
@@ -277,19 +327,19 @@ class Panda():
         archs = ['i386', 'x86_64', 'arm', 'ppc']
         python_package = pjoin(*[dirname(__file__), "data"])
         local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
-        path_end = "{0}-softmmu/libpanda-{0}.so".format(self.arch_name)
+        path_end = "{0}-softmmu/libpanda-{0}.so".format(arch_name)
 
         pot_paths = [python_package, local_build]
         for potential_path in pot_paths:
             if isfile(pjoin(potential_path, path_end)):
-                print("Loading libpanda from {}".format(potential_path))
+                #print("Loading libpanda from {}".format(potential_path))
                 return potential_path
 
         searched_paths = "\n".join(["\t"+p for p in  pot_paths])
         raise RuntimeError(("Couldn't find libpanda-{}.so.\n"
                             "Did you built PANDA for this architecture?\n"
                             "Searched paths:\n{}"
-                           ).format(self.arch_name, searched_paths))
+                           ).format(arch_name, searched_paths))
 
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
@@ -318,7 +368,7 @@ class Panda():
         # Stop guest, queue up revert, then continue
         timer_start = time()
         self.vm_stop()
-        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
         if debug:
@@ -359,7 +409,7 @@ class Panda():
         # Stop guest execution, queue up a snapshot, then continue
         timer_start = time()
         self.vm_stop()
-        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_snap, [charptr])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
         if debug:
@@ -380,13 +430,13 @@ class Panda():
 
         # Stop guest, queue up delete, then continue
         self.vm_stop()
-        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_delvm, [charptr])
 
     def _finish_timer(self, start, msg):
         ''' Print how long some (main_loop_wait) task took '''
         t = time() - start
-        print("{} in {1:.08f} seconds".format(msg, t))
+        print("{} in {:.08f} seconds".format(msg, t))
 
 
     def enable_tb_chaining(self):
@@ -430,9 +480,9 @@ class Panda():
 
         if self._initialized_panda:
             # initialize and register signal handler only if panda is initialized
-            self.__sighandler = (ffi.callback("void(int,void*,void*)", SigHandler)
+            self.__sighandler = (self.ffi.callback("void(int,void*,void*)", SigHandler)
                        if signal_handler is None and self.__sighandler is None
-                       else ffi.callback("void(int,void*,void*)", self.__sighandler))
+                       else self.ffi.callback("void(int,void*,void*)", self.__sighandler))
 
             self.libpanda.panda_setup_signal_handling(self.__sighandler)
 
@@ -531,12 +581,12 @@ class Panda():
             Exception: raises exception if there was an error starting recording.
         """
         if snapshot_name == None:
-            snapshot_name_ffi = ffi.NULL
+            snapshot_name_ffi = self.ffi.NULL
         else:
-            snapshot_name_ffi = ffi.new("char[]",snapshot_name.encode())
-        recording_name_ffi = ffi.new("char[]", recording_name.encode())
+            snapshot_name_ffi = self.ffi.new("char[]",snapshot_name.encode())
+        recording_name_ffi = self.ffi.new("char[]", recording_name.encode())
         result = self.libpanda.panda_record_begin(recording_name_ffi,snapshot_name_ffi)
-        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
 
@@ -547,7 +597,7 @@ class Panda():
             Exception: raises exception if there was an error stopping recording.
         """
         result = self.libpanda.panda_record_end()
-        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
     
@@ -582,7 +632,7 @@ class Panda():
         if debug:
             progress ("Replaying %s" % replaypfx)
 
-        charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
+        charptr = self.ffi.new("char[]",bytes(replaypfx,"utf-8"))
         self.libpanda.panda_replay_begin(charptr)
         self._in_replay = True
         self.run()
@@ -605,7 +655,7 @@ class Panda():
 
         result = self.libpanda.panda_replay_end()
 
-        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"ending record method failed with RTCTL_ret {res_string_enum} ({result})")
 
@@ -634,13 +684,13 @@ class Panda():
         if isinstance(args, dict):
             for k,v in args.items():
                 this_arg_s = "{}={}".format(k,v)
-                this_arg = ffi.new("char[]", bytes(this_arg_s, "utf-8"))
+                this_arg = self.ffi.new("char[]", bytes(this_arg_s, "utf-8"))
                 argstrs_ffi.append(this_arg)
 
             n = len(args.keys())
         elif isinstance(args, list):
             for arg in args:
-                this_arg = ffi.new("char[]", bytes(arg, "utf-8"))
+                this_arg = self.ffi.new("char[]", bytes(arg, "utf-8"))
                 argstrs_ffi.append(this_arg)
             n = len(args)
 
@@ -649,15 +699,15 @@ class Panda():
 
         # First set qemu_path so plugins can load (may be unnecessary after the first time)
         assert(self.panda), "Unknown location of PANDA"
-        panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
+        panda_name_ffi = self.ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
         if len(argstrs_ffi):
             plugin_args = argstrs_ffi
         else:
-            plugin_args = ffi.NULL
+            plugin_args = self.ffi.NULL
 
-        charptr = ffi.new("char[]", bytes(name,"utf-8"))
+        charptr = self.ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self._load_plugin_library(name)
 
@@ -682,7 +732,7 @@ class Panda():
         '''
         if debug:
             progress ("Unloading plugin %s" % name),
-        name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
+        name_ffi = self.ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
     def unload_plugins(self):
@@ -705,6 +755,10 @@ class Panda():
             except IndexError:
                 continue
             #self.disable_callback(name)
+
+        # Next, unload any pyplugins
+        if hasattr(self, "_pyplugin_manager"):
+            self.pyplugins.unload_all()
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
@@ -767,15 +821,15 @@ class Panda():
         if not isinstance(addr, int):
             raise ValueError(f"Unsupported read from address {repr(addr)}")
 
-        buf = ffi.new("char[]", length)
+        buf = self.ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
         # when it decides that it's negative
         ptr_typ = f'uint{self.bits}_t'
-        addr_u = int(ffi.cast(ptr_typ, addr))
+        addr_u = int(self.ffi.cast(ptr_typ, addr))
 
-        buf_a = ffi.cast("char*", buf)
-        length_a = ffi.cast("int", length)
+        buf_a = self.ffi.cast("char*", buf)
+        length_a = self.ffi.cast("int", length)
         if physical:
             err = self.libpanda.panda_physical_memory_read_external(addr_u, buf_a, length_a)
         else:
@@ -784,13 +838,13 @@ class Panda():
         if err < 0:
             raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
 
-        r = ffi.unpack(buf, length)
+        r = self.ffi.unpack(buf, length)
         if fmt == 'bytearray':
             return r
         elif fmt=='int':
             return int.from_bytes(r, byteorder=self.endianness)  # XXX size better be small enough to pack into an int!
         elif fmt=='str':
-            return ffi.string(buf, length)
+            return self.ffi.string(buf, length)
         elif fmt=='ptrlist':
             # This one is weird. Chunmk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
             # return a list
@@ -840,9 +894,9 @@ class Panda():
         Write a bytearray into memory at the specified physical/virtual address
         '''
         length = len(buf)
-        c_buf = ffi.new("char[]",buf)
-        buf_a = ffi.cast("char*", c_buf)
-        length_a = ffi.cast("int", length)
+        c_buf = self.ffi.new("char[]",buf)
+        buf_a = self.ffi.cast("char*", c_buf)
+        length_a = self.ffi.cast("int", length)
 
         if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
@@ -857,11 +911,11 @@ class Panda():
         Helper function for callstack_instr plugin
         Handle conversion and return get_callers from callstack_instr.
         '''
-        if not "plugin_callstack_instr" in self.plugins:
+        if not "callstack_instr" in self.plugins:
             progress("enabling callstack_instr plugin")
             self.load_plugin("callstack_instr")
 
-        callers = ffi.new("uint32_t[%d]" % lim)
+        callers = self.ffi.new("uint%d_t[%d]" % (self.bits, lim))
         n = self.plugins['callstack_instr'].get_callers(callers, lim, cpu)
         c = []
         for pc in callers:
@@ -870,11 +924,11 @@ class Panda():
 
     def _load_plugin_library(self, name):
         if hasattr(self,"__did_load_libpanda"):
-            libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
+            libpanda_path_chr = self.ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         if not name in self.plugins.keys():
             assert(isfile(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
-            library = ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
+            library = self.ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.plugins[name] = library
 
     def queue_async(self, f, internal=False):
@@ -917,7 +971,7 @@ class Panda():
             None
         '''
 
-        name_c = ffi.new("char[]", bytes(name, "utf-8"))
+        name_c = self.ffi.new("char[]", bytes(name, "utf-8"))
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
@@ -1022,6 +1076,17 @@ class Panda():
             self.queue_async(f)
         return f
 
+    # PyPlugin helpers
+    @property
+    def pyplugins(self):
+        """
+        A reference to an auto-instantiated `pandare.pyplugin.PyPluginManager` class.
+        """
+        if not hasattr(self, "_pyplugin_manager"):
+            from .pypluginmanager import PyPluginManager
+            self._pyplugin_manager = PyPluginManager(self)
+        return self._pyplugin_manager
+
 
     ########################## LIBPANDA FUNCTIONS ########################
     # Methods that directly pass data to/from PANDA with no extra logic beyond argument reformatting.
@@ -1035,7 +1100,7 @@ class Panda():
         Returns:
             None
         '''
-        charptr = ffi.new("char[]", bytes(name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(name, "utf-8"))
         self.libpanda.panda_start_pandalog(charptr)
 
     def enable_memcb(self):
@@ -1308,7 +1373,7 @@ class Panda():
         Returns:
             DeviceState struct
         '''
-        return self.libpanda.sysbus_create_varargs(name,addr,ffi.NULL)
+        return self.libpanda.sysbus_create_varargs(name,addr, self.ffi.NULL)
 
     def cpu_class_by_name(self, name, cpu_model):
         '''
@@ -1466,7 +1531,7 @@ class Panda():
         Returns:
             struct ObjectProperty pointer
         '''
-        return self.libpanda.object_property_find(obj,name,ffi.NULL)
+        return self.libpanda.object_property_find(obj,name, self.ffi.NULL)
 
     def memory_region_allocate_system_memory(self, mr, obj, name, ram_size):
         '''
@@ -1567,7 +1632,8 @@ class Panda():
             Returns:
                 None
         """
-        os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
+        print ("os_name=[%s]" % os_name)
+        os_name_new = self.ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)
 
 
@@ -1623,9 +1689,12 @@ class Panda():
         procs = {} #pid: {name: X, pid: Y, parent_pid: Z})
 
         for proc in self.get_processes(cpu):
-            assert(proc != ffi.NULL)
+            assert(proc != self.ffi.NULL)
             assert(proc.pid not in procs)
-            procs[proc.pid] = {"name": ffi.string(proc.name).decode('utf8', 'ignore'), 'pid': proc.pid, 'parent_pid': proc.ppid}
+            procs[proc.pid] = {'name': self.ffi.string(proc.name).decode('utf8', 'ignore'),
+                               'pid': proc.pid,
+                               'parent_pid': proc.ppid,
+                               'create_time': proc.create_time}
             assert(not (proc.pid != 0 and proc.pid == proc.ppid)) # No cycles allowed other than at 0
         return procs
 
@@ -1634,11 +1703,11 @@ class Panda():
         Get the name of the current process. May return None if OSI cannot identify the current process
         '''
         proc = self.plugins['osi'].get_current_process(cpu)
-        if proc == ffi.NULL or proc.name == ffi.NULL:
+        if proc == self.ffi.NULL or proc.name == self.ffi.NULL:
             return None
 
-        procname = ffi.string(proc.name).decode('utf8', 'ignore')
-        return ffi.string(proc.name).decode('utf8', 'ignore')
+        procname = self.ffi.string(proc.name).decode('utf8', 'ignore')
+        return self.ffi.string(proc.name).decode('utf8', 'ignore')
 
 
     ################## PYPERIPHERAL FUNCTIONS #####################
@@ -1735,7 +1804,7 @@ class Panda():
             return False
 
         val = pp.read_memory(physaddr, size)
-        buf = ffi.buffer(val_ptr, size)
+        buf = self.ffi.buffer(val_ptr, size)
 
         fmt = "{}{}".format(self._end2fmt[self.endianness], self._num2fmt[size])
 
@@ -1875,9 +1944,9 @@ class Panda():
         res = []
         for offset in range(self.register_size):
             if self.plugins['taint2'].taint2_query_reg(reg_num, offset) > 0:
-                query_res = ffi.new("QueryResult *")
+                query_res = self.ffi.new("QueryResult *")
                 self.plugins['taint2'].taint2_query_reg_full(reg_num, offset, query_res)
-                tq = TaintQuery(query_res, self.plugins['taint2'])
+                tq = TaintQuery(query_res, self.plugins['taint2'], self.ffi)
                 res.append(tq)
             else:
                 res.append(None)
@@ -1888,9 +1957,9 @@ class Panda():
     def taint_get_ram(self, addr):
         if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
-            query_res = ffi.new("QueryResult *")
+            query_res = self.ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_ram_full(addr, query_res)
-            tq = TaintQuery(query_res, self.plugins['taint2'])
+            tq = TaintQuery(query_res, self.plugins['taint2'], self.ffi)
             return tq
         else:
             return None
@@ -1906,13 +1975,14 @@ class Panda():
     def taint_get_laddr(self, addr, offset):
         if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_laddr(addr, offset) > 0:
-            query_res = ffi.new("QueryResult *")
+            query_res = self.ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_laddr_full(addr, offset, query_res)
-            tq = TaintQuery(query_res, self.plugins['taint2'])
+            tq = TaintQuery(query_res, self.plugins['taint2'], self.ffi)
             return tq
         else:
             return None
 
+    # enables symbolic tracing
     def taint_sym_enable(self, cont=True):
         """
         Inform python that taint is enabled.
@@ -1941,17 +2011,112 @@ class Panda():
 
     # label all bytes in this register.
     # or at least four of them
+    # XXX label must increment by panda.register_size after the call
     def taint_sym_label_reg(self, reg_num, label):
         self.taint_sym_enable(cont=False)
-        #if debug:
-        #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
-
         # XXX must ensure labeling is done in a before_block_invalidate that rets 1
         #     or some other safe way where the main_loop_wait code will always be run
         #self.stop()
         for i in range(self.register_size):
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label])
+            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label+i])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+    
+    # Deserialize a z3 solver
+    # Lazy import z3. 
+    def string_to_solver(self, string: str):
+        from z3 import Solver
+        s = Solver()
+        s.from_string(string)
+        return s
+
+    # Get the first condition in serialized solver str
+    def string_to_condition(self, string: str):
+        s = self.string_to_solver(string)
+        asrts = s.assertions()
+        if len(asrts) == 0:
+            return None 
+        return asrts[0]
+
+    # Get the expr in serialized solver str
+    # (https://github.com/Z3Prover/z3/issues/2674) 
+    def string_to_expr(self, string: str):
+        eq = self.string_to_condition(string)
+        if eq and len(eq.children()) > 0:
+            return eq.children()[0]
+        return None
+
+    # Query the ram addr with given size
+    def taint_sym_query_ram(self, addr, size=1):
+        # Prepare ptr for returned string
+        str_ptr_ffi = self.ffi.new('char**')
+        # Prepare ptr for string size
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_query_ram(addr, size, n_ptr_ffi, str_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return None
+        # Unpack cstr
+        str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
+        str_bs = self.ffi.unpack(str_ptr, n)
+        expr_str = str(str_bs, 'utf-8')
+        return self.string_to_expr(expr_str)
+
+    # Query all bytes in this register.
+    def taint_sym_query_reg(self, addr):
+        # Prepare ptr for returned string
+        str_ptr_ffi = self.ffi.new('char**')
+        # Prepare ptr for string size
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_query_reg(addr, n_ptr_ffi, str_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return None
+        # Unpack cstr
+        str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
+        str_bs = self.ffi.unpack(str_ptr, n)
+        expr_str = str(str_bs, 'utf-8')
+        return self.string_to_expr(expr_str)
+
+    def taint_sym_path_constraints(self):
+        # Prepare ptr for returned string
+        str_ptr_ffi = self.ffi.new('char**')
+        # Prepare ptr for string size
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_path_constraints(n_ptr_ffi, str_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return []
+        # Unpack cstr
+        str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
+        str_bs = self.ffi.unpack(str_ptr, n)
+        expr_str = str(str_bs, 'utf-8')
+        solver = self.string_to_solver(expr_str)
+        return solver.assertions() if solver != None else []
+
+    def taint_sym_branch_meta(self):
+        branch_meta_ptr_ffi = self.ffi.new('SymbolicBranchMeta **')
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_branch_meta(n_ptr_ffi, branch_meta_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return []
+        meta_ptr = self.ffi.unpack(branch_meta_ptr_ffi, 1)[0]
+        metas_ffi = self.ffi.unpack(meta_ptr, n)
+        # Meta only has a pc field now
+        metas = [
+            meta_ffi.pc
+            for meta_ffi in metas_ffi
+        ]
+        return metas
+
 
 
     ############ Volatility mixins
@@ -2084,17 +2249,65 @@ class Panda():
         self.libpanda.panda_break_vl_loop_req = True
 
     @blocking
-    def run_serial_cmd(self, cmd, no_timeout=False, timeout=30):
+    def run_serial_cmd(self, cmd, no_timeout=False, timeout=None):
+        '''
+        Run a command inside the guest through a terminal exposed over a serial port. Can only be used if your guest is configured in this way
+
+        Guest output will be analyzed until we see the expect_prompt regex printed (i.e., the PS1 prompt)
+
+        Args:
+            cmd: command to run.
+            timeout: maximum time to wait for the command to finish
+            no_timeout: if set, don't ever timeout
+
+        Returns:
+            String: all the output (stdout + stderr) printed after typing your command and pressing enter until the next prompt was printed.
+        '''
+
+        if timeout is None:
+            timeout = 30
+
         if self.serial_console is None:
             raise RuntimeError("Cannot run serial commands without providing PANDA an expect_prompt")
         self.running.wait() # Can only run serial when guest is running
         self.serial_console.sendline(cmd.encode("utf8"))
         if no_timeout:
-            result = self.serial_console.expect(timeout=9999)
+            result = self.serial_console.expect(timeout=9999) # "Don't ever timeout" above is a bit of an exaggeration
         else:
             result = self.serial_console.expect(timeout=timeout)
         return result
 
+    @blocking
+    def serial_read_until(self, byte_sequence):
+        if len(self.serial_unconsumed_data) > 0:
+            found_idx = self.serial_unconsumed_data.find(byte_sequence)
+            if found_idx >= 0:
+                match = self.serial_unconsumed_data[ : found_idx]
+                self.serial_unconsumed_data = self.serial_unconsumed_data[found_idx + 1 : ]
+                return match
+        while self.serial_socket != None:
+            try:
+                readable, _, _ = select.select([self.serial_socket], [], [], 0.5)
+                if len(readable) == 0:
+                    continue
+                data = self.serial_socket.recv(65535)
+            except Exception as e:
+                if '[Errno 11]' in str(e) or '[Errno 35]' in str(e):
+                    # EAGAIN
+                    continue
+                raise Exception("Data Read Error: {}".format(e.message))
+            if not data:
+                raise Exception('Connection Closed by Server')
+
+            self.serial_unconsumed_data += data
+            found_idx = self.serial_unconsumed_data.find(byte_sequence)
+            if found_idx >= 0:
+                match = self.serial_unconsumed_data[ : found_idx]
+                self.serial_unconsumed_data = self.serial_unconsumed_data[found_idx + 1 : ]
+                return match
+        return None
+            
+    
     @blocking
     def run_serial_cmd_async(self, cmd, delay=1):
         '''
@@ -2124,9 +2337,26 @@ class Panda():
 
     @blocking
     def revert_sync(self, snapshot_name):
+        '''
+        Args:
+            snapshot_name: name of snapshot in the current qcow to load
+
+        Returns:
+            String: error message. Empty on success.
+        '''
         result = self.run_monitor_cmd("loadvm {}".format(snapshot_name))
+        # On success we should get no result
+
         if result.startswith("Length mismatch"):
             raise RuntimeError("QEMU machine's RAM size doesn't match snapshot RAM size!")
+
+        if "does not have the requested snapshot" in result:
+            raise ValueError(f"Snapshot '{snapshot_name}' not present in {self.qcow}")
+
+        result = result.strip()
+        if len(result):
+            warn(f"snapshot load returned error {result}")
+
         return result
 
     @blocking
@@ -2134,9 +2364,8 @@ class Panda():
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False):
+    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None, cdrom=None):
         '''
-
 
         Copy a directory from the host into the guest by
         1) Creating an .iso image of the directory on the host
@@ -2145,34 +2374,80 @@ class Panda():
 
         Args:
             copy_directory: Local directory to copy into guest
+            iso_name: Name of iso file that will be generated. Defaults to [copy_directory].iso
+            absolute_paths: is copy_directory an absolute or relative path
+            seutp_script: name of a script which, if present inside copy_directory, will be automatically run after the copy
+            timeout: maximum time each copy command will be allowed to run for, will use the `run_serial_cmd` default value unless another is provided
 
         Returns:
             None
         '''
 
-        if not iso_name: iso_name = copy_directory + '.iso'
-        progress("Creating ISO {}...".format(iso_name))
-
+        if not iso_name:
+            iso_name = copy_directory + '.iso'
         make_iso(copy_directory, iso_name)
 
         if not absolute_paths:
             copy_directory = path.split(copy_directory)[-1] # Copy directory relative, not absolutely
 
-        # 1) we insert the CD drive TODO: the cd-drive name should be a config option, see the values in qcow.py
-        self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
 
-        # 2) run setup script
+        # Drive the guest to mount the drive
         # setup_sh:
         #   Make sure cdrom didn't automount
         #   Make sure guest path mirrors host path
         #   if there is a setup.sh script in the directory,
         #   then run that setup.sh script first (good for scripts that need to
         #   prep guest environment before script runs)
-        setup_sh = "mkdir -p {mount_dir} {mount_dir}.ro; while ! mount /dev/cdrom {mount_dir}.ro; do sleep 0.3; " \
-               " umount /dev/cdrom 2>&1 | grep -v 'not mounted\|write-protected'; done; cp -r {mount_dir}.ro/* {mount_dir}/; {mount_dir}/setup.sh &> /dev/null || true " \
-               .format(mount_dir = (shlex_quote(copy_directory)))
-        progress("setup_sh = [%s] " % setup_sh)
-        progress(self.run_serial_cmd(setup_sh))
+        mount_dir = shlex_quote(copy_directory)
+
+        mkdir_result = self.run_serial_cmd(f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"", timeout=timeout)
+
+        if 'mkdir_ok' not in mkdir_result:
+            raise RuntimeError(f"Failed to create mount directories inside guest: {mkdir_result}")
+
+        # Tell panda to we insert the CD drive
+        # TODO: the cd-drive name should be a config option, see the values in qcow.py
+
+        cd_drive_name = cdrom
+        if cdrom is None:
+            if self.cdrom is not None:
+                cd_drive_name = self.cdrom
+            else:
+                cd_drive_name = "ide1-cd0"
+
+        errs = self.run_monitor_cmd("change {} \"{}\"".format(cd_drive_name, iso_name))
+        if len(errs):
+            warn(f"Warning encountered when connecting media to guest: {errs}")
+
+        try:
+            mount_status = "bad"
+            for _ in range(10):
+                if 'mount_ok' in mount_status:
+                    break
+                mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')", timeout=timeout)
+                sleep(1)
+            else:
+                # Didn't ever break
+                raise RuntimeError(f"Failed to mount media inside guest: {mount_status}")
+
+            # Note the . after our src/. directory - that's special syntax for cp -a
+            copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'", timeout=timeout)
+            
+            # NB: exact match here causing issues so making things more flexible
+            if not ('copyok' in copy_result):
+                raise RuntimeError(f"Copy to rw directory failed: {copy_result}")
+
+        finally:
+            # Ensure we disconnect the CD drive after the mount + copy, even if it fails
+            self.run_serial_cmd("umount /dev/cdrom") # This can fail and that's okay, we'll forece eject
+            sleep(1)
+            errs = self.run_monitor_cmd(f"eject -f {cd_drive_name}")
+            if len(errs):
+                warn(f"Warning encountered when disconnecting media from guest: {errs}")
+
+        if isfile(pjoin(copy_directory, setup_script)):
+            setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout)
+            progress("[Setup command]: {setup_result}")
 
     @blocking
     def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
@@ -2320,12 +2595,15 @@ class Panda():
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                     # machine exits.
-                    self.callback_exit_exception = e
-                    self.end_analysis()
+                    if self.catch_exceptions:
+                        self.callback_exit_exception = e
+                        self.end_analysis()
+                    else:
+                        raise e
                     return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
-            cast_rc_string = str(ffi.typeof(cast_rc))
+            cast_rc_string = str(self.ffi.typeof(cast_rc))
             return_from_exception = 0
             if "void(*)(" in cast_rc_string:
                 return_from_exception = None
@@ -2360,8 +2638,8 @@ class Panda():
                 return None
             if not self.in_kernel(cpu): # Once we're out of kernel code, grab procname
                 process = self.plugins['osi'].get_current_process(cpu)
-                if process != ffi.NULL:
-                    name = ffi.string(process.name).decode("utf8", "ignore")
+                if process != self.ffi.NULL:
+                    name = self.ffi.string(process.name).decode("utf8", "ignore")
                 else:
                     return None # Couldn't figure out the process
                 asid = self.libpanda.panda_current_asid(cpu)
@@ -2409,11 +2687,11 @@ class Panda():
         cb = self.callback_dictionary[callback]
 
         # Generate a unique handle for each callback type using the number of previously registered CBs of that type added to a constant
-        handle = ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))
+        handle = self.ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))
 
         # XXX: We should have another layer of indirection here so we can catch
         #      exceptions raised during execution of the CB and abort analysis
-        pcb = ffi.new("panda_cb *", {cb.name:function})
+        pcb = self.ffi.new("panda_cb *", {cb.name:function})
 
         if debug:
             progress("Registered function '{}' to run on callback {}".format(name, cb.name))
@@ -2425,7 +2703,7 @@ class Panda():
         if not enabled: # Note the registered_callbacks dict starts with enabled true and then we update it to false as necessary here
             self.disable_callback(name)
 
-        if "block" in cb.name:
+        if "block" in cb.name and "start" not in cb.name and "end" not in cb.name:
             if not self.disabled_tb_chaining:
                 print("Warning: disabling TB chaining to support {} callback".format(cb.name))
                 self.disable_tb_chaining()
@@ -2556,11 +2834,14 @@ class Panda():
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                     # machine exits.
-                    self.callback_exit_exception = e
-                    self.end_analysis()
+                    if self.catch_exceptions:
+                        self.callback_exit_exception = e
+                        self.end_analysis()
+                    else:
+                        raise e
                     # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
 
-            f = ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
+            cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
@@ -2572,10 +2853,10 @@ class Panda():
             assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
 
             # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
-            self.ppp_registered_cbs[local_name] = (f, plugin_name, attr)
+            self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
 
-            eval(f"self.plugins['{plugin_name}'].ppp_add_cb_{attr}")(f) # All PPP  cbs start with this string. XXX insecure eval
-            return f
+            eval(f"self.plugins['{plugin_name}'].ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string. XXX insecure eval
+            return cast_rc
         return decorator
 
 
@@ -2619,7 +2900,7 @@ class Panda():
         GDB instance can introspect on guest memory. Requires starting panda with -s, at least for now
         '''
         BP_GDB = 0x10
-        self.libpanda.cpu_breakpoint_insert(cpu, pc, BP_GDB, ffi.NULL)
+        self.libpanda.cpu_breakpoint_insert(cpu, pc, BP_GDB, self.ffi.NULL)
 
     def clear_breakpoint(self, cpu, pc):
         '''
@@ -2630,14 +2911,14 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, enabled=True, kernel=None, asid=None, cb_type="before_tcg_codegen"):
+    def hook(self, addr, enabled=True, kernel=None, asid=None, cb_type="start_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
         '''
 
         def decorator(fun):
-            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec":
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "start_block_exec" or cb_type == "end_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
             elif cb_type == "after_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , uint8_t, struct hook *)")
@@ -2649,9 +2930,6 @@ class Panda():
                 print("function type not supported")
                 return
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
-
-            # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(fun)
 
             if debug:
                 print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
@@ -2696,7 +2974,7 @@ class Panda():
         return decorator
 
 
-    def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="before_tcg_codegen"):
+    def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="start_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2706,7 +2984,7 @@ class Panda():
             symbol (string, int): Name of symbol or offset into library to hook
             kernel (bool): if hook should be applied exclusively in kernel mode
             name (string): name of hook, defaults to function name
-            cb_type (string): callback-type, defaults to before_tcg_codegen
+            cb_type (string): callback-type, defaults to start_block_exec
 
         Returns:
             None: Decorated function is called when (before/after is determined by cb_type) guest goes to call
@@ -2714,7 +2992,7 @@ class Panda():
         '''
 
         def decorator(fun):
-            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec":
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "start_block_exec" or cb_type == "end_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
             elif cb_type == "after_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , uint8_t, struct hook *)")
@@ -2745,6 +3023,7 @@ class Panda():
                     symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
                 else:
                     symbolname_ffi = self.ffi.new("char[]",bytes(symbol,"utf-8"))
+                    new_hook.hook_offset = False
             else:
                 symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.name,symbolname_ffi,len(symbolname_ffi))
@@ -2812,23 +3091,30 @@ class Panda():
         else:
             print("ERROR: Your hook name was not in the hook list")
 
-    def hook2(self,name, kernel=True, procname=ffi.NULL, libname=ffi.NULL, trace_start=0, trace_stop=0, range_begin=0, range_end=0):
+    def hook2(self,name, kernel=True, procname=None, libname=None, trace_start=0, trace_stop=0, range_begin=0, range_end=0):
         '''
         Decorator to create a hook with the hooks2 plugin.
 
         .. Deprecated:: Use the hooks plugin instead.
         '''
-        if procname != ffi.NULL:
-            procname = ffi.new("char[]",bytes(procname,"utf-8"))
-        if libname != ffi.NULL:
-            libname = ffi.new("char[]",bytes(libname,"utf-8"))
+
+        if procname == None:
+            procname = self.ffi.NULL
+        if libname == None:
+            libname = self.ffi.NULL
+
+
+        if procname != self.ffi.NULL:
+            procname = self.ffi.new("char[]",bytes(procname,"utf-8"))
+        if libname != self.ffi.NULL:
+            libname = self.ffi.new("char[]",bytes(libname,"utf-8"))
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
         '''
         def decorator(fun):
             # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
-            hook_cb_type = ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
+            hook_cb_type = self.ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
             # Inform the plugin that it has a new breakpoint at addr
 
             hook_cb_passed = hook_cb_type(fun)
@@ -2838,7 +3124,7 @@ class Panda():
                 self.hook_gc_list.append(hook_cb_passed)
 
             # I don't know what this is/does
-            cb_data = ffi.NULL
+            cb_data =self.ffi.NULL
             hook_number = self.plugins['hooks2'].add_hooks2(hook_cb_passed, cb_data, kernel, \
                 procname, libname, trace_start, trace_stop, range_begin,range_end)
 
@@ -2851,12 +3137,16 @@ class Panda():
             return wrapper
         return decorator
 
-    def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
+    def hook2_single_insn(self, name, pc, kernel=False, procname=None, libname=None):
         '''
         Helper function to hook a single instruction with the hooks2 plugin.
 
         .. Deprecated:: Use the hooks plugin instead.
         '''
+        if procname == None:
+            procname = self.ffi.NULL
+        if libname == None:
+            libname = self.ffi.NULL
         return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
 
     # MEM HOOKS

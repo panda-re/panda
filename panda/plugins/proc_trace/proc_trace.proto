@@ -1,0 +1,13 @@
+message ProcTrace {
+    required uint32 pid = 1;
+    required uint64 create_time = 2;
+    required uint32 ppid = 3;
+    required uint64 asid = 4; 
+    required string name = 5;
+    required uint32 tid = 6;
+    required uint64 start_instr = 7;
+    //required uint64 end_instr = 8;
+    //optional uint64 count = 9;
+}
+
+optional ProcTrace proc_trace = 103;

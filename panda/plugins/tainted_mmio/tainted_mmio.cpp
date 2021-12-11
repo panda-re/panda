@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
  PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
@@ -42,9 +42,9 @@ extern "C" {
   decide something.
 
   How does all this work?  It's a bit Rube Goldberg...
-  
+
   If we have called panda_enable_memcb(), then we have access to
-  callbacks that run in virtual memory load fns: 
+  callbacks that run in virtual memory load fns:
   helper_le_ldY_XXX_panda, before and after the
   call to helper_le_ldY_XXX.  Great.
 
@@ -69,7 +69,7 @@ extern "C" {
   We do have callbacks embedded in the taint system, however.  One of
   these, on_after_load, runs just after the taint has been transferred
   via a load instruction and gives one access to what register the
-  load went to. 
+  load went to.
 
   A little more background. Here's how the call chain works for when
   there is a memory mapped io read.
@@ -78,20 +78,20 @@ extern "C" {
     a: helper_le_ldY_XXX_panda
     b: helper_le_ldY_XXX
     c: io_read
-  
+
   cputlb.c:
     d: io_readx
 
   memory.c:
     e: memory_region_dispatch_read
     f: unassigned_mem_read
-    
+
    The call chain is
-   a -> b -> c -> d -> e -> f 
+   a -> b -> c -> d -> e -> f
 
    So that entire chain, a -> .. -> f takes place when there is a
    load.  THEN we update taint accordingly.
-  
+
    Here's how the Rube Goldberg machine works that is this plugin.
    We end up using three of those callbacks to achieve our purpose.
 
@@ -165,7 +165,7 @@ uint64_t get_number(string line, string key, bool hex) {
 }
 
 void enable_taint(CPUState *env, target_ulong pc) {
-    if (!taint_on 
+    if (!taint_on
         && rr_get_guest_instr_count() > first_instruction) {
         cerr << "tainted_mmio plugin is enabling taint\n";
         taint2_enable_taint();
@@ -205,10 +205,10 @@ void before_phys_read(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 hwaddr read_addr;
 target_ulong suior_pc;
 
-bool saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr, 
+bool saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr,
                             size_t size, uint64_t *val) {
-    // cerr << "tainted_mmio: pc=" << hex << panda_current_pc(first_cpu) 
-    //      << ": Saw unassigned io read virt_addr=" 
+    // cerr << "tainted_mmio: pc=" << hex << panda_current_pc(first_cpu)
+    //      << ": Saw unassigned io read virt_addr="
     //      << virt_addr << " addr=" << addr << dec << "\n";
     is_unassigned_io = true;
     mmio_size = size;
@@ -216,22 +216,22 @@ bool saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr,
     suior_pc = panda_current_pc(first_cpu);
 
 /*
-	if (virt_addr == read_addr || bvr_pc == suior_pc) {
-		cerr << "virt_addr =            " << hex << virt_addr << "\n";
-		cerr << "read_addr = " << read_addr << "\n";
-		cerr << "bvr_pc               = " << bvr_pc << "\n";
-		cerr << "suior_pc             = " << suior_pc << "\n";
-	}
+    if (virt_addr == read_addr || bvr_pc == suior_pc) {
+        cerr << "virt_addr =            " << hex << virt_addr << "\n";
+        cerr << "read_addr = " << read_addr << "\n";
+        cerr << "bvr_pc               = " << bvr_pc << "\n";
+        cerr << "suior_pc             = " << suior_pc << "\n";
+    }
 */
-//	assert (virt_addr == read_addr);
-	assert (bvr_pc = suior_pc);
+//  assert (virt_addr == read_addr);
+    assert (bvr_pc == suior_pc);
     return false;
 }
 
-void saw_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, 
+void saw_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr,
                             size_t size, uint64_t *val) {
-    // cerr << "tainted_mmio: pc=" << hex << panda_current_pc(first_cpu) 
-    //      << ": Saw mmio read virt_addr=" 
+    // cerr << "tainted_mmio: pc=" << hex << panda_current_pc(first_cpu)
+    //      << ": Saw mmio read virt_addr="
     //      << vaddr << " addr=" << physaddr << dec << "\n";
     is_mmio = true;
     mmio_size = size;
@@ -255,14 +255,14 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
     // cerr << "bvr_pc = " << hex << bvr_pc << "\n";
     // cerr << "suior_pc = " << hex << suior_pc << "\n";
     // cerr << "paddr = " << hex << paddr << "\n";
-    
+
 //    if (pc != unassigned_io_read_pc) return;
 
     if (!is_unassigned_io && !is_mmio) return;
 
 
     // cerr << "label_io_read: pc=" << hex << panda_current_pc(first_cpu)
-    //      << " instr=" << rr_get_guest_instr_count() 
+    //      << " instr=" << rr_get_guest_instr_count()
     //      << " : addr=" << read_addr << dec << "\n";
 
     if (!taint_on) return;
@@ -281,7 +281,7 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
             panda_enable_llvm();
         cerr << "... tainting register destination\n";
         Tlabel label;
-        if (ioaddr2label.count(read_addr) > 0) 
+        if (ioaddr2label.count(read_addr) > 0)
             // existing label
             label = ioaddr2label[read_addr];
         else {
@@ -299,7 +299,7 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
             pandalog_write_entry(&ple);
             free(tml);
         }
-        cerr << "Taint label=" << label << " for io addr=" 
+        cerr << "Taint label=" << label << " for io addr="
              << hex << read_addr << " size=" << dec << size << "\n";
         reg.off = 0;
 
@@ -310,7 +310,7 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
             taint2_label_addr(reg, i, label);
             taint2_sym_label_addr(reg, i, last_input_index+i);
         }
-    }    
+    }
 }
 
 #endif
@@ -322,7 +322,7 @@ bool init_plugin(void *self) {
     // taint2 must be on
     panda_require("taint2");
     // and we need its api
-    assert(init_taint2_api());    
+    assert(init_taint2_api());
 
     // this makes sure we know, in the taint system, the pc for every instruction
     panda_enable_precise_pc();
@@ -342,7 +342,7 @@ bool init_plugin(void *self) {
 
     pcb.virt_mem_before_read = before_virt_read;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_BEFORE_READ, pcb);
-    
+
     pcb.phys_mem_before_read = before_phys_read;
     panda_register_callback(self, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
 
@@ -368,7 +368,7 @@ bool init_plugin(void *self) {
 
 
 void uninit_plugin(void *self) {
-    
-    
+
+
 }
 

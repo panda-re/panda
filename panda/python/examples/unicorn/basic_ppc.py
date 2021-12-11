@@ -6,7 +6,7 @@
 import capstone
 import os
 
-from pandare import Panda, ffi
+from pandare import Panda
 #from pandare.ppc.helper import dump_regs, registers
 
 from ipdb import set_trace as d

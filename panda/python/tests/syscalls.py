@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 panda = Panda(generic="i386")
 
 panda.load_plugin("syscalls2")
@@ -28,15 +28,14 @@ def on_sys_open_return(cpu, pc, fname_ptr, flags, mode):
     global open_returned
     open_returned = True
 
-# In a separate thread, revert the test, run `whoami` and then end our analysis
-@blocking
+# Qeueu function to run a separate thread which reverts the test, run `whoami` and then end our analysis
+@panda.queue_blocking
 def guest_cmds():
     panda.revert_sync("root")
     print("Username is", panda.run_serial_cmd("whoami"))
     panda.end_analysis()
 
-# Queue functions to run once guest starts, then start the guest
-panda.queue_async(guest_cmds)
+# Start the guest (and launch queued functions in another thread)
 panda.run()
 
 assert(open_entered), "Syscalls never called open enter"

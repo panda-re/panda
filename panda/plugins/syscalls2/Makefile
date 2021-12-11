@@ -1,6 +1,9 @@
 # The main rule for your plugin. List all object-file dependencies.
 O_FILES=$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o $(PLUGIN_OBJ_DIR)/syscalls2_info.o
 
+# I don't think there's harm to capturing OABI syscalls on new arm guests, so let's leave this on
+CFLAGS += -DCAPTURE_ARM_OABI
+
 # Syscall switch files
 SYSCALL_SWITCH_SRC=$(basename $(notdir $(wildcard $(PLUGIN_SRC_DIR)/generated/syscall_switch_*.cpp)))
 SYSCALL_SWITCH_OBJ=$(addprefix $(PLUGIN_OBJ_DIR)/gen_,$(addsuffix .o,$(SYSCALL_SWITCH_SRC)))

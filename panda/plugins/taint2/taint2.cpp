@@ -319,9 +319,11 @@ void taint2_enable_taint(void) {
     FPM->doInitialization();
 
     // Populate module with helper function taint ops
+    PTFP->setProcessingHelper();
     for (auto i = mod->begin(); i != mod->end(); i++){
         if (!i->isDeclaration()) PTFP->runOnFunction(*i);
     }
+    PTFP->clearProcessingHelper();
 
     std::cerr << PANDA_MSG "Done processing helper functions for taint." << std::endl;
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from time import sleep
-from pandare import Panda, blocking
+from pandare import Panda
 
 '''
 Blocking function hangs
@@ -12,7 +12,7 @@ panda = Panda(generic='i386')
 sleeping_started = False
 sleeping_ended = False
 
-@blocking
+@panda.queue_blocking
 def hang():
     '''
     This function should start but never finish because the
@@ -30,7 +30,6 @@ def before_block_execute(cpustate, transblock):
     if sleeping_started:
         panda.end_analysis()
 
-panda.queue_async(hang)
 panda.run()
 print("Run finished. Ready to exit...")
 assert(sleeping_started)

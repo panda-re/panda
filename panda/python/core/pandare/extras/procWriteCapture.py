@@ -2,7 +2,6 @@
 
 import shutil
 from pathlib import Path
-from pandare import ffi
 
 class ProcWriteCapture():
 
@@ -57,7 +56,7 @@ class ProcWriteCapture():
                 else:
                     curr_proc = panda.plugins['osi'].get_current_process(cpu)
                     file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, curr_proc, fd)
-                    file_path = ffi.string(file_name_ptr).decode()
+                    file_path = panda.ffi.string(file_name_ptr).decode()
                     if ("tty" in file_path):
                         try_read = True
 
@@ -81,7 +80,7 @@ class ProcWriteCapture():
             if self._proc_name:
 
                 curr_proc = panda.plugins['osi'].get_current_process(cpu)
-                curr_proc_name = ffi.string(curr_proc.name).decode()
+                curr_proc_name = panda.ffi.string(curr_proc.name).decode()
 
                 if self._proc_name == curr_proc_name:
 
@@ -92,7 +91,7 @@ class ProcWriteCapture():
                             raise RuntimeError(f"Failed to read buffer: proc \'{curr_proc_name}\', addr 0x{buf:016x}")
 
                     file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, curr_proc, fd)
-                    file_path = ffi.string(file_name_ptr).decode()
+                    file_path = panda.ffi.string(file_name_ptr).decode()
 
                     # For informational purposes only, collection not reliant on this exact mapping
                     if fd == 1: # POSIX stdout

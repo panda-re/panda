@@ -77,6 +77,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             target_ulong ptr;
             
             // read the arguments from the argv
+            vals.argv_ptr_ptr = sp+(ptrlistpos*sizeof(target_ulong));
             int argc_num = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
@@ -99,7 +100,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             vals.argc = argc_num;
 
             // read the environment variable
-
+            vals.env_ptr_ptr = sp+(ptrlistpos*sizeof(target_ulong));
             int envc_num = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
@@ -140,6 +141,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                     // take the value.
                     vals.program_header = entryval - sizeof(ELF(Ehdr));
                 }else if (entrynum == AT_EXECFN){
+                    vals.execfn_ptr = entryval;
                     string execfn = read_str(env, entryval);
                     execfn.copy(vals.execfn, MAX_PATH_LEN -1, 0);
                 }else if (entrynum == AT_SYSINFO_EHDR){
@@ -205,13 +207,17 @@ void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename
 
 bool init_plugin(void *self) {
     self_ptr = self;
-    pcb_btc_execve.before_tcg_codegen = btc_execve;
-    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
 
-    #if defined(TARGET_PPC)
+    #if defined(TARGET_MIPS64)
+        fprintf(stderr, "[ERROR] proc_start_linux: mips64 architecture not supported!\n");
+        return false;
+    #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
+        pcb_btc_execve.before_tcg_codegen = btc_execve;
+        panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+
         // why? so we don't get 1000 messages telling us syscalls2 is already loaded
         void* syscalls2 = panda_get_plugin_by_name("syscalls2");
         if (syscalls2 == NULL){
@@ -225,7 +231,7 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-#if defined(TARGET_PPC)
+#if defined(TARGET_PPC) or defined(TARGET_MIPS64)
 #else
   void* syscalls = panda_get_plugin_by_name("syscalls2");
   if (syscalls != NULL){

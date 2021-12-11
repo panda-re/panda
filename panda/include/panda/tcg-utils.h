@@ -124,12 +124,18 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
 template<typename T>
 T try_parse(const std::string& value)
 {
+	std::string::size_type sz = 0;
+	std::string::size_type full_len = value.length();
     auto max_value = std::numeric_limits<T>::max();
-    auto tmp = std::stoull(value, NULL, 0);
+    auto tmp = std::stoull(value, &sz, 0);
     if (max_value < tmp) {
         std::stringstream ss;
         ss << "Value cannot be larger than " <<  max_value << ".";
         throw std::overflow_error(ss.str());
+    } else if (sz < full_len) {
+    	std::stringstream ss;
+    	ss << "Invalid character(s) found in " << value << ".";
+    	throw std::range_error(ss.str());
     }
     return static_cast<T>(tmp);
 }
@@ -149,6 +155,13 @@ TCGOp *find_first_guest_insn(void);
  * address.
  */
 TCGOp *find_guest_insn_by_addr(target_ulong addr);
+
+
+/* 
+*  Search the TCG context for the last guest instruction marker and return
+*  a pointer to it.
+*/
+TCGOp *find_last_guest_insn(void);
 
 void insert_call_1p(TCGOp **after_op, void(*func)(void*), void *val);
 

@@ -16,13 +16,13 @@ extern "C" {
 template<typename T>
 class ArenaAlloc {
 private:
-    uint8_t *next = NULL;
+    uint8_t *next = nullptr;
     std::vector<std::pair<uint8_t *, size_t>> blocks;
     size_t next_block_size = 1 << 15;
 
     void alloc_block() {
         //printf("taint2: allocating block of size %lu\n", next_block_size);
-        next = (uint8_t *)mmap(NULL, next_block_size, PROT_READ | PROT_WRITE,
+        next = (uint8_t *)mmap(nullptr, next_block_size, PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         assert(next);
         blocks.push_back(std::make_pair(next, next_block_size));
@@ -34,7 +34,7 @@ private:
         std::pair<uint8_t *, size_t>& block = blocks.back();
         if (next + sizeof(T) > block.first + block.second) {
             alloc_block();
-            assert(next != NULL);
+            assert(next != nullptr);
         }
 
         T *result = new(next) T;

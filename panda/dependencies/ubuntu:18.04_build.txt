@@ -25,8 +25,9 @@ protobuf-compiler
 python3-dev
 zip
 
-# pypanda build dependencies
+# pypanda dependencies
 python3-setuptools
+python3-wheel
 
 # pypanda test dependencies
 gcc-multilib

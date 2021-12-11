@@ -12,7 +12,7 @@ it's thing once then it will store a pickle and be fast after that.
 '''
 from sys import argv
 from volatility.framework.objects import utility, Pointer
-from pandare import blocking, Panda, ffi
+from pandare import Panda
 import pdb, yaml, pickle, os
 from functools import lru_cache
 
@@ -120,7 +120,7 @@ def bbe(env,tb):
 		information = location(cr3,eip)
 		if information:
 			print(information)
-		callers = ffi.new("target_ulong[10]")
+		callers = panda.ffi.new("target_ulong[10]")
 		num = panda.plugins["callstack_instr"].get_callers(callers, 10, env)
 		for i in range(num):
 			information = location(cr3,callers[i])
@@ -135,26 +135,28 @@ def bbe(env,tb):
 '''
 revert to root and run some commands to watch
 '''
-@blocking
-def run_cmd():
-    panda.revert_sync("root")
-    print(panda.run_serial_cmd("uname -r"))
-    print(panda.run_serial_cmd("whoami"))
-    print(panda.run_serial_cmd("lsmod"))
-    print(panda.run_serial_cmd("rmmod kvm"))
-    print(panda.run_serial_cmd("dmesg"))
 
-@blocking
-def make_recording():
-	panda.revert_sync("root")
-	panda.record_cmd("date; whoami; lsblk",recording_name=recording_name)
-	panda.stop_run()
+
+# This logic was broken and queuing functions to run in a replay
+# not positive I fixed it
 
 recording = False
 panda.enable_memcb()
 if recording:
-	panda.queue_async(make_recording)
+	@panda.queue_blocking
+	def make_recording():
+		panda.revert_sync("root")
+		panda.record_cmd("date; whoami; lsblk",recording_name=recording_name)
+		panda.stop_run()
 	panda.run()
 else:
-	panda.queue_async(run_cmd)
-	panda.run_replay(recording_name)
+	@panda.queue_blocking
+	def run_cmd():
+		panda.revert_sync("root")
+		print(panda.run_serial_cmd("uname -r"))
+		print(panda.run_serial_cmd("whoami"))
+		print(panda.run_serial_cmd("lsmod"))
+		print(panda.run_serial_cmd("rmmod kvm"))
+		print(panda.run_serial_cmd("dmesg"))
+	panda.run()
+	#panda.run_replay(recording_name) # should only run if recording was taken before?

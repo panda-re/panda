@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 '''
+XXX: Broken - our kernels don't have the system_call and sys_access functions in their System.map
+
 1) Start guest and identify kernel symbol->address mappings. End execution
 2) Restart guest with two kernel functions hooked.
 3) Once both hooks are triggered, end analysis
@@ -10,7 +12,7 @@ This test currently is failing 1/2 the time, probably due to some bug in the hoo
 '''
 
 from sys import argv
-from pandare import Panda, blocking
+from pandare import Panda
 import time
 import pickle
 
@@ -20,21 +22,21 @@ panda = Panda(generic=arch)
 # First run - Just get symbols
 # Extract kernel symbols and populate dictionary
 kallsyms = {}
-@blocking
+@panda.queue_blocking
 def extract_kallsyms():
     global kallsyms
     # First revert to root snapshot, then type a command via serial
     panda.revert_sync("root")
-    syms = panda.run_serial_cmd("cat /boot/System.map*", timeout=9999)
+    syms = panda.run_serial_cmd("grep -h 'system_call\\|sys_access' /boot/System.map*")
+    print(syms)
 
-    for line in syms.split("\n"):
+    for line in syms.splitlines():
         line = line.strip()
         addr = int(line.split(" ")[0], 16)
         name = line.split(" ")[-1]
         kallsyms[name] = addr
     panda.end_analysis()
 
-panda.queue_async(extract_kallsyms)
 print("\nStarting guest to extract kernel symbols. This will take a moment...")
 panda.run()
 assert(len(kallsyms) > 100), f"Error - Only identified {len(kallsyms)} symbols"
@@ -78,13 +80,12 @@ def call_hook2(env, tb):
     return False
 
 # Run a command in the guest which should cause hooks to trigger
-@blocking
+@panda.queue_blocking
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("cat /proc/self/environ")
     panda.run_serial_cmd("wget http://example.com")
     panda.stop_run()
-panda.queue_async(my_runcmd)
 
 print("Running guest with two hooks")
 panda.run()

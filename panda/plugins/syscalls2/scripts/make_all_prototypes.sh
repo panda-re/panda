@@ -1,23 +1,5 @@
 #!/bin/bash
 
-PYTHON="python3"
-PYENV="pyenv3"
-PYENV_ACTIVATE="$PYENV/bin/activate"
-PYENV_REQUIREMENTS="requirements3.txt"
-
-function activate_pyenv() {
-	if [ -f "$PYENV_ACTIVATE" ]; then
-		. "$PYENV_ACTIVATE"
-	else
-		virtualenv -p "$PYTHON" "$PYENV"
-		. "$PYENV_ACTIVATE"
-		if [ -f "$PYENV_REQUIREMENTS" ]; then
-			pip install -r "$PYENV_REQUIREMENTS"
-		fi
-	fi
-}
-
-activate_pyenv
 ./prototype_parser.py -t linux:x64:generic
 ./prototype_parser.py -t linux:x86:ubuntu
 ./prototype_parser.py -t linux:arm:ubuntu

@@ -1,9 +1,9 @@
 /* PANDABEGINCOMMENT
  * 
  * Authors:
+ *  Luke Craig                  luke.craig@ll.mit.edu
  *  Andrew Fasano               andrew.fasano@ll.mit.edu
  *  Nick Gregory                ngregory@nyu.edu
- *  Luke Craig                  luke.craig@ll.mit.edu
  * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
@@ -29,9 +29,6 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-#include "syscalls2/syscalls_ext_typedefs.h"
-#include "syscalls2/syscalls2_info.h"
-#include "syscalls2/syscalls2_ext.h"
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
 #include "hooks_int_fns.h"
 #include "exec/tb-hash.h"
@@ -67,6 +64,8 @@ SUPPORT_CALLBACK_TYPE(after_block_translate)
 SUPPORT_CALLBACK_TYPE(before_block_exec_invalidate_opt)
 SUPPORT_CALLBACK_TYPE(before_block_exec)
 SUPPORT_CALLBACK_TYPE(after_block_exec)
+SUPPORT_CALLBACK_TYPE(start_block_exec)
+SUPPORT_CALLBACK_TYPE(end_block_exec)
 
 panda_cb before_block_translate_block_invalidator_callback;
 
@@ -82,6 +81,8 @@ void enable_hooking() {
     panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt_callback);
     panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, before_block_exec_callback);
     panda_enable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
+    panda_enable_callback(self, PANDA_CB_START_BLOCK_EXEC, start_block_exec_callback);
+    panda_enable_callback(self, PANDA_CB_END_BLOCK_EXEC, end_block_exec_callback);
 }
 
 void disable_hooking() {
@@ -92,6 +93,8 @@ void disable_hooking() {
     panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt_callback);
     panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, before_block_exec_callback);
     panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
+    panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, start_block_exec_callback);
+    panda_disable_callback(self, PANDA_CB_END_BLOCK_EXEC, end_block_exec_callback);
 }
 
 vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
@@ -119,8 +122,8 @@ void add_symbol_hook(struct symbol_hook* h){
     sh.cb = handle_hook_return;
     symbols_to_handle.push_back(p);
     sh.id = symbols_to_handle.size() - 1;
+    sh.hook_offset = h->offset;
     if (h->hook_offset){
-        sh.hook_offset = true;
         sh.offset = h->offset;
         memset((void*) &sh.name, 0, sizeof(sh.name));
     }else{
@@ -138,18 +141,6 @@ void add_symbol_hook(struct symbol_hook* h){
             hook_symbol_resolution_dlsym(&sh);
         }
     }
-}
-
-bool set_contains_struct(unordered_map<target_ulong, set<struct hook>> vh, struct hook* new_hook){
-    return vh[new_hook->asid].find(*new_hook) != vh[new_hook->asid].end();
-}
-
-bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
-    for (auto &h: vh){
-        if (memcmp(&h, new_hook, sizeof(struct hook)) == 0){
-            return true;
-        }}
-    return false;
 }
 
 #define ADD_CALLBACK_TYPE(TYPE, TYPE_UPPER) \
@@ -205,6 +196,8 @@ void add_hook(struct hook* h) {
         ADD_CALLBACK_TYPE(before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
         ADD_CALLBACK_TYPE(before_block_exec, BEFORE_BLOCK_EXEC)
         ADD_CALLBACK_TYPE(after_block_exec, AFTER_BLOCK_EXEC)
+        ADD_CALLBACK_TYPE(start_block_exec, START_BLOCK_EXEC)
+        ADD_CALLBACK_TYPE(end_block_exec, END_BLOCK_EXEC)
         default:
             printf("couldn't find hook type. Invalid %d\n", (int) h->type);
     }
@@ -292,7 +285,7 @@ void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
     memset(&hook_container, 0, sizeof(hook_container));
     hook_container.addr = tb->pc;
     TCGOp *first_instr = NULL;
-    for (auto a : before_tcg_codegen_hooks){
+    for (auto& a : before_tcg_codegen_hooks){
         target_ulong asid = a.first;
         set<struct hook>::iterator it;
         hook_container.asid = asid;
@@ -316,12 +309,8 @@ void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
                             if (op != NULL){
                                 insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);
                                 inserted_addresses.insert(h->addr);
-                                //printf("op inserted correctly\n");
-                            }else{
-                                //printf("Couldn't insert with " TARGET_PTR_FMT "\n", h->addr);
-                                //hooks_flush_pc(tb->pc);
                             }
-                        }                        /*memcpy((void*)&(*it), (void*)&h, sizeof(struct hook));*/
+                        } 
                     }
                 } 
             }else{
@@ -345,15 +334,19 @@ MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, Translation
 
 MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), tb->pc, cpu, tb, exitCode, h)
 
+MAKE_HOOK_VOID(START_BLOCK_EXEC, start_block_exec, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
 
-void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
-    target_ulong asid = panda_current_asid(cpu);
+MAKE_HOOK_VOID(END_BLOCK_EXEC, end_block_exec, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
+
+void erase_asid(target_ulong asid){
     before_tcg_codegen_hooks.erase(asid);
     before_block_translate_hooks.erase(asid);
     after_block_translate_hooks.erase(asid);
     before_block_exec_invalidate_opt_hooks.erase(asid);
     before_block_exec_hooks.erase(asid);
     after_block_exec_hooks.erase(asid);
+    start_block_exec_hooks.erase(asid);
+    end_block_exec_hooks.erase(asid);
 }
 
 #define REGISTER_AND_DISABLE_CALLBACK(SELF, NAME, NAME_UPPER)\
@@ -372,25 +365,12 @@ bool init_plugin(void *_self) {
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec, BEFORE_BLOCK_EXEC)
     REGISTER_AND_DISABLE_CALLBACK(_self, after_block_exec, AFTER_BLOCK_EXEC)
+    REGISTER_AND_DISABLE_CALLBACK(_self, start_block_exec, START_BLOCK_EXEC)
+    REGISTER_AND_DISABLE_CALLBACK(_self, end_block_exec, END_BLOCK_EXEC)
     
     before_block_translate_block_invalidator_callback.before_block_translate = before_block_translate_invalidator; 
     panda_register_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
     panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
-
-
-    #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] hooks: PPC architecture not supported by syscalls2!\n");
-        return false;
-    #else
-        // why? so we don't get 1000 messages telling us syscalls2 is already loaded
-        void* syscalls2 = panda_get_plugin_by_name("syscalls2");
-        if (syscalls2 == NULL){
-            panda_require("syscalls2");
-        }
-        assert(init_syscalls2_api());
-        PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
-        PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
-    #endif
     return true;
 }
 

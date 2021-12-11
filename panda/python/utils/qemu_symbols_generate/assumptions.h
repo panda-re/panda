@@ -69,7 +69,7 @@ typedef uint32_t powerpc_mmu_t;
 typedef uint32_t powerpc_excp_t;
 typedef uint32_t powerpc_input_t;
 typedef void RCUCBFunc(struct rcu_head *head);
-typedef uint8_t ZMMReg[40];
+typedef uint8_t ZMMReg[64];
 typedef uint8_t MMXReg[8];
 typedef uint8_t ppc_avr_t[16];
 typedef uint8_t ppc_tlb_t[8];

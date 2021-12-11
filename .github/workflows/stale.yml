@@ -1,0 +1,23 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+  - cron: '31 15 * * *'
+
+jobs:
+  stale:
+
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+    - uses: actions/stale@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        days-before-close: 30
+        stale-issue-message: 'This issue has gone stale! If you believe it is still a problem, please comment on this issue or it will be closed in 30 days'
+        stale-pr-message: 'This PR has gone stale! If you are still intersted in merging it, please merge, comment or push new code, otherwise the PR will be closed in 30 days'
+        stale-issue-label: 'no-issue-activity'
+        stale-pr-label: 'no-pr-activity'

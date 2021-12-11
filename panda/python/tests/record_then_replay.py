@@ -2,7 +2,7 @@
 # Take a recording, then replay with analysis, then revert vm and run more commands
 from sys import argv
 from os import remove, path
-from pandare import Panda, blocking
+from pandare import Panda
 
 # Default arch is i386, but others can be used
 arch = argv[1] if len(argv) > 1 else "i386"
@@ -16,7 +16,7 @@ for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
 successes = [False, False]
 
 ####################### Recording ####################
-@blocking
+@panda.queue_blocking
 def record_nondet(): # Run a non-deterministic command at the root snapshot, then end .run()
     panda.record_cmd("date; cat /dev/urandom | head -n30 | md5sum", recording_name=recording_name)
     global successes
@@ -38,7 +38,6 @@ def before_block_exec(env, tb):
         replay_blocks.add(pc)
 
 print("Taking recording (wait ~15s)...")
-panda.queue_async(record_nondet) # Take a recording
 panda.run()
 print("Done with recording. Observed {} bbs".format(len(orig_blocks)))
 
@@ -71,7 +70,7 @@ assert(orig_in_rep > 0.99*orig_block_c), "Not enough blocks from original were i
 
 ####################### Switch to live ####################
 
-@blocking
+@panda.queue_blocking
 def second_cmd(): # Run a command at the root snapshot, then end .run()
     panda.revert_sync("root")
     w = panda.run_serial_cmd("whoami")
@@ -84,7 +83,6 @@ def second_cmd(): # Run a command at the root snapshot, then end .run()
     panda.stop_run()
 
 print("Now run a new command")
-panda.queue_async(second_cmd)
 panda.run()
 print("Finished")
 

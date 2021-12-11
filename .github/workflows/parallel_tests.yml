@@ -1,20 +1,35 @@
 name: Parallel Tests
-# For PRs to master or pushes that modify the root Dockerfile, build from scratch
+# For PRs to dev or pushes that modify the root Dockerfile, build from scratch
 # then run CI tests using that container in parallel
 # For forked repos that can't use our self-hosted test suite, just build and run make check
 
 on:
   pull_request:
     branches:
-      - master
+      - dev
       - stable
       - candidate_release_*
   #push:
   #  paths: ['Dockerfile'] # If this file changed, we'd need to do a clean build (this action)
-  #  otherwise we could speed this up by pulling the last container of 'master', copying
+  #  otherwise we could speed this up by pulling the last container of 'dev', copying
   #  code into it, and then rebuilding
 
 jobs:
+
+  test_installer: # test install_ubuntu.sh
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+    - name: Lint PyPANDA with flake8
+      run: |
+       python -m pip install --upgrade pip
+       python -m pip install flake8
+       python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
+       # python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Run install_ubuntu.sh
+      run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
+
+
   build_container:
     if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
@@ -54,6 +69,24 @@ jobs:
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
+  sym_trace_tests:
+    if: github.repository  == 'panda-re/panda'
+    runs-on: self-hosted
+    needs: [build_container]
+
+    strategy:
+      matrix:
+        target: [x86_64]
+
+    steps:
+    # Given a container with PANDA installed at /panda, run the taint tests
+    - name: Run symbolic tracing tests inside current container
+      run: >-
+        docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        --rm -t "panda_local_${{ github.sha }}" bash -c
+        "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
+        if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
+
   make_check:
     if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
@@ -63,8 +96,7 @@ jobs:
       matrix:
         # See output from `make check-help`: we're just splitting `make check` into all the things it does
         # so we can run them in parallel: arch-specific qtests, plus a few others
-        target: [check-qtest-x86_64, check-qtest-i386, check-qtest-arm, check-qtest-mips, check-qtest-mipsel, check-qtest-ppc,
-        check-block, check-unit, check-qapi-schema]
+        target: [check-qtest-x86_64, check-qtest-i386, check-qtest-arm, check-qtest-mips, check-qtest-mipsel, check-qtest-ppc, check-block, check-unit, check-qapi-schema]
 
     steps:
     - name: Run Individual QEMU tests
@@ -74,9 +106,30 @@ jobs:
         --rm -t "panda_local_${{ github.sha }}" bash -c
         "cd /panda/build && make ${{ matrix.target }}"
 
+  pypanda_tests:
+    if: github.repository  == 'panda-re/panda'
+    runs-on: self-hosted
+    needs: [build_container]
+
+    strategy:
+      matrix:
+        # See output from `make check-help`: we're just splitting `make check` into all the things it does
+        # so we can run them in parallel: arch-specific qtests, plus a few others
+        test_script: [dyn_hooks, copy_test, file_fake, file_hook, generic_tests, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, record_no_snap, sig_suppress]
+
+    steps:
+    - name: Run individual pypanda tests
+      # TODO: pip requirements install here should be moved to Docker image build to save test time
+      run: >-
+        docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
+        --mount type=bind,source=/home/panda/regdir/qcows/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
+        -e PANDA_TEST=yes --cap-add SYS_NICE
+        --rm -t "panda_local_${{ github.sha }}" bash -c
+        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
+
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
-    needs: [taint_tests, make_check]
+    needs: [taint_tests, sym_trace_tests, make_check, pypanda_tests]
     runs-on: self-hosted
     if: always()
 
@@ -87,6 +140,7 @@ jobs:
     - name: Cleanup images
       run: |
         docker system prune -af --filter "until=72h"
+        docker image prune --all -f --filter "until=72h"
         docker builder prune -af --filter "until=72h"
 
   build_and_check_fork: # Forked repos can't use self-hosted test suite - just checkout and run make check

@@ -697,9 +697,11 @@ void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)
         memory_listener_register(&newas->tcg_as_listener, as);
 
         // PANDA Record and Replay
-        rr_listener.region_add = rr_mem_region_added_cb;
-        rr_listener.region_del = rr_mem_region_deleted_cb;
-        memory_listener_register(&rr_listener, as);
+        if (asidx == 0) {
+            rr_listener.region_add = rr_mem_region_added_cb;
+            rr_listener.region_del = rr_mem_region_deleted_cb;
+            memory_listener_register(&rr_listener, as);
+        }
     }
 }
 

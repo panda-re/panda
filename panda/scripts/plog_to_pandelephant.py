@@ -10,22 +10,29 @@ import collections
 import pandelephant
 
 # PLogReader from pandare package is easiest to import,
-# but if it's unavailable, fallback to searching PYTHONPATH
+# but if it's unavailable, fallback to searching
+# local directory, then PYTHONPATH
 # which users should add panda/panda/scripts to
 try:
-    from plog_reader import PLogReader
+    from pandare.plog_reader import PLogReader
 except ImportError:
     try:
-        from pandare.plog_reader import PLogReader
+        from plog_reader import PLogReader
     except ImportError:
         import PLogReader
     except ImportError:
         print("Unable to locate PLogReader")
         sys.exit(-1)
 
+# TODO: add more steps that should be skipped to the steps list
+# and then check `if 'stepname' not in skip_steps: ...` before running the steps
+steps = ['threadslices', 'asid_libraries']
+skip_steps = []
+
 """
 USAGE: plog_to_pandelephant.py db_url plog
 """
+
 
 DEBUG_VERBOSE = False
 
@@ -47,8 +54,8 @@ CollectedMappingSlice = collections.namedtuple('CollectedMappingSlice', ['Instru
 CollectedMapping = collections.namedtuple('CollectedMapping', ['Name', 'File', 'BaseAddress', 'Size'])
 BetterCollectedMapping = collections.namedtuple('BetterCollectedMapping', ['AddressSpaceId', 'Process', 'Name', 'File', 'BaseAddress', 'Size'])
 CollectedCodePoint = collections.namedtuple('CollectedCodePoint', ['Mapping', 'Offset'])
-CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'Thread', 'InstructionCount', 'Arguments'])
-CollectedSyscallArgument = collections.namedtuple('CollectedSyscallArgument', ['Type', 'Value'])
+CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'RetVal', 'Thread', 'InstructionCount', 'Arguments', 'ProgramCounter'])
+CollectedSyscallArgument = collections.namedtuple('CollectedSyscallArgument', ['Name', 'Type', 'Value'])
 CollectedTaintFlow = collections.namedtuple('CollectedTaintFlow', ['IsStore', 'SourceCodePoint', 'SourceThread', 'SourceInstructionCount', 'SinkCodePoint', 'SinkThread', 'SinkInstructionCount'])
 
 def CollectThreadsAndProcesses(pandalog):
@@ -71,6 +78,8 @@ def CollectThreadsAndProcesses(pandalog):
     thread_slices = set()
     thread_names = {}
     def CollectFrom_asid_libraries(msg):
+        if 'asid_libraries' in skip_steps:
+            return
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         # there might be several names for a tid
         if thread in thread_names.keys():
@@ -101,11 +110,32 @@ def CollectThreadsAndProcesses(pandalog):
         threads.add(CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time))
         processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
 
+    last_thread_info = None
+    def CollectFrom_proc_trace(msg):
+        thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
+        if thread in thread_names.keys():
+            thread_names[thread].add(msg.name)
+        else:
+            thread_names[thread] = set([msg.name])
+        print(thread_names)
+        threads.add(thread)
+        processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
+
+        nonlocal last_thread_info
+
+        if last_thread_info is not None: # XXX this will miss the very last one since we don't know when it ended
+            (last_thread, start_instr) = last_thread_info
+            thread_slices.add(CollectedThreadSlice(FirstInstructionCount=start_instr, LastInstructionCount=msg.start_instr-1, Thread=last_thread))
+        last_thread = (thread, msg.start_instr)
+
+
+
     CollectFrom = {
         'asid_libraries': CollectFrom_asid_libraries,
         'asid_info': CollectFrom_asid_info,
         'taint_flow': CollectFrom_taint_flow,
         'syscall': CollectFrom_syscall,
+        'proc_trace': CollectFrom_proc_trace,
     }
 
     AttemptCounts = { k: 0 for k in CollectFrom.keys() }
@@ -117,7 +147,8 @@ def CollectThreadsAndProcesses(pandalog):
                     AttemptCounts[k] += 1
                     try:
                         CollectFrom[k](getattr(msg, k))
-                    except:
+                    except Exception as e:
+                        print("Warning: ", e)
                         FailCounts[k] += 1
                         pass
                     break
@@ -135,12 +166,14 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for thread in threads:
         proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(thread)
     if len(DuplicateCheck) != len(thread2proc.keys()):
-        raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        #raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        pass
 
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
         for thread in proc2threads[proc]:
-            print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
+            if thread in thread_names:
+                print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
 
     return proc2threads, thread2proc
 
@@ -154,6 +187,9 @@ def CollectProcessMemoryMappings(pandalog, processes):
 
     num_no_mappings = 0
     def CollectFrom_asid_libraries(entry, msg):
+        if 'asid_libraries' in skip_steps:
+            return
+
         nonlocal num_no_mappings
         if (msg.pid == 0) or (msg.ppid == 0) or (msg.tid == 0):
             num_no_mappings += 1
@@ -185,7 +221,8 @@ def CollectProcessMemoryMappings(pandalog, processes):
                     AttemptCounts[k] += 1
                     try:
                         CollectFrom[k](msg, getattr(msg, k))
-                    except:
+                    except Exception as e:
+                        print("Warning:", e)
                         FailCounts[k] += 1
                         pass
                     break
@@ -201,9 +238,9 @@ def ConvertTaintFlowsAndSyscallsToDatabase(datastore, CollectedSyscalls, Collect
     for s in CollectedSyscalls:
         args = []
         for a in s.Arguments:
-            args.append({'type': a.Type, 'value': a.Value})
-        CollectedSyscallToDatabaseSyscall[s] = datastore.add(CollectedThreadToDatabaseThread[s.Thread], s.Name, args, s.InstructionCount)
-
+            args.append({'name': a.Name, 'type': a.Type, 'value': a.Value})
+        if s.Thread in CollectedThreadToDatabaseThread:
+            CollectedSyscallToDatabaseSyscall[s] = datastore.new_syscall(CollectedThreadToDatabaseThread[s.Thread], s.Name, s.RetVal, args, s.InstructionCount, s.ProgramCounter)
 
     for tf in CollectedTaintFlows:
         src_thread = CollectedThreadToDatabaseThread[tf.SourceThread]
@@ -228,28 +265,35 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
         args = []
         SyscallFieldInfo = {
             'str': ('string',      '{:s}'),
-            'ptr': ('pointer',     '{:x}'),
+            'ptr': ('pointer',     '0x{:x}'),
             'u64': ('unsigned64', '{:d}'),
             'u32': ('unsigned32', '{:d}'),
             'u16': ('unsigned16', '{:d}'),
             'i64': ('signed64',   '{:d}'),
             'i32': ('signed32',   '{:d}'),
             'i16': ('signed16',   '{:d}'),
+            'bytes_val': ('bytes','{:d}'),
         }
         def syscall_arg_value(arg):
             for fld, (typ, fmt) in SyscallFieldInfo.items():
                 if arg.HasField(fld):
-                    return typ, fmt.format(getattr(arg, fld))
+                    if fld == 'bytes_val':
+                        safe_str = getattr(arg, fld) # TODO: do we need to strip out non-ascii for DB?
+                        return arg.arg_name, typ, safe_str
+                    else:
+                        return arg.arg_name, typ, fmt.format(getattr(arg, fld))
             assert(False)
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         CollectedSyscalls.add(CollectedSyscall(
             Name=msg.call_name,
+            RetVal=msg.retcode,
             Thread=thread,
             InstructionCount=entry.instr,
-            Arguments=[
+            Arguments=tuple(
                 CollectedSyscallArgument(*syscall_arg_value(arg))
                 for arg in msg.args
-            ]
+            ),
+            ProgramCounter=entry.pc
         ))
         return
     def CollectFrom_taint_flow(entry, msg):
@@ -320,6 +364,8 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
                         CollectFrom[k](msg, getattr(msg, k))
                     except Exception as e:
                         FailCounts[k] += 1
+                        print("Exception:", e)
+                        raise e
                     break
     for k in CollectFrom.keys():
         print('\t{} Attempts: {}, Failures: {}'.format(k, AttemptCounts[k], FailCounts[k]))
@@ -347,13 +393,15 @@ def ConvertProcessThreadsMappingsToDatabase(datastore, execution, processes, thr
         CollectedProcessToDatabaseProcess[p] = process
 
         for t in proc2threads[p]:
-            CollectedThreadToDatabaseThread[t] = datastore.new_thread(process, t.CreateTime, t.ThreadId, thread_names[t])
+            if t in thread_names:
+                CollectedThreadToDatabaseThread[t] = datastore.new_thread(process, t.CreateTime, t.ThreadId, thread_names[t])
         
         for mapping, (FirstInstructionCount, LastInstructionCount) in CollectedBetterMappingRanges[p].items():
             CollectedMappingToDatabaseMapping[mapping] = datastore.new_mapping(process, mapping.Name, mapping.File, mapping.AddressSpaceId, mapping.BaseAddress, FirstInstructionCount, mapping.Size, FirstInstructionCount, LastInstructionCount)
 
-    for thread_slice in thread_slices:
-        datastore.new_threadslice(CollectedThreadToDatabaseThread[thread_slice.Thread], thread_slice.FirstInstructionCount, end_execution_offset=thread_slice.LastInstructionCount)
+    if 'threadslices' not in skip_steps:
+        for thread_slice in thread_slices:
+            datastore.new_threadslice(CollectedThreadToDatabaseThread[thread_slice.Thread], thread_slice.FirstInstructionCount, end_execution_offset=thread_slice.LastInstructionCount)
 
     return CollectedProcessToDatabaseProcess, CollectedThreadToDatabaseThread, CollectedMappingToDatabaseMapping
 
@@ -430,8 +478,16 @@ if __name__ == "__main__":
     parser.add_argument("-db_url", help="db url", action="store", required=True)
     parser.add_argument("-pandalog", help="pandalog", action="store", required=True)
     parser.add_argument("-exec_name", "--exec-name", help="A name for the execution", action="store", required=True)
+    parser.add_argument('-s','--skip', action='append', help='Steps to skip. Valid values: ' + ' '.join(steps), required=False)
+
 
     args = parser.parse_args()
+
+    if args.skip:
+        for arg in args.skip:
+            if arg not in steps:
+                raise ValueError(f"Unable to skip step {arg}. Valid values are: {' '.join(steps)}")
+            skip_steps.append(arg)
 
     print("%s %s" % (args.db_url, args.exec_name))
     plog_to_pe(args.pandalog, args.db_url, args.exec_name)

@@ -75,6 +75,8 @@ else
 	aur_install_pkg "libprotobuf2"
 fi
 
+progress "Installing Rust..."
+curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 if check_protobufc; then
     echo "protobuf-c is already installed"

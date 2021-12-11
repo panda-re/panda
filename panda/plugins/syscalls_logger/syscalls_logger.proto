@@ -27,7 +27,7 @@ message Syscall {
     required uint32 ppid = 2;
     required uint32 tid = 3;
     required uint64 create_time = 4;
-    required uint64 retcode = 5;
+    required int64 retcode = 5;
     required string call_name = 6;
     repeated NamedData args = 7;
 }
