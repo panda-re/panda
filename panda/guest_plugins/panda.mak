@@ -1,13 +1,13 @@
 include config-target.mak
 
-ifndef SRC_PATH
-$(error SRC_PATH is not set)
+ifndef PLUGIN_SRC_ROOT
+$(error PLUGIN_SRC_ROOT is not set)
 endif
 ifndef PLUGIN_NAME
 $(error PLUGIN_NAME is not set)
 endif
 
-PLUGIN_DIR = $(realpath $(join $(SRC_PATH), /panda/guest_plugins/$(PLUGIN_NAME)/))
+PLUGIN_DIR = $(realpath $(join $(PLUGIN_SRC_ROOT), /$(PLUGIN_NAME)/))
 PLUGIN_TARGET_DIR=panda/guest_plugins
 PLUGIN_BIN_DIR=$(PLUGIN_TARGET_DIR)/bin
 PLUGIN_OUT_PATH=$(PLUGIN_BIN_DIR)/$(PLUGIN_NAME)

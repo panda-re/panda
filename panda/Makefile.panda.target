@@ -157,8 +157,16 @@ PANDA_GUEST_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/guest_plugins/
 GUEST_PLUGIN_SUBDIR_RULES=$(patsubst %,guest-plugin-%, $(PANDA_GUEST_PLUGINS))
 GUEST_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
-build_guest_plugins: $(GUEST_PLUGIN_SUBDIR_RULES)
-	@echo "GUEST_PLUGINS: ${PANDA_GUEST_PLUGINS}"
+ALL_GUEST_PLUGIN_RULES=$(GUEST_PLUGIN_SUBDIR_RULES)
+
+ifdef EXTRA_GUEST_PLUGINS_PATH
+	EXTRA_GUEST_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_GUEST_PLUGINS_PATH)/config.panda | grep -v "^\#" | xargs)
+	EXTRA_GUEST_PLUGIN_SUBDIR_RULES=$(patsubst %,extra-guest-plugin-%, $(EXTRA_GUEST_PLUGINS))
+	ALL_GUEST_PLUGIN_RULES+=$(EXTRA_GUEST_PLUGIN_SUBDIR_RULES)
+endif
+
+build_guest_plugins: $(ALL_GUEST_PLUGIN_RULES)
+	@echo "GUEST_PLUGINS: ${PANDA_GUEST_PLUGINS} ${EXTRA_GUEST_PLUGINS}"
 
 guest-plugin-%:
 	$(call quiet-command,mkdir -p ../panda/guest_plugins/$*,)
@@ -167,6 +175,15 @@ guest-plugin-%:
 		-f "$(SRC_PATH)/panda/guest_plugins/panda.mak" \
 		-f "$(SRC_PATH)/panda/guest_plugins/$*/Makefile" \
 		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/guest_plugins" \
+		V="$(V)" PLUGIN_NAME="$*" all,)
+
+extra-guest-plugin-%:
+	$(call quiet-command,mkdir -p ../panda/guest_plugins/$*,)
+	$(call quiet-command,mkdir -p panda/guest_plugins/$*,)
+	$(call quiet-command,$(MAKE) $(GUEST_PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f "$(SRC_PATH)/panda/guest_plugins/panda.mak" \
+		-f "$(EXTRA_GUEST_PLUGINS_PATH)/$*/Makefile" \
+		PLUGIN_SRC_ROOT="$(EXTRA_GUEST_PLUGINS_PATH)" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
 ifdef CONFIG_LLVM
