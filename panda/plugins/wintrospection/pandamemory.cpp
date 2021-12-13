@@ -16,7 +16,12 @@ private:
 public:
   static const uint32_t PAPM_TAG = 0x5041504d;
 
-  PandaPhysicalMemory() { m_max_address = ram_size; }
+  PandaPhysicalMemory() {
+    rcu_read_lock();
+    MemoryRegion *region = panda_find_ram();
+    m_max_address = region->size + region->addr;
+    rcu_read_unlock();
+  }
 
   pm_addr_t get_max_address() { return m_max_address; }
 
