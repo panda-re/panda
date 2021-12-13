@@ -536,6 +536,21 @@ uint64_t get_kpcr_amd64(CPUState *cpu) {
   return 0;
 }
 
+bool is_windows_pae_enabled(CPUState* cpu) {
+#if defined(TARGET_I386)
+  // windows only uses PAE on 32-bit systems for x86
+  if (panda_os_bits == 32) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+
+    bool cr0_paging_enabled = env->cr[0] & 0x80000000;
+    bool cr4_pae_enabled = env->cr[4] & 0x20;
+
+    return cr0_paging_enabled && cr4_pae_enabled;
+  }
+#endif
+  return false;
+}
+
 void initialize_introspection(CPUState *cpu) {
   auto pmem = create_panda_physical_memory();
   if (!pmem) {
@@ -552,9 +567,8 @@ void initialize_introspection(CPUState *cpu) {
   auto kpcr = (panda_os_bits == 64) ? get_kpcr_amd64(cpu) : get_kpcr_i386(cpu);
   auto width = (panda_os_bits == 64) ? 8 : 4;
 
-  // BDD : last argument should be panda_pae_enabled
   auto success = g_kernel_manager->initialize(pmem, width, asid_entry->second,
-                                              kpcr, false);
+                                              kpcr, is_windows_pae_enabled(cpu));
   if (!success) {
     fprintf(stderr, "Error initializing kernel manager\n");
     exit(3);
