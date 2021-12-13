@@ -1,18 +1,19 @@
 use once_cell::sync::OnceCell;
-use panda::plugins::guest_plugin_manager::*;
-use panda::prelude::*;
+use panda::{plugins::guest_plugin_manager::*, prelude::*};
 
-use std::io::Write;
-use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::Mutex;
+use std::{
+    io::{self, Write},
+    os::unix::net::{UnixListener, UnixStream},
+    sync::Mutex,
+    thread,
+};
 
 static STDOUT: OnceCell<Mutex<UnixStream>> = OnceCell::new();
 
+// Copy all messages from the guest to the unix socket
 extern "C" fn message_recv(_: u32, data: *const u8, size: usize) {
     let data = unsafe { std::slice::from_raw_parts(data, size) };
-
     let mut stdout = STDOUT.get().unwrap().lock().unwrap();
-
     let _ = stdout.write_all(data);
 }
 
@@ -34,18 +35,12 @@ fn init(_: &mut PluginHandle) -> bool {
     let socket = UnixListener::bind(&ARGS.socket_path).unwrap();
     let mut socket = socket.accept().unwrap().0;
 
-    let socket_out = socket.try_clone().unwrap();
-    STDOUT.set(Mutex::new(socket_out)).unwrap();
+    STDOUT.set(Mutex::new(socket.try_clone().unwrap())).unwrap();
 
-    std::thread::spawn(move || {
-        std::io::copy(&mut socket, &mut channel).unwrap();
-        println!("Closed");
+    thread::spawn(move || {
+        // Copy stdin from unix socket to guest
+        io::copy(&mut socket, &mut channel).unwrap();
     });
 
     true
-}
-
-#[panda::uninit]
-fn exit(_: &mut PluginHandle) {
-    println!("Exiting");
 }
