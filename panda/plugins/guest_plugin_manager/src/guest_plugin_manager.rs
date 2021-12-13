@@ -1,3 +1,4 @@
+use panda::plugins::guest_plugin_manager::guest_plugin_path;
 use panda::prelude::*;
 
 use std::convert::TryFrom;
@@ -7,19 +8,20 @@ use hyp_regs::{get_hyp_reg, set_hyp_ret_reg};
 
 mod interface;
 use interface::hci::{
-    hyp_error, hyp_get_manager, hyp_read, hyp_start, hyp_stop, hyp_write,hyp_get_channel_by_name
+    hyp_error, hyp_get_channel_by_name, hyp_get_manager, hyp_read, hyp_start,
+    hyp_stop, hyp_write,
 };
 
 const MAGIC: usize = 0x1337c0d3;
 
 #[derive(Copy, Clone)]
 pub enum HcCmd {
-    Start = 1,  /* start new action */
-    Stop,       /* stop action */
-    Read,       /* read buffer from hypervisor */
-    Write,      /* write buffer TO hypervisor*/
-    Error,      /* report error to hypervisor*/
-    GetManager, /* returns unique chanenl ID to manager from plugin */
+    Start = 1,        /* start new action */
+    Stop,             /* stop action */
+    Read,             /* read buffer from hypervisor */
+    Write,            /* write buffer TO hypervisor*/
+    Error,            /* report error to hypervisor*/
+    GetManager,       /* returns unique chanenl ID to manager from plugin */
     GetChannelByName, /* returns existing channel mapped to unique name */
 }
 
@@ -57,7 +59,9 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
             Ok(HcCmd::Stop) => hyp_stop(cpu, chan_id, arg1, arg2),
             Ok(HcCmd::Error) => hyp_error(cpu, chan_id, arg1, arg2),
             Ok(HcCmd::GetManager) => hyp_get_manager(cpu, chan_id, arg1, arg2),
-            Ok(HcCmd::GetChannelByName) => hyp_get_channel_by_name(cpu, chan_id, arg1, arg2),
+            Ok(HcCmd::GetChannelByName) => {
+                hyp_get_channel_by_name(cpu, chan_id, arg1, arg2)
+            }
             _ => None,
         };
 
@@ -70,9 +74,28 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
     }
 }
 
+#[derive(PandaArgs)]
+#[name = "linjector"]
+struct Linjector {
+    guest_binary: String,
+}
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     interface::daemon_manager::init();
+
+    let guest_binary = guest_plugin_path("guest_daemon")
+        .expect("Failed to retrieve guest_daemon guest plugin path")
+        .to_string_lossy()
+        .into_owned();
+
+    assert!(
+        panda::os::family().is_linux(),
+        "Guest plugin manager currently only supports Linux"
+    );
+
+    panda::require_plugin(&Linjector { guest_binary });
+
     true
 }
 

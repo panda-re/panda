@@ -8,8 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-#panda-re = { version = "0.13.0", default-features = false }
-panda-re = { git = "https://github.com/panda-re/panda-rs", default-features = false }
+panda-re = { version = "0.25", default-features = false }
 fuser = { version = "0.9", features = ["serializable"] }
 libc = "0.2.98"
 pretty_env_logger = "0.4.0"

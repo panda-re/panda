@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 path = "./src/guest_plugin_manager.rs"
 
 [dependencies]
-panda-re = { version = "0.13.0", default-features = false }
+panda-re = { version = "0.25", default-features = false }
 crossbeam-queue = "0.3.2"
 parking_lot = "0.11.2"
 lazy_static = "1.4.0"

@@ -351,8 +351,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re"
-version = "0.22.0"
-source = "git+https://github.com/panda-re/panda-rs#cfa0d34cc7ca372be7daab76e09c603eab415059"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfd819f91df8381e0b6255a47f749a1dd52589c34a0b007bbee41f27630ff7ee"
 dependencies = [
  "dirs",
  "glib-sys",
@@ -370,8 +371,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.14.0"
-source = "git+https://github.com/panda-re/panda-rs#cfa0d34cc7ca372be7daab76e09c603eab415059"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d807aa10d149e5ddde4e9cd386df1791efda6d6716077349da9f78cb6d32460"
 dependencies = [
  "darling",
  "doc-comment",
@@ -382,7 +384,8 @@ dependencies = [
 [[package]]
 name = "panda-re-sys"
 version = "0.7.0"
-source = "git+https://github.com/panda-re/panda-rs#cfa0d34cc7ca372be7daab76e09c603eab415059"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
 
 [[package]]
 name = "parking_lot"

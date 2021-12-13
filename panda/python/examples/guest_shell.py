@@ -2,8 +2,11 @@
 from pandare import Panda
 import os
 
+if os.path.exists("/tmp/guest_shell.sock"):
+    os.remove("/tmp/guest_shell.sock")
+
 panda = Panda(generic="x86_64")
-panda.load_plugin("guest_shell", {})
+panda.load_plugin("guest_shell")
 
 @panda.queue_blocking
 def run_cmd():
