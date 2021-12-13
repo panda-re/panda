@@ -8,18 +8,6 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::sync::Mutex;
 
-#[cfg(feature = "x86_64")]
-const PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/guest_daemon";
-
-#[cfg(feature = "arm")]
-const PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/arm-unknown-linux-musleabi/release/guest_daemon";
-
-#[cfg(feature = "i386")]
-const PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/i686-unknown-linux-musl/release/guest_daemon";
-
-#[cfg(feature = "x86_64")]
-const GUEST_PLUGIN_PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/guest_shell";
-
 static STDOUT: OnceCell<Mutex<UnixStream>> = OnceCell::new();
 
 extern "C" fn message_recv(_: u32, data: *const u8, size: usize) {
@@ -55,10 +43,41 @@ impl Write for Channel {
     }
 }
 
+// TODO: move to panda-rs
+use std::{ffi::CStr, os::raw::c_char, path::PathBuf};
+fn guest_plugin_path(name: &str) -> Option<PathBuf> {
+    extern "C" {
+        fn panda_guest_plugin_path(name: *const c_char) -> *mut c_char;
+    }
+
+    let name = CString::new(name).ok()?;
+    let path_result = unsafe { panda_guest_plugin_path(name.as_ptr()) };
+
+    if path_result.is_null() {
+        None
+    } else {
+        let path = unsafe { CStr::from_ptr(path_result) };
+        let path = path.to_str().ok().map(PathBuf::from);
+
+        unsafe {
+            panda::sys::free(path_result as _);
+        }
+
+        path
+    }
+}
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
+    let guest_daemon_path = guest_plugin_path("guest_daemon")
+        .expect("Failed to retrieve guest_daemon guest plugin path");
+
+    let guest_plugin_path = guest_plugin_path("guest_shell")
+        .expect("Failed to retrieve guest_shell guest plugin path for loading");
+
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
-    let plugin_arg = CString::new(format!("guest_binary={}", PATH).as_bytes()).unwrap();
+    let plugin_arg =
+        CString::new(format!("guest_binary={}", guest_daemon_path.display()).as_bytes()).unwrap();
     unsafe {
         let path = panda::sys::panda_plugin_path(plugin_name.as_ptr());
         panda::sys::panda_add_arg(plugin_name.as_ptr(), plugin_arg.as_ptr());
@@ -69,7 +88,7 @@ fn init(_: &mut PluginHandle) -> bool {
     GUEST_PLUGIN_MANAGER.ensure_init();
     let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(GuestPlugin::new(
         "guest_shell".into(),
-        Path::new(GUEST_PLUGIN_PATH),
+        &guest_plugin_path,
         message_recv,
     ));
     println!("hyperfuse established channel with fd {}", channel);
@@ -92,4 +111,3 @@ fn init(_: &mut PluginHandle) -> bool {
 fn exit(_: &mut PluginHandle) {
     println!("Exiting");
 }
-
