@@ -11,10 +11,14 @@ use std::{
 static STDOUT: OnceCell<Mutex<UnixStream>> = OnceCell::new();
 
 // Copy all messages from the guest to the unix socket
-extern "C" fn message_recv(_: u32, data: *const u8, size: usize) {
-    let data = unsafe { std::slice::from_raw_parts(data, size) };
-    let mut stdout = STDOUT.get().unwrap().lock().unwrap();
-    let _ = stdout.write_all(data);
+#[channel_recv]
+fn message_recv(_: u32, data: &[u8]) {
+    let _ = STDOUT
+        .get()
+        .expect("stdout unix socket not set")
+        .lock()
+        .unwrap()
+        .write_all(data);
 }
 
 #[derive(PandaArgs)]
