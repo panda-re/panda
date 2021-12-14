@@ -1,24 +1,16 @@
-use once_cell::sync::OnceCell;
 use panda::{plugins::guest_plugin_manager::*, prelude::*};
-
+use parking_lot::{const_mutex, Mutex};
 use std::{
     io::{self, Write},
     os::unix::net::{UnixListener, UnixStream},
-    sync::Mutex,
-    thread,
 };
 
-static STDOUT: OnceCell<Mutex<UnixStream>> = OnceCell::new();
+static STDOUT: Mutex<Option<UnixStream>> = const_mutex(None);
 
 // Copy all messages from the guest to the unix socket
 #[channel_recv]
 fn message_recv(_: u32, data: &[u8]) {
-    let _ = STDOUT
-        .get()
-        .expect("stdout unix socket not set")
-        .lock()
-        .unwrap()
-        .write_all(data);
+    STDOUT.lock().as_mut().unwrap().write_all(data).ok();
 }
 
 #[derive(PandaArgs)]
@@ -28,23 +20,21 @@ struct Args {
     socket_path: String,
 }
 
-lazy_static::lazy_static! {
-    static ref ARGS: Args = Args::from_panda_args();
+fn get_split_socket(path: &str) -> io::Result<(UnixStream, UnixStream)> {
+    let (socket, _) = UnixListener::bind(path)?.accept()?;
+    Ok((socket.try_clone()?, socket))
 }
 
 #[panda::init]
-fn init(_: &mut PluginHandle) -> bool {
-    let mut channel = load_guest_plugin("guest_shell", message_recv);
+fn init(_: &mut PluginHandle) {
+    let args = Args::from_panda_args();
+    let mut guest_channel = load_guest_plugin("guest_shell", message_recv);
 
-    let socket = UnixListener::bind(&ARGS.socket_path).unwrap();
-    let mut socket = socket.accept().unwrap().0;
+    let (stdout, mut stdin) = get_split_socket(&args.socket_path).unwrap();
+    STDOUT.lock().replace(stdout);
 
-    STDOUT.set(Mutex::new(socket.try_clone().unwrap())).unwrap();
-
-    thread::spawn(move || {
+    std::thread::spawn(move || {
         // Copy stdin from unix socket to guest
-        io::copy(&mut socket, &mut channel).unwrap();
+        io::copy(&mut stdin, &mut guest_channel).unwrap();
     });
-
-    true
 }
