@@ -616,7 +616,6 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
         } else if (interrupt_request & CPU_INTERRUPT_HALT) {
             replay_interrupt();
             cpu->interrupt_request &= ~CPU_INTERRUPT_HALT;
-            printf("XXXDEBUG halt due to interrupt_request\n");
             cpu->halted = 1;
             cpu->exception_index = EXCP_HLT;
             return true;

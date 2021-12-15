@@ -2262,7 +2262,6 @@ void helper_mttgpr(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
-    printf("alyssa mttgpr %d on tc %d\n", sel, other_tc);
     if (other_tc == other->current_tc)
         other->active_tc.gpr[sel] = arg1;
     else
@@ -2876,7 +2875,6 @@ void helper_wait(CPUMIPSState *env)
 {
     CPUState *cs = CPU(mips_env_get_cpu(env));
 
-    printf("XXX halted in wait helper\n");
     cs->halted = 1;
     cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
     /* Last instruction in the block, PC was updated before

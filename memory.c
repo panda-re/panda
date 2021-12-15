@@ -13,7 +13,6 @@
  * GNU GPL, version 2 or (at your option) any later version.
  */
 
-//#define DEBUG_UNASSIGNED // alyssa
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"

@@ -1864,7 +1864,6 @@ static inline void check_dspr2(DisasContext *ctx)
 static inline void check_insn(DisasContext *ctx, int flags)
 {
     if (unlikely(!(ctx->insn_flags & flags))) {
-        printf("check_insn fail\n");
         generate_exception_end(ctx, EXCP_RI);
     }
 }
@@ -21234,7 +21233,6 @@ void cpu_state_reset(CPUMIPSState *env)
             env->tcs[0].CP0_TCStatus = (1 << CP0TCSt_A);
         }
 
-        printf("XXXDEBUG halted is now %d\n", cs->halted);
     }
 
     /*

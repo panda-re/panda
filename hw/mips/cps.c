@@ -49,7 +49,6 @@ static void main_cpu_reset(void *opaque)
     cpu_reset(cs);
 
     /* All VPs are halted on reset. Leave powering up to CPC. */
-    printf("XXXDEBUG main_cpu_reset\n");
     cs->halted = 1;
 }
 
