@@ -31,6 +31,10 @@
 
 #define KERNEL_CONF "/" TARGET_NAME "-softmmu/panda/plugins/osi_linux/kernelinfo.conf"
 
+#ifdef TARGET_MIPS
+#include "hw_proc_id/hw_proc_id_ext.h"
+#endif
+
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
  * C++ function name mangling breaks linkage.
@@ -762,6 +766,7 @@ bool init_plugin(void *self) {
 
 #if defined(TARGET_MIPS)
         panda_require("hw_proc_id");
+        assert(init_hw_proc_id_api());
 #endif
 
 #if defined(OSI_LINUX_TEST)

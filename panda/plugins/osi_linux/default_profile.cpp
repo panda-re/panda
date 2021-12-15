@@ -1,10 +1,6 @@
 #include "osi_linux.h"
 #include "default_profile.h"
 
-#ifdef TARGET_MIPS
-#include "hw_proc_id/hw_proc_id_int_fns.h"
-#endif
-
 
 /**
  * @brief Retrieves the task_struct address using per cpu information.
