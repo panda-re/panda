@@ -1,4 +1,4 @@
-use channels::Channel;
+use panda_channels::Channel;
 use std::io::Write;
 
 fn main() {
