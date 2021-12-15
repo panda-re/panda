@@ -1,0 +1,23 @@
+[package]
+name = "guest_plugin_example"
+version = "0.1.0"
+authors = ["Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+panda-re = { version = "0.26", default-features = false }
+parking_lot = "0.11"
+
+[features]
+default = ["x86_64"]
+
+x86_64 = ["panda-re/x86_64"]
+i386 = ["panda-re/i386"]
+arm = ["panda-re/arm"]
+ppc = ["panda-re/ppc"]
+mips = ["panda-re/mips"]
+mipsel = ["panda-re/mipsel"]
+aarch64 = ["panda-re/aarch64"]

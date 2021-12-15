@@ -13,6 +13,7 @@ edge_coverage
 filereadmon
 forcedexec
 gdb
+guest_plugin_example
 guest_plugin_manager
 guest_shell
 hooks
