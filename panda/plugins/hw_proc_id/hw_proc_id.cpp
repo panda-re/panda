@@ -16,15 +16,15 @@ PANDAENDCOMMENT */
 // that.
 
 #include "panda/plugin.h"
-#include "hw_proc_id_int_fns.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-unsigned int get_id(CPUState * cpu);
+#include "hw_proc_id_int_fns.h"
 }
+
 
 #ifdef TARGET_MIPS
 target_ulong last_r28 = 0;
