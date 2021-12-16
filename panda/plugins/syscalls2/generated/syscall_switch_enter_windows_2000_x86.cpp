@@ -33,6 +33,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
 	const syscall_info_t *call = NULL;
 	syscall_info_t zero = {0};
@@ -48,6 +49,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', 'PVOID PortContext', 'PPORT_MESSAGE ConnectionRequest', 'BOOLEAN AcceptConnection', 'PPORT_VIEW ServerView', 'PREMOTE_PORT_VIEW ClientView']
 	case 0: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -69,6 +71,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 1 NTSTATUS NtAccessCheck ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 	case 1: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -94,6 +97,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 2 NTSTATUS NtAccessCheckAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'ACCESS_MASK DesiredAccess', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 2: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -125,6 +129,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 3 NTSTATUS NtAccessCheckByType ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 	case 3: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -156,6 +161,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 4 NTSTATUS NtAccessCheckByTypeAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 4: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -197,6 +203,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 5 NTSTATUS NtAccessCheckByTypeResultList ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 	case 5: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -228,6 +235,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 6 NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 6: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -269,6 +277,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 7 NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarmByHandle ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'HANDLE ClientToken', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 7: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -312,6 +321,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 8 NTSTATUS NtAddAtom ['PWSTR AtomName', 'ULONG Length', 'PRTL_ATOM Atom']
 	case 8: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -327,6 +337,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 9 NTSTATUS NtAdjustGroupsToken ['HANDLE TokenHandle', 'BOOLEAN ResetToDefault', 'PTOKEN_GROUPS NewState', 'ULONG BufferLength', 'PTOKEN_GROUPS PreviousState', 'PULONG ReturnLength']
 	case 9: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -348,6 +359,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 10 NTSTATUS NtAdjustPrivilegesToken ['HANDLE TokenHandle', 'BOOLEAN DisableAllPrivileges', 'PTOKEN_PRIVILEGES NewState', 'ULONG BufferLength', 'PTOKEN_PRIVILEGES PreviousState', 'PULONG ReturnLength']
 	case 10: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -369,6 +381,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 11 NTSTATUS NtAlertResumeThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 	case 11: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -382,6 +395,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 12 NTSTATUS NtAlertThread ['HANDLE ThreadHandle']
 	case 12: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -393,6 +407,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 13 NTSTATUS NtAllocateLocallyUniqueId ['PLUID Luid']
 	case 13: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -404,6 +419,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 14 NTSTATUS NtAllocateUserPhysicalPages ['HANDLE ProcessHandle', 'PULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 14: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -419,6 +435,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 15 NTSTATUS NtAllocateUuids ['PULARGE_INTEGER Time', 'PULONG Range', 'PULONG Sequence', 'PCHAR Seed']
 	case 15: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -436,6 +453,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 16 NTSTATUS NtAllocateVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'ULONG_PTR ZeroBits', 'PSIZE_T RegionSize', 'ULONG AllocationType', 'ULONG Protect']
 	case 16: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -457,6 +475,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 17 NTSTATUS NtAreMappedFilesTheSame ['PVOID File1MappedAsAnImage', 'PVOID File2MappedAsFile']
 	case 17: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -470,6 +489,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 18 NTSTATUS NtAssignProcessToJobObject ['HANDLE JobHandle', 'HANDLE ProcessHandle']
 	case 18: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -483,6 +503,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 19 NTSTATUS NtCallbackReturn ['PVOID OutputBuffer', 'ULONG OutputLength', 'NTSTATUS Status']
 	case 19: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -498,6 +519,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 20 NTSTATUS NtCancelIoFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock']
 	case 20: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -511,6 +533,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 21 NTSTATUS NtCancelTimer ['HANDLE TimerHandle', 'PBOOLEAN CurrentState']
 	case 21: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -524,6 +547,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 23 NTSTATUS NtClearEvent ['HANDLE EventHandle']
 	case 23: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -535,6 +559,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 24 NTSTATUS NtClose ['HANDLE Handle']
 	case 24: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -546,6 +571,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 25 NTSTATUS NtCloseObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'BOOLEAN GenerateOnClose']
 	case 25: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -561,6 +587,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 26 NTSTATUS NtCompleteConnectPort ['HANDLE PortHandle']
 	case 26: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -572,6 +599,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 27 NTSTATUS NtConnectPort ['PHANDLE PortHandle', 'PUNICODE_STRING PortName', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos', 'PPORT_VIEW ClientView', 'PREMOTE_PORT_VIEW ServerView', 'PULONG MaxMessageLength', 'PVOID ConnectionInformation', 'PULONG ConnectionInformationLength']
 	case 27: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -597,6 +625,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 28 NTSTATUS NtContinue ['PCONTEXT ContextRecord', 'BOOLEAN TestAlert']
 	case 28: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -610,6 +639,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 29 NTSTATUS NtCreateDirectoryObject ['PHANDLE DirectoryHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 29: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -625,6 +655,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 30 NTSTATUS NtCreateEvent ['PHANDLE EventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'EVENT_TYPE EventType', 'BOOLEAN InitialState']
 	case 30: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -644,6 +675,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 31 NTSTATUS NtCreateEventPair ['PHANDLE EventPairHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 31: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -659,6 +691,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 32 NTSTATUS NtCreateFile ['PHANDLE FileHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER AllocationSize', 'ULONG FileAttributes', 'ULONG ShareAccess', 'ULONG CreateDisposition', 'ULONG CreateOptions', 'PVOID EaBuffer', 'ULONG EaLength']
 	case 32: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -690,6 +723,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 33 NTSTATUS NtCreateIoCompletion ['PHANDLE IoCompletionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG Count']
 	case 33: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -707,6 +741,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 34 NTSTATUS NtCreateJobObject ['PHANDLE JobHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 34: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -722,6 +757,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 35 NTSTATUS NtCreateKey ['PHANDLE KeyHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG TitleIndex', 'PUNICODE_STRING Class', 'ULONG CreateOptions', 'PULONG Disposition']
 	case 35: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -745,6 +781,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 36 NTSTATUS NtCreateMailslotFile ['PHANDLE FileHandle', 'ULONG DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CreateOptions', 'ULONG MailslotQuota', 'ULONG MaximumMessageSize', 'PLARGE_INTEGER ReadTimeout']
 	case 36: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -770,6 +807,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 37 NTSTATUS NtCreateMutant ['PHANDLE MutantHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'BOOLEAN InitialOwner']
 	case 37: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -787,6 +825,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 38 NTSTATUS NtCreateNamedPipeFile ['PHANDLE FileHandle', 'ULONG DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG ShareAccess', 'ULONG CreateDisposition', 'ULONG CreateOptions', 'ULONG NamedPipeType', 'ULONG ReadMode', 'ULONG CompletionMode', 'ULONG MaximumInstances', 'ULONG InboundQuota', 'ULONG OutboundQuota', 'PLARGE_INTEGER DefaultTimeout']
 	case 38: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -824,6 +863,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 39 NTSTATUS NtCreatePagingFile ['PUNICODE_STRING PageFileName', 'PLARGE_INTEGER MinimumSize', 'PLARGE_INTEGER MaximumSize', 'ULONG Priority']
 	case 39: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -841,6 +881,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 40 NTSTATUS NtCreatePort ['PHANDLE PortHandle', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG MaxConnectionInfoLength', 'ULONG MaxMessageLength', 'ULONG MaxPoolUsage']
 	case 40: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -860,6 +901,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 41 NTSTATUS NtCreateProcess ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ParentProcess', 'BOOLEAN InheritObjectTable', 'HANDLE SectionHandle', 'HANDLE DebugPort', 'HANDLE ExceptionPort']
 	case 41: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -885,6 +927,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 42 NTSTATUS NtCreateProfile ['PHANDLE ProfileHandle', 'HANDLE Process', 'PVOID RangeBase', 'SIZE_T RangeSize', 'ULONG BucketSize', 'PULONG Buffer', 'ULONG BufferSize', 'KPROFILE_SOURCE ProfileSource', 'KAFFINITY Affinity']
 	case 42: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -912,6 +955,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 43 NTSTATUS NtCreateSection ['PHANDLE SectionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PLARGE_INTEGER MaximumSize', 'ULONG SectionPageProtection', 'ULONG AllocationAttributes', 'HANDLE FileHandle']
 	case 43: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -935,6 +979,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 44 NTSTATUS NtCreateSemaphore ['PHANDLE SemaphoreHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'LONG InitialCount', 'LONG MaximumCount']
 	case 44: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -954,6 +999,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 45 NTSTATUS NtCreateSymbolicLinkObject ['PHANDLE LinkHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PUNICODE_STRING LinkTarget']
 	case 45: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -971,6 +1017,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 46 NTSTATUS NtCreateThread ['PHANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ProcessHandle', 'PCLIENT_ID ClientId', 'PCONTEXT ThreadContext', 'PINITIAL_TEB InitialTeb', 'BOOLEAN CreateSuspended']
 	case 46: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -996,6 +1043,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 47 NTSTATUS NtCreateTimer ['PHANDLE TimerHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'TIMER_TYPE TimerType']
 	case 47: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1013,6 +1061,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 48 NTSTATUS NtCreateToken ['PHANDLE TokenHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'TOKEN_TYPE TokenType', 'PLUID AuthenticationId', 'PLARGE_INTEGER ExpirationTime', 'PTOKEN_USER User', 'PTOKEN_GROUPS Groups', 'PTOKEN_PRIVILEGES Privileges', 'PTOKEN_OWNER Owner', 'PTOKEN_PRIMARY_GROUP PrimaryGroup', 'PTOKEN_DEFAULT_DACL DefaultDacl', 'PTOKEN_SOURCE TokenSource']
 	case 48: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1048,6 +1097,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 49 NTSTATUS NtCreateWaitablePort ['PHANDLE PortHandle', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG MaxConnectionInfoLength', 'ULONG MaxMessageLength', 'ULONG MaxPoolUsage']
 	case 49: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1067,6 +1117,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 50 NTSTATUS NtDelayExecution ['BOOLEAN Alertable', 'PLARGE_INTEGER DelayInterval']
 	case 50: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1080,6 +1131,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 51 NTSTATUS NtDeleteAtom ['RTL_ATOM Atom']
 	case 51: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1091,6 +1143,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 52 NTSTATUS NtDeleteFile ['POBJECT_ATTRIBUTES ObjectAttributes']
 	case 52: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1102,6 +1155,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 53 NTSTATUS NtDeleteKey ['HANDLE KeyHandle']
 	case 53: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1113,6 +1167,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 54 NTSTATUS NtDeleteObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'BOOLEAN GenerateOnClose']
 	case 54: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1128,6 +1183,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 55 NTSTATUS NtDeleteValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName']
 	case 55: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1141,6 +1197,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 56 NTSTATUS NtDeviceIoControlFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG IoControlCode', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 	case 56: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1170,6 +1227,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 57 NTSTATUS NtDisplayString ['PUNICODE_STRING String']
 	case 57: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1181,6 +1239,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 58 NTSTATUS NtDuplicateObject ['HANDLE SourceProcessHandle', 'HANDLE SourceHandle', 'HANDLE TargetProcessHandle', 'PHANDLE TargetHandle', 'ACCESS_MASK DesiredAccess', 'ULONG HandleAttributes', 'ULONG Options']
 	case 58: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1204,6 +1263,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 59 NTSTATUS NtDuplicateToken ['HANDLE ExistingTokenHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'BOOLEAN EffectiveOnly', 'TOKEN_TYPE TokenType', 'PHANDLE NewTokenHandle']
 	case 59: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1225,6 +1285,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 60 NTSTATUS NtEnumerateKey ['HANDLE KeyHandle', 'ULONG Index', 'KEY_INFORMATION_CLASS KeyInformationClass', 'PVOID KeyInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 60: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1246,6 +1307,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 61 NTSTATUS NtEnumerateValueKey ['HANDLE KeyHandle', 'ULONG Index', 'KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', 'PVOID KeyValueInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 61: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1267,6 +1329,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 62 NTSTATUS NtExtendSection ['HANDLE SectionHandle', 'PLARGE_INTEGER NewSectionSize']
 	case 62: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1280,6 +1343,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 63 NTSTATUS NtFilterToken ['HANDLE ExistingTokenHandle', 'ULONG Flags', 'PTOKEN_GROUPS SidsToDisable', 'PTOKEN_PRIVILEGES PrivilegesToDelete', 'PTOKEN_GROUPS RestrictedSids', 'PHANDLE NewTokenHandle']
 	case 63: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1301,6 +1365,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 64 NTSTATUS NtFindAtom ['PWSTR AtomName', 'ULONG Length', 'PRTL_ATOM Atom']
 	case 64: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1316,6 +1381,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 65 NTSTATUS NtFlushBuffersFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock']
 	case 65: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1329,6 +1395,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 66 NTSTATUS NtFlushInstructionCache ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'SIZE_T Length']
 	case 66: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1344,6 +1411,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 67 NTSTATUS NtFlushKey ['HANDLE KeyHandle']
 	case 67: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1355,6 +1423,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 68 NTSTATUS NtFlushVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'PIO_STATUS_BLOCK IoStatus']
 	case 68: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1372,11 +1441,13 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 69 NTSTATUS NtFlushWriteBuffer ['']
 	case 69: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtFlushWriteBuffer_enter, cpu, pc);
 	}; break;
 	// 70 NTSTATUS NtFreeUserPhysicalPages ['HANDLE ProcessHandle', 'PULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 70: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1392,6 +1463,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 71 NTSTATUS NtFreeVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG FreeType']
 	case 71: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1409,6 +1481,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 72 NTSTATUS NtFsControlFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG IoControlCode', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 	case 72: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1438,6 +1511,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 73 NTSTATUS NtGetContextThread ['HANDLE ThreadHandle', 'PCONTEXT ThreadContext']
 	case 73: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1451,6 +1525,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 74 NTSTATUS NtGetDevicePowerState ['HANDLE Device', 'DEVICE_POWER_STATE *State']
 	case 74: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1464,6 +1539,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 75 NTSTATUS NtGetPlugPlayEvent ['HANDLE EventHandle', 'PVOID Context', 'PPLUGPLAY_EVENT_BLOCK EventBlock', 'ULONG EventBufferSize']
 	case 75: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1481,6 +1557,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 77 NTSTATUS NtGetWriteWatch ['HANDLE ProcessHandle', 'ULONG Flags', 'PVOID BaseAddress', 'SIZE_T RegionSize', 'PVOID *UserAddressArray', 'PULONG_PTR EntriesInUserAddressArray', 'PULONG Granularity']
 	case 77: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1504,6 +1581,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 78 NTSTATUS NtImpersonateAnonymousToken ['HANDLE ThreadHandle']
 	case 78: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1515,6 +1593,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 79 NTSTATUS NtImpersonateClientOfPort ['HANDLE PortHandle', 'PPORT_MESSAGE Message']
 	case 79: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1528,6 +1607,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 80 NTSTATUS NtImpersonateThread ['HANDLE ServerThreadHandle', 'HANDLE ClientThreadHandle', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos']
 	case 80: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1543,6 +1623,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 81 NTSTATUS NtInitializeRegistry ['USHORT BootCondition']
 	case 81: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1554,6 +1635,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 82 NTSTATUS NtInitiatePowerAction ['POWER_ACTION SystemAction', 'SYSTEM_POWER_STATE MinSystemState', 'ULONG Flags', 'BOOLEAN Asynchronous']
 	case 82: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1571,11 +1653,13 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 83 BOOLEAN NtIsSystemResumeAutomatic ['']
 	case 83: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtIsSystemResumeAutomatic_enter, cpu, pc);
 	}; break;
 	// 84 NTSTATUS NtListenPort ['HANDLE PortHandle', 'PPORT_MESSAGE ConnectionRequest']
 	case 84: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1589,6 +1673,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 85 NTSTATUS NtLoadDriver ['PUNICODE_STRING DriverServiceName']
 	case 85: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1600,6 +1685,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 86 NTSTATUS NtLoadKey ['POBJECT_ATTRIBUTES TargetKey', 'POBJECT_ATTRIBUTES SourceFile']
 	case 86: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1613,6 +1699,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 87 NTSTATUS NtLoadKey2 ['POBJECT_ATTRIBUTES TargetKey', 'POBJECT_ATTRIBUTES SourceFile', 'ULONG Flags']
 	case 87: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1628,6 +1715,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 88 NTSTATUS NtLockFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER ByteOffset', 'PLARGE_INTEGER Length', 'ULONG Key', 'BOOLEAN FailImmediately', 'BOOLEAN ExclusiveLock']
 	case 88: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1657,6 +1745,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 89 NTSTATUS NtLockVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG MapType']
 	case 89: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1674,6 +1763,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 90 NTSTATUS NtMakeTemporaryObject ['HANDLE Handle']
 	case 90: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1685,6 +1775,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 91 NTSTATUS NtMapUserPhysicalPages ['PVOID VirtualAddress', 'ULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 91: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1700,6 +1791,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 92 NTSTATUS NtMapUserPhysicalPagesScatter ['PVOID *VirtualAddresses', 'ULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 92: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1715,6 +1807,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 93 NTSTATUS NtMapViewOfSection ['HANDLE SectionHandle', 'HANDLE ProcessHandle', 'PVOID *BaseAddress', 'ULONG_PTR ZeroBits', 'SIZE_T CommitSize', 'PLARGE_INTEGER SectionOffset', 'PSIZE_T ViewSize', 'SECTION_INHERIT InheritDisposition', 'ULONG AllocationType', 'WIN32_PROTECTION_MASK Win32Protect']
 	case 93: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1744,6 +1837,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 94 NTSTATUS NtNotifyChangeDirectoryFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'ULONG CompletionFilter', 'BOOLEAN WatchTree']
 	case 94: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1771,6 +1865,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 95 NTSTATUS NtNotifyChangeKey ['HANDLE KeyHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CompletionFilter', 'BOOLEAN WatchTree', 'PVOID Buffer', 'ULONG BufferSize', 'BOOLEAN Asynchronous']
 	case 95: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1800,6 +1895,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 96 NTSTATUS NtNotifyChangeMultipleKeys ['HANDLE MasterKeyHandle', 'ULONG Count', 'OBJECT_ATTRIBUTES SlaveObjects[]', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CompletionFilter', 'BOOLEAN WatchTree', 'PVOID Buffer', 'ULONG BufferSize', 'BOOLEAN Asynchronous']
 	case 96: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1833,6 +1929,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 97 NTSTATUS NtOpenDirectoryObject ['PHANDLE DirectoryHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 97: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1848,6 +1945,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 98 NTSTATUS NtOpenEvent ['PHANDLE EventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 98: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1863,6 +1961,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 99 NTSTATUS NtOpenEventPair ['PHANDLE EventPairHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 99: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1878,6 +1977,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 100 NTSTATUS NtOpenFile ['PHANDLE FileHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG ShareAccess', 'ULONG OpenOptions']
 	case 100: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1899,6 +1999,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 101 NTSTATUS NtOpenIoCompletion ['PHANDLE IoCompletionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 101: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1914,6 +2015,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 102 NTSTATUS NtOpenJobObject ['PHANDLE JobHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 102: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1929,6 +2031,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 103 NTSTATUS NtOpenKey ['PHANDLE KeyHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 103: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1944,6 +2047,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 104 NTSTATUS NtOpenMutant ['PHANDLE MutantHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 104: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1959,6 +2063,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 105 NTSTATUS NtOpenObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'ACCESS_MASK GrantedAccess', 'PPRIVILEGE_SET Privileges', 'BOOLEAN ObjectCreation', 'BOOLEAN AccessGranted', 'PBOOLEAN GenerateOnClose']
 	case 105: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1992,6 +2097,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 106 NTSTATUS NtOpenProcess ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PCLIENT_ID ClientId']
 	case 106: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2009,6 +2115,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 107 NTSTATUS NtOpenProcessToken ['HANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'PHANDLE TokenHandle']
 	case 107: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2024,6 +2131,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 108 NTSTATUS NtOpenSection ['PHANDLE SectionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 108: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2039,6 +2147,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 109 NTSTATUS NtOpenSemaphore ['PHANDLE SemaphoreHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 109: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2054,6 +2163,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 110 NTSTATUS NtOpenSymbolicLinkObject ['PHANDLE LinkHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 110: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2069,6 +2179,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 111 NTSTATUS NtOpenThread ['PHANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PCLIENT_ID ClientId']
 	case 111: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2086,6 +2197,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 112 NTSTATUS NtOpenThreadToken ['HANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'BOOLEAN OpenAsSelf', 'PHANDLE TokenHandle']
 	case 112: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2103,6 +2215,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 113 NTSTATUS NtOpenTimer ['PHANDLE TimerHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 113: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2118,6 +2231,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 114 NTSTATUS NtPlugPlayControl ['PLUGPLAY_CONTROL_CLASS PnPControlClass', 'PVOID PnPControlData', 'ULONG PnPControlDataLength']
 	case 114: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2133,6 +2247,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 115 NTSTATUS NtPowerInformation ['POWER_INFORMATION_LEVEL InformationLevel', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 	case 115: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2152,6 +2267,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 116 NTSTATUS NtPrivilegeCheck ['HANDLE ClientToken', 'PPRIVILEGE_SET RequiredPrivileges', 'PBOOLEAN Result']
 	case 116: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2167,6 +2283,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 117 NTSTATUS NtPrivilegedServiceAuditAlarm ['PUNICODE_STRING SubsystemName', 'PUNICODE_STRING ServiceName', 'HANDLE ClientToken', 'PPRIVILEGE_SET Privileges', 'BOOLEAN AccessGranted']
 	case 117: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2186,6 +2303,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 118 NTSTATUS NtPrivilegeObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'PPRIVILEGE_SET Privileges', 'BOOLEAN AccessGranted']
 	case 118: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2207,6 +2325,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 119 NTSTATUS NtProtectVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'WIN32_PROTECTION_MASK NewProtectWin32', 'PULONG OldProtect']
 	case 119: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2226,6 +2345,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 120 NTSTATUS NtPulseEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 	case 120: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2239,6 +2359,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 121 NTSTATUS NtQueryInformationAtom ['RTL_ATOM Atom', 'ATOM_INFORMATION_CLASS InformationClass', 'PVOID AtomInformation', 'ULONG AtomInformationLength', 'PULONG ReturnLength']
 	case 121: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2258,6 +2379,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 122 NTSTATUS NtQueryAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', 'PFILE_BASIC_INFORMATION FileInformation']
 	case 122: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2271,6 +2393,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 123 NTSTATUS NtQueryDefaultLocale ['BOOLEAN UserProfile', 'PLCID DefaultLocaleId']
 	case 123: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2284,6 +2407,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 124 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
 	case 124: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2295,6 +2419,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 125 NTSTATUS NtQueryDirectoryFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass', 'BOOLEAN ReturnSingleEntry', 'PUNICODE_STRING FileName', 'BOOLEAN RestartScan']
 	case 125: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2326,6 +2451,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 126 NTSTATUS NtQueryDirectoryObject ['HANDLE DirectoryHandle', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'BOOLEAN RestartScan', 'PULONG Context', 'PULONG ReturnLength']
 	case 126: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2349,6 +2475,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 127 NTSTATUS NtQueryEaFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'PVOID EaList', 'ULONG EaListLength', 'PULONG EaIndex', 'BOOLEAN RestartScan']
 	case 127: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2376,6 +2503,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 128 NTSTATUS NtQueryEvent ['HANDLE EventHandle', 'EVENT_INFORMATION_CLASS EventInformationClass', 'PVOID EventInformation', 'ULONG EventInformationLength', 'PULONG ReturnLength']
 	case 128: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2395,6 +2523,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 129 NTSTATUS NtQueryFullAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', 'PFILE_NETWORK_OPEN_INFORMATION FileInformation']
 	case 129: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2408,6 +2537,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 130 NTSTATUS NtQueryInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass']
 	case 130: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2427,6 +2557,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 131 NTSTATUS NtQueryInformationJobObject ['HANDLE JobHandle', 'JOBOBJECTINFOCLASS JobObjectInformationClass', 'PVOID JobObjectInformation', 'ULONG JobObjectInformationLength', 'PULONG ReturnLength']
 	case 131: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2446,6 +2577,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 132 NTSTATUS NtQueryIoCompletion ['HANDLE IoCompletionHandle', 'IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass', 'PVOID IoCompletionInformation', 'ULONG IoCompletionInformationLength', 'PULONG ReturnLength']
 	case 132: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2465,6 +2597,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 133 NTSTATUS NtQueryInformationPort ['HANDLE PortHandle', 'PORT_INFORMATION_CLASS PortInformationClass', 'PVOID PortInformation', 'ULONG Length', 'PULONG ReturnLength']
 	case 133: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2484,6 +2617,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 134 NTSTATUS NtQueryInformationProcess ['HANDLE ProcessHandle', 'PROCESSINFOCLASS ProcessInformationClass', 'PVOID ProcessInformation', 'ULONG ProcessInformationLength', 'PULONG ReturnLength']
 	case 134: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2503,6 +2637,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 135 NTSTATUS NtQueryInformationThread ['HANDLE ThreadHandle', 'THREADINFOCLASS ThreadInformationClass', 'PVOID ThreadInformation', 'ULONG ThreadInformationLength', 'PULONG ReturnLength']
 	case 135: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2522,6 +2657,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 136 NTSTATUS NtQueryInformationToken ['HANDLE TokenHandle', 'TOKEN_INFORMATION_CLASS TokenInformationClass', 'PVOID TokenInformation', 'ULONG TokenInformationLength', 'PULONG ReturnLength']
 	case 136: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2541,6 +2677,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 137 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
 	case 137: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2552,6 +2689,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 138 NTSTATUS NtQueryIntervalProfile ['KPROFILE_SOURCE ProfileSource', 'PULONG Interval']
 	case 138: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2565,6 +2703,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 139 NTSTATUS NtQueryKey ['HANDLE KeyHandle', 'KEY_INFORMATION_CLASS KeyInformationClass', 'PVOID KeyInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 139: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2584,6 +2723,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 140 NTSTATUS NtQueryMultipleValueKey ['HANDLE KeyHandle', 'PKEY_VALUE_ENTRY ValueEntries', 'ULONG EntryCount', 'PVOID ValueBuffer', 'PULONG BufferLength', 'PULONG RequiredBufferLength']
 	case 140: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2605,6 +2745,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 141 NTSTATUS NtQueryMutant ['HANDLE MutantHandle', 'MUTANT_INFORMATION_CLASS MutantInformationClass', 'PVOID MutantInformation', 'ULONG MutantInformationLength', 'PULONG ReturnLength']
 	case 141: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2624,6 +2765,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 142 NTSTATUS NtQueryObject ['HANDLE Handle', 'OBJECT_INFORMATION_CLASS ObjectInformationClass', 'PVOID ObjectInformation', 'ULONG ObjectInformationLength', 'PULONG ReturnLength']
 	case 142: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2643,6 +2785,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 143 NTSTATUS NtQueryOpenSubKeys ['POBJECT_ATTRIBUTES TargetKey', 'PULONG HandleCount']
 	case 143: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2656,6 +2799,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 144 NTSTATUS NtQueryPerformanceCounter ['PLARGE_INTEGER PerformanceCounter', 'PLARGE_INTEGER PerformanceFrequency']
 	case 144: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2669,6 +2813,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 145 NTSTATUS NtQueryQuotaInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'PVOID SidList', 'ULONG SidListLength', 'PULONG StartSid', 'BOOLEAN RestartScan']
 	case 145: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2696,6 +2841,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 146 NTSTATUS NtQuerySection ['HANDLE SectionHandle', 'SECTION_INFORMATION_CLASS SectionInformationClass', 'PVOID SectionInformation', 'SIZE_T SectionInformationLength', 'PSIZE_T ReturnLength']
 	case 146: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2715,6 +2861,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 147 NTSTATUS NtQuerySecurityObject ['HANDLE Handle', 'SECURITY_INFORMATION SecurityInformation', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'ULONG Length', 'PULONG LengthNeeded']
 	case 147: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2734,6 +2881,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 148 NTSTATUS NtQuerySemaphore ['HANDLE SemaphoreHandle', 'SEMAPHORE_INFORMATION_CLASS SemaphoreInformationClass', 'PVOID SemaphoreInformation', 'ULONG SemaphoreInformationLength', 'PULONG ReturnLength']
 	case 148: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2753,6 +2901,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 149 NTSTATUS NtQuerySymbolicLinkObject ['HANDLE LinkHandle', 'PUNICODE_STRING LinkTarget', 'PULONG ReturnedLength']
 	case 149: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2768,6 +2917,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 150 NTSTATUS NtQuerySystemEnvironmentValue ['PUNICODE_STRING VariableName', 'PWSTR VariableValue', 'USHORT ValueLength', 'PUSHORT ReturnLength']
 	case 150: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2785,6 +2935,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 151 NTSTATUS NtQuerySystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', 'PVOID SystemInformation', 'ULONG SystemInformationLength', 'PULONG ReturnLength']
 	case 151: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2802,6 +2953,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 152 NTSTATUS NtQuerySystemTime ['PLARGE_INTEGER SystemTime']
 	case 152: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2813,6 +2965,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 153 NTSTATUS NtQueryTimer ['HANDLE TimerHandle', 'TIMER_INFORMATION_CLASS TimerInformationClass', 'PVOID TimerInformation', 'ULONG TimerInformationLength', 'PULONG ReturnLength']
 	case 153: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2832,6 +2985,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 154 NTSTATUS NtQueryTimerResolution ['PULONG MaximumTime', 'PULONG MinimumTime', 'PULONG CurrentTime']
 	case 154: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2847,6 +3001,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 155 NTSTATUS NtQueryValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName', 'KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', 'PVOID KeyValueInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 155: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2868,6 +3023,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 156 NTSTATUS NtQueryVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'MEMORY_INFORMATION_CLASS MemoryInformationClass', 'PVOID MemoryInformation', 'SIZE_T MemoryInformationLength', 'PSIZE_T ReturnLength']
 	case 156: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2889,6 +3045,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 157 NTSTATUS NtQueryVolumeInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FsInformation', 'ULONG Length', 'FS_INFORMATION_CLASS FsInformationClass']
 	case 157: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2908,6 +3065,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 158 NTSTATUS NtQueueApcThread ['HANDLE ThreadHandle', 'PPS_APC_ROUTINE ApcRoutine', 'PVOID ApcArgument1', 'PVOID ApcArgument2', 'PVOID ApcArgument3']
 	case 158: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2927,6 +3085,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 159 NTSTATUS NtRaiseException ['PEXCEPTION_RECORD ExceptionRecord', 'PCONTEXT ContextRecord', 'BOOLEAN FirstChance']
 	case 159: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2942,6 +3101,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 160 NTSTATUS NtRaiseHardError ['NTSTATUS ErrorStatus', 'ULONG NumberOfParameters', 'ULONG UnicodeStringParameterMask', 'PULONG_PTR Parameters', 'ULONG ValidResponseOptions', 'PULONG Response']
 	case 160: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2963,6 +3123,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 161 NTSTATUS NtReadFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 161: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2990,6 +3151,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 162 NTSTATUS NtReadFileScatter ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PFILE_SEGMENT_ELEMENT SegmentArray', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 162: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3017,6 +3179,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 163 NTSTATUS NtReadRequestData ['HANDLE PortHandle', 'PPORT_MESSAGE Message', 'ULONG DataEntryIndex', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesRead']
 	case 163: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3038,6 +3201,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 164 NTSTATUS NtReadVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesRead']
 	case 164: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3057,6 +3221,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 165 NTSTATUS NtRegisterThreadTerminatePort ['HANDLE PortHandle']
 	case 165: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3068,6 +3233,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 166 NTSTATUS NtReleaseMutant ['HANDLE MutantHandle', 'PLONG PreviousCount']
 	case 166: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3081,6 +3247,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 167 NTSTATUS NtReleaseSemaphore ['HANDLE SemaphoreHandle', 'LONG ReleaseCount', 'PLONG PreviousCount']
 	case 167: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3096,6 +3263,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 168 NTSTATUS NtRemoveIoCompletion ['HANDLE IoCompletionHandle', 'PVOID *KeyContext', 'PVOID *ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER Timeout']
 	case 168: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3115,6 +3283,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 169 NTSTATUS NtReplaceKey ['POBJECT_ATTRIBUTES NewFile', 'HANDLE TargetHandle', 'POBJECT_ATTRIBUTES OldFile']
 	case 169: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3130,6 +3299,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 170 NTSTATUS NtReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE ReplyMessage']
 	case 170: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3143,6 +3313,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 171 NTSTATUS NtReplyWaitReceivePort ['HANDLE PortHandle', 'PVOID *PortContext', 'PPORT_MESSAGE ReplyMessage', 'PPORT_MESSAGE ReceiveMessage']
 	case 171: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3160,6 +3331,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 172 NTSTATUS NtReplyWaitReceivePortEx ['HANDLE PortHandle', 'PVOID *PortContext', 'PPORT_MESSAGE ReplyMessage', 'PPORT_MESSAGE ReceiveMessage', 'PLARGE_INTEGER Timeout']
 	case 172: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3179,6 +3351,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 173 NTSTATUS NtReplyWaitReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE ReplyMessage']
 	case 173: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3192,6 +3365,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 175 NTSTATUS NtRequestPort ['HANDLE PortHandle', 'PPORT_MESSAGE RequestMessage']
 	case 175: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3205,6 +3379,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 176 NTSTATUS NtRequestWaitReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE RequestMessage', 'PPORT_MESSAGE ReplyMessage']
 	case 176: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3220,6 +3395,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 178 NTSTATUS NtResetEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 	case 178: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3233,6 +3409,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 179 NTSTATUS NtResetWriteWatch ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'SIZE_T RegionSize']
 	case 179: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3248,6 +3425,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 180 NTSTATUS NtRestoreKey ['HANDLE KeyHandle', 'HANDLE FileHandle', 'ULONG Flags']
 	case 180: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3263,6 +3441,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 181 NTSTATUS NtResumeThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 	case 181: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3276,6 +3455,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 182 NTSTATUS NtSaveKey ['HANDLE KeyHandle', 'HANDLE FileHandle']
 	case 182: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3289,6 +3469,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 183 NTSTATUS NtSaveMergedKeys ['HANDLE HighPrecedenceKeyHandle', 'HANDLE LowPrecedenceKeyHandle', 'HANDLE FileHandle']
 	case 183: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3304,6 +3485,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 184 NTSTATUS NtSecureConnectPort ['PHANDLE PortHandle', 'PUNICODE_STRING PortName', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos', 'PPORT_VIEW ClientView', 'PSID RequiredServerSid', 'PREMOTE_PORT_VIEW ServerView', 'PULONG MaxMessageLength', 'PVOID ConnectionInformation', 'PULONG ConnectionInformationLength']
 	case 184: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3331,6 +3513,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 185 NTSTATUS NtSetIoCompletion ['HANDLE IoCompletionHandle', 'PVOID KeyContext', 'PVOID ApcContext', 'NTSTATUS IoStatus', 'ULONG_PTR IoStatusInformation']
 	case 185: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3350,6 +3533,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 186 NTSTATUS NtSetContextThread ['HANDLE ThreadHandle', 'PCONTEXT ThreadContext']
 	case 186: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3363,6 +3547,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 187 NTSTATUS NtSetDefaultHardErrorPort ['HANDLE DefaultHardErrorPort']
 	case 187: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3374,6 +3559,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 188 NTSTATUS NtSetDefaultLocale ['BOOLEAN UserProfile', 'LCID DefaultLocaleId']
 	case 188: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3387,6 +3573,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 189 NTSTATUS NtSetDefaultUILanguage ['LANGID DefaultUILanguageId']
 	case 189: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3398,6 +3585,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 190 NTSTATUS NtSetEaFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length']
 	case 190: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3415,6 +3603,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 191 NTSTATUS NtSetEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 	case 191: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3428,6 +3617,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 192 NTSTATUS NtSetHighEventPair ['HANDLE EventPairHandle']
 	case 192: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3439,6 +3629,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 193 NTSTATUS NtSetHighWaitLowEventPair ['HANDLE EventPairHandle']
 	case 193: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3450,6 +3641,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 194 NTSTATUS NtSetInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass']
 	case 194: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3469,6 +3661,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 195 NTSTATUS NtSetInformationJobObject ['HANDLE JobHandle', 'JOBOBJECTINFOCLASS JobObjectInformationClass', 'PVOID JobObjectInformation', 'ULONG JobObjectInformationLength']
 	case 195: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3486,6 +3679,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 196 NTSTATUS NtSetInformationKey ['HANDLE KeyHandle', 'KEY_SET_INFORMATION_CLASS KeySetInformationClass', 'PVOID KeySetInformation', 'ULONG KeySetInformationLength']
 	case 196: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3503,6 +3697,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 197 NTSTATUS NtSetInformationObject ['HANDLE Handle', 'OBJECT_INFORMATION_CLASS ObjectInformationClass', 'PVOID ObjectInformation', 'ULONG ObjectInformationLength']
 	case 197: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3520,6 +3715,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 198 NTSTATUS NtSetInformationProcess ['HANDLE ProcessHandle', 'PROCESSINFOCLASS ProcessInformationClass', 'PVOID ProcessInformation', 'ULONG ProcessInformationLength']
 	case 198: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3537,6 +3733,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 199 NTSTATUS NtSetInformationThread ['HANDLE ThreadHandle', 'THREADINFOCLASS ThreadInformationClass', 'PVOID ThreadInformation', 'ULONG ThreadInformationLength']
 	case 199: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3554,6 +3751,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 200 NTSTATUS NtSetInformationToken ['HANDLE TokenHandle', 'TOKEN_INFORMATION_CLASS TokenInformationClass', 'PVOID TokenInformation', 'ULONG TokenInformationLength']
 	case 200: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3571,6 +3769,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 201 NTSTATUS NtSetIntervalProfile ['ULONG Interval', 'KPROFILE_SOURCE Source']
 	case 201: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3584,6 +3783,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 202 NTSTATUS NtSetLdtEntries ['ULONG Selector0', 'ULONG Entry0Low', 'ULONG Entry0Hi', 'ULONG Selector1', 'ULONG Entry1Low', 'ULONG Entry1Hi']
 	case 202: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3605,6 +3805,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 203 NTSTATUS NtSetLowEventPair ['HANDLE EventPairHandle']
 	case 203: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3616,6 +3817,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 204 NTSTATUS NtSetLowWaitHighEventPair ['HANDLE EventPairHandle']
 	case 204: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3627,6 +3829,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 205 NTSTATUS NtSetQuotaInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length']
 	case 205: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3644,6 +3847,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 206 NTSTATUS NtSetSecurityObject ['HANDLE Handle', 'SECURITY_INFORMATION SecurityInformation', 'PSECURITY_DESCRIPTOR SecurityDescriptor']
 	case 206: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3659,6 +3863,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 207 NTSTATUS NtSetSystemEnvironmentValue ['PUNICODE_STRING VariableName', 'PUNICODE_STRING VariableValue']
 	case 207: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3672,6 +3877,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 208 NTSTATUS NtSetSystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', 'PVOID SystemInformation', 'ULONG SystemInformationLength']
 	case 208: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3687,6 +3893,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 209 NTSTATUS NtSetSystemPowerState ['POWER_ACTION SystemAction', 'SYSTEM_POWER_STATE MinSystemState', 'ULONG Flags']
 	case 209: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3702,6 +3909,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 210 NTSTATUS NtSetSystemTime ['PLARGE_INTEGER SystemTime', 'PLARGE_INTEGER PreviousTime']
 	case 210: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3715,6 +3923,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 211 NTSTATUS NtSetThreadExecutionState ['EXECUTION_STATE esFlags', 'PEXECUTION_STATE PreviousFlags']
 	case 211: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3728,6 +3937,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 212 NTSTATUS NtSetTimer ['HANDLE TimerHandle', 'PLARGE_INTEGER DueTime', 'PTIMER_APC_ROUTINE TimerApcRoutine', 'PVOID TimerContext', 'BOOLEAN WakeTimer', 'LONG Period', 'PBOOLEAN PreviousState']
 	case 212: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3751,6 +3961,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 213 NTSTATUS NtSetTimerResolution ['ULONG DesiredTime', 'BOOLEAN SetResolution', 'PULONG ActualTime']
 	case 213: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3766,6 +3977,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 214 NTSTATUS NtSetUuidSeed ['PCHAR Seed']
 	case 214: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3777,6 +3989,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 215 NTSTATUS NtSetValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName', 'ULONG TitleIndex', 'ULONG Type', 'PVOID Data', 'ULONG DataSize']
 	case 215: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3798,6 +4011,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 216 NTSTATUS NtSetVolumeInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FsInformation', 'ULONG Length', 'FS_INFORMATION_CLASS FsInformationClass']
 	case 216: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3817,6 +4031,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 217 NTSTATUS NtShutdownSystem ['SHUTDOWN_ACTION Action']
 	case 217: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3828,6 +4043,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 218 NTSTATUS NtSignalAndWaitForSingleObject ['HANDLE SignalHandle', 'HANDLE WaitHandle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 218: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3845,6 +4061,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 219 NTSTATUS NtStartProfile ['HANDLE ProfileHandle']
 	case 219: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3856,6 +4073,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 220 NTSTATUS NtStopProfile ['HANDLE ProfileHandle']
 	case 220: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3867,6 +4085,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 221 NTSTATUS NtSuspendThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 	case 221: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3880,6 +4099,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 222 NTSTATUS NtSystemDebugControl ['SYSDBG_COMMAND Command', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength', 'PULONG ReturnLength']
 	case 222: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3901,6 +4121,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 223 NTSTATUS NtTerminateJobObject ['HANDLE JobHandle', 'NTSTATUS ExitStatus']
 	case 223: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3914,6 +4135,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 224 NTSTATUS NtTerminateProcess ['HANDLE ProcessHandle', 'NTSTATUS ExitStatus']
 	case 224: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3927,6 +4149,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 225 NTSTATUS NtTerminateThread ['HANDLE ThreadHandle', 'NTSTATUS ExitStatus']
 	case 225: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3940,11 +4163,13 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 226 NTSTATUS NtTestAlert ['']
 	case 226: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtTestAlert_enter, cpu, pc);
 	}; break;
 	// 227 NTSTATUS NtUnloadDriver ['PUNICODE_STRING DriverServiceName']
 	case 227: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3956,6 +4181,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 228 NTSTATUS NtUnloadKey ['POBJECT_ATTRIBUTES TargetKey']
 	case 228: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3967,6 +4193,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 229 NTSTATUS NtUnlockFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER ByteOffset', 'PLARGE_INTEGER Length', 'ULONG Key']
 	case 229: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3986,6 +4213,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 230 NTSTATUS NtUnlockVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG MapType']
 	case 230: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4003,6 +4231,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 231 NTSTATUS NtUnmapViewOfSection ['HANDLE ProcessHandle', 'PVOID BaseAddress']
 	case 231: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4016,6 +4245,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 232 NTSTATUS NtVdmControl ['VDMSERVICECLASS Service', 'PVOID ServiceData']
 	case 232: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4029,6 +4259,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 233 NTSTATUS NtWaitForMultipleObjects ['ULONG Count', 'HANDLE Handles[]', 'WAIT_TYPE WaitType', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 233: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4048,6 +4279,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 234 NTSTATUS NtWaitForSingleObject ['HANDLE Handle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 234: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4063,6 +4295,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 235 NTSTATUS NtWaitHighEventPair ['HANDLE EventPairHandle']
 	case 235: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4074,6 +4307,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 236 NTSTATUS NtWaitLowEventPair ['HANDLE EventPairHandle']
 	case 236: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4085,6 +4319,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 237 NTSTATUS NtWriteFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 237: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4112,6 +4347,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 238 NTSTATUS NtWriteFileGather ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PFILE_SEGMENT_ELEMENT SegmentArray', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 238: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4139,6 +4375,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 239 NTSTATUS NtWriteRequestData ['HANDLE PortHandle', 'PPORT_MESSAGE Message', 'ULONG DataEntryIndex', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesWritten']
 	case 239: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4160,6 +4397,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 240 NTSTATUS NtWriteVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesWritten']
 	case 240: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4179,6 +4417,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	// 247 NTSTATUS NtYieldExecution ['']
 	case 247: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtYieldExecution_enter, cpu, pc);
 	}; break;
 	default:

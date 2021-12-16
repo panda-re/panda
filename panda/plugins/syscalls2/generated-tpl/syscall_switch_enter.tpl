@@ -33,6 +33,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
 	const syscall_info_t *call = NULL;
 	syscall_info_t zero = {0};
@@ -49,6 +50,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 	// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
 	case {{syscall.no}}: {
 		panda_noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }};
+		ctx.double_return = {{ 'true' if syscall.panda_double_return else 'false' }};
 		{%- if syscall.args|length > 0 %}
 		{%- for arg in syscall.args %}
 		{{arg.emit_temp_assignment()}}
