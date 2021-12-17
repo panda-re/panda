@@ -1,11 +1,9 @@
 /* PANDABEGINCOMMENT
  *
  * Authors:
- *  Tim Leek               tleek@ll.mit.edu
- *  Ryan Whelan            rwhelan@ll.mit.edu
- *  Joshua Hodosh          josh.hodosh@ll.mit.edu
- *  Michael Zhivich        mzhivich@ll.mit.edu
- *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ *  Ben Dumas              benjamin.dumas@ll.mit.edu
+ *  Nick Gillum            nicholas.gillum@ll.mit.edu
+ *  Lisa Baer              lisa.baer@ll.mit.edu
  *
  * This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
@@ -455,7 +453,7 @@ void update_process_manager() {
                                 kosi_get_current_process_address(kernel));
 }
 
-void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void start_block_exec(CPUState *cpu, TranslationBlock *tb) {
   if (!g_update_task)
     return;
 
@@ -586,8 +584,8 @@ bool init_plugin(void *self) {
 
   panda_cb pcb;
 
-  pcb.before_block_exec = before_block_exec;
-  panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+  pcb.start_block_exec = start_block_exec;
+  panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb);
   pcb.asid_changed = asid_changed;
   panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
   pcb.after_loadvm = initialize_introspection;
@@ -615,8 +613,4 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
   printf("Unloading wintrospection plugin\n");
-
-  // if we don't clear tb's when this exits we have TBs which can call
-  // into our exited plugin.
-  panda_do_flush_tb();
 }
