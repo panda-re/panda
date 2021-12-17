@@ -39,7 +39,7 @@ bool read_panda_physical_memory(struct PhysicalMemory *pmem, pm_addr_t addr,
   if ((addr + size) > max_addr) {
     return false;
   }
-  return 0 == panda_physical_memory_rw(addr, buffer, size, 0);
+  return 0 == panda_physical_memory_read(addr, buffer, size);
 }
 
 void free_panda_physical_memory(struct PhysicalMemory *pmem) {
