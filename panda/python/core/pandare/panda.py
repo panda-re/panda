@@ -37,7 +37,7 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
+from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -139,7 +139,7 @@ class Panda():
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         elif self.arch_name in ["mips64"]:
-            self.arch = MipsArch(self) # XXX: We probably need a different class?
+            self.arch = Mips64Arch(self)
         else:
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
@@ -1373,7 +1373,7 @@ class Panda():
         Returns:
             DeviceState struct
         '''
-        return self.libpanda.sysbus_create_varargs(name,addr,ffi.NULL)
+        return self.libpanda.sysbus_create_varargs(name,addr, self.ffi.NULL)
 
     def cpu_class_by_name(self, name, cpu_model):
         '''
@@ -1531,7 +1531,7 @@ class Panda():
         Returns:
             struct ObjectProperty pointer
         '''
-        return self.libpanda.object_property_find(obj,name,ffi.NULL)
+        return self.libpanda.object_property_find(obj,name, self.ffi.NULL)
 
     def memory_region_allocate_system_memory(self, mr, obj, name, ram_size):
         '''

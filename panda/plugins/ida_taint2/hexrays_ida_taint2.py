@@ -196,7 +196,17 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
                                 if (address in tainted_pcs):
                                     sv[i].bgcolor = INST_COLOR
                     curline = curline[skipcode_index:]
-        
+
+    def skip_csv_header(self, reader, show_metadata):
+        # newer ida_taint2 output files have some metadata before the header
+        line1 = next(reader, None)
+        if (line1[0].startswith("PANDA Build Date")):
+            exec_time = next(reader, None)
+            if (show_metadata):
+                idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
+                idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
+            next(reader, None)
+
     def color_pseudocode(self, widget, clear_old):
         global filename
         global selected_pid
@@ -222,7 +232,8 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
             processes = set()
             input_file = open(filename, "r")
             reader = csv.reader(input_file)
-            next(reader, None)
+            self.skip_csv_header(reader, True)
+
             for row in reader:
                 processes.add((row[0], int(row[1])))
             input_file.close()
@@ -236,7 +247,7 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
             reader = csv.reader(input_file)
             tainted_pcs = set()
             # skip header
-            next(reader, None)
+            self.skip_csv_header(reader, True)
             for row in reader:
                 pid = int(row[1])
                 pc = int(row[2], 16)

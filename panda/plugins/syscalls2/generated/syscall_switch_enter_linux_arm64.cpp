@@ -33,6 +33,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
 	const syscall_info_t *call = NULL;
 	syscall_info_t zero = {0};
@@ -48,6 +49,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 0 long sys_io_setup ['unsigned nr_reqs', 'aio_context_t __user *ctx']
 	case 0: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -61,6 +63,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 1 long sys_io_destroy ['aio_context_t ctx']
 	case 1: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -72,6 +75,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 2 long sys_io_submit ['aio_context_t', 'long', 'struct iocb __user * __user *']
 	case 2: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int64_t arg1 = get_s64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -87,6 +91,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 3 long sys_io_cancel ['aio_context_t ctx_id', 'struct iocb __user *iocb', 'struct io_event __user *result']
 	case 3: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -102,6 +107,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 4 long sys_io_getevents ['aio_context_t ctx_id', 'long min_nr', 'long nr', 'struct io_event __user *events', 'struct timespec __user *timeout']
 	case 4: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int64_t arg1 = get_s64(cpu, 1);
 		int64_t arg2 = get_s64(cpu, 2);
@@ -121,6 +127,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 5 long sys_setxattr ['const char __user *path', 'const char __user *name', 'const void __user *value', 'size_t size', 'int flags']
 	case 5: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -140,6 +147,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 6 long sys_lsetxattr ['const char __user *path', 'const char __user *name', 'const void __user *value', 'size_t size', 'int flags']
 	case 6: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -159,6 +167,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 7 long sys_fsetxattr ['int fd', 'const char __user *name', 'const void __user *value', 'size_t size', 'int flags']
 	case 7: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -178,6 +187,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 8 long sys_getxattr ['const char __user *path', 'const char __user *name', 'void __user *value', 'size_t size']
 	case 8: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -195,6 +205,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 9 long sys_lgetxattr ['const char __user *path', 'const char __user *name', 'void __user *value', 'size_t size']
 	case 9: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -212,6 +223,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 10 long sys_fgetxattr ['int fd', 'const char __user *name', 'void __user *value', 'size_t size']
 	case 10: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -229,6 +241,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 11 long sys_listxattr ['const char __user *path', 'char __user *list', 'size_t size']
 	case 11: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -244,6 +257,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 12 long sys_llistxattr ['const char __user *path', 'char __user *list', 'size_t size']
 	case 12: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -259,6 +273,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 13 long sys_flistxattr ['int fd', 'char __user *list', 'size_t size']
 	case 13: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -274,6 +289,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 14 long sys_removexattr ['const char __user *path', 'const char __user *name']
 	case 14: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -287,6 +303,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 15 long sys_lremovexattr ['const char __user *path', 'const char __user *name']
 	case 15: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -300,6 +317,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 16 long sys_fremovexattr ['int fd', 'const char __user *name']
 	case 16: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -313,6 +331,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 17 long sys_getcwd ['char __user *buf', 'unsigned long size']
 	case 17: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -326,6 +345,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 18 long sys_lookup_dcookie ['u64 cookie64', 'char __user *buf', 'size_t len']
 	case 18: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -341,6 +361,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 19 long sys_eventfd2 ['unsigned int count', 'int flags']
 	case 19: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -354,6 +375,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 20 long sys_epoll_create1 ['int flags']
 	case 20: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -365,6 +387,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 21 long sys_epoll_ctl ['int epfd', 'int op', 'int fd', 'struct epoll_event __user *event']
 	case 21: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -382,6 +405,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 22 long sys_epoll_pwait ['int epfd', 'struct epoll_event __user *events', 'int maxevents', 'int timeout', 'const sigset_t __user *sigmask', 'size_t sigsetsize']
 	case 22: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -403,6 +427,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 23 long sys_dup ['unsigned int fildes']
 	case 23: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -414,6 +439,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 24 long sys_dup3 ['unsigned int oldfd', 'unsigned int newfd', 'int flags']
 	case 24: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -429,6 +455,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 25 long sys_fcntl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 	case 25: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -444,6 +471,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 26 long sys_inotify_init1 ['int flags']
 	case 26: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -455,6 +483,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 27 long sys_inotify_add_watch ['int fd', 'const char __user *path', 'u32 mask']
 	case 27: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -470,6 +499,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 28 long sys_inotify_rm_watch ['int fd', '__s32 wd']
 	case 28: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -483,6 +513,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 29 long sys_ioctl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 	case 29: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -498,6 +529,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 30 long sys_ioprio_set ['int which', 'int who', 'int ioprio']
 	case 30: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -513,6 +545,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 31 long sys_ioprio_get ['int which', 'int who']
 	case 31: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -526,6 +559,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 32 long sys_flock ['unsigned int fd', 'unsigned int cmd']
 	case 32: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -539,6 +573,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 33 long sys_mknodat ['int dfd', 'const char __user *filename', 'umode_t mode', 'unsigned dev']
 	case 33: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -556,6 +591,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 34 long sys_mkdirat ['int dfd', 'const char __user *pathname', 'umode_t mode']
 	case 34: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -571,6 +607,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 35 long sys_unlinkat ['int dfd', 'const char __user *pathname', 'int flag']
 	case 35: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -586,6 +623,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 36 long sys_symlinkat ['const char __user *oldname', 'int newdfd', 'const char __user *newname']
 	case 36: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -601,6 +639,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 37 long sys_linkat ['int olddfd', 'const char __user *oldname', 'int newdfd', 'const char __user *newname', 'int flags']
 	case 37: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -620,6 +659,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 38 long sys_renameat ['int olddfd', 'const char __user *oldname', 'int newdfd', 'const char __user *newname']
 	case 38: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -637,6 +677,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 39 long sys_umount2 ['const char* target', 'int flags']
 	case 39: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -650,6 +691,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 40 long sys_mount ['char __user *dev_name', 'char __user *dir_name', 'char __user *type', 'unsigned long flags', 'void __user *data']
 	case 40: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -669,6 +711,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 41 long sys_pivot_root ['const char __user *new_root', 'const char __user *put_old']
 	case 41: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -682,6 +725,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 42 long sys_nfsservctl ['int cmd', 'struct nfsctl_arg *argp', 'union nfsctl_res *resp']
 	case 42: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -697,6 +741,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 43 long sys_statfs ['const char * path', 'struct statfs *buf']
 	case 43: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -710,6 +755,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 44 long sys_fstatfs ['unsigned int fd', 'struct statfs *buf']
 	case 44: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -723,6 +769,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 45 long sys_truncate ['const char *path', 'long length']
 	case 45: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int64_t arg1 = get_s64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -736,6 +783,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 46 long sys_ftruncate ['unsigned int fd', 'unsigned long length']
 	case 46: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -749,6 +797,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 47 long sys_fallocate ['int fd', 'int mode', 'loff_t offset', 'loff_t len']
 	case 47: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -766,6 +815,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 48 long sys_faccessat ['int dfd', 'const char __user *filename', 'int mode']
 	case 48: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -781,6 +831,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 49 long sys_chdir ['const char __user *filename']
 	case 49: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -792,6 +843,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 50 long sys_fchdir ['unsigned int fd']
 	case 50: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -803,6 +855,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 51 long sys_chroot ['const char __user *filename']
 	case 51: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -814,6 +867,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 52 long sys_fchmod ['unsigned int fd', 'umode_t mode']
 	case 52: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -827,6 +881,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 53 long sys_fchmodat ['int dfd', 'const char __user *filename', 'umode_t mode']
 	case 53: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -842,6 +897,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 54 long sys_fchownat ['int dfd', 'const char __user *filename', 'uid_t user', 'gid_t group', 'int flag']
 	case 54: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -861,6 +917,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 55 long sys_fchown ['unsigned int fd', 'uid_t user', 'gid_t group']
 	case 55: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -876,6 +933,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 56 long sys_openat ['int dfd', 'const char __user *filename', 'int flags', 'umode_t mode']
 	case 56: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -893,6 +951,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 57 long sys_close ['unsigned int fd']
 	case 57: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -904,11 +963,13 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 58 long sys_vhangup ['void']
 	case 58: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_vhangup_enter, cpu, pc);
 	}; break;
 	// 59 long sys_pipe2 ['int *fildes', 'int flags']
 	case 59: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -922,6 +983,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 60 long sys_quotactl ['unsigned int cmd', 'const char __user *special', 'qid_t id', 'void __user *addr']
 	case 60: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -939,6 +1001,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 61 long sys_getdents64 ['unsigned int fd', 'struct linux_dirent64 *dirent', 'unsigned int count']
 	case 61: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -954,6 +1017,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 62 long sys_lseek ['unsigned int fd', 'off_t offset', 'unsigned int whence']
 	case 62: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -969,6 +1033,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 63 long sys_read ['unsigned int fd', 'char __user *buf', 'size_t count']
 	case 63: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -984,6 +1049,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 64 long sys_write ['unsigned int fd', 'const char __user *buf', 'size_t count']
 	case 64: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -999,6 +1065,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 65 long sys_readv ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen']
 	case 65: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1014,6 +1081,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 66 long sys_writev ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen']
 	case 66: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1029,6 +1097,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 67 long sys_pread64 ['unsigned int fd', 'char *buf', 'size_t count', 'loff_t pos']
 	case 67: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1046,6 +1115,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 68 long sys_pwrite64 ['unsigned int fd', 'const char *buf', 'size_t count', 'loff_t pos']
 	case 68: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1063,6 +1133,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 69 long sys_preadv ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h']
 	case 69: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1082,6 +1153,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 70 long sys_pwritev ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h']
 	case 70: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1101,6 +1173,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 71 long sys_sendfile ['int out_fd', 'int in_fd', 'off_t *offset', 'size_t count']
 	case 71: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1118,6 +1191,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 72 long sys_pselect6 ['int', 'fd_set *', 'fd_set *', 'fd_set *', 'struct __kernel_timespec *', 'void *']
 	case 72: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1139,6 +1213,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 73 long sys_ppoll ['struct pollfd __user *', 'unsigned int', 'struct timespec __user *', 'const sigset_t __user *', 'size_t']
 	case 73: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1158,6 +1233,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 74 long sys_signalfd4 ['int ufd', 'sigset_t *user_mask', 'size_t sizemask', 'int flags']
 	case 74: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1175,6 +1251,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 75 long sys_vmsplice ['int fd', 'const struct iovec __user *iov', 'unsigned long nr_segs', 'unsigned int flags']
 	case 75: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1192,6 +1269,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 76 long sys_splice ['int fd_in', 'loff_t __user *off_in', 'int fd_out', 'loff_t __user *off_out', 'size_t len', 'unsigned int flags']
 	case 76: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -1213,6 +1291,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 77 long sys_tee ['int fdin', 'int fdout', 'size_t len', 'unsigned int flags']
 	case 77: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1230,6 +1309,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 78 long sys_readlinkat ['int dfd', 'const char __user *path', 'char __user *buf', 'int bufsiz']
 	case 78: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1247,6 +1327,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 79 long sys_newfstatat ['int dfd', 'const char *filename', 'struct stat *statbuf', 'int flag']
 	case 79: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1264,6 +1345,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 80 long sys_fstat ['unsigned int fd', 'struct __old_kernel_stat *statbuf']
 	case 80: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1277,11 +1359,13 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 81 long sys_sync ['void']
 	case 81: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_sync_enter, cpu, pc);
 	}; break;
 	// 82 long sys_fsync ['unsigned int fd']
 	case 82: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1293,6 +1377,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 83 long sys_fdatasync ['unsigned int fd']
 	case 83: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1304,6 +1389,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 84 long sys_sync_file_range ['int fd', 'loff_t offset', 'loff_t nbytes', 'unsigned int flags']
 	case 84: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1321,6 +1407,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 85 long sys_timerfd_create ['int clockid', 'int flags']
 	case 85: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1334,6 +1421,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 86 long sys_timerfd_settime ['int ufd', 'int flags', 'const struct itimerspec __user *utmr', 'struct itimerspec __user *otmr']
 	case 86: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1351,6 +1439,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 87 long sys_timerfd_gettime ['int ufd', 'struct itimerspec __user *otmr']
 	case 87: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1364,6 +1453,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 88 long sys_utimensat ['int dfd', 'const char __user *filename', 'struct timespec __user *utimes', 'int flags']
 	case 88: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1381,6 +1471,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 89 long sys_acct ['const char __user *name']
 	case 89: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1392,6 +1483,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 90 long sys_capget ['cap_user_header_t header', 'cap_user_data_t dataptr']
 	case 90: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1405,6 +1497,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 91 long sys_capset ['cap_user_header_t header', 'const cap_user_data_t data']
 	case 91: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1418,6 +1511,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 92 long sys_personality ['unsigned int personality']
 	case 92: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1429,6 +1523,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 93 long sys_exit ['int error_code']
 	case 93: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1440,6 +1535,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 94 long sys_exit_group ['int error_code']
 	case 94: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1451,6 +1547,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 95 long sys_waitid ['int which', 'pid_t pid', 'struct siginfo __user *infop', 'int options', 'struct rusage __user *ru']
 	case 95: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1470,6 +1567,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 96 long sys_set_tid_address ['int __user *tidptr']
 	case 96: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1481,6 +1579,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 97 long sys_unshare ['unsigned long unshare_flags']
 	case 97: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1492,6 +1591,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 98 long sys_futex ['u32 __user *uaddr', 'int op', 'u32 val', 'struct timespec __user *utime', 'u32 __user *uaddr2', 'u32 val3']
 	case 98: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1513,6 +1613,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 99 long sys_set_robust_list ['struct robust_list_head __user *head', 'size_t len']
 	case 99: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1526,6 +1627,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 100 long sys_get_robust_list ['int pid', 'struct robust_list_head __user * __user *head_ptr', 'size_t __user *len_ptr']
 	case 100: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1541,6 +1643,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 101 long sys_nanosleep ['struct timespec __user *rqtp', 'struct timespec __user *rmtp']
 	case 101: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1554,6 +1657,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 102 long sys_getitimer ['int which', 'struct itimerval __user *value']
 	case 102: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1567,6 +1671,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 103 long sys_setitimer ['int which', 'struct itimerval __user *value', 'struct itimerval __user *ovalue']
 	case 103: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1582,6 +1687,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 104 long sys_kexec_load ['unsigned long entry', 'unsigned long nr_segments', 'struct kexec_segment __user *segments', 'unsigned long flags']
 	case 104: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1599,6 +1705,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 105 long sys_init_module ['void __user *umod', 'unsigned long len', 'const char __user *uargs']
 	case 105: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1614,6 +1721,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 106 long sys_delete_module ['const char __user *name_user', 'unsigned int flags']
 	case 106: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1627,6 +1735,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 107 long sys_timer_create ['clockid_t which_clock', 'struct sigevent __user *timer_event_spec', 'timer_t __user *created_timer_id']
 	case 107: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1642,6 +1751,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 108 long sys_timer_gettime ['timer_t timer_id', 'struct itimerspec __user *setting']
 	case 108: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1655,6 +1765,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 109 long sys_timer_getoverrun ['timer_t timer_id']
 	case 109: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1666,6 +1777,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 110 long sys_timer_settime ['timer_t timer_id', 'int flags', 'const struct itimerspec __user *new_setting', 'struct itimerspec __user *old_setting']
 	case 110: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1683,6 +1795,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 111 long sys_timer_delete ['timer_t timer_id']
 	case 111: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1694,6 +1807,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 112 long sys_clock_settime ['clockid_t which_clock', 'const struct timespec __user *tp']
 	case 112: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1707,6 +1821,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 113 long sys_clock_gettime ['clockid_t which_clock', 'struct timespec __user *tp']
 	case 113: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1720,6 +1835,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 114 long sys_clock_getres ['clockid_t which_clock', 'struct timespec __user *tp']
 	case 114: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1733,6 +1849,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 115 long sys_clock_nanosleep ['clockid_t which_clock', 'int flags', 'const struct timespec __user *rqtp', 'struct timespec __user *rmtp']
 	case 115: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1750,6 +1867,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 116 long sys_syslog ['int type', 'char __user *buf', 'int len']
 	case 116: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -1765,6 +1883,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 117 long sys_ptrace ['long request', 'long pid', 'unsigned long addr', 'unsigned long data']
 	case 117: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int64_t arg0 = get_s64(cpu, 0);
 		int64_t arg1 = get_s64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1782,6 +1901,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 118 long sys_sched_setparam ['pid_t pid', 'struct sched_param __user *param']
 	case 118: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1795,6 +1915,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 119 long sys_sched_setscheduler ['pid_t pid', 'int policy', 'struct sched_param __user *param']
 	case 119: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1810,6 +1931,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 120 long sys_sched_getscheduler ['pid_t pid']
 	case 120: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1821,6 +1943,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 121 long sys_sched_getparam ['pid_t pid', 'struct sched_param __user *param']
 	case 121: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1834,6 +1957,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 122 long sys_sched_setaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 	case 122: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1849,6 +1973,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 123 long sys_sched_getaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 	case 123: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1864,11 +1989,13 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 124 long sys_sched_yield ['void']
 	case 124: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_sched_yield_enter, cpu, pc);
 	}; break;
 	// 125 long sys_sched_get_priority_max ['int policy']
 	case 125: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1880,6 +2007,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 126 long sys_sched_get_priority_min ['int policy']
 	case 126: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1891,6 +2019,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 127 long sys_sched_rr_get_interval ['pid_t pid', 'struct timespec __user *interval']
 	case 127: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1904,11 +2033,13 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 128 long sys_restart_syscall ['void']
 	case 128: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_restart_syscall_enter, cpu, pc);
 	}; break;
 	// 129 long sys_kill ['pid_t pid', 'int sig']
 	case 129: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1922,6 +2053,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 130 long sys_tkill ['pid_t pid', 'int sig']
 	case 130: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1935,6 +2067,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 131 long sys_tgkill ['pid_t tgid', 'pid_t pid', 'int sig']
 	case 131: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -1950,6 +2083,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 132 long sys_sigaltstack ['const struct sigaltstack __user *uss', 'struct sigaltstack __user *uoss']
 	case 132: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1963,6 +2097,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 133 long sys_rt_sigsuspend ['sigset_t __user *unewset', 'size_t sigsetsize']
 	case 133: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1976,6 +2111,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 134 long sys_rt_sigaction ['int', 'const struct sigaction __user *', 'struct sigaction __user *', 'size_t']
 	case 134: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -1993,6 +2129,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 135 long sys_rt_sigprocmask ['int how', 'sigset_t __user *set', 'sigset_t __user *oset', 'size_t sigsetsize']
 	case 135: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2010,6 +2147,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 136 long sys_rt_sigpending ['sigset_t __user *set', 'size_t sigsetsize']
 	case 136: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2023,6 +2161,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 137 long sys_rt_sigtimedwait ['const sigset_t __user *uthese', 'siginfo_t __user *uinfo', 'const struct timespec __user *uts', 'size_t sigsetsize']
 	case 137: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2040,6 +2179,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 138 long sys_rt_sigqueueinfo ['pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 	case 138: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2055,6 +2195,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 139 long sys_rt_sigreturn ['struct pt_regs *regs']
 	case 139: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2066,6 +2207,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 140 long sys_setpriority ['int which', 'int who', 'int niceval']
 	case 140: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2081,6 +2223,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 141 long sys_getpriority ['int which', 'int who']
 	case 141: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2094,6 +2237,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 142 long sys_reboot ['int magic1', 'int magic2', 'unsigned int cmd', 'void __user *arg']
 	case 142: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2111,6 +2255,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 143 long sys_setregid ['gid_t rgid', 'gid_t egid']
 	case 143: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2124,6 +2269,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 144 long sys_setgid ['gid_t gid']
 	case 144: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2135,6 +2281,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 145 long sys_setreuid ['uid_t ruid', 'uid_t euid']
 	case 145: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2148,6 +2295,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 146 long sys_setuid ['uid_t uid']
 	case 146: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2159,6 +2307,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 147 long sys_setresuid ['uid_t ruid', 'uid_t euid', 'uid_t suid']
 	case 147: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2174,6 +2323,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 148 long sys_getresuid ['uid_t __user *ruid', 'uid_t __user *euid', 'uid_t __user *suid']
 	case 148: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2189,6 +2339,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 149 long sys_setresgid ['gid_t rgid', 'gid_t egid', 'gid_t sgid']
 	case 149: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2204,6 +2355,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 150 long sys_getresgid ['gid_t __user *rgid', 'gid_t __user *egid', 'gid_t __user *sgid']
 	case 150: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2219,6 +2371,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 151 long sys_setfsuid ['uid_t uid']
 	case 151: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2230,6 +2383,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 152 long sys_setfsgid ['gid_t gid']
 	case 152: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2241,6 +2395,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 153 long sys_times ['struct tms __user *tbuf']
 	case 153: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2252,6 +2407,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 154 long sys_setpgid ['pid_t pid', 'pid_t pgid']
 	case 154: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2265,6 +2421,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 155 long sys_getpgid ['pid_t pid']
 	case 155: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2276,6 +2433,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 156 long sys_getsid ['pid_t pid']
 	case 156: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2287,11 +2445,13 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 157 long sys_setsid ['void']
 	case 157: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_setsid_enter, cpu, pc);
 	}; break;
 	// 158 long sys_getgroups ['int gidsetsize', 'gid_t __user *grouplist']
 	case 158: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2305,6 +2465,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 159 long sys_setgroups ['int gidsetsize', 'gid_t __user *grouplist']
 	case 159: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2318,6 +2479,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 160 long sys_uname ['struct new_utsname __user *name']
 	case 160: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2329,6 +2491,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 161 long sys_sethostname ['char __user *name', 'int len']
 	case 161: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2342,6 +2505,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 162 long sys_setdomainname ['char __user *name', 'int len']
 	case 162: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2355,6 +2519,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 163 long sys_getrlimit ['unsigned int resource', 'struct rlimit __user *rlim']
 	case 163: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2368,6 +2533,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 164 long sys_setrlimit ['unsigned int resource', 'struct rlimit __user *rlim']
 	case 164: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2381,6 +2547,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 165 long sys_getrusage ['int who', 'struct rusage __user *ru']
 	case 165: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2394,6 +2561,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 166 long sys_umask ['int mask']
 	case 166: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2405,6 +2573,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 167 long sys_prctl ['int option', 'unsigned long arg2', 'unsigned long arg3', 'unsigned long arg4', 'unsigned long arg5']
 	case 167: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2424,6 +2593,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 168 long sys_getcpu ['unsigned __user *cpu', 'unsigned __user *node', 'struct getcpu_cache __user *cache']
 	case 168: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2439,6 +2609,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 169 long sys_gettimeofday ['struct timeval __user *tv', 'struct timezone __user *tz']
 	case 169: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2452,6 +2623,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 170 long sys_settimeofday ['struct timeval __user *tv', 'struct timezone __user *tz']
 	case 170: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2465,6 +2637,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 171 long sys_adjtimex ['struct timex __user *txc_p']
 	case 171: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2476,41 +2649,49 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 172 long sys_getpid ['void']
 	case 172: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_getpid_enter, cpu, pc);
 	}; break;
 	// 173 long sys_getppid ['void']
 	case 173: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_getppid_enter, cpu, pc);
 	}; break;
 	// 174 long sys_getuid ['void']
 	case 174: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_getuid_enter, cpu, pc);
 	}; break;
 	// 175 long sys_geteuid ['void']
 	case 175: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_geteuid_enter, cpu, pc);
 	}; break;
 	// 176 long sys_getgid ['void']
 	case 176: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_getgid_enter, cpu, pc);
 	}; break;
 	// 177 long sys_getegid ['void']
 	case 177: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_getegid_enter, cpu, pc);
 	}; break;
 	// 178 long sys_gettid ['void']
 	case 178: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_gettid_enter, cpu, pc);
 	}; break;
 	// 179 long sys_sysinfo ['struct sysinfo __user *info']
 	case 179: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2522,6 +2703,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 180 long sys_mq_open ['const char __user *name', 'int oflag', 'umode_t mode', 'struct mq_attr __user *attr']
 	case 180: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2539,6 +2721,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 181 long sys_mq_unlink ['const char __user *name']
 	case 181: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2550,6 +2733,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 182 long sys_mq_timedsend ['mqd_t mqdes', 'const char __user *msg_ptr', 'size_t msg_len', 'unsigned int msg_prio', 'const struct timespec __user *abs_timeout']
 	case 182: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2569,6 +2753,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 183 long sys_mq_timedreceive ['mqd_t mqdes', 'char __user *msg_ptr', 'size_t msg_len', 'unsigned int __user *msg_prio', 'const struct timespec __user *abs_timeout']
 	case 183: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2588,6 +2773,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 184 long sys_mq_notify ['mqd_t mqdes', 'const struct sigevent __user *notification']
 	case 184: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2601,6 +2787,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 185 long sys_mq_getsetattr ['mqd_t mqdes', 'const struct mq_attr __user *mqstat', 'struct mq_attr __user *omqstat']
 	case 185: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2616,6 +2803,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 186 long sys_msgget ['key_t key', 'int msgflg']
 	case 186: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2629,6 +2817,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 187 long sys_msgctl ['int msqid', 'int cmd', 'struct msqid_ds __user *buf']
 	case 187: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2644,6 +2833,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 188 long sys_msgrcv ['int msqid', 'struct msgbuf __user *msgp', 'size_t msgsz', 'long msgtyp', 'int msgflg']
 	case 188: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2663,6 +2853,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 189 long sys_msgsnd ['int msqid', 'struct msgbuf __user *msgp', 'size_t msgsz', 'int msgflg']
 	case 189: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2680,6 +2871,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 190 long sys_semget ['key_t key', 'int nsems', 'int semflg']
 	case 190: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2695,6 +2887,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 191 long sys_semctl ['int semid', 'int semnum', 'int cmd', 'unsigned long arg']
 	case 191: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2712,6 +2905,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 192 long sys_semtimedop ['int semid', 'struct sembuf __user *sops', 'unsigned nsops', 'const struct timespec __user *timeout']
 	case 192: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2729,6 +2923,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 193 long sys_semop ['int semid', 'struct sembuf __user *sops', 'unsigned nsops']
 	case 193: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2744,6 +2939,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 194 long sys_shmget ['key_t key', 'size_t size', 'int flag']
 	case 194: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2759,6 +2955,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 195 long sys_shmctl ['int shmid', 'int cmd', 'struct shmid_ds __user *buf']
 	case 195: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2774,6 +2971,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 196 long sys_shmat ['int shmid', 'char __user *shmaddr', 'int shmflg']
 	case 196: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2789,6 +2987,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 197 long sys_shmdt ['char __user *shmaddr']
 	case 197: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2800,6 +2999,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 198 long sys_socket ['int', 'int', 'int']
 	case 198: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2815,6 +3015,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 199 long sys_socketpair ['int', 'int', 'int', 'int __user *']
 	case 199: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2832,6 +3033,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 200 long sys_bind ['int', 'struct sockaddr __user *', 'int']
 	case 200: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2847,6 +3049,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 201 long sys_listen ['int', 'int']
 	case 201: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2860,6 +3063,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 202 long sys_accept ['int', 'struct sockaddr __user *', 'int __user *']
 	case 202: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2875,6 +3079,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 203 long sys_connect ['int', 'struct sockaddr __user *', 'int']
 	case 203: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2890,6 +3095,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 204 long sys_getsockname ['int', 'struct sockaddr __user *', 'int __user *']
 	case 204: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2905,6 +3111,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 205 long sys_getpeername ['int', 'struct sockaddr __user *', 'int __user *']
 	case 205: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -2920,6 +3127,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 206 long sys_sendto ['int', 'void __user *', 'size_t', 'unsigned', 'struct sockaddr __user *', 'int']
 	case 206: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2941,6 +3149,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 207 long sys_recvfrom ['int', 'void __user *', 'size_t', 'unsigned', 'struct sockaddr __user *', 'int __user *']
 	case 207: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2962,6 +3171,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 208 long sys_setsockopt ['int fd', 'int level', 'int optname', 'char __user *optval', 'int optlen']
 	case 208: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -2981,6 +3191,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 209 long sys_getsockopt ['int fd', 'int level', 'int optname', 'char __user *optval', 'int __user *optlen']
 	case 209: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3000,6 +3211,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 210 long sys_shutdown ['int', 'int']
 	case 210: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3013,6 +3225,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 211 long sys_sendmsg ['int fd', 'struct user_msghdr __user *msg', 'unsigned flags']
 	case 211: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3028,6 +3241,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 212 long sys_recvmsg ['int fd', 'struct user_msghdr __user *msg', 'unsigned flags']
 	case 212: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3043,6 +3257,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 213 long sys_readahead ['int fd', 'loff_t offset', 'size_t count']
 	case 213: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3058,6 +3273,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 214 long sys_brk ['unsigned long brk']
 	case 214: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3069,6 +3285,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 215 long sys_munmap ['unsigned long addr', 'size_t len']
 	case 215: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3082,6 +3299,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 216 long sys_mremap ['unsigned long addr', 'unsigned long old_len', 'unsigned long new_len', 'unsigned long flags', 'unsigned long new_addr']
 	case 216: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3101,6 +3319,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 217 long sys_add_key ['const char __user *_type', 'const char __user *_description', 'const void __user *_payload', 'size_t plen', 'key_serial_t destringid']
 	case 217: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3120,6 +3339,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 218 long sys_request_key ['const char __user *_type', 'const char __user *_description', 'const char __user *_callout_info', 'key_serial_t destringid']
 	case 218: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3137,6 +3357,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 219 long sys_keyctl ['int cmd', 'unsigned long arg2', 'unsigned long arg3', 'unsigned long arg4', 'unsigned long arg5']
 	case 219: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3156,6 +3377,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 220 long sys_clone ['unsigned long', 'unsigned long', 'int __user *', 'int __user *', 'unsigned long']
 	case 220: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3175,6 +3397,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 221 long sys_execve ['const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp']
 	case 221: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3190,6 +3413,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 222 long sys_mmap ['void *addr', 'size_t length', 'int prot', 'int flags', 'int fd', 'off_t offset']
 	case 222: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3211,6 +3435,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 223 long sys_fadvise64 ['int fd', 'loff_t offset', 'size_t len', 'int advice']
 	case 223: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3228,6 +3453,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 224 long sys_swapon ['const char __user *specialfile', 'int swap_flags']
 	case 224: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3241,6 +3467,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 225 long sys_swapoff ['const char __user *specialfile']
 	case 225: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3252,6 +3479,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 226 long sys_mprotect ['unsigned long start', 'size_t len', 'unsigned long prot']
 	case 226: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3267,6 +3495,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 227 long sys_msync ['unsigned long start', 'size_t len', 'int flags']
 	case 227: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3282,6 +3511,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 228 long sys_mlock ['unsigned long start', 'size_t len']
 	case 228: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3295,6 +3525,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 229 long sys_munlock ['unsigned long start', 'size_t len']
 	case 229: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3308,6 +3539,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 230 long sys_mlockall ['int flags']
 	case 230: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3319,11 +3551,13 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 231 long sys_munlockall ['void']
 	case 231: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_sys_munlockall_enter, cpu, pc);
 	}; break;
 	// 232 long sys_mincore ['unsigned long start', 'size_t len', 'unsigned char __user *vec']
 	case 232: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3339,6 +3573,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 233 long sys_madvise ['unsigned long start', 'size_t len', 'int behavior']
 	case 233: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3354,6 +3589,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 234 long sys_remap_file_pages ['unsigned long start', 'unsigned long size', 'unsigned long prot', 'unsigned long pgoff', 'unsigned long flags']
 	case 234: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3373,6 +3609,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 235 long sys_mbind ['unsigned long start', 'unsigned long len', 'unsigned long mode', 'const unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned flags']
 	case 235: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3394,6 +3631,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 236 long sys_get_mempolicy ['int __user *policy', 'unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned long addr', 'unsigned long flags']
 	case 236: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3413,6 +3651,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 237 long sys_set_mempolicy ['int mode', 'const unsigned long __user *nmask', 'unsigned long maxnode']
 	case 237: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3428,6 +3667,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 238 long sys_migrate_pages ['pid_t pid', 'unsigned long maxnode', 'const unsigned long __user *from', 'const unsigned long __user *to']
 	case 238: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3445,6 +3685,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 239 long sys_move_pages ['pid_t pid', 'unsigned long nr_pages', 'const void __user * __user *pages', 'const int __user *nodes', 'int __user *status', 'int flags']
 	case 239: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3466,6 +3707,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 240 long sys_rt_tgsigqueueinfo ['pid_t tgid', 'pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 	case 240: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3483,6 +3725,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 241 long sys_perf_event_open ['struct perf_event_attr __user *attr_uptr', 'pid_t pid', 'int cpu', 'int group_fd', 'unsigned long flags']
 	case 241: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3502,6 +3745,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 242 long sys_accept4 ['int', 'struct sockaddr *', 'int *', 'int']
 	case 242: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3519,6 +3763,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 243 long sys_recvmmsg ['int fd', 'struct mmsghdr __user *msg', 'unsigned int vlen', 'unsigned flags', 'struct timespec __user *timeout']
 	case 243: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3538,6 +3783,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 260 long sys_wait4 ['pid_t pid', 'int *stat_addr', 'int options', 'struct rusage *ru']
 	case 260: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3555,6 +3801,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 261 long sys_prlimit64 ['pid_t pid', 'unsigned int resource', 'const struct rlimit64 *new_rlim', 'struct rlimit64 *old_rlim']
 	case 261: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3572,6 +3819,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 262 long sys_fanotify_init ['unsigned int flags', 'unsigned int event_f_flags']
 	case 262: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3585,6 +3833,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 263 long sys_fanotify_mark ['int fanotify_fd', 'unsigned int flags', 'u64 mask', 'int fd', 'const char __user *pathname']
 	case 263: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3604,6 +3853,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 264 long sys_name_to_handle_at ['int dfd', 'const char __user *name', 'struct file_handle __user *handle', 'int __user *mnt_id', 'int flag']
 	case 264: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3623,6 +3873,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 265 long sys_open_by_handle_at ['int mountdirfd', 'struct file_handle __user *handle', 'int flags']
 	case 265: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3638,6 +3889,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 266 long sys_clock_adjtime ['clockid_t which_clock', 'struct timex __user *tx']
 	case 266: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3651,6 +3903,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 267 long sys_syncfs ['int fd']
 	case 267: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3662,6 +3915,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 268 long sys_setns ['int fd', 'int nstype']
 	case 268: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3675,6 +3929,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 269 long sys_sendmmsg ['int fd', 'struct mmsghdr __user *msg', 'unsigned int vlen', 'unsigned flags']
 	case 269: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3692,6 +3947,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 270 long sys_process_vm_readv ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 	case 270: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3713,6 +3969,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 271 long sys_process_vm_writev ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 	case 271: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3734,6 +3991,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 272 long sys_kcmp ['pid_t pid1', 'pid_t pid2', 'int type', 'unsigned long idx1', 'unsigned long idx2']
 	case 272: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3753,6 +4011,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 273 long sys_finit_module ['int fd', 'const char __user *uargs', 'int flags']
 	case 273: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3768,6 +4027,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 274 long sys_sched_setattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int flags']
 	case 274: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3783,6 +4043,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 275 long sys_sched_getattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int size', 'unsigned int flags']
 	case 275: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3800,6 +4061,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 276 long sys_renameat2 ['int olddfd', 'const char *oldname', 'int newdfd', 'const char *newname', 'unsigned int flags']
 	case 276: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3819,6 +4081,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 277 long sys_seccomp ['unsigned int op', 'unsigned int flags', 'const char __user *uargs']
 	case 277: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3834,6 +4097,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 278 long sys_getrandom ['char __user *buf', 'size_t count', 'unsigned int flags']
 	case 278: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3849,6 +4113,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 279 long sys_memfd_create ['const char __user *uname_ptr', 'unsigned int flags']
 	case 279: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3862,6 +4127,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 280 long sys_bpf ['int cmd', 'union bpf_attr *attr', 'unsigned int size']
 	case 280: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3877,6 +4143,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 281 long sys_execveat ['int dfd', 'const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp', 'int flags']
 	case 281: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3896,6 +4163,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 282 long sys_userfaultfd ['int flags']
 	case 282: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3907,6 +4175,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 283 long sys_membarrier ['int cmd', 'int flags']
 	case 283: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3920,6 +4189,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 284 long sys_mlock2 ['unsigned long start', 'size_t len', 'int flags']
 	case 284: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3935,6 +4205,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 285 long sys_copy_file_range ['int fd_in', 'loff_t __user *off_in', 'int fd_out', 'loff_t __user *off_out', 'size_t len', 'unsigned int flags']
 	case 285: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
@@ -3956,6 +4227,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 286 long sys_preadv2 ['unsigned long fd', 'const struct iovec *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h', 'rwf_t flags']
 	case 286: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3977,6 +4249,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 287 long sys_pwritev2 ['unsigned long fd', 'const struct iovec *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h', 'rwf_t flags']
 	case 287: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -3998,6 +4271,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 288 long sys_pkey_mprotect ['unsigned long start', 'size_t len', 'unsigned long prot', 'int pkey']
 	case 288: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -4015,6 +4289,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 289 long sys_pkey_alloc ['unsigned long flags', 'unsigned long init_val']
 	case 289: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4028,6 +4303,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 290 long sys_pkey_free ['int pkey']
 	case 290: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4039,6 +4315,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 291 long sys_statx ['int dfd', 'const char *path', 'unsigned flags', 'unsigned mask', 'struct statx *buffer']
 	case 291: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4058,6 +4335,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 294 long sys_kexec_file_load ['int kernel_fd', 'int initrd_fd', 'unsigned long cmdline_len', 'const char *cmdline', 'unsigned long flags']
 	case 294: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -4077,6 +4355,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 424 long sys_pidfd_send_signal ['int pidfd', 'int sig', 'siginfo_t *info', 'unsigned int flags']
 	case 424: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -4094,6 +4373,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 434 long sys_pidfd_open ['pid_t pid', 'unsigned int flags']
 	case 434: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4107,6 +4387,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 435 long sys_clone3 ['struct clone_args *cl_args', 'size_t size']
 	case 435: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint64_t arg0 = get_64(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4120,6 +4401,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 437 long sys_openat2 ['int dirfd', 'const char *pathname', 'struct open_how *how', 'size_t size']
 	case 437: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		uint64_t arg2 = get_64(cpu, 2);
@@ -4137,6 +4419,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 438 long sys_pidfd_getfd ['int pidfd', 'int targetfd', 'unsigned int flags']
 	case 438: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4152,6 +4435,7 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 	// 439 long sys_faccessat2 ['int dirfd', 'const char *pathname', 'int mode', 'int flags']
 	case 439: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		int32_t arg0 = get_s32(cpu, 0);
 		uint64_t arg1 = get_64(cpu, 1);
 		int32_t arg2 = get_s32(cpu, 2);
