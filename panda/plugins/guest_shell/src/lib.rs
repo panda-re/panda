@@ -26,7 +26,7 @@ fn get_split_socket(path: &str) -> io::Result<(UnixStream, UnixStream)> {
 }
 
 #[panda::init]
-fn init(_: &mut PluginHandle) {
+fn init(_: &mut PluginHandle) -> bool {
     let args = Args::from_panda_args();
     let mut guest_channel = load_guest_plugin("guest_shell", message_recv);
 
@@ -37,4 +37,6 @@ fn init(_: &mut PluginHandle) {
         // Copy stdin from unix socket to guest
         io::copy(&mut stdin, &mut guest_channel).unwrap();
     });
+
+    true
 }

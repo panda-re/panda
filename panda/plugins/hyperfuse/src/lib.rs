@@ -1,15 +1,15 @@
+use cached::{stores::TimedCache, Cached};
 use fuser::{
     Filesystem, MountOption, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, ReplyOpen,
     ReplyWrite,
 };
 use libc::ENOENT;
 use panda::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::ffi::{CString, OsStr, OsString};
+use std::ffi::{OsStr, OsString};
 use std::marker::PhantomData;
-use std::path::Path;
 
 mod types;
 use types::*;
@@ -18,7 +18,8 @@ struct HyperFilesystem {
     reply: Receiver<Reply>,
     request: Sender<types::Request>,
 
-    lookup_cache: HashMap<(u64, OsString), LookupCacheEntry>,
+    link_target_cache: TimedCache<u64, Vec<u8>>,
+    lookup_cache: TimedCache<(u64, OsString), LookupCacheEntry>,
 }
 
 macro_rules! on_reply {
@@ -26,18 +27,27 @@ macro_rules! on_reply {
         $self:ident => $reply:ident (
             $type:ident { $($field:ident),* }
 
-            => $reply_ty:ident { $(
+            => $reply_ty:ident $({ $(
                     $reply_field:ident
-                ),*}
+                ),*})?
+
+                // tuple type
+                $(( $(
+                    $reply_field_tuple:ident
+                ),*))?
 
             => $code:block
         ) $(;)?
     ) => {
-        println!("Before send");
         $self.request.send(Request::$type { $( $field ),* }).unwrap();
-        println!("After send");
+
         match $self.reply.recv() {
-            Ok(Reply::$reply_ty { $( $reply_field ),* }) => $code,
+            Ok(Reply::$reply_ty
+               // struct variant
+               $({ $( $reply_field ),* })?
+               // tuple variant
+               $(( $( $reply_field_tuple ),* ))?
+            ) => $code,
             Ok(Reply::Error(err)) => $reply.error(err),
             Ok(reply) => panic!("Invalid reply {:?}", reply),
             Err(_) => $reply.error(ENOENT),
@@ -50,9 +60,15 @@ macro_rules! send_reply {
         $self:ident => $reply:ident.$method:ident (
             $type:ident { $($field:ident),* }
 
-            => $reply_ty:ident { $(
+            => $reply_ty:ident
+                // struct type
+                $({$(
                     $reply_field:ident $( . $reply_field_method:ident () )?
-                ),*}
+                ),*})?
+                // tuple type
+                $(($(
+                    $reply_field_tup:ident $( . $reply_field_method_tup:ident () )?
+                ),*))?
         ) $(;)?
     ) => {
         println!("{}(...)", stringify!($method));
@@ -60,15 +76,30 @@ macro_rules! send_reply {
             $self => $reply (
                 $type { $($field),* }
 
-                => $reply_ty { $(
+                => $reply_ty
+                    // struct type
+                    $({ $(
                         $reply_field
-                    ),*}
+                    ),*})?
+                    // tuple type
+                    $(( $(
+                        $reply_field_tup
+                    ),*))?
 
                 => {
+                    // struct type
                     $(
-                        let $reply_field = $reply_field $( .$reply_field_method () )?;
-                    )*
-                    $reply.$method( $($reply_field),* );
+                        $(
+                            let $reply_field = $reply_field $( .$reply_field_method () )?;
+                        )*
+                        $reply.$method( $($reply_field),* );
+                    )?
+                    $(
+                        $(
+                            let $reply_field_tup = $reply_field_tup $( .$reply_field_method_tup () )?;
+                        )*
+                        $reply.$method( $($reply_field_tup),* );
+                    )?
                 }
             )
         }
@@ -81,9 +112,11 @@ impl Filesystem for HyperFilesystem {
             ttl,
             attr,
             generation,
-        }) = self.lookup_cache.remove(&(parent_ino, name.to_os_string()))
+        }) = self
+            .lookup_cache
+            .cache_get(&(parent_ino, name.to_os_string()))
         {
-            reply.entry(&ttl, &attr, generation);
+            reply.entry(ttl, attr, *generation);
             return;
         }
 
@@ -116,7 +149,20 @@ impl Filesystem for HyperFilesystem {
     ) {
         send_reply! {
             self => reply.data(
-                Read { ino, offset, size, flags } => Data { data.as_ref() }
+                Read { ino, offset, size, flags } => Data(data.as_ref())
+            );
+        }
+    }
+
+    fn readlink(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: ReplyData) {
+        if let Some(data) = self.link_target_cache.cache_get(&ino) {
+            reply.data(&data);
+            return;
+        }
+
+        send_reply! {
+            self => reply.data(
+                ReadLink { ino } => Data(data.as_ref())
             );
         }
     }
@@ -135,10 +181,12 @@ impl Filesystem for HyperFilesystem {
                 ReadDir { ino, offset }
                     => Directory { dir_entries }
                     => {
-                        println!("Got to dir entry");
-                        for DirEntry { ino, offset, kind, name, lookup_cache } in dir_entries {
-                            println!("{:?}", name);
-                            self.lookup_cache.insert((parent_ino, name.clone().into()), lookup_cache);
+                        for DirEntry { ino, offset, kind, name, link_target, lookup_cache } in dir_entries {
+                            if let Some(LinkTarget { path, parent_ino, target_name, target_lookup }) = link_target {
+                                self.link_target_cache.cache_set(ino, path);
+                                self.lookup_cache.cache_set((parent_ino, target_name.into()), target_lookup);
+                            }
+                            self.lookup_cache.cache_set((parent_ino, name.clone().into()), lookup_cache);
                             if reply.add(ino, offset, kind, name) {
                                 break
                             }
@@ -180,30 +228,23 @@ impl Filesystem for HyperFilesystem {
     }
 }
 
-struct Sender<T: Serialize>(ChannelId, PhantomData<T>);
+struct Sender<T: Serialize>(Channel, PhantomData<T>);
 
 impl<T: Serialize> Sender<T> {
-    fn send(&self, val: T) -> Result<(), ()> {
-        let bytes = bincode::serialize(&val).unwrap();
-
-        let len = (bytes.len() as u32).to_le_bytes();
-        GUEST_PLUGIN_MANAGER.channel_write(self.0, len.as_ptr(), 4);
-        GUEST_PLUGIN_MANAGER.channel_write(self.0, bytes.as_ptr(), bytes.len());
-
-        Ok(())
+    fn send(&mut self, val: T) -> Result<(), ()> {
+        bincode::serialize_into(&mut self.0, &val).map_err(|_| ())
     }
 }
 
-struct Receiver<T: Deserialize<'static>>(ChannelId, PhantomData<T>);
+struct Receiver<T: DeserializeOwned>(PhantomData<T>);
 
-impl Receiver<Reply> {
+impl<T: DeserializeOwned> Receiver<T> {
     fn recv(&self) -> Result<Reply, ()> {
         loop {
             match MESSAGE_QUEUE.pop() {
                 Some(bytes) => break bincode::deserialize(&bytes).map_err(|_| ()),
                 None => {
                     println!("Nothing recieved, sleeping...");
-                    //std::thread::yield_now();
                     std::thread::sleep(std::time::Duration::from_millis(500));
                 }
             }
@@ -211,26 +252,32 @@ impl Receiver<Reply> {
     }
 }
 
-//fn channel<T: Serialize + Deserialize<'static>>(channel: ChannelId) -> (Sender<T>, Receiver<T>) {
-//    (Sender(channel, PhantomData), Receiver(channel, PhantomData))
-//}
+fn split_channel<InType, OutType>(channel: Channel) -> (Sender<OutType>, Receiver<InType>)
+where
+    InType: DeserializeOwned,
+    OutType: Serialize,
+{
+    (Sender(channel, PhantomData), Receiver(PhantomData))
+}
 
-fn mount(channel: ChannelId) {
-    let mountpoint = "/home/jmcleod/dev/panda/build/fuse_mount";
+fn mount(channel: Channel) {
+    // TODO: make this programatically configurable
+    let mountpoint = std::env::var("HYPERFUSE_MOUNT")
+        .expect("HYPERFUSE_MOUNT is not set but is required by 'hyperfuse' plugin");
+
     let options = vec![
         MountOption::FSName("hello".to_string()),
         MountOption::AutoUnmount,
     ];
 
-    let (request, reply) = (Sender(channel, PhantomData), Receiver(channel, PhantomData));
-
-    //other_thread::start(incoming_request, response);
+    let (request, reply) = split_channel(channel);
 
     fuser::mount2(
         HyperFilesystem {
             request,
             reply,
-            lookup_cache: Default::default(),
+            link_target_cache: TimedCache::with_lifespan(1),
+            lookup_cache: TimedCache::with_lifespan(1),
         },
         mountpoint,
         &options,
@@ -244,30 +291,18 @@ use panda::plugins::guest_plugin_manager::*; //GUEST_PLUGIN_MANAGER;
 
 static MESSAGE_QUEUE: SegQueue<Vec<u8>> = SegQueue::new();
 
-extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
-    unsafe {
-        println!("message_recv in hyperfuse");
-        let bytes = std::slice::from_raw_parts(ptr, len);
-        MESSAGE_QUEUE.push(bytes.to_owned());
-    }
+#[channel_recv]
+fn message_recv(_: u32, bytes: Vec<u8>) {
+    MESSAGE_QUEUE.push(bytes.to_owned());
 }
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     pretty_env_logger::init_custom_env("HYPERFUSE_LOG");
 
-    println!("after load_plugin in hyperfuse");
+    let channel = load_guest_plugin("hyperfuse_guest", message_recv);
 
-    GUEST_PLUGIN_MANAGER.ensure_init();
-    let hyperfuse_guest = GuestPlugin::new("hyperfuse_guest".into(), message_recv);
-    let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(hyperfuse_guest);
-    println!("hyperfuse established channel with id {}", channel);
-
-    std::thread::spawn(move || {
-        println!("new hyperfuse thread");
-        mount(channel);
-    });
-    println!("returning after new thread hyperfuse");
+    std::thread::spawn(move || mount(channel));
 
     true
 }

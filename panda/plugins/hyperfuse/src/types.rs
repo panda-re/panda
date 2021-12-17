@@ -19,6 +19,9 @@ pub enum Request {
         size: u32,
         flags: i32,
     },
+    ReadLink {
+        ino: u64,
+    },
     ReadDir {
         ino: u64,
         offset: i64,
@@ -54,9 +57,7 @@ pub enum Reply {
         ttl: Duration,
         attr: FileAttr,
     },
-    Data {
-        data: Vec<u8>,
-    },
+    Data(Vec<u8>),
     Directory {
         dir_entries: Vec<DirEntry>,
     },
@@ -78,11 +79,20 @@ pub enum Reply {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct LinkTarget {
+    pub path: Vec<u8>,
+    pub parent_ino: u64,
+    pub target_name: String,
+    pub target_lookup: LookupCacheEntry,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DirEntry {
     pub ino: u64,
     pub offset: i64,
     pub kind: FileType,
     pub name: String,
+    pub link_target: Option<LinkTarget>,
     pub lookup_cache: LookupCacheEntry,
 }
 
