@@ -144,11 +144,11 @@ int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *
 }
 
 int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len){
-	return panda_physical_memory_rw(addr, buf, len, 0);
+	return panda_physical_memory_read(addr, buf, len);
 }
 
 int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len){
-	return panda_physical_memory_rw(addr,buf,len, 1);
+	return panda_physical_memory_write(addr,buf,len);
 }
 
 bool panda_in_kernel_external(const CPUState *cpu){
