@@ -24,14 +24,6 @@ public:
   }
 
   pm_addr_t get_max_address() { return m_max_address; }
-
-  uint8_t get_byte(pm_addr_t addr) {
-    uint8_t retval = 0;
-    if (addr < m_max_address) {
-      panda_physical_memory_rw(addr, &retval, 1, 0);
-    }
-    return retval;
-  }
 };
 
 pm_addr_t get_panda_physical_memory_upper_bound(struct PhysicalMemory *pmem) {
@@ -44,14 +36,10 @@ bool read_panda_physical_memory(struct PhysicalMemory *pmem, pm_addr_t addr,
   auto papm = (PandaPhysicalMemory *)pmem->opaque;
   auto max_addr = papm->get_max_address();
 
-  for (size_t ix = 0; ix < size; ++ix) {
-    auto current_addr = addr + ix;
-    if ((uintptr_t)current_addr > max_addr) {
-      return false;
-    }
-    buffer[ix] = papm->get_byte(current_addr);
+  if ((addr + size) > max_addr) {
+    return false;
   }
-  return true;
+  return 0 == panda_physical_memory_rw(addr, buffer, size, 0);
 }
 
 void free_panda_physical_memory(struct PhysicalMemory *pmem) {
