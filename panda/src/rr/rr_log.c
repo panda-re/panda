@@ -59,10 +59,7 @@
 #include "sysemu/cpus.h"
 
 #ifdef TARGET_MIPS
-extern void mips_timer_cb(void* opaque);
 extern void cpu_mips_timer_update_internal(CPUMIPSState *env, uint64_t now);
-extern void gt64120_pci_set_irq_internal(void *opaque, int irq_num, int level);
-extern PCIBus *pci_bus;
 #include "hw/irq.h"
 #endif
 
@@ -377,9 +374,6 @@ static inline void rr_write_item(RR_log_entry item)
                 case RR_STORE_CPU_INTERRUPT_HARD:
                     RR_WRITE_ITEM(args->variant.store_cpu_interrupt_hard_args);
                     break;
-                case RR_PCI_IRQ:
-                    RR_WRITE_ITEM(args->variant.pci_irq_args);
-                    break;
                 default:
                     // mz unimplemented
                     rr_assert(0 && "Unimplemented skipped call!");
@@ -561,16 +555,6 @@ void rr_store_cpu_interrupt_hard(void){
         .kind = RR_STORE_CPU_INTERRUPT_HARD,
         .variant.store_cpu_interrupt_hard_args= {
             .require = '0',
-        }
-    });
-}
-
-void rr_pci_irq_record(int irq_num, int level){
-    rr_record_skipped_call((RR_skipped_call_args) {
-        .kind = RR_PCI_IRQ,
-        .variant.pci_irq_args= {
-            .irq_num = irq_num,
-            .level = level
         }
     });
 }
@@ -930,9 +914,6 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_STORE_CPU_INTERRUPT_HARD:
                     RR_READ_ITEM(args->variant.store_cpu_interrupt_hard_args);
                     break;
-                case RR_PCI_IRQ:
-                    RR_READ_ITEM(args->variant.pci_irq_args);
-                    break;
                 default:
                     // mz unimplemented
                     rr_assert(0 && "Unimplemented skipped call!");
@@ -1277,15 +1258,6 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     in_timer_expire = true;
                     qemu_irq_raise(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
                     in_timer_expire = false;
-                    // mips_timer_cb(cpus.tqh_first->env_ptr);
-                    #endif
-                } break;
-            case RR_PCI_IRQ:
-                {
-                    #ifdef TARGET_MIPS
-                    RR_pci_irq_args write = args.variant.pci_irq_args;
-                    printf("replaying pci irq\n");
-                    gt64120_pci_set_irq_internal(pci_bus, write.irq_num, write.level);
                     #endif
                 } break;
                 default:

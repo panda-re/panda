@@ -32,9 +32,7 @@
 extern bool in_timer_expire;
 #endif
 
-static void cpu_mips_irq_request_internal(void *opaque, int irq, int level);
-
-static void cpu_mips_irq_request_internal(void *opaque, int irq, int level)
+static void cpu_mips_irq_request(void *opaque, int irq, int level)
 {
     MIPSCPU *cpu = opaque;
     CPUMIPSState *env = &cpu->env;
@@ -83,20 +81,6 @@ static void cpu_mips_irq_request_internal(void *opaque, int irq, int level)
     } else {
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
     }
-}
-
-static void cpu_mips_irq_request(void *opaque, int irq, int level){
-    //MIPSCPU *cpu = opaque;
-    //CPUMIPSState *env = &cpu->env;
-//    RR_DO_RECORD_OR_REPLAY(
-    /*action=*/ cpu_mips_irq_request_internal(opaque,irq,level);
- //   /*record=*/rr_input_4((uint32_t*)&env->CP0_Cause),
- //   /*replay=*/rr_input_4((uint32_t*)&env->CP0_Cause),
- //   /*location=*/RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE);
-    //if (rr_in_record())
-    //    rr_mips_cause_record(env->CP0_Cause);
-    
-
 }
 
 void cpu_mips_irq_init_cpu(MIPSCPU *cpu)
