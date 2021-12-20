@@ -52,9 +52,9 @@ void helper_raise_exception_debug(CPUMIPSState *env)
 
 static void raise_exception(CPUMIPSState *env, uint32_t exception)
 {
-    if (!rr_in_replay()){
+    // if (!rr_in_replay()){
         do_raise_exception(env, exception, 0);
-    }
+    // }
 }
 
 #if defined(CONFIG_USER_ONLY)
@@ -751,18 +751,18 @@ target_ulong helper_mfc0_mvpconf1(CPUMIPSState *env)
 
 target_ulong helper_mfc0_random(CPUMIPSState *env)
 {   
-    target_ulong number;
+    uint64_t number;
 
-//#ifdef CONFIG_SOFTMMU
-//    RR_DO_RECORD_OR_REPLAY(
-//        /*action=*/number = cpu_mips_get_count(env),
-//        /*record=*/rr_input_4(&number),
-//        /*replay=*/rr_input_4(&number),
-//        /*location=*/RR_CALLSITE_READ_4);
-//#else
+#ifdef CONFIG_SOFTMMU
+   RR_DO_RECORD_OR_REPLAY(
+       /*action=*/number = (int32_t) cpu_mips_get_count(env),
+       /*record=*/rr_input_8(&number),
+       /*replay=*/rr_input_8(&number),
+       /*location=*/RR_CALLSITE_CP0_RANDOM);
+#else
         number = (int32_t) cpu_mips_get_count(env);
-//#endif
-    return number;
+#endif
+    return (target_ulong)number;
 }
 
 target_ulong helper_mfc0_tcstatus(CPUMIPSState *env)
@@ -1058,8 +1058,16 @@ target_ulong helper_mftc0_tcschefback(CPUMIPSState *env)
 
 target_ulong helper_mfc0_count(CPUMIPSState *env)
 {
-    target_ulong count;
+    uint64_t count;
+// #ifdef CONFIG_SOFTMMU
+//     RR_DO_RECORD_OR_REPLAY(
+//         /*action=*/count = cpu_mips_get_count(env),
+//         /*record=*/rr_input_8(&count),
+//         /*replay=*/rr_input_8(&count),
+//         /*location=*/RR_CALLSITE_CP0_COUNT);
+// #else
     count = cpu_mips_get_count(env);
+// #endif
     return (target_ulong) count;
 }
 
@@ -1827,9 +1835,7 @@ void helper_mttc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mtc0_compare(CPUMIPSState *env, target_ulong arg1)
 {
-    //qemu_mutex_lock_iothread();
     cpu_mips_store_compare(env, arg1);
-    //qemu_mutex_unlock_iothread();
 }
 
 void helper_mtc0_status(CPUMIPSState *env, target_ulong arg1)
@@ -2820,8 +2826,8 @@ void helper_wait(CPUMIPSState *env)
     CPUState *cs = CPU(mips_env_get_cpu(env));
 
     cs->halted = 1;
-    if (!rr_in_replay())
-        cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
+    // if (!rr_in_replay())
+    cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
     /* Last instruction in the block, PC was updated before
        - no need to recover PC and icount */
     raise_exception(env, EXCP_HLT);

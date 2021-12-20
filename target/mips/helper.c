@@ -903,9 +903,9 @@ bool mips_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     MIPSCPU *cpu = MIPS_CPU(cs);
     CPUMIPSState *env = &cpu->env;
     #ifdef CONFIG_SOFTMMU
-    rr_pending_interrupts_at(
-            RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE,
-            (uint32_t*)&env->CP0_Cause);
+    // rr_pending_interrupts_at(
+    //         RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE,
+    //         (uint32_t*)&env->CP0_Cause);
     #endif
     if (interrupt_request & CPU_INTERRUPT_HARD) {
         if (cpu_mips_hw_interrupts_enabled(env) &&
@@ -915,9 +915,9 @@ bool mips_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
             env->error_code = 0;
             mips_cpu_do_interrupt(cs);
             #ifdef CONFIG_SOFTMMU
-            rr_pending_interrupts_at(
-                RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER,
-                (uint32_t*)&env->CP0_Cause);
+            // rr_pending_interrupts_at(
+            //     RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER,
+            //     (uint32_t*)&env->CP0_Cause);
             #endif
             return true;
         }

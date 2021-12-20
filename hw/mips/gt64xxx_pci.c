@@ -30,6 +30,10 @@
 #include "hw/i386/pc.h"
 #include "exec/address-spaces.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 //#define DEBUG
 
 #ifdef DEBUG
@@ -746,6 +750,9 @@ static uint64_t gt64120_readl (void *opaque,
         break;
     case GT_PCI0_IACK:
         /* Read the IRQ number */
+        if (rr_in_record()){
+            // rr_pci_pic_record();
+        }
         val = pic_read_irq(isa_pic);
         break;
 
@@ -968,8 +975,17 @@ static int gt64120_pci_map_irq(PCIDevice *pci_dev, int irq_num)
 }
 
 static int pci_irq_levels[4];
+void gt64120_pci_set_irq_internal(void *opaque, int irq_num, int level);
 
 static void gt64120_pci_set_irq(void *opaque, int irq_num, int level)
+{
+    // if (rr_in_record()){
+    //     rr_pci_irq_record(irq_num, level);
+    // }
+    gt64120_pci_set_irq_internal(opaque, irq_num, level);
+}
+
+void gt64120_pci_set_irq_internal(void *opaque, int irq_num, int level)
 {
     int i, pic_irq, pic_level;
     qemu_irq *pic = opaque;

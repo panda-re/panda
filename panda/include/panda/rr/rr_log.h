@@ -70,7 +70,10 @@ void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
 void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
                                  const char *name, RR_mem_type mtype, bool added);
 void rr_mem_region_transaction_record(bool begin);
-void rr_mips_cause_record(target_ulong);
+void rr_timer_expire_record(uint64_t now);
+void rr_store_cause_record(uint32_t);
+void rr_store_cpu_interrupt_hard(void);
+void rr_pci_irq_record(int irq_num, int level);
 
 // mz using uint8_t for kind and callsite_loc to control space - enums default
 // to int.
@@ -98,7 +101,10 @@ typedef struct {
         RR_serial_send_args serial_send_args;
         RR_serial_write_args serial_write_args;
         RR_cpu_reg_write_args cpu_reg_write_args;
-        RR_mips_cause_args mips_cause_args;
+        RR_timer_expire_args timer_expire_args;
+        RR_store_cause_args store_cause_args;
+        RR_store_cpu_interrupt_hard_args store_cpu_interrupt_hard_args;
+        RR_pci_irq_args pci_irq_args;
     } variant;
     // mz XXX HACK
     uint64_t buf_addr_rec;
@@ -165,10 +171,10 @@ static inline RR_prog_point rr_prog_point(void) {
 
 static inline void qemu_log_rr(target_ulong pc) {
     if (qemu_loglevel_mask(CPU_LOG_RR)) {
-        RR_prog_point pp = rr_prog_point();
-        qemu_log_mask(CPU_LOG_RR,
-                "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
-                pc, (unsigned long long)pp.guest_instr_count);
+        // RR_prog_point pp = rr_prog_point();
+        // qemu_log_mask(CPU_LOG_RR,
+        //         "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
+        //         pc, (unsigned long long)pp.guest_instr_count);
     }
 }
 

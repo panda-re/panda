@@ -1108,6 +1108,7 @@ static void tcg_out_call(TCGContext *s, tcg_insn_unit *arg)
 }
 
 #if defined(CONFIG_SOFTMMU)
+extern bool panda_use_memcb;
 static void * const qemu_ld_helpers[16] = {
     [MO_UB]   = helper_ret_ldub_mmu,
     [MO_SB]   = helper_ret_ldsb_mmu,

@@ -36,11 +36,11 @@ int64_t replay_timer(void);
 
 int64_t replay_timer(void){
     int64_t time;
-    RR_DO_RECORD_OR_REPLAY(
+     RR_DO_RECORD_OR_REPLAY(
     /*action=*/time = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);,
-    /*record=*/rr_input_8((uint64_t*)&time),
-    /*replay=*/rr_input_8((uint64_t*)&time),
-    /*location=*/RR_CALLSITE_READ_8);
+     /*record=*/rr_input_8((uint64_t*)&time),
+     /*replay=*/rr_input_8((uint64_t*)&time),
+     /*location=*/RR_CALLSITE_READ_8);
     return time;
 }
 
@@ -69,16 +69,23 @@ uint32_t cpu_mips_get_random (CPUMIPSState *env)
     return idx;
 }
 
-/* MIPS R4K timer */
-static void cpu_mips_timer_update(CPUMIPSState *env)
+void cpu_mips_timer_update_internal(CPUMIPSState *env, uint64_t now);
+
+void cpu_mips_timer_update_internal(CPUMIPSState *env, uint64_t now)
 {
-    uint64_t now, next;
+    uint64_t next;
     uint32_t wait;
 
-    now = replay_timer();
     wait = env->CP0_Compare - env->CP0_Count - (uint32_t)(now / TIMER_PERIOD);
     next = now + (uint64_t)wait * TIMER_PERIOD;
     timer_mod(env->timer, next);
+}
+
+/* MIPS R4K timer */
+static void cpu_mips_timer_update(CPUMIPSState *env)
+{
+    uint64_t now = replay_timer();
+    cpu_mips_timer_update_internal(env, now);
 }
 
 /* Expire the timer.  */
@@ -88,7 +95,21 @@ static void cpu_mips_timer_expire(CPUMIPSState *env)
     if (env->insn_flags & ISA_MIPS32R2) {
         env->CP0_Cause |= 1 << CP0Ca_TI;
     }
-    //if (!rr_in_replay())
+    qemu_irq_raise(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
+}
+
+static void cpu_mips_timer_expire_hw(CPUMIPSState *env);
+
+static void cpu_mips_timer_expire_hw(CPUMIPSState *env)
+{
+    uint64_t now = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
+    #ifdef CONFIG_SOFTMMU
+    rr_timer_expire_record(now);
+    #endif
+    cpu_mips_timer_update_internal(env, now);
+    if (env->insn_flags & ISA_MIPS32R2) {
+        env->CP0_Cause |= 1 << CP0Ca_TI;
+    }
     qemu_irq_raise(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
 }
 
@@ -98,9 +119,10 @@ uint32_t cpu_mips_get_count (CPUMIPSState *env)
         return env->CP0_Count;
     } else {
         uint64_t now;
-
-        now = replay_timer(); //qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
-        if (timer_pending(env->timer) && timer_expired(env->timer, now)) {
+        now = replay_timer();
+        if (timer_pending(env->timer)
+            && timer_expired(env->timer, now)) {
+            /* The timer has already expired.  */
             cpu_mips_timer_expire(env);
         }
 
@@ -120,7 +142,7 @@ void cpu_mips_store_count (CPUMIPSState *env, uint32_t count)
     else {
         /* Store new count register */
         env->CP0_Count = count -
-               (uint32_t)(replay_timer() / TIMER_PERIOD);
+               (uint32_t)(qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) / TIMER_PERIOD);
         /* Update timer timer */
         cpu_mips_timer_update(env);
     }
@@ -133,6 +155,7 @@ void cpu_mips_store_compare (CPUMIPSState *env, uint32_t value)
         cpu_mips_timer_update(env);
     if (env->insn_flags & ISA_MIPS32R2)
         env->CP0_Cause &= ~(1 << CP0Ca_TI);
+    
     //if (!rr_in_replay())
     qemu_irq_lower(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
 }
@@ -145,11 +168,19 @@ void cpu_mips_start_count(CPUMIPSState *env)
 void cpu_mips_stop_count(CPUMIPSState *env)
 {
     /* Store the current value */
-    env->CP0_Count += (uint32_t)(replay_timer() /
+    env->CP0_Count += (uint32_t)(qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) /
                                  TIMER_PERIOD);
 }
 
-static void mips_timer_cb (void *opaque)
+void mips_timer_cb(void* opaque);
+
+static void mips_timer_cb_wrapper (void *opaque)
+{
+    mips_timer_cb(opaque);
+    
+}
+
+void mips_timer_cb (void *opaque)
 {
     CPUMIPSState *env;
 
@@ -167,11 +198,8 @@ static void mips_timer_cb (void *opaque)
        the comparator value.  Offset the count by one to avoid immediately
        retriggering the callback before any virtual time has passed.  */
     env->CP0_Count++;
-    cpu_mips_timer_expire(env);
+    cpu_mips_timer_expire_hw(env);
     env->CP0_Count--;
-    
-    if (rr_in_record())
-        rr_mips_cause_record(env->CP0_Cause);
 }
 
 void cpu_mips_clock_init (MIPSCPU *cpu)
@@ -183,6 +211,6 @@ void cpu_mips_clock_init (MIPSCPU *cpu)
      * kernel.
      */
     if (!kvm_enabled()) {
-        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &mips_timer_cb, env);
+        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &mips_timer_cb_wrapper, env);
     }
 }

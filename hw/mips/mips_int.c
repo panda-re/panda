@@ -29,6 +29,7 @@
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+extern bool in_timer_expire;
 #endif
 
 static void cpu_mips_irq_request_internal(void *opaque, int irq, int level);
@@ -57,8 +58,28 @@ static void cpu_mips_irq_request_internal(void *opaque, int irq, int level)
         }
     }
 
+    if (rr_in_record() && !in_timer_expire){
+        rr_store_cause_record(env->CP0_Cause);
+    }
+    if (rr_in_replay() && !in_timer_expire){
+        rr_skipped_callsite_location = RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE;
+        rr_replay_skipped_calls();
+    }
+
+
     if (env->CP0_Cause & CP0Ca_IP_mask) {
-        cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+        if (rr_in_record() && !in_timer_expire){
+            rr_store_cpu_interrupt_hard();
+            cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+        }
+        if (rr_in_replay()){
+            if (!in_timer_expire){
+                rr_skipped_callsite_location = RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER;
+                rr_replay_skipped_calls();
+            }else{
+                cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+            }
+        }
     } else {
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
     }

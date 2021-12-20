@@ -278,6 +278,26 @@ static RR_log_entry *rr_read_item(void) {
                                      sizeof(args->variant.serial_write_args), 1,
                                      rr_nondet_log->fp) == 1);
                         break;
+                    case RR_TIMER_EXPIRE:
+                        assert(fread(&(args->variant.timer_expire_args),
+                                     sizeof(args->variant.timer_expire_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_STORE_CAUSE:
+                        assert(fread(&(args->variant.store_cause_args),
+                                     sizeof(args->variant.store_cause_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_STORE_CPU_INTERRUPT_HARD:
+                        assert(fread(&(args->variant.store_cpu_interrupt_hard_args),
+                                     sizeof(args->variant.store_cpu_interrupt_hard_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_PCI_IRQ:
+                        assert(fread(&(args->variant.pci_irq_args),
+                                     sizeof(args->variant.pci_irq_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
                     default:
                         //mz unimplemented
                         printf("rr_read_item: Call type %d unimplemented!\n", args->kind);

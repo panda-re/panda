@@ -476,6 +476,13 @@ static inline bool cpu_handle_halt(CPUState *cpu)
             cpu_reset_interrupt(cpu, CPU_INTERRUPT_POLL);
         }
 #endif
+// #if defined(TARGET_MIPS) && !defined(CONFIG_USER_ONLY)
+//         if (rr_in_replay() && cs->halted && cpu->interrupt_request & CPU_INTERRUPT_WAKE) {
+//             cpu_mips_raise_softirq(cpu, MIP_SOFTIRQ);
+//             cpu_reset_interrupt(cpu, CPU_INTERRUPT_HARD);
+//         }
+// #endif
+
         if (!cpu_has_work(cpu) && !rr_in_replay()) {
             current_cpu = NULL;
             return true;
@@ -544,7 +551,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             return true;
 #else
             if (replay_exception()) {
-#ifdef TARGET_PPC
+#if defined(TARGET_PPC) || defined(TARGET_MIPS)
                 rr_exception_index_at(RR_CALLSITE_CPU_EXCEPTION_INDEX, &cpu->exception_index);
 #endif
                 CPUClass *cc = CPU_GET_CLASS(cpu);
@@ -590,6 +597,15 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     if (rr_in_replay()) {
         cpu->interrupt_request = interrupt_request;
     }
+// #ifdef TARGET_MIPS
+//     int cause;
+//     rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
+//     rr_interrupt_request(&cause);
+//     if (rr_in_replay()){
+//         ((CPUMIPSState*)(cpu->env_ptr))->CP0_Cause = cause;
+//     }
+// #endif
+
 #endif
     if (unlikely(interrupt_request)) {
         if (unlikely(cpu->singlestep_enabled & SSTEP_NOIRQ)) {

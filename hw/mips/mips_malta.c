@@ -596,7 +596,7 @@ static void network_init(PCIBus *pci_bus)
             default_devaddr = "0b";
         
         //we changed the default to e1000
-        pci_nic_init_nofail(nd, pci_bus, "e1000", default_devaddr);
+        pci_nic_init_nofail(nd, pci_bus, "pcnet", default_devaddr);
     }
 }
 
@@ -989,6 +989,8 @@ static void create_cpu(MaltaState *s, const char *cpu_model,
     }
 }
 
+PCIBus *pci_bus;
+
 static
 void mips_malta_init(MachineState *machine)
 {
@@ -1008,7 +1010,6 @@ void mips_malta_init(MachineState *machine)
     const size_t smbus_eeprom_size = 8 * 256;
     uint8_t *smbus_eeprom_buf = g_malloc0(smbus_eeprom_size);
     int64_t kernel_entry, bootloader_run_addr;
-    PCIBus *pci_bus;
     ISABus *isa_bus;
     qemu_irq *isa_irq;
     qemu_irq cbus_irq, i8259_irq;

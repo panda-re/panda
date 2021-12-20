@@ -58,6 +58,14 @@
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
 
+#ifdef TARGET_MIPS
+extern void mips_timer_cb(void* opaque);
+extern void cpu_mips_timer_update_internal(CPUMIPSState *env, uint64_t now);
+extern void gt64120_pci_set_irq_internal(void *opaque, int irq_num, int level);
+extern PCIBus *pci_bus;
+#include "hw/irq.h"
+#endif
+
 //#define RR_DEBUG
 
 /******************************************************************************************/
@@ -187,6 +195,14 @@ static void rr_spit_log_entry(RR_log_entry item)
         break;
     case RR_END_OF_LOG:
         printf("\tRR_END_OF_LOG\n");
+        break;
+    case RR_PENDING_INTERRUPTS:
+        printf("\tRR_SKIPPED_CALL from %s\n",
+               get_callsite_string(item.header.callsite_loc));
+        break;
+    case RR_EXCEPTION:
+        printf("\tRR_EXCEPTION from %s\n",
+               get_callsite_string(item.header.callsite_loc));
         break;
     default:
         printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -352,8 +368,17 @@ static inline void rr_write_item(RR_log_entry item)
                 case RR_CALL_SERIAL_WRITE:
                     RR_WRITE_ITEM(args->variant.serial_write_args);
                     break;
-                case RR_CALL_MIPS_CAUSE:
-                    RR_WRITE_ITEM(args->variant.mips_cause_args);
+                case RR_TIMER_EXPIRE:
+                    RR_WRITE_ITEM(args->variant.timer_expire_args);
+                    break;
+                case RR_STORE_CAUSE:
+                    RR_WRITE_ITEM(args->variant.store_cause_args);
+                    break;
+                case RR_STORE_CPU_INTERRUPT_HARD:
+                    RR_WRITE_ITEM(args->variant.store_cpu_interrupt_hard_args);
+                    break;
+                case RR_PCI_IRQ:
+                    RR_WRITE_ITEM(args->variant.pci_irq_args);
                     break;
                 default:
                     // mz unimplemented
@@ -513,11 +538,39 @@ void rr_cpu_reg_write_call_record(int cpu_index, const uint8_t* buf,
     });
 }
 
-void rr_mips_cause_record(target_ulong val){
+void rr_timer_expire_record(uint64_t now){
     rr_record_skipped_call((RR_skipped_call_args) {
-        .kind = RR_CALL_MIPS_CAUSE,
-        .variant.mips_cause_args = {
-            .cause = val
+        .kind = RR_TIMER_EXPIRE,
+        .variant.timer_expire_args= {
+            .now = now
+        }
+    });
+}
+
+void rr_store_cause_record(uint32_t cause){
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_STORE_CAUSE,
+        .variant.store_cause_args= {
+            .cause = cause
+        }
+    });
+}
+
+void rr_store_cpu_interrupt_hard(void){
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_STORE_CPU_INTERRUPT_HARD,
+        .variant.store_cpu_interrupt_hard_args= {
+            .require = '0',
+        }
+    });
+}
+
+void rr_pci_irq_record(int irq_num, int level){
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_PCI_IRQ,
+        .variant.pci_irq_args= {
+            .irq_num = irq_num,
+            .level = level
         }
     });
 }
@@ -868,8 +921,17 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_CALL_SERIAL_WRITE:
                     RR_READ_ITEM(args->variant.serial_write_args);
                     break;
-                case RR_CALL_MIPS_CAUSE:
-                    RR_READ_ITEM(args->variant.mips_cause_args);
+                case RR_TIMER_EXPIRE:
+                    RR_READ_ITEM(args->variant.timer_expire_args);
+                    break;
+                case RR_STORE_CAUSE:
+                    RR_READ_ITEM(args->variant.store_cause_args);
+                    break;
+                case RR_STORE_CPU_INTERRUPT_HARD:
+                    RR_READ_ITEM(args->variant.store_cpu_interrupt_hard_args);
+                    break;
+                case RR_PCI_IRQ:
+                    RR_READ_ITEM(args->variant.pci_irq_args);
                     break;
                 default:
                     // mz unimplemented
@@ -1085,6 +1147,8 @@ static MemoryRegion * rr_memory_region_find_parent(MemoryRegion *root, MemoryReg
     return NULL;
 }
 
+bool in_timer_expire = false;
+
 // mz this function consumes 2 types of entries:
 // RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION
 // XXX call_site parameter no longer used...
@@ -1186,13 +1250,42 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     RR_serial_write_args write = args.variant.serial_write_args;
                     panda_callbacks_replay_serial_write(first_cpu, write.fifo_addr, write.port_addr, write.value);
                 } break;
-            case RR_CALL_MIPS_CAUSE:
+            case RR_STORE_CAUSE:
                 {
                     #ifdef TARGET_MIPS
-                    printf("replaying value\n");
-                    RR_mips_cause_args a = args.variant.mips_cause_args;
-                    CPUMIPSState* env = (CPUMIPSState*)cpus.tqh_first->env_ptr;
-                    env->CP0_Cause = a.cause;
+                    // printf("replaying cause\n");
+                    (((CPUMIPSState*)cpus.tqh_first->env_ptr))->CP0_Cause = args.variant.store_cause_args.cause;
+                    #endif
+                } break;
+            case RR_STORE_CPU_INTERRUPT_HARD:
+                {
+                    #ifdef TARGET_MIPS
+                    // printf("replaying interrupt hard\n");
+                    CPUState* cpu = cpus.tqh_first;
+                    cpu_interrupt(cpu, CPU_INTERRUPT_HARD);
+                    #endif
+                } break;
+            case RR_TIMER_EXPIRE:
+                {
+                    #ifdef TARGET_MIPS
+                    // printf("replaying timer\n");
+                    uint64_t now = args.variant.timer_expire_args.now;
+                    CPUMIPSState *env = (CPUMIPSState*)cpus.tqh_first->env_ptr;
+                    env->CP0_Count++;
+                    cpu_mips_timer_update_internal(cpus.tqh_first->env_ptr, now);
+                    env->CP0_Count--;
+                    in_timer_expire = true;
+                    qemu_irq_raise(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
+                    in_timer_expire = false;
+                    // mips_timer_cb(cpus.tqh_first->env_ptr);
+                    #endif
+                } break;
+            case RR_PCI_IRQ:
+                {
+                    #ifdef TARGET_MIPS
+                    RR_pci_irq_args write = args.variant.pci_irq_args;
+                    printf("replaying pci irq\n");
+                    gt64120_pci_set_irq_internal(pci_bus, write.irq_num, write.level);
                     #endif
                 } break;
                 default:
@@ -1742,11 +1835,11 @@ uint32_t rr_checksum_memory(void) {
 }
 
 uint32_t rr_checksum_regs(void) {
-    if (!qemu_in_vcpu_thread()) {
-         printf("Need to be in VCPU thread!\n");
-         return 0;
-    }
-    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
+    // if (!qemu_in_vcpu_thread()) {
+    //      printf("Need to be in VCPU thread!\n");
+    //      return 0;
+    // }
+    CPUArchState *env = (CPUArchState *)cpus.tqh_first->env_ptr;
     uint32_t crc = crc32(0, Z_NULL, 0);
 #if defined(TARGET_PPC)
     crc = crc32(crc, (unsigned char *)env->gpr, sizeof(env->gpr));
