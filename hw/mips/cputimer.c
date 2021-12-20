@@ -172,15 +172,7 @@ void cpu_mips_stop_count(CPUMIPSState *env)
                                  TIMER_PERIOD);
 }
 
-void mips_timer_cb(void* opaque);
-
-static void mips_timer_cb_wrapper (void *opaque)
-{
-    mips_timer_cb(opaque);
-    
-}
-
-void mips_timer_cb (void *opaque)
+static void mips_timer_cb (void* opaque)
 {
     CPUMIPSState *env;
 
@@ -211,6 +203,6 @@ void cpu_mips_clock_init (MIPSCPU *cpu)
      * kernel.
      */
     if (!kvm_enabled()) {
-        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &mips_timer_cb_wrapper, env);
+        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &mips_timer_cb, env);
     }
 }
