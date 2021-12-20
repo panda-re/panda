@@ -4,11 +4,11 @@ PyPlugins are Python3 classes which implement some reusable PANDA capability.
 
 The anatomy of a PANDA PyPlugin in its current form is one or more types which subclass `PyPlugin`. The constructor takes a `panda` object, which is of type [pandare.Panda](https://docs.panda.re/panda.html#pandare.panda.Panda).
 
-From there, you can add hooks and declare initial state for your plugin. The destructor (`__del__`) is optional, but can be used to perform cleanup when your plugin is unloaded.
+From there, you can add hooks and declare initial state for your plugin. An `uninit` method can optionally be defined which will run prior to your plugin being unloaded (often due to the end of the guest execution or replay).
 
 ## Relevant API Docs
 
-PyPlugin class which PyPlugins should subclass: [auto generated documentation](https://docs.panda.re/panda_plugin.html).
+PyPlugin class which PyPlugins should subclass: [auto generated documentation](https://docs.panda.re/pyplugin.html).
 * `class PyPlugin`:
   * `get_arg(name)` - returns either the argument value as a string or `None` if the argument is not present
   * `get_arg_bool(name)` - returns `True` if the argument is present and truthy.
@@ -20,7 +20,7 @@ PyPlugin class which PyPlugins should subclass: [auto generated documentation](h
   * `ppp.TargetPlugin.ppp_reg_cb('ppp_cb_name', self.my_func)`: Register the local function `self.my_func` with the PyPlugin `TargetPlugin`'s `ppp_cb_name` ppp-style callback. Note that the target plugin must have previously been loaded.
   * `ppp.TargetPlugin.some_function(*args)`: Call the ppp-exported `some_function` defined in `TargetPlugin`. Note that the target plugin must have previously been loaded.
 
-PyPluginManager: Interface to load/unload PyPlugins with an instance of the `pandare` class, accessable via the `.pyplugin` field of a panda object: [documentation](https://docs.panda.re/pyplugin.html#pandare.PyPluginManager).
+PyPluginManager: Interface to load/unload PyPlugins with an instance of the `pandare` class, accessable via the `.pyplugin` field of a panda object: [documentation](https://docs.panda.re/pypluginmanager.html).
 
 # Example Plugins
 
@@ -41,7 +41,7 @@ class TestPlugin(PyPlugin):
         print("Uninitialized test plugin")
 ```
 
-## Basic block counter
+## Basic block counter with webserver
 ```python
 from pandare import PyPlugin
 
@@ -117,7 +117,7 @@ class Server(PyPlugin):
       self.counter = 0
 
     @PyPlugin.ppp_export
-    def do_add(x):
+    def do_add(self, x):
         self.counter += x
         return self.counter
 
@@ -128,6 +128,8 @@ class Consumer(PyPlugin):
     def __init__(self, panda):
         print(f"Calling Server's do_add(1): ", self.ppp.Server.do_add(1))
   ```
+  
+The `Server.do_add` function could also be called directly from outside of a PyPlugin throught the panda object's pyplugin.ppp interface: e.g., `panda.pyplugins.ppp.Server.do_add(1)`.
 
 # Example Usage:
 

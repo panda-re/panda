@@ -96,6 +96,23 @@ static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
 }
 
 /**
+ * @brief Reads data into \p buf from guest physical address \p addr.
+ */
+static inline int panda_physical_memory_read(hwaddr addr,
+                                            uint8_t *buf, int len) {
+    return panda_physical_memory_rw(addr, buf, len, 0);
+}
+
+/**
+ * @brief Writes data from \p buf data to guest physical address \p addr.
+ */
+static inline int panda_physical_memory_write(hwaddr addr,
+                                             uint8_t *buf, int len) {
+    return panda_physical_memory_rw(addr, buf, len, 1);
+}
+
+
+/**
  * @brief Translates guest virtual addres \p addr to a guest physical address.
  */
 static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {

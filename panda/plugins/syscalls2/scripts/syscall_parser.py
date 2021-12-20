@@ -343,6 +343,8 @@ class SysCall(object):
         self.arch_bits = target_context['arch_conf']['bits']
         panda_noreturn_names = target_context.get('panda_noreturn', {})
         self.panda_noreturn = True if self.name in panda_noreturn_names else False
+        panda_doublereturn_names = target_context.get('panda_doublereturn', {})
+        self.panda_double_return = True if self.name in panda_doublereturn_names else False
 
         # process raw args
         self.args = []

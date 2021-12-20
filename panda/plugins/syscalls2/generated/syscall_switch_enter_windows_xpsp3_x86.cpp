@@ -33,13 +33,23 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
-	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
+	const syscall_info_t *call = NULL;
+	syscall_info_t zero = {0};
+	if (syscall_meta != NULL && ctx.no <= syscall_meta->max_generic) {
+	  // If the syscall_info object from dso_info_....c doesn't have an entry
+	  // for this syscall, we want to leave it as a NULL pointer
+	  if (memcmp(&syscall_info[ctx.no], &zero, sizeof(syscall_info_t)) != 0) {
+		call = &syscall_info[ctx.no];
+	  }
+	}
 
 	switch (ctx.no) {
 	// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', 'PVOID PortContext', 'PPORT_MESSAGE ConnectionRequest', 'BOOLEAN AcceptConnection', 'PPORT_VIEW ServerView', 'PREMOTE_PORT_VIEW ClientView']
 	case 0: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -61,6 +71,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 1 NTSTATUS NtAccessCheck ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 	case 1: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -86,6 +97,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 2 NTSTATUS NtAccessCheckAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'ACCESS_MASK DesiredAccess', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 2: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -117,6 +129,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 3 NTSTATUS NtAccessCheckByType ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 	case 3: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -148,6 +161,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 4 NTSTATUS NtAccessCheckByTypeAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 4: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -189,6 +203,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 5 NTSTATUS NtAccessCheckByTypeResultList ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 	case 5: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -220,6 +235,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 6 NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 6: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -261,6 +277,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 7 NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarmByHandle ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'HANDLE ClientToken', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 	case 7: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -304,6 +321,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 8 NTSTATUS NtAddAtom ['PWSTR AtomName', 'ULONG Length', 'PRTL_ATOM Atom']
 	case 8: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -319,6 +337,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 9 NTSTATUS NtAddBootEntry ['PBOOT_ENTRY BootEntry', 'PULONG Id']
 	case 9: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -332,6 +351,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 10 NTSTATUS NtAdjustGroupsToken ['HANDLE TokenHandle', 'BOOLEAN ResetToDefault', 'PTOKEN_GROUPS NewState', 'ULONG BufferLength', 'PTOKEN_GROUPS PreviousState', 'PULONG ReturnLength']
 	case 10: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -353,6 +373,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 11 NTSTATUS NtAdjustPrivilegesToken ['HANDLE TokenHandle', 'BOOLEAN DisableAllPrivileges', 'PTOKEN_PRIVILEGES NewState', 'ULONG BufferLength', 'PTOKEN_PRIVILEGES PreviousState', 'PULONG ReturnLength']
 	case 11: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -374,6 +395,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 12 NTSTATUS NtAlertResumeThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 	case 12: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -387,6 +409,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 13 NTSTATUS NtAlertThread ['HANDLE ThreadHandle']
 	case 13: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -398,6 +421,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 14 NTSTATUS NtAllocateLocallyUniqueId ['PLUID Luid']
 	case 14: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -409,6 +433,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 15 NTSTATUS NtAllocateUserPhysicalPages ['HANDLE ProcessHandle', 'PULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 15: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -424,6 +449,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 16 NTSTATUS NtAllocateUuids ['PULARGE_INTEGER Time', 'PULONG Range', 'PULONG Sequence', 'PCHAR Seed']
 	case 16: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -441,6 +467,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 17 NTSTATUS NtAllocateVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'ULONG_PTR ZeroBits', 'PSIZE_T RegionSize', 'ULONG AllocationType', 'ULONG Protect']
 	case 17: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -462,6 +489,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 18 NTSTATUS NtAreMappedFilesTheSame ['PVOID File1MappedAsAnImage', 'PVOID File2MappedAsFile']
 	case 18: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -475,6 +503,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 19 NTSTATUS NtAssignProcessToJobObject ['HANDLE JobHandle', 'HANDLE ProcessHandle']
 	case 19: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -488,6 +517,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 20 NTSTATUS NtCallbackReturn ['PVOID OutputBuffer', 'ULONG OutputLength', 'NTSTATUS Status']
 	case 20: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -503,6 +533,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 22 NTSTATUS NtCancelIoFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock']
 	case 22: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -516,6 +547,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 23 NTSTATUS NtCancelTimer ['HANDLE TimerHandle', 'PBOOLEAN CurrentState']
 	case 23: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -529,6 +561,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 24 NTSTATUS NtClearEvent ['HANDLE EventHandle']
 	case 24: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -540,6 +573,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 25 NTSTATUS NtClose ['HANDLE Handle']
 	case 25: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -551,6 +585,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 26 NTSTATUS NtCloseObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'BOOLEAN GenerateOnClose']
 	case 26: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -566,6 +601,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 27 NTSTATUS NtCompactKeys ['ULONG Count', 'HANDLE KeyArray[]']
 	case 27: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -579,6 +615,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 28 NTSTATUS NtCompareTokens ['HANDLE FirstTokenHandle', 'HANDLE SecondTokenHandle', 'PBOOLEAN Equal']
 	case 28: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -594,6 +631,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 29 NTSTATUS NtCompleteConnectPort ['HANDLE PortHandle']
 	case 29: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -605,6 +643,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 30 NTSTATUS NtCompressKey ['HANDLE Key']
 	case 30: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -616,6 +655,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 31 NTSTATUS NtConnectPort ['PHANDLE PortHandle', 'PUNICODE_STRING PortName', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos', 'PPORT_VIEW ClientView', 'PREMOTE_PORT_VIEW ServerView', 'PULONG MaxMessageLength', 'PVOID ConnectionInformation', 'PULONG ConnectionInformationLength']
 	case 31: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -641,6 +681,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 32 NTSTATUS NtContinue ['PCONTEXT ContextRecord', 'BOOLEAN TestAlert']
 	case 32: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -654,6 +695,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 33 NTSTATUS NtCreateDebugObject ['PHANDLE DebugObjectHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG Flags']
 	case 33: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -671,6 +713,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 34 NTSTATUS NtCreateDirectoryObject ['PHANDLE DirectoryHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 34: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -686,6 +729,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 35 NTSTATUS NtCreateEvent ['PHANDLE EventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'EVENT_TYPE EventType', 'BOOLEAN InitialState']
 	case 35: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -705,6 +749,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 36 NTSTATUS NtCreateEventPair ['PHANDLE EventPairHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 36: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -720,6 +765,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 37 NTSTATUS NtCreateFile ['PHANDLE FileHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER AllocationSize', 'ULONG FileAttributes', 'ULONG ShareAccess', 'ULONG CreateDisposition', 'ULONG CreateOptions', 'PVOID EaBuffer', 'ULONG EaLength']
 	case 37: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -751,6 +797,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 38 NTSTATUS NtCreateIoCompletion ['PHANDLE IoCompletionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG Count']
 	case 38: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -768,6 +815,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 39 NTSTATUS NtCreateJobObject ['PHANDLE JobHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 39: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -783,6 +831,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 40 NTSTATUS NtCreateJobSet ['ULONG NumJob', 'PJOB_SET_ARRAY UserJobSet', 'ULONG Flags']
 	case 40: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -798,6 +847,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 41 NTSTATUS NtCreateKey ['PHANDLE KeyHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG TitleIndex', 'PUNICODE_STRING Class', 'ULONG CreateOptions', 'PULONG Disposition']
 	case 41: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -821,6 +871,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 42 NTSTATUS NtCreateMailslotFile ['PHANDLE FileHandle', 'ULONG DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CreateOptions', 'ULONG MailslotQuota', 'ULONG MaximumMessageSize', 'PLARGE_INTEGER ReadTimeout']
 	case 42: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -846,6 +897,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 43 NTSTATUS NtCreateMutant ['PHANDLE MutantHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'BOOLEAN InitialOwner']
 	case 43: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -863,6 +915,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 44 NTSTATUS NtCreateNamedPipeFile ['PHANDLE FileHandle', 'ULONG DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG ShareAccess', 'ULONG CreateDisposition', 'ULONG CreateOptions', 'ULONG NamedPipeType', 'ULONG ReadMode', 'ULONG CompletionMode', 'ULONG MaximumInstances', 'ULONG InboundQuota', 'ULONG OutboundQuota', 'PLARGE_INTEGER DefaultTimeout']
 	case 44: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -900,6 +953,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 45 NTSTATUS NtCreatePagingFile ['PUNICODE_STRING PageFileName', 'PLARGE_INTEGER MinimumSize', 'PLARGE_INTEGER MaximumSize', 'ULONG Priority']
 	case 45: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -917,6 +971,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 46 NTSTATUS NtCreatePort ['PHANDLE PortHandle', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG MaxConnectionInfoLength', 'ULONG MaxMessageLength', 'ULONG MaxPoolUsage']
 	case 46: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -936,6 +991,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 47 NTSTATUS NtCreateProcess ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ParentProcess', 'BOOLEAN InheritObjectTable', 'HANDLE SectionHandle', 'HANDLE DebugPort', 'HANDLE ExceptionPort']
 	case 47: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -961,6 +1017,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 48 NTSTATUS NtCreateProcessEx ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ParentProcess', 'ULONG Flags', 'HANDLE SectionHandle', 'HANDLE DebugPort', 'HANDLE ExceptionPort', 'ULONG JobMemberLevel']
 	case 48: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -988,6 +1045,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 49 NTSTATUS NtCreateProfile ['PHANDLE ProfileHandle', 'HANDLE Process', 'PVOID RangeBase', 'SIZE_T RangeSize', 'ULONG BucketSize', 'PULONG Buffer', 'ULONG BufferSize', 'KPROFILE_SOURCE ProfileSource', 'KAFFINITY Affinity']
 	case 49: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1015,6 +1073,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 50 NTSTATUS NtCreateSection ['PHANDLE SectionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PLARGE_INTEGER MaximumSize', 'ULONG SectionPageProtection', 'ULONG AllocationAttributes', 'HANDLE FileHandle']
 	case 50: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1038,6 +1097,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 51 NTSTATUS NtCreateSemaphore ['PHANDLE SemaphoreHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'LONG InitialCount', 'LONG MaximumCount']
 	case 51: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1057,6 +1117,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 52 NTSTATUS NtCreateSymbolicLinkObject ['PHANDLE LinkHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PUNICODE_STRING LinkTarget']
 	case 52: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1074,6 +1135,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 53 NTSTATUS NtCreateThread ['PHANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ProcessHandle', 'PCLIENT_ID ClientId', 'PCONTEXT ThreadContext', 'PINITIAL_TEB InitialTeb', 'BOOLEAN CreateSuspended']
 	case 53: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1099,6 +1161,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 54 NTSTATUS NtCreateTimer ['PHANDLE TimerHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'TIMER_TYPE TimerType']
 	case 54: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1116,6 +1179,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 55 NTSTATUS NtCreateToken ['PHANDLE TokenHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'TOKEN_TYPE TokenType', 'PLUID AuthenticationId', 'PLARGE_INTEGER ExpirationTime', 'PTOKEN_USER User', 'PTOKEN_GROUPS Groups', 'PTOKEN_PRIVILEGES Privileges', 'PTOKEN_OWNER Owner', 'PTOKEN_PRIMARY_GROUP PrimaryGroup', 'PTOKEN_DEFAULT_DACL DefaultDacl', 'PTOKEN_SOURCE TokenSource']
 	case 55: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1151,6 +1215,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 56 NTSTATUS NtCreateWaitablePort ['PHANDLE PortHandle', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG MaxConnectionInfoLength', 'ULONG MaxMessageLength', 'ULONG MaxPoolUsage']
 	case 56: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1170,6 +1235,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 57 NTSTATUS NtDebugActiveProcess ['HANDLE ProcessHandle', 'HANDLE DebugObjectHandle']
 	case 57: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1183,6 +1249,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 58 NTSTATUS NtDebugContinue ['HANDLE DebugObjectHandle', 'PCLIENT_ID ClientId', 'NTSTATUS ContinueStatus']
 	case 58: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1198,6 +1265,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 59 NTSTATUS NtDelayExecution ['BOOLEAN Alertable', 'PLARGE_INTEGER DelayInterval']
 	case 59: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1211,6 +1279,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 60 NTSTATUS NtDeleteAtom ['RTL_ATOM Atom']
 	case 60: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1222,6 +1291,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 61 NTSTATUS NtDeleteBootEntry ['ULONG Id']
 	case 61: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1233,6 +1303,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 62 NTSTATUS NtDeleteFile ['POBJECT_ATTRIBUTES ObjectAttributes']
 	case 62: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1244,6 +1315,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 63 NTSTATUS NtDeleteKey ['HANDLE KeyHandle']
 	case 63: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1255,6 +1327,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 64 NTSTATUS NtDeleteObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'BOOLEAN GenerateOnClose']
 	case 64: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1270,6 +1343,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 65 NTSTATUS NtDeleteValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName']
 	case 65: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1283,6 +1357,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 66 NTSTATUS NtDeviceIoControlFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG IoControlCode', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 	case 66: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1312,6 +1387,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 67 NTSTATUS NtDisplayString ['PUNICODE_STRING String']
 	case 67: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1323,6 +1399,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 68 NTSTATUS NtDuplicateObject ['HANDLE SourceProcessHandle', 'HANDLE SourceHandle', 'HANDLE TargetProcessHandle', 'PHANDLE TargetHandle', 'ACCESS_MASK DesiredAccess', 'ULONG HandleAttributes', 'ULONG Options']
 	case 68: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1346,6 +1423,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 69 NTSTATUS NtDuplicateToken ['HANDLE ExistingTokenHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'BOOLEAN EffectiveOnly', 'TOKEN_TYPE TokenType', 'PHANDLE NewTokenHandle']
 	case 69: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1367,6 +1445,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 70 NTSTATUS NtEnumerateBootEntries ['PVOID Buffer', 'PULONG BufferLength']
 	case 70: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1380,6 +1459,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 71 NTSTATUS NtEnumerateKey ['HANDLE KeyHandle', 'ULONG Index', 'KEY_INFORMATION_CLASS KeyInformationClass', 'PVOID KeyInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 71: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1401,6 +1481,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 72 NTSTATUS NtEnumerateSystemEnvironmentValuesEx ['ULONG InformationClass', 'PVOID Buffer', 'PULONG BufferLength']
 	case 72: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1416,6 +1497,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 73 NTSTATUS NtEnumerateValueKey ['HANDLE KeyHandle', 'ULONG Index', 'KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', 'PVOID KeyValueInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 73: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1437,6 +1519,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 74 NTSTATUS NtExtendSection ['HANDLE SectionHandle', 'PLARGE_INTEGER NewSectionSize']
 	case 74: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1450,6 +1533,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 75 NTSTATUS NtFilterToken ['HANDLE ExistingTokenHandle', 'ULONG Flags', 'PTOKEN_GROUPS SidsToDisable', 'PTOKEN_PRIVILEGES PrivilegesToDelete', 'PTOKEN_GROUPS RestrictedSids', 'PHANDLE NewTokenHandle']
 	case 75: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1471,6 +1555,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 76 NTSTATUS NtFindAtom ['PWSTR AtomName', 'ULONG Length', 'PRTL_ATOM Atom']
 	case 76: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1486,6 +1571,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 77 NTSTATUS NtFlushBuffersFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock']
 	case 77: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1499,6 +1585,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 78 NTSTATUS NtFlushInstructionCache ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'SIZE_T Length']
 	case 78: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1514,6 +1601,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 79 NTSTATUS NtFlushKey ['HANDLE KeyHandle']
 	case 79: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1525,6 +1613,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 80 NTSTATUS NtFlushVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'PIO_STATUS_BLOCK IoStatus']
 	case 80: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1542,11 +1631,13 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 81 NTSTATUS NtFlushWriteBuffer ['']
 	case 81: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtFlushWriteBuffer_enter, cpu, pc);
 	}; break;
 	// 82 NTSTATUS NtFreeUserPhysicalPages ['HANDLE ProcessHandle', 'PULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 82: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1562,6 +1653,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 83 NTSTATUS NtFreeVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG FreeType']
 	case 83: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1579,6 +1671,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 84 NTSTATUS NtFsControlFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG IoControlCode', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 	case 84: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1608,6 +1701,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 85 NTSTATUS NtGetContextThread ['HANDLE ThreadHandle', 'PCONTEXT ThreadContext']
 	case 85: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1621,6 +1715,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 86 NTSTATUS NtGetDevicePowerState ['HANDLE Device', 'DEVICE_POWER_STATE *State']
 	case 86: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1634,6 +1729,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 87 NTSTATUS NtGetPlugPlayEvent ['HANDLE EventHandle', 'PVOID Context', 'PPLUGPLAY_EVENT_BLOCK EventBlock', 'ULONG EventBufferSize']
 	case 87: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1651,6 +1747,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 88 NTSTATUS NtGetWriteWatch ['HANDLE ProcessHandle', 'ULONG Flags', 'PVOID BaseAddress', 'SIZE_T RegionSize', 'PVOID *UserAddressArray', 'PULONG_PTR EntriesInUserAddressArray', 'PULONG Granularity']
 	case 88: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1674,6 +1771,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 89 NTSTATUS NtImpersonateAnonymousToken ['HANDLE ThreadHandle']
 	case 89: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1685,6 +1783,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 90 NTSTATUS NtImpersonateClientOfPort ['HANDLE PortHandle', 'PPORT_MESSAGE Message']
 	case 90: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1698,6 +1797,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 91 NTSTATUS NtImpersonateThread ['HANDLE ServerThreadHandle', 'HANDLE ClientThreadHandle', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos']
 	case 91: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1713,6 +1813,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 92 NTSTATUS NtInitializeRegistry ['USHORT BootCondition']
 	case 92: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1724,6 +1825,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 93 NTSTATUS NtInitiatePowerAction ['POWER_ACTION SystemAction', 'SYSTEM_POWER_STATE MinSystemState', 'ULONG Flags', 'BOOLEAN Asynchronous']
 	case 93: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1741,6 +1843,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 94 NTSTATUS NtIsProcessInJob ['HANDLE ProcessHandle', 'HANDLE JobHandle']
 	case 94: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1754,11 +1857,13 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 95 BOOLEAN NtIsSystemResumeAutomatic ['']
 	case 95: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtIsSystemResumeAutomatic_enter, cpu, pc);
 	}; break;
 	// 96 NTSTATUS NtListenPort ['HANDLE PortHandle', 'PPORT_MESSAGE ConnectionRequest']
 	case 96: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1772,6 +1877,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 97 NTSTATUS NtLoadDriver ['PUNICODE_STRING DriverServiceName']
 	case 97: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1783,6 +1889,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 98 NTSTATUS NtLoadKey ['POBJECT_ATTRIBUTES TargetKey', 'POBJECT_ATTRIBUTES SourceFile']
 	case 98: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1796,6 +1903,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 99 NTSTATUS NtLoadKey2 ['POBJECT_ATTRIBUTES TargetKey', 'POBJECT_ATTRIBUTES SourceFile', 'ULONG Flags']
 	case 99: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1811,6 +1919,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 100 NTSTATUS NtLockFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER ByteOffset', 'PLARGE_INTEGER Length', 'ULONG Key', 'BOOLEAN FailImmediately', 'BOOLEAN ExclusiveLock']
 	case 100: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1840,6 +1949,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 101 NTSTATUS NtLockProductActivationKeys ['ULONG *pPrivateVer', 'ULONG *pSafeMode']
 	case 101: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -1853,6 +1963,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 102 NTSTATUS NtLockRegistryKey ['HANDLE KeyHandle']
 	case 102: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1864,6 +1975,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 103 NTSTATUS NtLockVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG MapType']
 	case 103: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1881,6 +1993,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 104 NTSTATUS NtMakePermanentObject ['HANDLE Handle']
 	case 104: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1892,6 +2005,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 105 NTSTATUS NtMakeTemporaryObject ['HANDLE Handle']
 	case 105: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1903,6 +2017,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 106 NTSTATUS NtMapUserPhysicalPages ['PVOID VirtualAddress', 'ULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 106: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1918,6 +2033,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 107 NTSTATUS NtMapUserPhysicalPagesScatter ['PVOID *VirtualAddresses', 'ULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 	case 107: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1933,6 +2049,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 108 NTSTATUS NtMapViewOfSection ['HANDLE SectionHandle', 'HANDLE ProcessHandle', 'PVOID *BaseAddress', 'ULONG_PTR ZeroBits', 'SIZE_T CommitSize', 'PLARGE_INTEGER SectionOffset', 'PSIZE_T ViewSize', 'SECTION_INHERIT InheritDisposition', 'ULONG AllocationType', 'WIN32_PROTECTION_MASK Win32Protect']
 	case 108: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -1962,6 +2079,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 109 NTSTATUS NtModifyBootEntry ['PBOOT_ENTRY BootEntry']
 	case 109: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -1973,6 +2091,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 110 NTSTATUS NtNotifyChangeDirectoryFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'ULONG CompletionFilter', 'BOOLEAN WatchTree']
 	case 110: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2000,6 +2119,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 111 NTSTATUS NtNotifyChangeKey ['HANDLE KeyHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CompletionFilter', 'BOOLEAN WatchTree', 'PVOID Buffer', 'ULONG BufferSize', 'BOOLEAN Asynchronous']
 	case 111: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2029,6 +2149,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 112 NTSTATUS NtNotifyChangeMultipleKeys ['HANDLE MasterKeyHandle', 'ULONG Count', 'OBJECT_ATTRIBUTES SlaveObjects[]', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CompletionFilter', 'BOOLEAN WatchTree', 'PVOID Buffer', 'ULONG BufferSize', 'BOOLEAN Asynchronous']
 	case 112: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2062,6 +2183,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 113 NTSTATUS NtOpenDirectoryObject ['PHANDLE DirectoryHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 113: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2077,6 +2199,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 114 NTSTATUS NtOpenEvent ['PHANDLE EventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 114: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2092,6 +2215,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 115 NTSTATUS NtOpenEventPair ['PHANDLE EventPairHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 115: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2107,6 +2231,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 116 NTSTATUS NtOpenFile ['PHANDLE FileHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG ShareAccess', 'ULONG OpenOptions']
 	case 116: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2128,6 +2253,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 117 NTSTATUS NtOpenIoCompletion ['PHANDLE IoCompletionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 117: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2143,6 +2269,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 118 NTSTATUS NtOpenJobObject ['PHANDLE JobHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 118: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2158,6 +2285,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 119 NTSTATUS NtOpenKey ['PHANDLE KeyHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 119: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2173,6 +2301,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 120 NTSTATUS NtOpenMutant ['PHANDLE MutantHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 120: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2188,6 +2317,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 121 NTSTATUS NtOpenObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'ACCESS_MASK GrantedAccess', 'PPRIVILEGE_SET Privileges', 'BOOLEAN ObjectCreation', 'BOOLEAN AccessGranted', 'PBOOLEAN GenerateOnClose']
 	case 121: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2221,6 +2351,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 122 NTSTATUS NtOpenProcess ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PCLIENT_ID ClientId']
 	case 122: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2238,6 +2369,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 123 NTSTATUS NtOpenProcessToken ['HANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'PHANDLE TokenHandle']
 	case 123: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2253,6 +2385,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 124 NTSTATUS NtOpenProcessTokenEx ['HANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'ULONG HandleAttributes', 'PHANDLE TokenHandle']
 	case 124: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2270,6 +2403,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 125 NTSTATUS NtOpenSection ['PHANDLE SectionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 125: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2285,6 +2419,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 126 NTSTATUS NtOpenSemaphore ['PHANDLE SemaphoreHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 126: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2300,6 +2435,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 127 NTSTATUS NtOpenSymbolicLinkObject ['PHANDLE LinkHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 127: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2315,6 +2451,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 128 NTSTATUS NtOpenThread ['PHANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PCLIENT_ID ClientId']
 	case 128: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2332,6 +2469,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 129 NTSTATUS NtOpenThreadToken ['HANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'BOOLEAN OpenAsSelf', 'PHANDLE TokenHandle']
 	case 129: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2349,6 +2487,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 130 NTSTATUS NtOpenThreadTokenEx ['HANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'BOOLEAN OpenAsSelf', 'ULONG HandleAttributes', 'PHANDLE TokenHandle']
 	case 130: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2368,6 +2507,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 131 NTSTATUS NtOpenTimer ['PHANDLE TimerHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 131: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2383,6 +2523,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 132 NTSTATUS NtPlugPlayControl ['PLUGPLAY_CONTROL_CLASS PnPControlClass', 'PVOID PnPControlData', 'ULONG PnPControlDataLength']
 	case 132: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2398,6 +2539,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 133 NTSTATUS NtPowerInformation ['POWER_INFORMATION_LEVEL InformationLevel', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 	case 133: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2417,6 +2559,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 134 NTSTATUS NtPrivilegeCheck ['HANDLE ClientToken', 'PPRIVILEGE_SET RequiredPrivileges', 'PBOOLEAN Result']
 	case 134: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2432,6 +2575,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 135 NTSTATUS NtPrivilegeObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'PPRIVILEGE_SET Privileges', 'BOOLEAN AccessGranted']
 	case 135: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2453,6 +2597,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 136 NTSTATUS NtPrivilegedServiceAuditAlarm ['PUNICODE_STRING SubsystemName', 'PUNICODE_STRING ServiceName', 'HANDLE ClientToken', 'PPRIVILEGE_SET Privileges', 'BOOLEAN AccessGranted']
 	case 136: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2472,6 +2617,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 137 NTSTATUS NtProtectVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'WIN32_PROTECTION_MASK NewProtectWin32', 'PULONG OldProtect']
 	case 137: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2491,6 +2637,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 138 NTSTATUS NtPulseEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 	case 138: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2504,6 +2651,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 139 NTSTATUS NtQueryAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', 'PFILE_BASIC_INFORMATION FileInformation']
 	case 139: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2517,6 +2665,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 140 NTSTATUS NtQueryBootEntryOrder ['PULONG Ids', 'PULONG Count']
 	case 140: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2530,6 +2679,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 141 NTSTATUS NtQueryBootOptions ['PBOOT_OPTIONS BootOptions', 'PULONG BootOptionsLength']
 	case 141: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2543,6 +2693,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 142 NTSTATUS NtQueryDebugFilterState ['ULONG ComponentId', 'ULONG Level']
 	case 142: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2556,6 +2707,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 143 NTSTATUS NtQueryDefaultLocale ['BOOLEAN UserProfile', 'PLCID DefaultLocaleId']
 	case 143: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2569,6 +2721,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 144 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
 	case 144: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2580,6 +2733,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 145 NTSTATUS NtQueryDirectoryFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass', 'BOOLEAN ReturnSingleEntry', 'PUNICODE_STRING FileName', 'BOOLEAN RestartScan']
 	case 145: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2611,6 +2765,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 146 NTSTATUS NtQueryDirectoryObject ['HANDLE DirectoryHandle', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'BOOLEAN RestartScan', 'PULONG Context', 'PULONG ReturnLength']
 	case 146: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2634,6 +2789,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 147 NTSTATUS NtQueryEaFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'PVOID EaList', 'ULONG EaListLength', 'PULONG EaIndex', 'BOOLEAN RestartScan']
 	case 147: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2661,6 +2817,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 148 NTSTATUS NtQueryEvent ['HANDLE EventHandle', 'EVENT_INFORMATION_CLASS EventInformationClass', 'PVOID EventInformation', 'ULONG EventInformationLength', 'PULONG ReturnLength']
 	case 148: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2680,6 +2837,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 149 NTSTATUS NtQueryFullAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', 'PFILE_NETWORK_OPEN_INFORMATION FileInformation']
 	case 149: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2693,6 +2851,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 150 NTSTATUS NtQueryInformationAtom ['RTL_ATOM Atom', 'ATOM_INFORMATION_CLASS InformationClass', 'PVOID AtomInformation', 'ULONG AtomInformationLength', 'PULONG ReturnLength']
 	case 150: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2712,6 +2871,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 151 NTSTATUS NtQueryInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass']
 	case 151: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2731,6 +2891,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 152 NTSTATUS NtQueryInformationJobObject ['HANDLE JobHandle', 'JOBOBJECTINFOCLASS JobObjectInformationClass', 'PVOID JobObjectInformation', 'ULONG JobObjectInformationLength', 'PULONG ReturnLength']
 	case 152: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2750,6 +2911,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 153 NTSTATUS NtQueryInformationPort ['HANDLE PortHandle', 'PORT_INFORMATION_CLASS PortInformationClass', 'PVOID PortInformation', 'ULONG Length', 'PULONG ReturnLength']
 	case 153: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2769,6 +2931,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 154 NTSTATUS NtQueryInformationProcess ['HANDLE ProcessHandle', 'PROCESSINFOCLASS ProcessInformationClass', 'PVOID ProcessInformation', 'ULONG ProcessInformationLength', 'PULONG ReturnLength']
 	case 154: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2788,6 +2951,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 155 NTSTATUS NtQueryInformationThread ['HANDLE ThreadHandle', 'THREADINFOCLASS ThreadInformationClass', 'PVOID ThreadInformation', 'ULONG ThreadInformationLength', 'PULONG ReturnLength']
 	case 155: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2807,6 +2971,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 156 NTSTATUS NtQueryInformationToken ['HANDLE TokenHandle', 'TOKEN_INFORMATION_CLASS TokenInformationClass', 'PVOID TokenInformation', 'ULONG TokenInformationLength', 'PULONG ReturnLength']
 	case 156: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2826,6 +2991,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 157 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
 	case 157: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -2837,6 +3003,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 158 NTSTATUS NtQueryIntervalProfile ['KPROFILE_SOURCE ProfileSource', 'PULONG Interval']
 	case 158: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2850,6 +3017,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 159 NTSTATUS NtQueryIoCompletion ['HANDLE IoCompletionHandle', 'IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass', 'PVOID IoCompletionInformation', 'ULONG IoCompletionInformationLength', 'PULONG ReturnLength']
 	case 159: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2869,6 +3037,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 160 NTSTATUS NtQueryKey ['HANDLE KeyHandle', 'KEY_INFORMATION_CLASS KeyInformationClass', 'PVOID KeyInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 160: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2888,6 +3057,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 161 NTSTATUS NtQueryMultipleValueKey ['HANDLE KeyHandle', 'PKEY_VALUE_ENTRY ValueEntries', 'ULONG EntryCount', 'PVOID ValueBuffer', 'PULONG BufferLength', 'PULONG RequiredBufferLength']
 	case 161: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2909,6 +3079,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 162 NTSTATUS NtQueryMutant ['HANDLE MutantHandle', 'MUTANT_INFORMATION_CLASS MutantInformationClass', 'PVOID MutantInformation', 'ULONG MutantInformationLength', 'PULONG ReturnLength']
 	case 162: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2928,6 +3099,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 163 NTSTATUS NtQueryObject ['HANDLE Handle', 'OBJECT_INFORMATION_CLASS ObjectInformationClass', 'PVOID ObjectInformation', 'ULONG ObjectInformationLength', 'PULONG ReturnLength']
 	case 163: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -2947,6 +3119,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 164 NTSTATUS NtQueryOpenSubKeys ['POBJECT_ATTRIBUTES TargetKey', 'PULONG HandleCount']
 	case 164: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2960,6 +3133,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 165 NTSTATUS NtQueryPerformanceCounter ['PLARGE_INTEGER PerformanceCounter', 'PLARGE_INTEGER PerformanceFrequency']
 	case 165: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -2973,6 +3147,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 166 NTSTATUS NtQueryQuotaInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'PVOID SidList', 'ULONG SidListLength', 'PULONG StartSid', 'BOOLEAN RestartScan']
 	case 166: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3000,6 +3175,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 167 NTSTATUS NtQuerySection ['HANDLE SectionHandle', 'SECTION_INFORMATION_CLASS SectionInformationClass', 'PVOID SectionInformation', 'SIZE_T SectionInformationLength', 'PSIZE_T ReturnLength']
 	case 167: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3019,6 +3195,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 168 NTSTATUS NtQuerySecurityObject ['HANDLE Handle', 'SECURITY_INFORMATION SecurityInformation', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'ULONG Length', 'PULONG LengthNeeded']
 	case 168: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3038,6 +3215,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 169 NTSTATUS NtQuerySemaphore ['HANDLE SemaphoreHandle', 'SEMAPHORE_INFORMATION_CLASS SemaphoreInformationClass', 'PVOID SemaphoreInformation', 'ULONG SemaphoreInformationLength', 'PULONG ReturnLength']
 	case 169: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3057,6 +3235,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 170 NTSTATUS NtQuerySymbolicLinkObject ['HANDLE LinkHandle', 'PUNICODE_STRING LinkTarget', 'PULONG ReturnedLength']
 	case 170: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3072,6 +3251,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 171 NTSTATUS NtQuerySystemEnvironmentValue ['PUNICODE_STRING VariableName', 'PWSTR VariableValue', 'USHORT ValueLength', 'PUSHORT ReturnLength']
 	case 171: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3089,6 +3269,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 172 NTSTATUS NtQuerySystemEnvironmentValueEx ['PUNICODE_STRING VariableName', 'LPGUID VendorGuid', 'PVOID Value', 'PULONG ValueLength', 'PULONG Attributes']
 	case 172: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3108,6 +3289,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 173 NTSTATUS NtQuerySystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', 'PVOID SystemInformation', 'ULONG SystemInformationLength', 'PULONG ReturnLength']
 	case 173: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3125,6 +3307,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 174 NTSTATUS NtQuerySystemTime ['PLARGE_INTEGER SystemTime']
 	case 174: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3136,6 +3319,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 175 NTSTATUS NtQueryTimer ['HANDLE TimerHandle', 'TIMER_INFORMATION_CLASS TimerInformationClass', 'PVOID TimerInformation', 'ULONG TimerInformationLength', 'PULONG ReturnLength']
 	case 175: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3155,6 +3339,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 176 NTSTATUS NtQueryTimerResolution ['PULONG MaximumTime', 'PULONG MinimumTime', 'PULONG CurrentTime']
 	case 176: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3170,6 +3355,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 177 NTSTATUS NtQueryValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName', 'KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', 'PVOID KeyValueInformation', 'ULONG Length', 'PULONG ResultLength']
 	case 177: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3191,6 +3377,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 178 NTSTATUS NtQueryVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'MEMORY_INFORMATION_CLASS MemoryInformationClass', 'PVOID MemoryInformation', 'SIZE_T MemoryInformationLength', 'PSIZE_T ReturnLength']
 	case 178: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3212,6 +3399,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 179 NTSTATUS NtQueryVolumeInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FsInformation', 'ULONG Length', 'FS_INFORMATION_CLASS FsInformationClass']
 	case 179: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3231,6 +3419,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 180 NTSTATUS NtQueueApcThread ['HANDLE ThreadHandle', 'PPS_APC_ROUTINE ApcRoutine', 'PVOID ApcArgument1', 'PVOID ApcArgument2', 'PVOID ApcArgument3']
 	case 180: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3250,6 +3439,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 181 NTSTATUS NtRaiseException ['PEXCEPTION_RECORD ExceptionRecord', 'PCONTEXT ContextRecord', 'BOOLEAN FirstChance']
 	case 181: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3265,6 +3455,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 182 NTSTATUS NtRaiseHardError ['NTSTATUS ErrorStatus', 'ULONG NumberOfParameters', 'ULONG UnicodeStringParameterMask', 'PULONG_PTR Parameters', 'ULONG ValidResponseOptions', 'PULONG Response']
 	case 182: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3286,6 +3477,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 183 NTSTATUS NtReadFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 183: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3313,6 +3505,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 184 NTSTATUS NtReadFileScatter ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PFILE_SEGMENT_ELEMENT SegmentArray', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 184: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3340,6 +3533,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 185 NTSTATUS NtReadRequestData ['HANDLE PortHandle', 'PPORT_MESSAGE Message', 'ULONG DataEntryIndex', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesRead']
 	case 185: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3361,6 +3555,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 186 NTSTATUS NtReadVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesRead']
 	case 186: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3380,6 +3575,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 187 NTSTATUS NtRegisterThreadTerminatePort ['HANDLE PortHandle']
 	case 187: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3391,6 +3587,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 188 NTSTATUS NtReleaseMutant ['HANDLE MutantHandle', 'PLONG PreviousCount']
 	case 188: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3404,6 +3601,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 189 NTSTATUS NtReleaseSemaphore ['HANDLE SemaphoreHandle', 'LONG ReleaseCount', 'PLONG PreviousCount']
 	case 189: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		int32_t arg1 = get_s32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3419,6 +3617,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 190 NTSTATUS NtRemoveIoCompletion ['HANDLE IoCompletionHandle', 'PVOID *KeyContext', 'PVOID *ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER Timeout']
 	case 190: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3438,6 +3637,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 191 NTSTATUS NtRemoveProcessDebug ['HANDLE ProcessHandle', 'HANDLE DebugObjectHandle']
 	case 191: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3451,6 +3651,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 192 NTSTATUS NtRenameKey ['HANDLE KeyHandle', 'PUNICODE_STRING NewName']
 	case 192: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3464,6 +3665,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 193 NTSTATUS NtReplaceKey ['POBJECT_ATTRIBUTES NewFile', 'HANDLE TargetHandle', 'POBJECT_ATTRIBUTES OldFile']
 	case 193: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3479,6 +3681,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 194 NTSTATUS NtReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE ReplyMessage']
 	case 194: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3492,6 +3695,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 195 NTSTATUS NtReplyWaitReceivePort ['HANDLE PortHandle', 'PVOID *PortContext', 'PPORT_MESSAGE ReplyMessage', 'PPORT_MESSAGE ReceiveMessage']
 	case 195: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3509,6 +3713,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 196 NTSTATUS NtReplyWaitReceivePortEx ['HANDLE PortHandle', 'PVOID *PortContext', 'PPORT_MESSAGE ReplyMessage', 'PPORT_MESSAGE ReceiveMessage', 'PLARGE_INTEGER Timeout']
 	case 196: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3528,6 +3733,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 197 NTSTATUS NtReplyWaitReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE ReplyMessage']
 	case 197: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3541,6 +3747,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 199 NTSTATUS NtRequestPort ['HANDLE PortHandle', 'PPORT_MESSAGE RequestMessage']
 	case 199: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3554,6 +3761,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 200 NTSTATUS NtRequestWaitReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE RequestMessage', 'PPORT_MESSAGE ReplyMessage']
 	case 200: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3569,6 +3777,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 202 NTSTATUS NtResetEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 	case 202: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3582,6 +3791,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 203 NTSTATUS NtResetWriteWatch ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'SIZE_T RegionSize']
 	case 203: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3597,6 +3807,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 204 NTSTATUS NtRestoreKey ['HANDLE KeyHandle', 'HANDLE FileHandle', 'ULONG Flags']
 	case 204: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3612,6 +3823,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 205 NTSTATUS NtResumeProcess ['HANDLE ProcessHandle']
 	case 205: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3623,6 +3835,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 206 NTSTATUS NtResumeThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 	case 206: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3636,6 +3849,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 207 NTSTATUS NtSaveKey ['HANDLE KeyHandle', 'HANDLE FileHandle']
 	case 207: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3649,6 +3863,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 208 NTSTATUS NtSaveKeyEx ['HANDLE KeyHandle', 'HANDLE FileHandle', 'ULONG Format']
 	case 208: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3664,6 +3879,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 209 NTSTATUS NtSaveMergedKeys ['HANDLE HighPrecedenceKeyHandle', 'HANDLE LowPrecedenceKeyHandle', 'HANDLE FileHandle']
 	case 209: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3679,6 +3895,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 210 NTSTATUS NtSecureConnectPort ['PHANDLE PortHandle', 'PUNICODE_STRING PortName', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos', 'PPORT_VIEW ClientView', 'PSID RequiredServerSid', 'PREMOTE_PORT_VIEW ServerView', 'PULONG MaxMessageLength', 'PVOID ConnectionInformation', 'PULONG ConnectionInformationLength']
 	case 210: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3706,6 +3923,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 211 NTSTATUS NtSetBootEntryOrder ['PULONG Ids', 'ULONG Count']
 	case 211: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3719,6 +3937,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 212 NTSTATUS NtSetBootOptions ['PBOOT_OPTIONS BootOptions', 'ULONG FieldsToChange']
 	case 212: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3732,6 +3951,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 213 NTSTATUS NtSetContextThread ['HANDLE ThreadHandle', 'PCONTEXT ThreadContext']
 	case 213: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3745,6 +3965,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 214 NTSTATUS NtSetDebugFilterState ['ULONG ComponentId', 'ULONG Level', 'BOOLEAN State']
 	case 214: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3760,6 +3981,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 215 NTSTATUS NtSetDefaultHardErrorPort ['HANDLE DefaultHardErrorPort']
 	case 215: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3771,6 +3993,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 216 NTSTATUS NtSetDefaultLocale ['BOOLEAN UserProfile', 'LCID DefaultLocaleId']
 	case 216: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3784,6 +4007,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 217 NTSTATUS NtSetDefaultUILanguage ['LANGID DefaultUILanguageId']
 	case 217: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3795,6 +4019,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 218 NTSTATUS NtSetEaFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length']
 	case 218: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3812,6 +4037,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 219 NTSTATUS NtSetEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 	case 219: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -3825,6 +4051,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 220 NTSTATUS NtSetEventBoostPriority ['HANDLE EventHandle']
 	case 220: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3836,6 +4063,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 221 NTSTATUS NtSetHighEventPair ['HANDLE EventPairHandle']
 	case 221: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3847,6 +4075,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 222 NTSTATUS NtSetHighWaitLowEventPair ['HANDLE EventPairHandle']
 	case 222: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -3858,6 +4087,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 223 NTSTATUS NtSetInformationDebugObject ['HANDLE DebugObjectHandle', 'DEBUGOBJECTINFOCLASS DebugObjectInformationClass', 'PVOID DebugInformation', 'ULONG DebugInformationLength', 'PULONG ReturnLength']
 	case 223: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3877,6 +4107,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 224 NTSTATUS NtSetInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass']
 	case 224: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3896,6 +4127,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 225 NTSTATUS NtSetInformationJobObject ['HANDLE JobHandle', 'JOBOBJECTINFOCLASS JobObjectInformationClass', 'PVOID JobObjectInformation', 'ULONG JobObjectInformationLength']
 	case 225: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3913,6 +4145,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 226 NTSTATUS NtSetInformationKey ['HANDLE KeyHandle', 'KEY_SET_INFORMATION_CLASS KeySetInformationClass', 'PVOID KeySetInformation', 'ULONG KeySetInformationLength']
 	case 226: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3930,6 +4163,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 227 NTSTATUS NtSetInformationObject ['HANDLE Handle', 'OBJECT_INFORMATION_CLASS ObjectInformationClass', 'PVOID ObjectInformation', 'ULONG ObjectInformationLength']
 	case 227: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3947,6 +4181,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 228 NTSTATUS NtSetInformationProcess ['HANDLE ProcessHandle', 'PROCESSINFOCLASS ProcessInformationClass', 'PVOID ProcessInformation', 'ULONG ProcessInformationLength']
 	case 228: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3964,6 +4199,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 229 NTSTATUS NtSetInformationThread ['HANDLE ThreadHandle', 'THREADINFOCLASS ThreadInformationClass', 'PVOID ThreadInformation', 'ULONG ThreadInformationLength']
 	case 229: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3981,6 +4217,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 230 NTSTATUS NtSetInformationToken ['HANDLE TokenHandle', 'TOKEN_INFORMATION_CLASS TokenInformationClass', 'PVOID TokenInformation', 'ULONG TokenInformationLength']
 	case 230: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -3998,6 +4235,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 231 NTSTATUS NtSetIntervalProfile ['ULONG Interval', 'KPROFILE_SOURCE Source']
 	case 231: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4011,6 +4249,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 232 NTSTATUS NtSetIoCompletion ['HANDLE IoCompletionHandle', 'PVOID KeyContext', 'PVOID ApcContext', 'NTSTATUS IoStatus', 'ULONG_PTR IoStatusInformation']
 	case 232: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4030,6 +4269,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 233 NTSTATUS NtSetLdtEntries ['ULONG Selector0', 'ULONG Entry0Low', 'ULONG Entry0Hi', 'ULONG Selector1', 'ULONG Entry1Low', 'ULONG Entry1Hi']
 	case 233: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4051,6 +4291,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 234 NTSTATUS NtSetLowEventPair ['HANDLE EventPairHandle']
 	case 234: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4062,6 +4303,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 235 NTSTATUS NtSetLowWaitHighEventPair ['HANDLE EventPairHandle']
 	case 235: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4073,6 +4315,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 236 NTSTATUS NtSetQuotaInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length']
 	case 236: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4090,6 +4333,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 237 NTSTATUS NtSetSecurityObject ['HANDLE Handle', 'SECURITY_INFORMATION SecurityInformation', 'PSECURITY_DESCRIPTOR SecurityDescriptor']
 	case 237: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4105,6 +4349,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 238 NTSTATUS NtSetSystemEnvironmentValue ['PUNICODE_STRING VariableName', 'PUNICODE_STRING VariableValue']
 	case 238: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4118,6 +4363,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 239 NTSTATUS NtSetSystemEnvironmentValueEx ['PUNICODE_STRING VariableName', 'LPGUID VendorGuid', 'PVOID Value', 'ULONG ValueLength', 'ULONG Attributes']
 	case 239: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4137,6 +4383,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 240 NTSTATUS NtSetSystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', 'PVOID SystemInformation', 'ULONG SystemInformationLength']
 	case 240: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4152,6 +4399,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 241 NTSTATUS NtSetSystemPowerState ['POWER_ACTION SystemAction', 'SYSTEM_POWER_STATE MinSystemState', 'ULONG Flags']
 	case 241: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4167,6 +4415,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 242 NTSTATUS NtSetSystemTime ['PLARGE_INTEGER SystemTime', 'PLARGE_INTEGER PreviousTime']
 	case 242: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4180,6 +4429,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 243 NTSTATUS NtSetThreadExecutionState ['EXECUTION_STATE esFlags', 'PEXECUTION_STATE PreviousFlags']
 	case 243: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4193,6 +4443,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 244 NTSTATUS NtSetTimer ['HANDLE TimerHandle', 'PLARGE_INTEGER DueTime', 'PTIMER_APC_ROUTINE TimerApcRoutine', 'PVOID TimerContext', 'BOOLEAN WakeTimer', 'LONG Period', 'PBOOLEAN PreviousState']
 	case 244: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4216,6 +4467,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 245 NTSTATUS NtSetTimerResolution ['ULONG DesiredTime', 'BOOLEAN SetResolution', 'PULONG ActualTime']
 	case 245: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4231,6 +4483,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 246 NTSTATUS NtSetUuidSeed ['PCHAR Seed']
 	case 246: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4242,6 +4495,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 247 NTSTATUS NtSetValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName', 'ULONG TitleIndex', 'ULONG Type', 'PVOID Data', 'ULONG DataSize']
 	case 247: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4263,6 +4517,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 248 NTSTATUS NtSetVolumeInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FsInformation', 'ULONG Length', 'FS_INFORMATION_CLASS FsInformationClass']
 	case 248: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4282,6 +4537,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 249 NTSTATUS NtShutdownSystem ['SHUTDOWN_ACTION Action']
 	case 249: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4293,6 +4549,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 250 NTSTATUS NtSignalAndWaitForSingleObject ['HANDLE SignalHandle', 'HANDLE WaitHandle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 250: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4310,6 +4567,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 251 NTSTATUS NtStartProfile ['HANDLE ProfileHandle']
 	case 251: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4321,6 +4579,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 252 NTSTATUS NtStopProfile ['HANDLE ProfileHandle']
 	case 252: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4332,6 +4591,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 253 NTSTATUS NtSuspendProcess ['HANDLE ProcessHandle']
 	case 253: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4343,6 +4603,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 254 NTSTATUS NtSuspendThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 	case 254: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4356,6 +4617,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 255 NTSTATUS NtSystemDebugControl ['SYSDBG_COMMAND Command', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength', 'PULONG ReturnLength']
 	case 255: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4377,6 +4639,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 256 NTSTATUS NtTerminateJobObject ['HANDLE JobHandle', 'NTSTATUS ExitStatus']
 	case 256: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4390,6 +4653,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 257 NTSTATUS NtTerminateProcess ['HANDLE ProcessHandle', 'NTSTATUS ExitStatus']
 	case 257: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4403,6 +4667,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 258 NTSTATUS NtTerminateThread ['HANDLE ThreadHandle', 'NTSTATUS ExitStatus']
 	case 258: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4416,11 +4681,13 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 259 NTSTATUS NtTestAlert ['']
 	case 259: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtTestAlert_enter, cpu, pc);
 	}; break;
 	// 260 NTSTATUS NtTraceEvent ['HANDLE TraceHandle', 'ULONG Flags', 'ULONG FieldSize', 'PVOID Fields']
 	case 260: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4438,6 +4705,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 261 NTSTATUS NtTranslateFilePath ['PFILE_PATH InputFilePath', 'ULONG OutputType', 'PFILE_PATH OutputFilePath', 'PULONG OutputFilePathLength']
 	case 261: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4455,6 +4723,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 262 NTSTATUS NtUnloadDriver ['PUNICODE_STRING DriverServiceName']
 	case 262: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4466,6 +4735,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 263 NTSTATUS NtUnloadKey ['POBJECT_ATTRIBUTES TargetKey']
 	case 263: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4477,6 +4747,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 264 NTSTATUS NtUnloadKeyEx ['POBJECT_ATTRIBUTES TargetKey', 'HANDLE Event']
 	case 264: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4490,6 +4761,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 265 NTSTATUS NtUnlockFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER ByteOffset', 'PLARGE_INTEGER Length', 'ULONG Key']
 	case 265: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4509,6 +4781,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 266 NTSTATUS NtUnlockVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG MapType']
 	case 266: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4526,6 +4799,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 267 NTSTATUS NtUnmapViewOfSection ['HANDLE ProcessHandle', 'PVOID BaseAddress']
 	case 267: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4539,6 +4813,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 268 NTSTATUS NtVdmControl ['VDMSERVICECLASS Service', 'PVOID ServiceData']
 	case 268: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
@@ -4552,6 +4827,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 269 NTSTATUS NtWaitForDebugEvent ['HANDLE DebugObjectHandle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout', 'PDBGUI_WAIT_STATE_CHANGE WaitStateChange']
 	case 269: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4569,6 +4845,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 270 NTSTATUS NtWaitForMultipleObjects ['ULONG Count', 'HANDLE Handles[]', 'WAIT_TYPE WaitType', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 270: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4588,6 +4865,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 271 NTSTATUS NtWaitForSingleObject ['HANDLE Handle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 271: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4603,6 +4881,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 272 NTSTATUS NtWaitHighEventPair ['HANDLE EventPairHandle']
 	case 272: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4614,6 +4893,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 273 NTSTATUS NtWaitLowEventPair ['HANDLE EventPairHandle']
 	case 273: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
@@ -4625,6 +4905,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 274 NTSTATUS NtWriteFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 274: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4652,6 +4933,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 275 NTSTATUS NtWriteFileGather ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PFILE_SEGMENT_ELEMENT SegmentArray', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 	case 275: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4679,6 +4961,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 276 NTSTATUS NtWriteRequestData ['HANDLE PortHandle', 'PPORT_MESSAGE Message', 'ULONG DataEntryIndex', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesWritten']
 	case 276: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4700,6 +4983,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 277 NTSTATUS NtWriteVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesWritten']
 	case 277: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4719,11 +5003,13 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 278 NTSTATUS NtYieldExecution ['']
 	case 278: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtYieldExecution_enter, cpu, pc);
 	}; break;
 	// 279 NTSTATUS NtCreateKeyedEvent ['PHANDLE KeyedEventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG Flags']
 	case 279: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4741,6 +5027,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 280 NTSTATUS NtOpenKeyedEvent ['PHANDLE KeyedEventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 	case 280: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4756,6 +5043,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 281 NTSTATUS NtReleaseKeyedEvent ['HANDLE KeyedEventHandle', 'PVOID KeyValue', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 281: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4773,6 +5061,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 282 NTSTATUS NtWaitForKeyedEvent ['HANDLE KeyedEventHandle', 'PVOID KeyValue', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 	case 282: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		uint32_t arg0 = get_32(cpu, 0);
 		uint32_t arg1 = get_32(cpu, 1);
 		uint32_t arg2 = get_32(cpu, 2);
@@ -4790,6 +5079,7 @@ void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int 
 	// 283 NTSTATUS NtQueryPortInformationProcess ['']
 	case 283: {
 		panda_noreturn = false;
+		ctx.double_return = false;
 		PPP_RUN_CB(on_NtQueryPortInformationProcess_enter, cpu, pc);
 	}; break;
 	default:
