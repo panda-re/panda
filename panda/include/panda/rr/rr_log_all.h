@@ -109,7 +109,6 @@ extern void rr_signal_disagreement(RR_prog_point current,
         ACTION(RR_TIMER_EXPIRE),      /* expire timer for MIPS*/               \
         ACTION(RR_STORE_CAUSE),      /* store cause for MIPS*/               \
         ACTION(RR_STORE_CPU_INTERRUPT_HARD),      /* store cause for MIPS*/               \
-        ACTION(RR_PCI_IRQ),          /* PCI IRQ */                           \
         ACTION(RR_CALL_LAST) \
 
 typedef enum {
@@ -525,10 +524,6 @@ typedef struct {
     char require;
 } RR_store_cpu_interrupt_hard_args;
 
-typedef struct {
-    int irq_num;
-    int level;
-} RR_pci_irq_args;
 void rr_record_serial_send(RR_callsite_id call_site, uint64_t fifo_addr,
                            uint8_t value);
 void rr_record_serial_write(RR_callsite_id call_site, uint64_t fifo_addr,

@@ -73,7 +73,6 @@ void rr_mem_region_transaction_record(bool begin);
 void rr_timer_expire_record(uint64_t now);
 void rr_store_cause_record(uint32_t);
 void rr_store_cpu_interrupt_hard(void);
-void rr_pci_irq_record(int irq_num, int level);
 
 // mz using uint8_t for kind and callsite_loc to control space - enums default
 // to int.
@@ -104,7 +103,6 @@ typedef struct {
         RR_timer_expire_args timer_expire_args;
         RR_store_cause_args store_cause_args;
         RR_store_cpu_interrupt_hard_args store_cpu_interrupt_hard_args;
-        RR_pci_irq_args pci_irq_args;
     } variant;
     // mz XXX HACK
     uint64_t buf_addr_rec;
