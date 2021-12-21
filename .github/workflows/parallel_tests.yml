@@ -20,6 +20,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+    - name: Lint PyPANDA with flake8
+      run: |
+       python -m pip install --upgrade pip
+       python -m pip install flake8
+       python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
+       # python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run install_ubuntu.sh
       run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
 

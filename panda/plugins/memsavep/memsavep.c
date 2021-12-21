@@ -49,7 +49,7 @@ static void actually_dump_physical_memory(FILE* out, size_t len)
         size_t l = sizeof(block);
         if (l > len)
             l = len;
-        if (panda_physical_memory_rw(addr, block, l, false) == MEMTX_OK)
+        if (panda_physical_memory_read(addr, block, l) == MEMTX_OK)
             fwrite(block, 1, l, out);
         else
             fwrite(_zero_block, 1, l, out);

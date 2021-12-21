@@ -129,7 +129,7 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     uint8_t bytes[LAVA_TAINT_QUERY_MAX_LEN] = {0};
     uint32_t len = std::min(buf_len, LAVA_TAINT_QUERY_MAX_LEN);
     if (is_strnlen) {
-        panda_physical_memory_rw(phys, bytes, LAVA_TAINT_QUERY_MAX_LEN, false);
+        panda_physical_memory_read(phys, bytes, LAVA_TAINT_QUERY_MAX_LEN);
         for (int i = 0; i < LAVA_TAINT_QUERY_MAX_LEN; i++) {
             if (bytes[i] == '\0') {
                 len = i;

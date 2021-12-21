@@ -169,9 +169,9 @@ def test3():
         print("Main slow_func sleeping")
         sleep(10)
         print("Main done")
-    hang_func.__blocking__ = "placeholder" # Hack to pretend it's decorated
+    slow_func.__blocking__ = "placeholder" # Hack to pretend it's decorated
 
-    b.queue(hang_func)
+    b.queue(slow_func)
 
     # Make sure we have time to run both fns
     started.set()
