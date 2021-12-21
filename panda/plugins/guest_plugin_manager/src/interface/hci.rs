@@ -1,6 +1,6 @@
-use super::channels::ChannelId;
 use super::channels::{
     get_channel_from_name, poll_plugin_message, publish_message_from_guest,
+    requeue_plugin_message, ChannelId,
 };
 use super::plugin_manager::new_manager_channel;
 use crate::MAGIC;
@@ -31,9 +31,10 @@ pub fn hyp_read(
     addr: usize,
     max_size: usize,
 ) -> Option<usize> {
-    if let Some(msg) = poll_plugin_message(channel_id) {
+    if let Some(mut msg) = poll_plugin_message(channel_id) {
         if msg.len() > max_size {
-            panic!();
+            requeue_plugin_message(channel_id, msg[max_size..].to_owned());
+            msg.truncate(max_size);
         }
         // could check max len more
         virtual_memory_write(cpu, addr as target_ulong, &msg);

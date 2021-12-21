@@ -49,6 +49,21 @@ pub fn poll_plugin_message(channel_id: ChannelId) -> Option<Vec<u8>> {
     }
 }
 
+pub fn requeue_plugin_message(channel_id: ChannelId, message: Vec<u8>) {
+    let pm = CHANNELS.read();
+    let plugin = pm.get(&channel_id).unwrap();
+    let len = plugin.message_queue.len();
+
+    plugin.message_queue.push(message);
+
+    // len won't be greater than single digit, this is fine
+    for _ in 0..len {
+        plugin
+            .message_queue
+            .push(plugin.message_queue.pop().unwrap());
+    }
+}
+
 pub fn publish_message_from_guest(channel_id: ChannelId, msg: Vec<u8>) {
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id) {
@@ -86,4 +101,3 @@ pub fn get_channel_from_name(p_name: &str) -> Option<ChannelId> {
         .find(|(_, v)| v.name.as_deref() == Some(p_name))
         .map(|x| *x.0)
 }
-
