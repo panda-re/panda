@@ -2356,7 +2356,7 @@ class Panda():
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None, cdrom=None):
+    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None, no_timeout=False, cdrom=None):
         '''
 
         Copy a directory from the host into the guest by
@@ -2392,7 +2392,7 @@ class Panda():
         #   prep guest environment before script runs)
         mount_dir = shlex_quote(copy_directory)
 
-        mkdir_result = self.run_serial_cmd(f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"", timeout=timeout)
+        mkdir_result = self.run_serial_cmd(f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"", timeout=timeout,no_timeout=no_timeout)
 
         if 'mkdir_ok' not in mkdir_result:
             raise RuntimeError(f"Failed to create mount directories inside guest: {mkdir_result}")
@@ -2416,14 +2416,14 @@ class Panda():
             for _ in range(10):
                 if 'mount_ok' in mount_status:
                     break
-                mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')", timeout=timeout)
+                mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')", timeout=timeout,no_timeout=no_timeout)
                 sleep(1)
             else:
                 # Didn't ever break
                 raise RuntimeError(f"Failed to mount media inside guest: {mount_status}")
 
             # Note the . after our src/. directory - that's special syntax for cp -a
-            copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'", timeout=timeout)
+            copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'", timeout=timeout,no_timeout=no_timeout)
             
             # NB: exact match here causing issues so making things more flexible
             if not ('copyok' in copy_result):
@@ -2431,18 +2431,18 @@ class Panda():
 
         finally:
             # Ensure we disconnect the CD drive after the mount + copy, even if it fails
-            self.run_serial_cmd("umount /dev/cdrom") # This can fail and that's okay, we'll forece eject
+            self.run_serial_cmd("umount /dev/cdrom",timeout=timeout, no_timeout=no_timeout) # This can fail and that's okay, we'll forece eject
             sleep(1)
             errs = self.run_monitor_cmd(f"eject -f {cd_drive_name}")
             if len(errs):
                 warn(f"Warning encountered when disconnecting media from guest: {errs}")
 
         if isfile(pjoin(copy_directory, setup_script)):
-            setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout)
+            setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout,no_timeout=no_timeout)
             progress("[Setup command]: {setup_result}")
 
     @blocking
-    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
+    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False, no_timeout=False, timeout=None):
         '''
         Take a recording as follows:
             0) Revert to the specified snapshot name if one is set. By default 'root'. Set to `None` if you have already set up the guest and are ready to record with no revert
@@ -2452,6 +2452,9 @@ class Panda():
             4) Begin the recording (name controlled by recording_name)
             5) Press enter in the guest to begin the command. Wait until it finishes.
             6) End the recording
+        
+        NOTE: The timeout is for an individual serial call not the whole
+            record_cmd process.
         '''
         # 0) Revert to the specified snapshot
         if snap_name is not None:
@@ -2460,12 +2463,12 @@ class Panda():
         # 1) Make copy_directory into an iso and copy it into the guest - It will end up at the exact same path
         if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
             # Make iso
-            self.copy_to_guest(copy_directory, iso_name)
+            self.copy_to_guest(copy_directory, iso_name,timeout=timeout,no_timeout=no_timeout)
 
         # 2) Run setup_command, if provided before we start the recording (good place to CD or install, etc)
         if setup_command:
             print(f"Running setup command {setup_command}")
-            r = self.run_serial_cmd(setup_command)
+            r = self.run_serial_cmd(setup_command,timeout=timeout, no_timeout=no_timeout)
             print(f"Setup command results: {r}")
 
         # 3) type commmand (note we type command, start recording, finish command)
