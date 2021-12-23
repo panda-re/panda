@@ -534,9 +534,21 @@ class Panda():
         #self.libpanda.panda_cleanup_record()
         if self._in_replay:
             self.reset()
-        if hasattr(self, "exit_exception"):
-            saved_exception = self.exit_exception
-            del self.exit_exception
+        if hasattr(self, "end_run_raise_signal"):
+            saved_exception = self.end_run_raise_signal
+            del self.end_run_raise_signal
+            raise saved_exception
+        if hasattr(self, "callback_exit_exception"):
+            saved_exception = self.callback_exit_exception
+            del self.callback_exit_exception
+            raise saved_exception
+        if hasattr(self, "blocking_queue_error"):
+            saved_exception = self.blocking_queue_error
+            del self.blocking_queue_error
+            raise saved_exception
+        if hasattr(self, "hook_exit_exception"):
+            saved_exception = self.hook_exit_exception
+            del self.hook_exit_exception
             raise saved_exception
 
 
@@ -934,15 +946,11 @@ class Panda():
         # this takes the blocking function and handles errors
         @blocking
         def wrapper():
-            if not hasattr(self, "exit_exception"):
-                try:
-                    f()
-                except Exception as e:
-                    if self.catch_exceptions:
-                        self.callback_exit_exception = e
-                        self.end_analysis()
-                    else:
-                        raise e
+            try:
+                f()
+            except Exception as e:
+                self.blocking_queue_error = e
+                self.end_analysis()
 
 
         # Keep the original function name instead of replacing it with 'wrapper'
@@ -2578,22 +2586,21 @@ class Panda():
             return_from_exception = 0
 
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
-                    try:
-                        r = fun(*args, **kwargs)
-                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
-                        #assert(isinstance(r, int)), "Invalid return type?"
-                        #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
-                        return r
-                    except Exception as e:
-                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                        # machine exits.
-                        if self.catch_exceptions:
-                            self.callback_exit_exception = e
-                            self.end_analysis()
-                        else:
-                            raise e
-                        return return_from_exception
+                try:
+                    r = fun(*args, **kwargs)
+                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    if self.catch_exceptions:
+                        self.callback_exit_exception = e
+                        self.end_analysis()
+                    else:
+                        raise e
+                    return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
             cast_rc_string = str(self.ffi.typeof(cast_rc))
@@ -2819,21 +2826,20 @@ class Panda():
                 local_name = fun.__name__
 
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
-                    try:
-                        r = fun(*args, **kwargs)
-                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
-                        #assert(isinstance(r, int)), "Invalid return type?"
-                        return r
-                    except Exception as e:
-                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                        # machine exits.
-                        if self.catch_exceptions:
-                            self.callback_exit_exception = e
-                            self.end_analysis()
-                        else:
-                            raise e
-                        # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                try:
+                    r = fun(*args, **kwargs)
+                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    if self.catch_exceptions:
+                        self.callback_exit_exception = e
+                        self.end_analysis()
+                    else:
+                        raise e
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
 
             cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
@@ -2927,27 +2933,9 @@ class Panda():
 
             if debug:
                 print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
-            
-            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
-                    try:
-                        r = fun(*args, **kwargs)
-                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
-                        #assert(isinstance(r, int)), "Invalid return type?"
-                        #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
-                        return r
-                    except Exception as e:
-                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                        # machine exits.
-                        if self.catch_exceptions:
-                            self.callback_exit_exception = e
-                            self.end_analysis()
-                        else:
-                            raise e
-                        return 0
 
             # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(_run_and_catch)
+            hook_cb_passed = hook_cb_type(fun)
             new_hook = self.ffi.new("struct hook*")
             new_hook.type = type_num
             new_hook.addr = addr
@@ -2968,8 +2956,20 @@ class Panda():
             self.plugins['hooks'].add_hook(new_hook)
             self.hook_list.append((new_hook, hook_cb_passed))
 
+            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                return _run_and_catch(args,kw)
+                try:
+                    r = fun(*args, **kw)
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.hook_exit_exception = e
+                    self.end_analysis()
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                    return 0
+
             return wrapper
         return decorator
 
@@ -3004,26 +3004,8 @@ class Panda():
                 print("function type not supported")
                 return
 
-            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
-                    try:
-                        r = fun(*args, **kwargs)
-                        return r
-                    except Exception as e:
-                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                        # machine exits.
-                        if self.catch_exceptions:
-                            self.callback_exit_exception = e
-                            self.end_analysis()
-                        else:
-                            raise e
-                        if cb_type == "before_block_exec_invalidate_opt":
-                            return False
-                        return None
-
-
             # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(_run_and_catch)
+            hook_cb_passed = hook_cb_type(fun)
             new_hook = self.ffi.new("struct symbol_hook*")
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
             new_hook.type = type_num
@@ -3051,8 +3033,20 @@ class Panda():
                 self.named_hooks[name] = hook_ptr
             self.hook_list.append((fun, new_hook,hook_cb_passed, hook_ptr))
 
+            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                _run_and_catch(args,kw)
+                try:
+                    r = fun(*args, **kw)
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.hook_exit_exception = e
+                    self.end_analysis()
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                    return 0
+
             return wrapper
         return decorator
 
@@ -3123,26 +3117,7 @@ class Panda():
             hook_cb_type = self.ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
             # Inform the plugin that it has a new breakpoint at addr
 
-            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
-                    try:
-                        r = fun(*args, **kwargs)
-                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
-                        #assert(isinstance(r, int)), "Invalid return type?"
-                        #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
-                        return r
-                    except Exception as e:
-                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                        # machine exits.
-                        if self.catch_exceptions:
-                            self.callback_exit_exception = e
-                            self.end_analysis()
-                        else:
-                            raise e
-                        return True
-
-
-            hook_cb_passed = hook_cb_type(_run_and_catch)
+            hook_cb_passed = hook_cb_type(fun)
             if not hasattr(self, "hook_gc_list"):
                 self.hook_gc_list = [hook_cb_passed]
             else:
@@ -3155,8 +3130,10 @@ class Panda():
 
             self.hook_list2[name] = hook_number
 
+            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                return _run_and_catch(*args, **kw)
+                return fun(*args, **kw)
+
             return wrapper
         return decorator
 
@@ -3177,23 +3154,8 @@ class Panda():
         def decorator(fun):
             mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
             # Inform the plugin that it has a new breakpoint at addr
-            
-            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
-                    try:
-                        r = fun(*args, **kwargs)
-                        return r
-                    except Exception as e:
-                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                        # machine exits.
-                        if self.catch_exceptions:
-                            self.callback_exit_exception = e
-                            self.end_analysis()
-                        else:
-                            raise e
-                        return None
 
-            hook_cb_passed = mem_hook_cb_type(_run_and_catch)
+            hook_cb_passed = mem_hook_cb_type(fun)
             mem_reg = self.ffi.new("struct memory_hooks_region*")
             mem_reg.start_address = start_address
             mem_reg.stop_address = end_address
@@ -3210,10 +3172,9 @@ class Panda():
 
             self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
 
-
+            @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                _run_and_catch(args,kw)
-
+                return fun(*args, **kw)
 
             return wrapper
         return decorator
