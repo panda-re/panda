@@ -578,7 +578,7 @@ static void vhost_region_add_section(struct vhost_dev *dev,
         /* The flatview isn't stable and we don't use it, making it NULL
          * means we can memcmp the list.
          */
-        dev->tmp_sections[dev->n_tmp_sections - 1].fv = NULL;
+        dev->tmp_sections[dev->n_tmp_sections - 1].address_space = NULL;
         memory_region_ref(section->mr);
     }
 }
