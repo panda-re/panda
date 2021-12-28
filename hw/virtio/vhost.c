@@ -610,24 +610,43 @@ static void vhost_set_memory(MemoryListener *listener,
 
 static bool vhost_section(struct vhost_dev *dev, MemoryRegionSection *section)
 {
-    bool result;
-    bool log_dirty = memory_region_get_dirty_log_mask(section->mr) &
-                     ~(1 << DIRTY_MEMORY_MIGRATION);
-    result = memory_region_is_ram(section->mr) &&
-        !memory_region_is_rom(section->mr);
-    /* Vhost doesn't handle any block which is doing dirty-tracking other
-     * than migration; this typically fires on VGA areas.
-     */
-    result &= !log_dirty;
+   MemoryRegion *mr = section->mr;
 
-    if (result && dev->vhost_ops->vhost_backend_mem_section_filter) {
-        result &=
-            dev->vhost_ops->vhost_backend_mem_section_filter(dev, section);
-    }
+   if (memory_region_is_ram(mr) && !memory_region_is_rom(mr)) {
+       uint8_t dirty_mask = memory_region_get_dirty_log_mask(mr);
+       uint8_t handled_dirty;
 
-    //trace_vhost_section(section->mr->name, result);
-    return result;
+       /*
+        * Kernel based vhost doesn't handle any block which is doing
+        * dirty-tracking other than migration for which it has
+        * specific logging support. However for TCG the kernel never
+        * gets involved anyway so we can also ignore it's
+        * self-modiying code detection flags. However a vhost-user
+        * client could still confuse a TCG guest if it re-writes
+        * executable memory that has already been translated.
+        */
+       handled_dirty = (1 << DIRTY_MEMORY_MIGRATION) |
+           (1 << DIRTY_MEMORY_CODE);
+
+       if (dirty_mask & ~handled_dirty) {
+           //trace_vhost_reject_section(mr->name, 1);
+           return false;
+       }
+
+       if (dev->vhost_ops->vhost_backend_mem_section_filter &&
+           !dev->vhost_ops->vhost_backend_mem_section_filter(dev, section)) {
+           //trace_vhost_reject_section(mr->name, 2);
+           return false;
+       }
+
+       //trace_vhost_section(mr->name);
+       return true;
+   } else {
+       //trace_vhost_reject_section(mr->name, 3);
+       return false;
+   }
 }
+
 
 
 static void vhost_begin(MemoryListener *listener)
