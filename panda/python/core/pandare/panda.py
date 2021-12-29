@@ -462,13 +462,13 @@ class Panda():
         def SigHandler(SIG,a,b):
             from signal import SIGINT, SIGHUP, SIGTERM
             if SIG == SIGINT:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.exit_exception = KeyboardInterrupt
                 self.end_analysis()
             elif SIG == SIGHUP:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.exit_exception = KeyboardInterrupt
                 self.end_analysis()
             elif SIG == SIGTERM:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.exit_exception = KeyboardInterrupt
                 self.end_analysis()
             else:
                 print(f"PyPanda Signal handler received unhandled signal {SIG}")
@@ -934,16 +934,14 @@ class Panda():
         # this takes the blocking function and handles errors
         @blocking
         def wrapper():
-            if not hasattr(self, "exit_exception"):
-                try:
-                    f()
-                except Exception as e:
-                    if self.catch_exceptions:
-                        self.callback_exit_exception = e
-                        self.end_analysis()
-                    else:
-                        raise e
-
+            try:
+                f()
+            except Exception as e:
+                if self.catch_exceptions:
+                    self.exit_exception = e
+                    self.end_analysis()
+                else:
+                    raise e
 
         # Keep the original function name instead of replacing it with 'wrapper'
         wrapper.__name__ = f.__name__
@@ -2589,7 +2587,7 @@ class Panda():
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
                         if self.catch_exceptions:
-                            self.callback_exit_exception = e
+                            self.exit_exception = e
                             self.end_analysis()
                         else:
                             raise e
@@ -2829,7 +2827,7 @@ class Panda():
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
                         if self.catch_exceptions:
-                            self.callback_exit_exception = e
+                            self.exit_exception = e
                             self.end_analysis()
                         else:
                             raise e
@@ -2940,7 +2938,7 @@ class Panda():
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
                         if self.catch_exceptions:
-                            self.callback_exit_exception = e
+                            self.exit_exception = e
                             self.end_analysis()
                         else:
                             raise e
@@ -3013,7 +3011,7 @@ class Panda():
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
                         if self.catch_exceptions:
-                            self.callback_exit_exception = e
+                            self.exit_exception = e
                             self.end_analysis()
                         else:
                             raise e
@@ -3135,7 +3133,7 @@ class Panda():
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
                         if self.catch_exceptions:
-                            self.callback_exit_exception = e
+                            self.exit_exception = e
                             self.end_analysis()
                         else:
                             raise e
@@ -3187,7 +3185,7 @@ class Panda():
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
                         if self.catch_exceptions:
-                            self.callback_exit_exception = e
+                            self.exit_exception = e
                             self.end_analysis()
                         else:
                             raise e
