@@ -92,9 +92,13 @@ extern PandaOsFamily panda_os_familyno; // numeric identifier for family
 
 
 
+/* Internal callback functions that plugins shouldn't use. These unset the flag when called so must be handled */
+bool panda_break_exec(void);
 bool panda_flush_tb(void);
 
+/* Regular functions plugins should use */
 void panda_do_flush_tb(void);
+void panda_do_break_exec(void);
 void panda_enable_precise_pc(void);
 void panda_disable_precise_pc(void);
 void panda_enable_memcb(void);

@@ -1177,6 +1177,13 @@ class Panda():
         '''
         return self.libpanda.panda_do_flush_tb()
 
+    def break_exec(self):
+        '''
+        If called from a start block exec callback, will cause the emulation to bail *before* executing
+        the rest of the current block.
+        '''
+        return self.libpanda.panda_do_break_exec()
+
     def enable_precise_pc(self):
         '''
         By default, QEMU does not update the program counter after every instruction.

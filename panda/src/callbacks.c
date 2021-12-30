@@ -64,6 +64,7 @@ int nb_panda_plugins_loaded = 0;
 char *panda_plugins_loaded[MAX_PANDA_PLUGINS];
 
 bool panda_please_flush_tb = false;
+bool panda_please_break_exec = false;
 bool panda_update_pc = false;
 bool panda_use_memcb = false;
 bool panda_tb_chaining = true;
@@ -761,6 +762,20 @@ panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
             return node;
     }
     return NULL;
+}
+
+void panda_do_break_exec(void) {
+  panda_please_break_exec = true;
+}
+
+bool panda_break_exec(void) {
+    if (panda_please_break_exec) {
+        panda_please_break_exec = false;
+        return true;
+    } else {
+        return false;
+    }
+
 }
 
 bool panda_flush_tb(void)
