@@ -75,11 +75,28 @@ MAKE_CALLBACK(bool, INSN_TRANSLATE, insn_translate,
 MAKE_CALLBACK(bool, AFTER_INSN_TRANSLATE, after_insn_translate,
                     CPUState*, env, target_ptr_t, pc)
 
-MAKE_CALLBACK(void, START_BLOCK_EXEC, start_block_exec,
-                    CPUState*, env, TranslationBlock*, tb)
+//MAKE_CALLBACK(void, START_BLOCK_EXEC, start_block_exec,
+//                    CPUState*, env, TranslationBlock*, tb)
 
 MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
                     CPUState*, env, TranslationBlock*, tb)
+
+// Non-macroized version for SBE - if panda_please_retranslate is set, we'll break
+void PCB(start_block_exec)(CPUState *cpu, TranslationBlock *tb) {
+    panda_cb_list *plist;
+    for (plist = panda_cbs[PANDA_CB_START_BLOCK_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
+        if (plist->enabled)
+            plist->entry.start_block_exec(plist->context, cpu, tb);
+    }
+
+    if (panda_break_exec()) {
+        cpu_loop_exit_noexc(cpu); // noreturn - lonjmps back to translation logic. Allows you to change pc in an SBE and go
+                                  // there immediately. It's like before_block_exec_invalidate_opt, but fast
+    }
+}
+void panda_cb_trampoline_start_block_exec(void* context, CPUState *cpu, TranslationBlock *tb) {\
+    (*(panda_cb*)context).start_block_exec(cpu, tb);
+}
 
 // these aren't used
 MAKE_CALLBACK(void, HD_READ, hd_read, CPUState*, env);
