@@ -261,7 +261,7 @@ where
 }
 
 fn mount(channel: Channel) {
-    // TODO: make this programatically configurable
+    // TODO: make this programatically configurable via a plugin-to-plugin API
     let mountpoint = std::env::var("HYPERFUSE_MOUNT")
         .expect("HYPERFUSE_MOUNT is not set but is required by 'hyperfuse' plugin");
 
