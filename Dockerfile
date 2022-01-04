@@ -42,10 +42,10 @@ RUN cargo --help
 
 # install libosi
 RUN cd /tmp && \
-  git clone https://github.com/panda-re/libosi && \
-  mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
-  cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
-  cd /tmp && rm -rf libosi/
+    git clone https://github.com/panda-re/libosi && \
+    mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
+    cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
+    cd /tmp && rm -rf libosi/
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
