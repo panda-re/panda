@@ -71,6 +71,11 @@ target_ulong panda_current_pc(CPUState *cpu);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 /**
+ * @brief Return the max address of system memory that maps to RAM.
+ */
+Int128 panda_find_max_ram_address(void);
+
+/**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
 

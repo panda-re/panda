@@ -18,8 +18,7 @@ public:
 
   PandaPhysicalMemory() {
     rcu_read_lock();
-    MemoryRegion *region = panda_find_ram();
-    m_max_address = region->size + region->addr;
+    m_max_address = panda_find_max_ram_address();
     rcu_read_unlock();
   }
 

@@ -257,6 +257,33 @@ MemoryRegion* panda_find_ram(void) {
     return ram;
 }
 
+/* Return the max address of system memory that maps to RAM. */
+Int128 panda_find_max_ram_address(void) {
+  Int128 curr_max = 0;
+  Int128 mr_check_max;
+
+  MemoryRegion *sys_mem = get_system_memory();
+  MemoryRegion *mr_check;
+  MemoryRegion *mr_iter;
+
+  QTAILQ_FOREACH(mr_iter, &(sys_mem->subregions), subregions_link) {
+    mr_check = mr_iter;
+
+    // if this region is a RAM region OR is aliased to a RAM region, check the max address
+    if ((mr_iter->alias && memory_region_is_ram(mr_iter->alias)) || memory_region_is_ram(mr_check)) {
+      mr_check_max = mr_check->addr + memory_region_size(mr_check);
+    } else {
+      mr_check_max = 0;
+    }
+
+    if (mr_check_max > curr_max) {
+      curr_max = mr_check_max;
+    }
+  }
+
+  return curr_max;
+}
+
 #ifdef TARGET_ARM
 #define CPSR_M (0x1fU)
 #define ARM_CPU_MODE_SVC 0x13
