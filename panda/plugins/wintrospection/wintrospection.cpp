@@ -40,11 +40,13 @@ PANDAENDCOMMENT */
 #include "../osi/osi_types.h"
 #include "../osi/osi_ext.h"
 #include "../osi/os_intro.h"
+#include <hooks/hooks_int_fns.h>
 
 #include "pandamemory.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
+void (*hooks_add_hook)(struct hook*);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -479,14 +481,8 @@ bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
   return false;
 }
 
-void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
-{
-  if ((tb->pc <= swapcontext_address) && (swapcontext_address < tb->pc + tb->size)) {
-      TCGOp *op = find_guest_insn_by_addr(swapcontext_address);
-      if (op) {
-          insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
-      }
-  }
+void task_change_hook(CPUState *cpu, TranslationBlock *tb, struct hook* h){
+  notify_task_change(cpu);
 }
 
 /**
@@ -598,7 +594,6 @@ void initialize_introspection(CPUState *cpu) {
   // we do not know exactly when a nt!SwapContext executes, and we must use the
   // ASID change heuristic.
   if (swapcontext_offset == 0x0) {
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_tcgcodegen);
     return;
   }
 
@@ -615,10 +610,28 @@ void initialize_introspection(CPUState *cpu) {
 
   if (swapcontext_address == 0x0) {
     fprintf(stderr, "Error finding ntoskrnl! Defaulting to ASID change heuristic.\n");
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_tcgcodegen);
   } else {
+    // disable ASID change heuristic
     panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
     panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+
+    // add hook for swapcontext_address
+    void *hooks = panda_get_plugin_by_name("hooks");
+    if (hooks == NULL){
+      panda_require("hooks");
+      hooks = panda_get_plugin_by_name("hooks");
+    }
+    hooks_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+
+    // create hook for swapcontext_address
+    struct hook h;
+		h.addr = swapcontext_address;
+		h.asid = 0; // match any asid
+		h.cb.start_block_exec = task_change_hook;
+		h.type = PANDA_CB_START_BLOCK_EXEC;
+		h.enabled = true;
+		h.km = MODE_ANY;
+		hooks_add_hook(&h);
   }
 }
 
@@ -633,9 +646,6 @@ bool init_plugin(void *_self) {
 
   pcb_asid.asid_changed = asid_changed;
   panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
-
-  pcb_tcgcodegen.before_tcg_codegen = before_tcg_codegen;
-  panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_tcgcodegen);
 
   panda_cb pcb;
   pcb.after_loadvm = initialize_introspection;
