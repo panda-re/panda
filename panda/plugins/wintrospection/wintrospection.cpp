@@ -35,6 +35,7 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "panda/tcg-utils.h"
 
 #include "../osi/osi_types.h"
 #include "../osi/osi_ext.h"
@@ -69,6 +70,13 @@ void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
 std::unique_ptr<WindowsKernelManager> g_kernel_manager;
 std::unique_ptr<WindowsProcessManager> g_process_manager;
 bool g_update_task;
+uint64_t swapcontext_address = 0;
+
+// globals for toggling callbacks
+void* self = NULL;
+panda_cb pcb_asid;
+panda_cb pcb_startblock;
+panda_cb pcb_tcgcodegen;
 
 static std::map<std::string, uint64_t> system_asid_lookup = {
   {"windows-32-2000", 0x30000},
@@ -377,7 +385,6 @@ void on_get_modules(CPUState *cpu, GArray **out) {
   auto ldr_table = g_kernel_manager->get_type(
       kernel->details.PsLoadedModuleList, "_LDR_DATA_TABLE_ENTRY");
   osi::iterator pitr(ldr_table, "InLoadOrderLinks");
-  pitr++; // skip head_sentinel
   do {
     auto entry = *pitr;
 
@@ -470,6 +477,16 @@ bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
     g_update_task = true;
 
   return false;
+}
+
+void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+{
+  if ((tb->pc <= swapcontext_address) && (swapcontext_address < tb->pc + tb->size)) {
+      TCGOp *op = find_guest_insn_by_addr(swapcontext_address);
+      if (op) {
+          insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
+      }
+  }
 }
 
 /**
@@ -575,19 +592,52 @@ void initialize_introspection(CPUState *cpu) {
   g_process_manager =
       std::unique_ptr<WindowsProcessManager>(new WindowsProcessManager());
   update_process_manager();
+
+  uint64_t swapcontext_offset = g_kernel_manager->get_swapcontext_offset();
+
+  // we do not know exactly when a nt!SwapContext executes, and we must use the
+  // ASID change heuristic.
+  if (swapcontext_offset == 0x0) {
+    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_tcgcodegen);
+    return;
+  }
+
+  GArray *mods = get_modules(cpu);
+  for (int i = 0; i < mods->len; i++) {
+      OsiModule *mod = &g_array_index(mods, OsiModule, i);
+      if (0 == strcmp("ntoskrnl.exe", mod->name)) {
+          swapcontext_address = mod->base + swapcontext_offset;
+      }
+  }
+  if (NULL != mods) {
+      g_array_free(mods, true);
+  }
+
+  if (swapcontext_address == 0x0) {
+    fprintf(stderr, "Error finding ntoskrnl! Defaulting to ASID change heuristic.\n");
+    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_tcgcodegen);
+  } else {
+    panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
+    panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+  }
 }
 
-bool init_plugin(void *self) {
+bool init_plugin(void *_self) {
 #if defined(TARGET_I386) // only supports i386 and x86_64
   panda_require("osi");
   assert(init_osi_api());
+  self = _self;
+
+  pcb_startblock.start_block_exec = start_block_exec;
+  panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
+
+  pcb_asid.asid_changed = asid_changed;
+  panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+
+  pcb_tcgcodegen.before_tcg_codegen = before_tcg_codegen;
+  panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_tcgcodegen);
 
   panda_cb pcb;
-
-  pcb.start_block_exec = start_block_exec;
-  panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb);
-  pcb.asid_changed = asid_changed;
-  panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
   pcb.after_loadvm = initialize_introspection;
   panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
@@ -611,6 +661,9 @@ bool init_plugin(void *self) {
   return false;
 }
 
-void uninit_plugin(void *self) {
+void uninit_plugin(void *_self) {
   printf("Unloading wintrospection plugin\n");
+  // if we don't clear tb's when this exits we have TBs which can call
+  // into our exited plugin.
+  panda_do_flush_tb();
 }
