@@ -7,5 +7,7 @@
 
 unsigned int get_id(CPUState *cpu);
 
+bool is_is_initialized(void);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 /* vim:set tabstop=4 softtabstop=4 expandtab: */

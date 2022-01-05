@@ -2,6 +2,7 @@
  * 
  * Authors:
  *  Andrew Fasano          fasano@mit.edu
+ *  Luke Craig             luke.craig@ll.mit.edu
  * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
@@ -28,24 +29,60 @@ void uninit_plugin(void *);
 
 #ifdef TARGET_MIPS
 target_ulong last_r28 = 0;
+bool initialized = false;
 
-void r28_cache(CPUState *cpu, TranslationBlock *tb) {
-  // Whenever the kernel changes register 28 (current task struct)
-  // save it - Unless it's <= 0x80000000- then it's not the task struct(?)
-
+/**
+ * @brief Cache the last R28 observed while in kernel for MIPS
+ * 
+ * On MIPS in kernel mode r28 a pointer to the location of the current
+ * task_struct. We need to cache this value for use in usermode. 
+ */
+inline void check_cache_r28(CPUState *cpu){
   if (panda_in_kernel(cpu) && unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28)) {
       target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
-      // XXX: af: While in kernel mode, r28 may be used to contain non-pointer values
-      // make sure we don't cache one of those
-      if (potential > 0x80000000) {
-        last_r28 = potential;
-      }
+      // XXX: af: While in kernel mode, r28 may be used to contain non-pointer 
+      // values
+      // make sure we don't cache one of those so we check if r28 contains 
+      // a pointer to kernel memory
+        if (likely(address_in_kernel_code_linux(potential))) {
+            last_r28 = potential;
+            initialized = true;
+        }
   }
+}
+
+void r28_cache(CPUState *cpu, TranslationBlock *tb) {
+  check_cache_r28(cpu);
 }
 #endif
 
+/**
+ * @brief Returns true if all prerequisite values to determine hwid cached.
+ * 
+ * Realistically this is only relevant for MIPS.
+ */
+bool id_is_initialized(void){
+  #ifdef TARGET_MIPS
+  return initialized;
+  #else
+  return true;
+  #endif
+}
+
+/**
+ * @brief Returns a hardware-based process ID for the current process.
+ * 
+ * This is a wrapper around ASID that takes into the oddity that is MIPS.
+ * 
+ * @param cpu 
+ * @return unsigned int 
+ */
 unsigned int get_id(CPUState * cpu) {
 #ifdef TARGET_MIPS
+  if (!id_is_initialized()) {
+    // try to initialize before returning
+    r28_cache(cpu);
+  }
   return last_r28;
 #else
   return panda_current_asid(cpu);
@@ -54,8 +91,8 @@ unsigned int get_id(CPUState * cpu) {
 
 bool init_plugin(void *self) {
 #if defined(TARGET_MIPS)
-    panda_cb pcb = { .before_block_exec = r28_cache };
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    panda_cb pcb = { .start_block_exec = r28_cache };
+    panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb);
 #endif
     return true;
 }
