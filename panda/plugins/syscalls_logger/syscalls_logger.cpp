@@ -66,6 +66,8 @@ bool did_call_warning;
 const char* target_process = NULL;
 target_ulong last_pid = 0;
 
+std::ostream *outstream;
+
 // Read a string from guest memory
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     // determine strlen (upto max)
@@ -210,7 +212,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                                 m->i16 = *(short int*)data_ptr;
                                 m->has_i16 = true;
                             }else{
-                                std::cout << *(short int*)data_ptr;
+                                *outstream <<*(short int*)data_ptr;
                             }
                             break;
                         case sizeof(int):
@@ -218,7 +220,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                                 m->i32 = *(int*)data_ptr;
                                 m->has_i32 = true;
                             }else{
-                                std::cout << *(int*)data_ptr;
+                                *outstream <<*(int*)data_ptr;
                             }
                             break;
                         case sizeof(long int):
@@ -226,7 +228,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                                 m->i64 = *(long int*)data_ptr;
                                 m->has_i64 = true;
                             }else{
-                                std::cout << *(long int*)data_ptr;
+                                *outstream <<*(long int*)data_ptr;
                             }
                             break;
                         default:
@@ -240,7 +242,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                                 m->u16 = *(short unsigned*)data_ptr;
                                 m->has_u16 = true;
                             }else{
-                                std::cout << *(short unsigned*)data_ptr;
+                                *outstream <<*(short unsigned*)data_ptr;
                             }
                             break;
                         case sizeof(unsigned):
@@ -248,7 +250,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                                 m->u32 = *(unsigned*)data_ptr;
                                 m->has_u32 = true;
                             }else{
-                                std::cout << *(unsigned*)data_ptr;
+                                *outstream <<*(unsigned*)data_ptr;
                             }
                             break;
                         case sizeof(long unsigned):
@@ -256,7 +258,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                                 m->u64 = *(long unsigned*)data_ptr;
                                 m->has_u64 = true;
                             }else{
-                                std::cout << *(long unsigned*)data_ptr;
+                                *outstream <<*(long unsigned*)data_ptr;
                             }
                             break;
                         default:
@@ -273,7 +275,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                             m->float_val = *(float*)data_ptr;
                             m->has_float_val = true;
                         }else{
-                            std::cout << *(float*)data_ptr;
+                            *outstream <<*(float*)data_ptr;
                         }
                         break;
                     case sizeof(double):
@@ -281,7 +283,7 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, b
                             m->double_val = *(float*)data_ptr;
                             m->has_double_val = true;
                         }else{
-                            std::cout << *(double*)data_ptr; // Note we actually read a double for ptinting while logging uses a float
+                            *outstream <<*(double*)data_ptr; // Note we actually read a double for ptinting while logging uses a float
                         }
                         break;
                     default:
@@ -309,7 +311,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->bool_val = std::get<bool>(data);
                 nd->has_bool_val = true;
             }else{
-                std::cout << std::get<bool>(data);
+                *outstream <<std::get<bool>(data);
             }
             break;
         case VariantType::VT_CHAR:
@@ -319,7 +321,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                     std::string char_str(1, std::get<char>(data));
                     nd->str = strdup(char_str.c_str());
                 }else{
-                    std::cout << std::get<char>(data);
+                    *outstream <<std::get<char>(data);
                 }
             }
             break;
@@ -329,7 +331,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->i16 = std::get<short int>(data);
                 nd->has_i16 = true;
             }else{
-                std::cout << std::get<short int>(data);
+                *outstream <<std::get<short int>(data);
             }
             break;
         case VariantType::VT_INT:
@@ -338,7 +340,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->i32 = std::get<int>(data);
                 nd->has_i32 = true;
             }else{
-                std::cout << std::get<int>(data);
+                *outstream <<std::get<int>(data);
             }
             break;
         case VariantType::VT_LONG_INT:
@@ -347,7 +349,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->i64 = std::get<long int>(data);
                 nd->has_i64 = true;
             }else{
-                std::cout << std::get<long int>(data);
+                *outstream <<std::get<long int>(data);
             }
             break;
         case VariantType::VT_SHORT_UNSIGNED:
@@ -356,7 +358,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->u16 = std::get<short unsigned>(data);
                 nd->has_u16 = true;
             }else{
-                std::cout << std::get<short unsigned>(data);
+                *outstream <<std::get<short unsigned>(data);
             }
             break;
         case VariantType::VT_UNSIGNED:
@@ -365,7 +367,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->u32 = std::get<unsigned>(data);
                 nd->has_u32 = true;
             }else{
-                std::cout << std::get<unsigned>(data);
+                *outstream <<std::get<unsigned>(data);
             }
             break;
         case VariantType::VT_LONG_UNSIGNED:
@@ -374,7 +376,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->u64 = std::get<long unsigned>(data);
                 nd->has_u64 = true;
             }else{
-                std::cout << std::get<long unsigned>(data);
+                *outstream <<std::get<long unsigned>(data);
             }
             break;
         case VariantType::VT_FLOAT:
@@ -382,7 +384,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->float_val = std::get<float>(data);
                 nd->has_float_val = true;
             }else{
-                std::cout << std::get<float>(data);
+                *outstream <<std::get<float>(data);
             }
             break;
         case VariantType::VT_DOUBLE:
@@ -390,7 +392,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->double_val = std::get<double>(data);
                 nd->has_double_val = true;
             }else{
-                std::cout << std::get<double>(data);
+                *outstream <<std::get<double>(data);
             }
             break;
         case VariantType::VT_LONG_DOUBLE:
@@ -399,7 +401,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->has_double_val = true;
                 std::cerr << "[WARNING] syscalls_logger: casting long double to double (only latter supported by protobuf)" << std::endl;
             }else{
-                std::cout << std::get<long double>(data);
+                *outstream <<std::get<long double>(data);
             }
             break;
         case VariantType::VT_UINT8_T_PTR:
@@ -409,7 +411,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 if (nd) {
                     nd->str = strdup(str_ptr);
                 }else{
-                    std::cout << str_ptr; // Not sure about this one
+                    *outstream <<str_ptr; // Not sure about this one
                 }
                 return;
             } else if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type != DataType::CHAR)) {
@@ -429,7 +431,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->ptr = (uint64_t)std::get<uint8_t*>(data);
                 nd->has_ptr = true;
             }else{
-                std::cout << std::get<uint8_t*>(data); // Not sure about this one
+                *outstream <<std::get<uint8_t*>(data); // Not sure about this one
             }
             break;
         }
@@ -451,7 +453,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         // or if logging to stdout write NULL
 
         if (!pandalog) {
-            std::cout << "NULL";
+            *outstream <<"NULL";
         }
         return NULL;
     }
@@ -469,7 +471,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         tmp_double_ptrs.push_back(members);
         sdata->members = members;
     } else {
-        std::cout << "{";
+        *outstream <<"{";
     }
 
     for (int i = 0; i < mcount; i++) {
@@ -492,13 +494,13 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
             m->arg_name = strdup(mdef.name.c_str());
         }else{
             if (i > 0) {
-                std::cout << ", ";
+                *outstream <<", ";
             }
-            std::cout << mdef.name << "=";
+            *outstream <<mdef.name << "=";
         }
 
         if (log_verbose) {
-            std::cout << "[INFO] syscalls_logger: loading struct " << sdef.name
+            *outstream <<"[INFO] syscalls_logger: loading struct " << sdef.name
                 << ", member: " << mdef.name
                 << ", addr: 0x" << std::hex << maddr << std::dec << std::endl;
         }
@@ -578,7 +580,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
             if (pandalog) {
                 m->str = strdup(error.c_str());
             } else {
-                std::cout << "{" << error << " for struct " << mdef.struct_name << "}";
+                *outstream <<"{" << error << " for struct " << mdef.struct_name << "}";
             }
         }
     }
@@ -587,7 +589,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         sdata->n_members = mcount;
         return sdata;
     } else {
-        std::cout << "}";
+        *outstream <<"}";
         return NULL;
     }
 }
@@ -603,7 +605,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
 
     if (sa == NULL) {
         // printing arguments - always start with name
-        std::cout << call->argn[i] << "=";
+        *outstream <<call->argn[i] << "=";
     }
 
     // Special case: if an arg is named 'buf' and is a pointer
@@ -643,8 +645,8 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                   break;
 
               default:
-                  printf("Unknown buffer size type for field %s %d\n", call->argn[i+1],
-                                                                       call->argt[i+1]);
+                  *outstream << "Unknown buffer size type for field" << call->argn[i+1] << " " << \
+                              call->argt[i+1] << std::endl;
             }
         }
     }
@@ -665,7 +667,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 if (sa) {
                   sa->bytes_val.data = NULL;
                 } else {
-                  std::cout << "\"\"";
+                  *outstream <<"\"\"";
                 }
               } else {
                 get_n_buf(cpu, addr, buf, buf_len);
@@ -676,7 +678,9 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                   memcpy(data, buf, buf_len);
                   sa->bytes_val.data = data;
                 } else {
-                  printf("\"%.*s\"", (int)buf_len, buf);
+                  char tmp[buf_len+1];
+                  sprintf(tmp, "\"%.*s\"", (int)buf_len, buf);
+                  *outstream << tmp;
                 }
               }
               if (sa) {
@@ -695,7 +699,9 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                       sa->str = strdup("n/a");
                   }
                 }else{
-                  printf("\"%.*s\"", (int)len, buf);
+                  char tmp[buf_len+1];
+                  sprintf(tmp, "\"%.*s\"", (int)len, buf);
+                  *outstream << tmp;
                 }
               }
             break;
@@ -729,7 +735,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                     sa->ptr = (uint64_t)ptr_val;
                     sa->has_ptr = true;
                 }else{
-                    std::cerr << "(struct pointer error)";
+                    *outstream << "(struct pointer error)";
                 }
             }
 
@@ -743,7 +749,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                   if (sa) {
                     sa->bytes_val.data = NULL;
                   } else {
-                    std::cout << "NULL";
+                    *outstream <<"NULL";
                   }
               } else {
                   get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, buf_len);
@@ -754,7 +760,9 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                     memcpy(data, buf, buf_len);
                     sa->bytes_val.data = data;
                   } else {
-                    printf("\"%.*s\"", (int)buf_len, buf);
+                    char tmp[buf_len+1];
+                    sprintf(tmp, "\"%.*s\"", (int)buf_len, buf);
+                    *outstream << tmp;
                   }
               }
               if (sa) {
@@ -772,13 +780,13 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 target_ulong addr = *((target_ulong *)rp->args[i]);
                 int strlen = is_likely_string(cpu, addr);
                 if (strlen == 0) {
-                    std::cout << "NULL";
+                    *outstream <<"NULL";
                 }else if (strlen > 0) {
                     uint8_t buf[MAX_STRLEN];
                      get_string(cpu, addr, buf);
-                    std::cout << "\"" << (const char*)buf << "\"";
+                    *outstream <<"\"" << (const char*)buf << "\"";
                 } else {
-                    std::cout << "0x" << std::hex << (*((target_ulong *) rp->args[i]));
+                    *outstream <<"0x" << std::hex << (*((target_ulong *) rp->args[i]));
                 }
               }
             }
@@ -791,11 +799,11 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->has_u64 = true;
             } else {
                 if (*((uint64_t *) rp->args[i]) > 10) {
-                  std::cout << std::hex << "0x";
+                  *outstream <<std::hex << "0x";
                 }else{
-                  std::cout << std::dec;
+                  *outstream <<std::dec;
                 }
-                std::cout << (*((uint64_t *) rp->args[i]));
+                *outstream <<(*((uint64_t *) rp->args[i]));
             }
             break;
 
@@ -805,11 +813,11 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->has_u32 = true;
             }else {
                 if (*((uint32_t *) rp->args[i]) > 10) {
-                  std::cout << std::hex << "0x";
+                  *outstream <<std::hex << "0x";
                 }else{
-                  std::cout << std::dec;
+                  *outstream <<std::dec;
                 }
-                std::cout << (*((uint32_t *) rp->args[i]));
+                *outstream <<(*((uint32_t *) rp->args[i]));
             }
             break;
 
@@ -819,11 +827,11 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->has_u16 = true;
             } else {
                 if (*((uint16_t *) rp->args[i]) > 10) {
-                  std::cout << std::hex << "0x";
+                  *outstream <<std::hex << "0x";
                 }else{
-                  std::cout << std::dec;
+                  *outstream <<std::dec;
                 }
-                std::cout << (*((uint16_t *) rp->args[i]));
+                *outstream <<(*((uint16_t *) rp->args[i]));
             }
             break;
 
@@ -833,11 +841,11 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->has_i64 = true;
             } else {
                 if (*((int64_t *) rp->args[i]) > 10) {
-                  std::cout << std::hex << "0x";
+                  *outstream <<std::hex << "0x";
                 }else{
-                  std::cout << std::dec;
+                  *outstream <<std::dec;
                 }
-                std::cout << (*((int64_t *) rp->args[i]));
+                *outstream <<(*((int64_t *) rp->args[i]));
             }
             break;
 
@@ -847,11 +855,11 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->has_i32 = true;
             } else {
                 if (*((int32_t *) rp->args[i]) > 10) {
-                  std::cout << std::hex << "0x";
+                  *outstream <<std::hex << "0x";
                 }else{
-                  std::cout << std::dec;
+                  *outstream <<std::dec;
                 }
-                std::cout << (*((int32_t *) rp->args[i]));
+                *outstream <<(*((int32_t *) rp->args[i]));
             }
             break;
 
@@ -861,11 +869,11 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->has_i16 = true;
             } else {
                 if (*((int16_t *) rp->args[i]) > 10) {
-                  std::cout << std::hex << "0x";
+                  *outstream <<std::hex << "0x";
                 }else{
-                  std::cout << std::dec;
+                  *outstream <<std::dec;
                 }
-                std::cout << (*((int16_t *) rp->args[i]));
+                *outstream <<(*((int16_t *) rp->args[i]));
             }
             break;
 
@@ -945,7 +953,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
             address_of_addr_in = *((target_ulong *)rp->args[1]);
             uint8_t data[2] = {0};
             if (-1 == panda_virtual_memory_read(cpu, address_of_addr_in, data, 2)) {
-              printf("Couldn't read addr_in field in bind\n");
+              *outstream << "Couldn't read addr_in field in bind" << std::endl;
               is_bind = false; // Hack
             } else {
               sin_family = *((uint16_t*) &data[0]);
@@ -991,7 +999,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
 
                 //sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
                 if (-1 == panda_virtual_memory_read(cpu, address_of_addr_in + 2, data, 2)) {
-                  printf("Couldn't read port in bind");
+                  *outstream << "Couldn't read port in bind";
                 }else{
                   uint16_t port = *((uint16_t*) &data[0]);
                   port = ntohs(port);
@@ -1053,7 +1061,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                 for (target_ulong argv = *((target_ulong *)rp->args[1]); argv != NULL; argv += sizeof(target_ulong)) {
                   // Read the address of the string into argv_ptr
                   if (-1 == panda_virtual_memory_read(cpu, argv, (uint8_t*)&argv_ptr, sizeof(target_ulong))) {
-                      printf("Error reading execve argument\n");
+                      *outstream <<"Error reading execve argument" << std::endl;
                       break;
                   }
 
@@ -1115,7 +1123,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
 
         if (target_process == NULL) {
             // Only log process details if we're logging multiple processes
-            std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
+            *outstream <<"proc [pid=" << current->pid << ",ppid=" << current->ppid
                  << ",tid=" << othread->tid << ",create_time=" << current->create_time
                  << ",name=" << current->name << "]" << std::endl;
         }else{
@@ -1123,7 +1131,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
             if (current->pid != last_pid) {
                 if (last_pid != 0) {
                     // Skip initial log, like strace
-                    std::cout << "[pid = " << std::dec << current->pid << "]" << std::endl;
+                    *outstream <<"[pid = " << std::dec << current->pid << "]" << std::endl;
                 }
                 last_pid = current->pid;
             }
@@ -1132,22 +1140,22 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
         target_long retval = get_syscall_retval(cpu);
 
         // Print name (skip past sys_ prefix)
-        std::cout << call->name+4 << "(";
+        *outstream <<call->name+4 << "(";
 
         for (int i = 0; i < call->nargs; i++) {
             if (i > 0) {
-                std::cout << ", ";
+                *outstream <<", ";
             }
             log_argument(cpu, call, i, NULL, rp);
         }
 
-        std::cout << ") =>";
+        *outstream <<") =>";
         if (retval > 10) {
-          std::cout << std::hex << "0x";
+          *outstream <<std::hex << "0x";
         }else{
-          std::cout << std::dec;
+          *outstream <<std::dec;
         }
-        std::cout << retval << std::endl;
+        *outstream <<retval << std::endl;
     }
 }
 
@@ -1180,11 +1188,21 @@ bool init_plugin(void *_self) {
     panda_arg_list *args = panda_get_args("syscalls_logger");
     log_verbose = panda_parse_bool(args, "verbose");
     const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
+    const char* out_file = panda_parse_string_opt(args, "log", nullptr, "Name of a file to write output to. If unset, information is logged to stdout");
     target_process = panda_parse_string_opt(args, "target", nullptr, "Name of a single process to target. If unset, syscalls from all proceses are logged");
     did_call_warning=false;
 
+    if (out_file) {
+        outstream = new std::ofstream(out_file);
+        //detect errors?
+        //std::cerr << "[ERROR] Unable to open " << out_file << std::endl;
+        //return false;
+    }else{
+      outstream = &std::cout;
+    }
+
     if (log_verbose) {
-        std::cout << "[INFO] syscalls_logger: verbose output enabled." << std::endl;
+        std::cerr <<"[INFO] syscalls_logger: verbose output enabled." << std::endl;
     }
 
     if (!json_filename) {
@@ -1228,5 +1246,4 @@ bool init_plugin(void *_self) {
 }
 
 void uninit_plugin(void *_self) {
-    // intentionally left blank
 }
