@@ -250,23 +250,26 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 
 extern const char *qemu_file;
 
-// Resolve a plugin to a path. If the plugin doesn't exist in any of the search
-// paths, then NULL is returned. The search order for plugins is as follows:
+// Resolve a file in the plugin directory to a path. If the file doesn't
+// exist in any of the search paths, then NULL is returned. The search order 
+// for files is as follows:
 //
 //   - Relative to the PANDA_DIR environment variable.
 //   - Relative to the QEMU binary
 //   - Relative to the install prefix directory.
-char *panda_plugin_path(const char *plugin_name) {
-char *plugin_path;
+char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* name){
+    char *plugin_path, *name_formatted;
+    // makes "taint2" -> "panda_taint2"
+    name_formatted = g_strdup_printf(file_name_fmt, name);
     // First try relative to PANDA_PLUGIN_DIR
 #ifdef PLUGIN_DIR
     if (g_getenv("PANDA_DIR") != NULL) {
-      plugin_path = g_strdup_printf(
-          "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
-      if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
-          return plugin_path;
-      }
-      g_free(plugin_path);
+        plugin_path = g_strdup_printf(
+            "%s/%s/%s" , g_getenv("PANDA_DIR"), PLUGIN_DIR, name_formatted);
+        if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+            return plugin_path;
+        }
+        g_free(plugin_path);
     }
 #endif
 
@@ -276,8 +279,8 @@ char *plugin_path;
 
     // Second, try relative to PANDA binary as it would be in the build or install directory
     char *dir = g_path_get_dirname(qemu_file);
-    plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir,
-                                  plugin_name);
+    plugin_path = g_strdup_printf("%s/panda/plugins/%s", dir,
+                                  name_formatted);
 
     g_free(dir);
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
@@ -287,8 +290,8 @@ char *plugin_path;
 
     // Finally, try relative to the installation path.
     plugin_path =
-        g_strdup_printf("%s/%s/panda_%s" HOST_DSOSUF, CONFIG_PANDA_PLUGINDIR,
-                        TARGET_NAME, plugin_name);
+        g_strdup_printf("%s/%s/%s", CONFIG_PANDA_PLUGINDIR,
+                        TARGET_NAME, name_formatted);
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
         return plugin_path;
     }
@@ -296,6 +299,22 @@ char *plugin_path;
 
     // Return null if plugin resolution failed.
     return NULL;
+}
+
+// Resolve a shared library in the plugins directory to a path. If the shared
+// object doesn't exist in any of paths, then NULL is returned. The search
+// order is the same as panda_plugin_path.
+// example: "libso.so" might resolve to to
+// /path/to/build/x86_64-softmmu/panda/plugins/libso.so
+char* panda_shared_library_path(const char* name){
+    return resolve_file_from_plugin_directory("%s", name);
+}
+
+// Resolve a plugin in the plugins directory to a path.
+// example: "taint2" might resolve to
+// /path/to/build/x86_64-softmmu/panda/plugins/panda_taint2.so
+char *panda_plugin_path(const char *plugin_name) {
+    return resolve_file_from_plugin_directory("panda_%s" HOST_DSOSUF, plugin_name);
 }
 
 void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
