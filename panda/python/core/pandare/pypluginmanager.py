@@ -29,7 +29,7 @@ class _PppFuncs(_DotGetter):
         method = self.data.get(name, None)
         if method is None:
             raise AttributeError(f"No method {name}: available options are {self}")
-        return lambda *args: method(*args)
+        return lambda *args, **kwargs: method(*args, **kwargs)
 
 class _PppPlugins(_DotGetter):
     def __getattr__(self, name):
