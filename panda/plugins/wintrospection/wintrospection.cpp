@@ -69,16 +69,18 @@ void on_get_processes(CPUState *cpu, GArray **out);
 void on_get_modules(CPUState *cpu, GArray **out);
 void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
 
+void initialize_introspection(CPUState *cpu);
+
 std::unique_ptr<WindowsKernelManager> g_kernel_manager;
 std::unique_ptr<WindowsProcessManager> g_process_manager;
-bool g_update_task;
-uint64_t swapcontext_address = 0;
+
+bool g_initialized_kernel;
+uint64_t swapcontext_address;
 
 // globals for toggling callbacks
 void* self = NULL;
 panda_cb pcb_asid;
 panda_cb pcb_startblock;
-panda_cb pcb_tcgcodegen;
 
 static std::map<std::string, uint64_t> system_asid_lookup = {
   {"windows-32-2000", 0x30000},
@@ -197,7 +199,11 @@ std::string extract_handle_name(struct WindowsHandleObject *handle) {
  Our Callbacks
 ****************************************************************** */
 
-int64_t get_file_handle_pos(uint64_t handle) {
+int64_t get_file_handle_pos(CPUState *cpu, uint64_t handle) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   auto kernel = g_kernel_manager->get_kernel_object();
   WindowsHandleObject *h = resolve_handle(kernel, handle);
 
@@ -217,7 +223,11 @@ int64_t get_file_handle_pos(uint64_t handle) {
   return file_pos;
 }
 
-char *get_cwd(void) {
+char *get_cwd(CPUState *cpu) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   osi::i_t eproc = g_process_manager->get_process();
 
   bool wow = false;
@@ -244,7 +254,11 @@ char *get_cwd(void) {
   return strdup(path.c_str());
 }
 
-char *get_handle_name(uint64_t handle) {
+char *get_handle_name(CPUState *cpu, uint64_t handle) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   auto kernel = g_kernel_manager->get_kernel_object();
   WindowsHandleObject *h = resolve_handle(kernel, handle);
   if (!h)
@@ -262,6 +276,10 @@ char *get_handle_name(uint64_t handle) {
 ****************************************************************** */
 
 void on_get_current_thread(CPUState *cpu, OsiThread **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   OsiThread *t = (OsiThread *)g_malloc(sizeof(OsiThread));
 
   auto proc = g_process_manager->get_process_object();
@@ -275,6 +293,10 @@ void on_get_current_thread(CPUState *cpu, OsiThread **out) {
 
 void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h,
                         target_pid_t *pid) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
     *pid = (target_pid_t)-1;
   } else {
@@ -283,6 +305,10 @@ void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h,
 }
 
 void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   OsiProcHandle *p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
 
   auto process = g_process_manager->get_process_object();
@@ -293,6 +319,10 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
 }
 
 void on_get_process_handles(CPUState *cpu, GArray **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (*out == NULL) {
     *out = g_array_sized_new(false, false, sizeof(OsiProcHandle), 128);
     g_array_set_clear_func(*out, (GDestroyNotify)free_osiprochandle_contents);
@@ -315,6 +345,10 @@ void on_get_process_handles(CPUState *cpu, GArray **out) {
 
 void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h,
                          target_pid_t *ppid) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
     *ppid = (target_pid_t)-1;
   } else {
@@ -326,6 +360,10 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h,
 }
 
 void on_get_current_process(CPUState *cpu, OsiProc **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
 
   auto proc = g_process_manager->get_process_object();
@@ -343,6 +381,10 @@ void on_get_current_process(CPUState *cpu, OsiProc **out) {
 }
 
 void on_get_process(CPUState *cpu, const OsiProcHandle *h, OsiProc **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   OsiProc *p = NULL;
   if (h != NULL && h->taskd != (target_ptr_t)NULL) {
     p = (OsiProc *)g_malloc(sizeof(OsiProc));
@@ -356,6 +398,10 @@ void on_get_process(CPUState *cpu, const OsiProcHandle *h, OsiProc **out) {
 }
 
 void on_get_processes(CPUState *cpu, GArray **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (*out == NULL) {
     *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
     g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc_contents);
@@ -376,6 +422,10 @@ void on_get_processes(CPUState *cpu, GArray **out) {
 }
 
 void on_get_modules(CPUState *cpu, GArray **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (*out == NULL) {
     // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
     *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
@@ -419,6 +469,10 @@ void on_get_modules(CPUState *cpu, GArray **out) {
 }
 
 void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (p == NULL) {
     return;
   }
@@ -456,33 +510,34 @@ void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out) {
  Initialization logic
 ****************************************************************** */
 
-void update_process_manager() {
+void task_change(CPUState *cpu) {
+  g_process_manager.reset(new WindowsProcessManager());
+
   auto kernel = g_kernel_manager->get_kernel_object();
   g_process_manager->initialize(kernel,
                                 kosi_get_current_process_address(kernel));
+
+  notify_task_change(cpu);
 }
 
 void start_block_exec(CPUState *cpu, TranslationBlock *tb) {
-  if (!g_update_task)
-    return;
-
-  notify_task_change(cpu);
-
-  g_process_manager.reset(new WindowsProcessManager());
-  update_process_manager();
-
-  g_update_task = false;
+  task_change(cpu);
+  panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
 }
 
 bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+
   if (old_pgd != new_pgd)
-    g_update_task = true;
+    panda_enable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
 
   return false;
 }
 
 void task_change_hook(CPUState *cpu, TranslationBlock *tb, struct hook* h){
-  notify_task_change(cpu);
+  task_change(cpu);
 }
 
 /**
@@ -584,10 +639,11 @@ void initialize_introspection(CPUState *cpu) {
     fprintf(stderr, "Error initializing kernel manager\n");
     exit(3);
   }
+  g_initialized_kernel = true;
 
   g_process_manager =
       std::unique_ptr<WindowsProcessManager>(new WindowsProcessManager());
-  update_process_manager();
+  task_change(cpu);
 
   uint64_t swapcontext_offset = g_kernel_manager->get_swapcontext_offset();
 
@@ -612,7 +668,6 @@ void initialize_introspection(CPUState *cpu) {
     fprintf(stderr, "Error finding ntoskrnl! Defaulting to ASID change heuristic.\n");
   } else {
     // disable ASID change heuristic
-    panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
     panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
 
     // add hook for swapcontext_address
@@ -643,13 +698,10 @@ bool init_plugin(void *_self) {
 
   pcb_startblock.start_block_exec = start_block_exec;
   panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
+  panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
 
   pcb_asid.asid_changed = asid_changed;
   panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
-
-  panda_cb pcb;
-  pcb.after_loadvm = initialize_introspection;
-  panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
   PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
   PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
@@ -663,9 +715,12 @@ bool init_plugin(void *_self) {
   PPP_REG_CB("osi", on_get_modules, on_get_modules);
   PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
 
+  // globals
   g_kernel_manager = std::unique_ptr<WindowsKernelManager>(
       new WindowsKernelManager(std::string(panda_os_name)));
-  g_update_task = false;
+  swapcontext_address = 0;
+  g_initialized_kernel = false;
+
   return true;
 #endif
   return false;
