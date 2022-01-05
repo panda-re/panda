@@ -266,6 +266,19 @@ inline bool can_read_current(CPUState *cpu) {
     return 0x0 != ts;
 }
 
+#ifdef TARGET_MIPS
+// on MIPS, we need to get the value of r28 from the kernel before
+// we can read the current task struct. If osi_guest_is_ready is called
+// before r28 is set we won't check until the first syscall. This
+// significantly increases the number of instructions we need to
+// wait before we can read the current task struct. Instead, we
+// wait until r28 is set and then proceed on MIPS. The intended use case
+// (on boot) should work fine because r28 will be set immediately and then
+// won't check again until the first syscall.
+bool r28_set = false;
+inline void check_cache_r28(CPUState *cpu);
+#endif
+
 /**
  * @brief Check if we've successfully initialized OSI for the guest.
  * Returns true if introspection is available.
@@ -285,6 +298,15 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
     // If it's the very first time, try reading current, if we can't
     // wait until first sycall and try again
     if (first_osi_check) {
+        #ifdef TARGET_MIPS
+        // might as well check and see if r28 is available
+        check_cache_r28(cpu);
+        // if r28 is unavailable wait for the rest until it is.
+        if (!r28_set){
+            ret = NULL;
+            return false;
+        }
+        #endif
         first_osi_check = false;
 
         init_per_cpu_offsets(cpu); // Formerly in _machine_init callback, but now it will work with loading OSI after init and snapshots
@@ -689,23 +711,29 @@ void restore_after_snapshot(CPUState* cpu) {
 }
 
 
-/**
- * @brief Cache the last R28 observed while in kernel for MIPS
- */
 
 #ifdef TARGET_MIPS
 target_ulong last_r28 = 0;
 
+/**
+ * @brief Cache the last R28 observed while in kernel for MIPS
+ * 
+ * On MIPS in kernel mode r28 a pointer to the location of the current
+ * task_struct. We need to cache this value for use in usermode. 
+ */
+inline void check_cache_r28(CPUState *cpu){
+    if (unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28) && panda_in_kernel(cpu)) {
+        target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
+        // check if r28 contains a pointer to kernel memory
+        if (likely(address_in_kernel_code_linux(potential))) {
+            last_r28 = potential;
+            r28_set = true;
+        }
+    }
+}
+
 void r28_cache(CPUState *cpu, TranslationBlock *tb) {
-
-  if (unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28) && panda_in_kernel(cpu)) {
-
-      target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
-      // XXX: af: We need this filter but I have no idea why
-      if (potential > 0x80000000) {
-        last_r28 = potential;
-      }
-  }
+    check_cache_r28(cpu);
 }
 #endif
 
@@ -782,8 +810,8 @@ bool init_plugin(void *self) {
     }
 
 #if defined(TARGET_MIPS)
-        panda_cb pcb2 = { .before_block_exec = r28_cache };
-        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
+        panda_cb pcb2 = { .start_block_exec = r28_cache };
+        panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb2);
 #endif
 
 #if defined(OSI_LINUX_TEST)
