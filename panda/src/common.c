@@ -163,8 +163,9 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
 // regular expressions used to validate the -os option
 const char * valid_os_re[] = {
     "windows[-_]32[-_]xpsp[23]",
-    "windows[-_]32[-_]7",
     "windows[-_]32[-_]2000",
+    "windows[-_]32[-_]7sp[01]",
+    "windows[-_]64[-_]7sp[01]",
     "linux[-_]32[-_].+",
     "linux[-_]64[-_].+",
     "freebsd[-_]32[-_].+",
@@ -254,6 +255,33 @@ MemoryRegion* panda_find_ram(void) {
     }
 
     return ram;
+}
+
+/* Return the max address of system memory that maps to RAM. */
+Int128 panda_find_max_ram_address(void) {
+  Int128 curr_max = 0;
+  Int128 mr_check_max;
+
+  MemoryRegion *sys_mem = get_system_memory();
+  MemoryRegion *mr_check;
+  MemoryRegion *mr_iter;
+
+  QTAILQ_FOREACH(mr_iter, &(sys_mem->subregions), subregions_link) {
+    mr_check = mr_iter;
+
+    // if this region is a RAM region OR is aliased to a RAM region, check the max address
+    if ((mr_iter->alias && memory_region_is_ram(mr_iter->alias)) || memory_region_is_ram(mr_check)) {
+      mr_check_max = mr_check->addr + memory_region_size(mr_check);
+    } else {
+      mr_check_max = 0;
+    }
+
+    if (mr_check_max > curr_max) {
+      curr_max = mr_check_max;
+    }
+  }
+
+  return curr_max;
 }
 
 #ifdef TARGET_ARM

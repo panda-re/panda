@@ -83,3 +83,8 @@ libc6.1-dev-alpha-cross
 
 # rust install deps
 curl
+
+# libosi install deps
+cmake
+ninja-build
+rapidjson-dev
