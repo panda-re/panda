@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 '''
-asid.py
+qlog_example.py
 
-To give the machine something to do we queue an asynchronous command which
-reverts the machine to a snapshot, runs a command, and then ends.
-
-In our analysis we register the asid_changed callback and prints the ASID
-output when it changes.
+This file demonstrates the qlog functionality:
+- Dynamically enable/disable various types of logging
+- Dynamically set/remove/replace the log file
 
 Run with: python3 after_init.py
 '''
@@ -38,7 +36,6 @@ def asidchange(cpu, tb):
             print("disabling")
             panda.qlog.tb_op_disable()
         on = not on
-    from time import sleep
     # sleep(1)
     counter = (counter + 1) % 1000000
 
