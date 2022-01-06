@@ -303,12 +303,13 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
     // wait until first sycall and try again
     if (first_osi_check) {
         #ifdef TARGET_MIPS
-        // might as well check and see if r28 is available
-        check_cache_r28(cpu);
-        // if r28 is unavailable wait for the rest until it is.
-        if (!r28_set){
-            ret = NULL;
-            return false;
+        if (!get_id(cpu)){
+            // If we're on MIPS, we need to wait until r28 is set before
+            // moving to a syscall strategy
+            if (!id_is_initialized()){
+                ret = NULL;
+                return false;
+            }
         }
         #endif
         first_osi_check = false;

@@ -75,13 +75,13 @@ bool id_is_initialized(void){
  * This is a wrapper around ASID that takes into the oddity that is MIPS.
  * 
  * @param cpu 
- * @return unsigned int 
+ * @return target_ulong
  */
-unsigned int get_id(CPUState * cpu) {
+target_ulong get_id(CPUState * cpu) {
 #ifdef TARGET_MIPS
   if (!id_is_initialized()) {
     // try to initialize before returning
-    r28_cache(cpu);
+    check_cache_r28(cpu);
   }
   return last_r28;
 #else
