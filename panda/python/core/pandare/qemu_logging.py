@@ -11,8 +11,13 @@ This class generates methods for manipulating the log level of the form:
 - [MEMBER_NAME]_enable()
 - [MEMBER_NAME]_disable()
 
+It provides an equivalent method for setting the log file of the form:
+- enable("[MEMBER_NAME]")
+- disable("[MEMBER_NAME]")
+
 It also provides methods for setting a file to log to and a method to remove
 the current log file.
+
 '''
 class QEMU_Log_Manager:
     def __init__(self, panda):
@@ -40,6 +45,7 @@ class QEMU_Log_Manager:
             "LLVM_IR":30,
             "LLVM_ASM":31,
         }
+        self.log_members = log_members
 
         def setup_member(member):
             def enable():
@@ -52,6 +58,35 @@ class QEMU_Log_Manager:
 
         for member in log_members:
             setup_member(member)
+    
+    def enable(self, name):
+        """Enables the specified log level.
+
+        Args:
+            name (str): name of the log type (for list -d ?)
+
+        Raises:
+            Exception: no such log member
+        """
+        if name.upper() in self.log_members:
+            self.panda.libpanda.qemu_loglevel |= (1 << self.log_members[name.upper()])
+        else:
+            raise Exception("no such log member: " + name)
+    
+    def disable(self, name):
+        """Disables the specified log level.
+
+        Args:
+            name (str): name of log type (for list -d ?)
+
+        Raises:
+            Exception: no such log member
+        """
+        if name.upper() in self.log_members:
+            self.panda.libpanda.qemu_loglevel &= ~(1 << self.log_members[name.upper()])
+        else:
+            raise Exception("no such log member: " + name)
+
     
     def output_to_file(self, file_name, append=True):
         """Change qemu log file to file_name. If append is True, output will

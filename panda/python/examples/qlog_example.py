@@ -31,12 +31,11 @@ def asidchange(cpu, tb):
         if not on:
             print("enabling")
             panda.qlog.output_to_file("fout")
-            panda.qlog.tb_op_enable()
+            panda.qlog.enable("tb_op")
         else:
             print("disabling")
             panda.qlog.tb_op_disable()
         on = not on
-    # sleep(1)
-    counter = (counter + 1) % 1000000
+    counter = (counter + 1) % 100000
 
 panda.run()
