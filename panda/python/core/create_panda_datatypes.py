@@ -204,7 +204,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 
     # For direct access to -d logging flags
-    ffi.cdef("extern int qemu_loglevel;")
+    # unsigned is a lie. but it's the way QEMU treats it.
+    ffi.cdef("extern unsigned int qemu_loglevel;")
+    ffi.cdef("extern FILE* qemu_logfile;")
 
     # PPP Headers
     # Syscalls - load architecture-specific headers

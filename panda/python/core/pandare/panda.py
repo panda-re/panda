@@ -38,6 +38,7 @@ from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
 from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
+from .qemu_logging import QEMU_Log_Manager
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -95,6 +96,7 @@ class Panda():
         self.__sighandler = None
         self.ending = False # True during end_analysis
         self.catch_exceptions=catch_exceptions
+        self.qlog = QEMU_Log_Manager(self)
 
         self.serial_unconsumed_data = b''
 
