@@ -13,4 +13,4 @@ from .procWriteCapture import ProcWriteCapture
 
 
 __all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture',
-           'PandaPlugin', 'Snake']
+           'Snake']

@@ -28,30 +28,25 @@ Note that when `snake_hook` is unloaded, it will call a destructor if you have d
 
 Example PyPANDA Plugins can be found in the [pypanda-plugins](https://github.com/panda-re/pypanda-plugins) repository, [in the plugins folder](https://github.com/panda-re/pypanda-plugins/tree/main/plugins).
 
-Each plugin can host its own endpoints under `localhost:port/[plugin_name]` by means of declaring a `webpage_init(app)` then writing a flask application using `app` as normal. In order to mount all plugin-specifc routes under `/[plugin_name]/` the variable `app` is a [`Blueprint`](https://flask.palletsprojects.com/en/2.0.x/blueprints/). If you need access to the `Flask` object itself, use `self.flask` (`flask` is a member of the `PandaPlugin` class).
+Each plugin can host its own endpoints under `localhost:port/[plugin_name]` by means of declaring a `webpage_init(app)` then writing a flask application using `app` as normal. In order to mount all plugin-specifc routes under `/[plugin_name]/` the variable `app` is a [`Blueprint`](https://flask.palletsprojects.com/en/2.0.x/blueprints/). If you need access to the `Flask` object itself, use `self.flask` (`flask` is a member of the `PyPlugin` class).
 
-Note: `plugin_name` is the class name of the subclass of `PandaPlugin`. So a plugin such as:
+Note: `plugin_name` is the class name of the subclass of `PyPlugin`. So a plugin such as:
 
 ```python
-class BasicBlockCount(PandaPlugin):
+class BasicBlockCount(PyPlugin):
     ...
 ```
 
 Will be mounted at `https://localhost:8080/BasicBlockCount` by default.
 
-### Passing Arguments to Plugins
+### Passing Arguments to PyPlugins
 
 Arguments passed to pypanda plugins via `snake_hook` take the form of `file_path.py|arg=value|bool_arg|arg2=val`, where `|` separates arguments, arguments themselves take the form of `key=value` (or for bool args, just `key` for true, alternatively '1', 'yes', 'y', and 'true' are all accepted as truthy).
 
-#### API Docs
-
-* `PandaPlugin`
-  * `get_arg(name)` - returns either the argument as a string or `None` if the argument wasn't passed (arguments passed in bool form instead of key/value form will also return `None`)
-  * `get_arg_bool(name)` - returns `True` if the argument is truthy (either by passing the argument with no value, or with a value of any of the following: '1', 'yes', 'y', 'true'), otherwise returns `False`
 
 #### Snake_hook examples
 ```py
-class TestPlugin(PandaPlugin):
+class TestPlugin(PyPlugin):
     def __init__(self, panda):
         path = self.get_arg('path')
         print(f"path = {path}")

@@ -798,11 +798,20 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
+    if (unlikely(ctxi == running_syscalls.end())) {
+        k = std::make_pair(tb->pc, 0);
+        ctxi = running_syscalls.find(k);
+    }
     if (likely(ctxi != running_syscalls.end())) {
         syscall_ctx_t *ctx = &ctxi->second;
         no = ctx->no;
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
-        running_syscalls.erase(ctxi);
+        if (ctx->double_return){
+            ctx->double_return = false;
+            return;
+        }else{
+            running_syscalls.erase(ctxi);
+        }
     }
 #if defined(SYSCALL_RETURN_DEBUG)
     if (no >= 0) {
@@ -1059,7 +1068,7 @@ bool init_plugin(void *self) {
             std::cerr << PANDA_MSG "using profile for windows sp3 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP3_X86];
         }
-        if (0 == strcmp(panda_os_variant, "7")) {
+        if (0 == strncmp(panda_os_variant, "7", 1)) {
             std::cerr << PANDA_MSG "using profile for windows 7 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_7_X86];
         }
@@ -1113,6 +1122,11 @@ bool init_plugin(void *self) {
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
 #endif // x86/arm/mips
+
+    // Plugin is good to load - now let's clear the cache to make
+    // sure there aren't any previously-translated TCG blocks
+    // which already have (uninstrumented) syscalls.
+    panda_do_flush_tb();
     return true;
 }
 

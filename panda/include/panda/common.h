@@ -71,6 +71,11 @@ target_ulong panda_current_pc(CPUState *cpu);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 /**
+ * @brief Return the max address of system memory that maps to RAM.
+ */
+Int128 panda_find_max_ram_address(void);
+
+/**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
 
@@ -94,6 +99,23 @@ static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
     }
     return MEMTX_OK;
 }
+
+/**
+ * @brief Reads data into \p buf from guest physical address \p addr.
+ */
+static inline int panda_physical_memory_read(hwaddr addr,
+                                            uint8_t *buf, int len) {
+    return panda_physical_memory_rw(addr, buf, len, 0);
+}
+
+/**
+ * @brief Writes data from \p buf data to guest physical address \p addr.
+ */
+static inline int panda_physical_memory_write(hwaddr addr,
+                                             uint8_t *buf, int len) {
+    return panda_physical_memory_rw(addr, buf, len, 1);
+}
+
 
 /**
  * @brief Translates guest virtual addres \p addr to a guest physical address.

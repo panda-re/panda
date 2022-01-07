@@ -7,11 +7,11 @@ lsb-core
 zip
 
 # panda build deps
+# Note libcapstone-dev is required, but we need v4 + which isn't in apt
 build-essential
 chrpath
 clang-11
 gcc
-libcapstone-dev
 libdwarf-dev
 libprotoc-dev
 llvm-11-dev
@@ -83,3 +83,8 @@ libc6.1-dev-alpha-cross
 
 # rust install deps
 curl
+
+# libosi install deps
+cmake
+ninja-build
+rapidjson-dev

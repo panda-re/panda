@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 '''
-Example use of a snake_hook-style PyPANDA plugin complete with a flask webserver
+Example use of a PyPlugin complete with a flask webserver
 '''
 
-from pandare import Panda
-from pandare.extras import Snake, PandaPlugin
+from pandare import Panda, PyPlugin
 
 panda = Panda(generic="x86_64")
 
-class BasicBlockCount(PandaPlugin):
+class BasicBlockCount(PyPlugin):
     def __init__(self, panda):
         self.bb_count = 0
 
@@ -28,14 +27,14 @@ class BasicBlockCount(PandaPlugin):
             </body>
             </html>"""
 
-s = Snake(panda, flask=True, host='0.0.0.0')
-s.register(BasicBlockCount)
-
 @panda.queue_blocking
 def driver():
     panda.revert_sync("root")
     assert(panda.run_serial_cmd("sleep 10"))
     panda.end_analysis()
-s.serve()
+
+panda.pyplugins.enable_flask(host='0.0.0.0')
+panda.pyplugins.load(BasicBlockCount)
+panda.pyplugins.serve()
 
 panda.run()

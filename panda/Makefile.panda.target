@@ -211,6 +211,14 @@ else
 llvmmorph-$(TARGET_MIPS) +=  llvm-helpers-mips.bc
 endif
 
+MIPS64_HELPERS = dsp_helper.bc2 helper.bc2 lmi_helper.bc2 msa_helper.bc2
+MIPS64_HELPERS += op_helper.bc2
+llvm-$(TARGET_MIPS64) += fpu/softfloat.bc2
+llvm-$(TARGET_MIPS64) += $(addprefix target/mips/,$(MIPS64_HELPERS))
+
+# only support mips64, not mipsel64
+llvmmorph-$(TARGET_MIPS64) += llvm-helpers-mips64.bc
+
 CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O2 -O3 -mcx16 -Wno-shift-negative-value
 QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O1 -I../target/$(TARGET_BASE_ARCH)
 %.bc2: %.c $(GENERATED_FILES)

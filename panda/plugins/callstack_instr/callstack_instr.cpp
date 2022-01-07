@@ -47,8 +47,6 @@ PANDAENDCOMMENT */
 // needed for the threaded stack_type
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
-#include "wintrospection/wintrospection.h"
-#include "wintrospection/wintrospection_ext.h"
 #include "osi_linux/osi_linux_ext.h"
 
 #include "callstack_instr.h"
@@ -527,10 +525,11 @@ bool init_plugin(void *self) {
     if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
         return false;
 
-#if CS_VERSION_MAJOR < 4
-        printf("\n[ERROR] Capstone versions prior to 4.0.1 are unusable with ARM so callstack instr will fail! Please upgrade your libcapstone install to use this plugin\n\n");
-        return false;
-#endif
+    // Run-time check
+    if (cs_version < CS_MAKE_VERSION(4, 0)) {
+      printf("\n[ERROR] Capstone versions prior to 4.0.1 are unusable with ARM so callstack instr will fail! Please upgrade your libcapstone install and rebuild to use this plugin\n\n");
+      return false;
+    }
 
 
 #elif defined(TARGET_PPC)

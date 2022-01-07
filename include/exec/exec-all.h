@@ -59,9 +59,15 @@ typedef ram_addr_t tb_page_addr_t;
 
 #include "qemu/log.h"
 
+
 void gen_intermediate_code(CPUArchState *env, struct TranslationBlock *tb);
 void restore_state_to_opc(CPUArchState *env, struct TranslationBlock *tb,
                           target_ulong *data);
+
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
 
 void cpu_gen_init(void);
 bool cpu_restore_state(CPUState *cpu, uintptr_t searched_pc);
@@ -76,6 +82,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 void QEMU_NORETURN cpu_loop_exit(CPUState *cpu);
 void QEMU_NORETURN cpu_loop_exit_restore(CPUState *cpu, uintptr_t pc);
 void QEMU_NORETURN cpu_loop_exit_atomic(CPUState *cpu, uintptr_t pc);
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 #if !defined(CONFIG_USER_ONLY)
 void cpu_reloading_memory_map(void);

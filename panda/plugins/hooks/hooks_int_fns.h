@@ -45,6 +45,7 @@ typedef struct hook {
     enum kernel_mode km;
     bool enabled;
     struct symbol sym; //if an associated symbol exists
+    void* context;
 } hook;
 
 

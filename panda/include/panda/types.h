@@ -53,6 +53,11 @@ typedef target_ulong target_ptr_t;
  */
 typedef int32_t target_pid_t;
 
+/** @brief macro for defining a PPP callback typedef */
+#define PPP_CB_TYPEDEF(ret_type, cb_name, ...) \
+    typedef ret_type (*cb_name##_t)(__VA_ARGS__); \
+    typedef ret_type (*cb_name##_with_context_t)(void* context, __VA_ARGS__);
+
 /** @brief Print format for guest VM pids. */
 #define TARGET_PID_FMT "%u"
 
