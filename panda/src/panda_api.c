@@ -288,3 +288,36 @@ unsigned long garray_len(GArray *list) {
 void _panda_set_library_mode(const bool b) {
   panda_set_library_mode(b);
 }
+
+// Raise a page fault on address, then return execution to retaddr
+void panda_page_fault(CPUState* cpu, target_ulong address, target_ulong retaddr) {
+  // Update the CPUArchstate so the PC is the desired return address, then call
+  // tlb_fill. This ensures that we always go back to retaddr
+
+#if defined(TARGET_I386) //|| defined(TARGET_X86_64)
+    CPUX86State *env = cpu->env_ptr;
+
+    // We want to set up CPU state with x86_cpu_handle_mmu_fault
+    // and then interrupt the cpu-exec loop with raise_exception_err_ra
+    // Explicitly set EIP to retaddr so after the exception is handled, we resume from retaddr
+    // instead of restarting the block
+    env->eip = retaddr;
+    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+#elif defined (TARGET_ARM)
+    CPUARMState *env = cpu->env_ptr;
+    if (is_a64(env)) {
+      env->pc = retaddr; // PC for aarch64
+    } else {
+      env->regs[15] = retaddr; // PC for arm32
+    }
+    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+
+#elif defined(TARGET_MIPS)
+    CPUMIPSState *env = cpu->env_ptr;
+    env->active_tc.PC = retaddr;
+    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+#else
+    printf("\n\nnERROR: Unsupported architecture for panda_page_fault!!\n\n");
+    assert(0);
+#endif
+}
