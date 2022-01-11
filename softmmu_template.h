@@ -45,6 +45,10 @@
 #error unsupported data size
 #endif
 
+#ifndef CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+#define CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+extern bool panda_use_memcb;
+#endif
 
 /* For the benefit of TCG generated code, we want to avoid the complication
    of ABI-specific return type promotion and always return a value extended
@@ -105,7 +109,7 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(CPUArchState *env,
 }
 #endif
 
-WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
+static inline WORD_TYPE glue(helper_le_ld_name,_internal)(CPUArchState *env, target_ulong addr,
                             TCGMemOpIdx oi, uintptr_t retaddr)
 {
     unsigned mmu_idx = get_mmuidx(oi);
@@ -153,8 +157,8 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     do_unaligned_access:
         addr1 = addr & ~(DATA_SIZE - 1);
         addr2 = addr1 + DATA_SIZE;
-        res1 = helper_le_ld_name(env, addr1, oi, retaddr);
-        res2 = helper_le_ld_name(env, addr2, oi, retaddr);
+        res1 = glue(helper_le_ld_name,_internal)(env, addr1, oi, retaddr);
+        res2 = glue(helper_le_ld_name,_internal)(env, addr2, oi, retaddr);
         shift = (addr & (DATA_SIZE - 1)) * 8;
 
         /* Little-endian combine.  */
@@ -173,7 +177,8 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 }
 
 #if DATA_SIZE > 1
-WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
+
+static inline WORD_TYPE glue(helper_be_ld_name,_internal)(CPUArchState *env, target_ulong addr,
                             TCGMemOpIdx oi, uintptr_t retaddr)
 {
     unsigned mmu_idx = get_mmuidx(oi);
@@ -221,8 +226,8 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
     do_unaligned_access:
         addr1 = addr & ~(DATA_SIZE - 1);
         addr2 = addr1 + DATA_SIZE;
-        res1 = helper_be_ld_name(env, addr1, oi, retaddr);
-        res2 = helper_be_ld_name(env, addr2, oi, retaddr);
+        res1 = glue(helper_be_ld_name,_internal)(env, addr1, oi, retaddr);
+        res2 = glue(helper_be_ld_name,_internal)(env, addr2, oi, retaddr);
         shift = (addr & (DATA_SIZE - 1)) * 8;
 
         /* Big-endian combine.  */
@@ -266,7 +271,7 @@ static inline void glue(io_write, SUFFIX)(CPUArchState *env,
     return io_writex(env, iotlbentry, val, addr, retaddr, DATA_SIZE);
 }
 
-void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
+static inline void glue(helper_le_st_name,_internal)(CPUArchState *env, target_ulong addr, DATA_TYPE val,
                        TCGMemOpIdx oi, uintptr_t retaddr)
 {
     unsigned mmu_idx = get_mmuidx(oi);
@@ -327,7 +332,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
         for (i = 0; i < DATA_SIZE; ++i) {
             /* Little-endian extract.  */
             uint8_t val8 = val >> (i * 8);
-            glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
+            glue(glue(helper_ret_stb, MMUSUFFIX),_internal)(env, addr + i, val8,
                                             oi, retaddr);
         }
         return;
@@ -342,7 +347,8 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 }
 
 #if DATA_SIZE > 1
-void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
+static inline void glue(helper_be_st_name, _internal)(CPUArchState *env, target_ulong addr,
+                       DATA_TYPE val,
                        TCGMemOpIdx oi, uintptr_t retaddr)
 {
     unsigned mmu_idx = get_mmuidx(oi);
@@ -403,7 +409,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
         for (i = 0; i < DATA_SIZE; ++i) {
             /* Big-endian extract.  */
             uint8_t val8 = val >> (((DATA_SIZE - 1) * 8) - (i * 8));
-            glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
+            glue(glue(helper_ret_stb, MMUSUFFIX),_internal)(env, addr + i, val8,
                                             oi, retaddr);
         }
         return;
@@ -414,9 +420,12 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 }
 #endif /* DATA_SIZE > 1 */
 
-WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
+WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
                                           TCGMemOpIdx oi, uintptr_t retaddr)
 {
+    if (likely(!panda_use_memcb)){
+        return glue(helper_le_ld_name, _internal)(env, addr, oi, retaddr);
+    }
     unsigned mmu_idx = get_mmuidx(oi);
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_read;
@@ -437,43 +446,62 @@ WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
     }
 
     panda_callbacks_mem_before_read(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (void *)haddr);
-    WORD_TYPE ret = helper_le_ld_name(env, addr, oi, retaddr);
+    WORD_TYPE ret = glue(helper_le_ld_name, _internal)(env, addr, oi, retaddr);
     panda_callbacks_mem_after_read(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
     return ret;
+}
+
+WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
+                                          TCGMemOpIdx oi, uintptr_t retaddr)
+{
+    return helper_le_ld_name(env, addr, oi, retaddr);
+}
+
+void helper_le_st_name(CPUArchState *env, target_ulong addr,
+                                     DATA_TYPE val, TCGMemOpIdx oi,
+                                     uintptr_t retaddr)
+{
+    if (likely(!panda_use_memcb)){
+        glue(helper_le_st_name,_internal)(env, addr, val, oi, retaddr);
+        return;
+    }
+    unsigned mmu_idx = get_mmuidx(oi);
+    int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
+    CPUState *cpu = ENV_GET_CPU(env);
+    uintptr_t haddr = 0;
+
+    if ((addr & TARGET_PAGE_MASK) == tlb_addr) { // hit!
+        haddr = addr + env->tlb_table[mmu_idx][index].addend;
+    }
+
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF)){
+        retaddr = GETPC();
+    }
+
+    panda_callbacks_mem_before_write(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
+    glue(helper_le_st_name, _internal)(env, addr, val, oi, retaddr);
+    panda_callbacks_mem_after_write(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
 }
 
 void glue(helper_le_st_name, _panda)(CPUArchState *env, target_ulong addr,
                                      DATA_TYPE val, TCGMemOpIdx oi,
-                                     uintptr_t retaddr)
-{
-    unsigned mmu_idx = get_mmuidx(oi);
-    int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
-    target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
-    CPUState *cpu = ENV_GET_CPU(env);
-    uintptr_t haddr = 0;
-
-    if ((addr & TARGET_PAGE_MASK) == tlb_addr) { // hit!
-        haddr = addr + env->tlb_table[mmu_idx][index].addend;
-    }
-
-    /*
-     * rwhelan: Hack to deal with the fact that we don't have the retaddr
-     * available at the time when we are translating from TCG, retaddr is
-     * handled in the TCG backend.  We get it here for LLVM.
-     */
-    if (execute_llvm && (retaddr == 0xDEADBEEF)){
-        retaddr = GETPC();
-    }
-
-    panda_callbacks_mem_before_write(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
-    helper_le_st_name(env, addr, val, oi, retaddr);
-    panda_callbacks_mem_after_write(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
+                                     uintptr_t retaddr){
+    return helper_le_st_name(env, addr, val, oi, retaddr);
 }
 
 #if DATA_SIZE > 1
-WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
+WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
                                           TCGMemOpIdx oi, uintptr_t retaddr)
 {
+    if (likely(!panda_use_memcb)){
+        return glue(helper_be_ld_name,_internal)(env, addr, oi, retaddr);
+    }
     unsigned mmu_idx = get_mmuidx(oi);
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_read;
@@ -494,15 +522,24 @@ WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
     }
 
     panda_callbacks_mem_before_read(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (void *)haddr);
-    WORD_TYPE ret = helper_be_ld_name(env, addr, oi, retaddr);
+    WORD_TYPE ret = glue(helper_be_ld_name, _internal)(env, addr, oi, retaddr);
     panda_callbacks_mem_after_read(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
     return ret;
 }
 
-void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
-                                     DATA_TYPE val, TCGMemOpIdx oi,
-                                     uintptr_t retaddr)
+WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
+                                          TCGMemOpIdx oi, uintptr_t retaddr)
 {
+    return helper_be_ld_name(env, addr, oi, retaddr);
+}
+
+void helper_be_st_name(CPUArchState *env, target_ulong addr,
+                                     DATA_TYPE val, TCGMemOpIdx oi,
+                                     uintptr_t retaddr){
+    if (likely(!panda_use_memcb)){
+        glue(helper_be_st_name,_internal)(env, addr, val, oi, retaddr);
+        return;
+    }
     unsigned mmu_idx = get_mmuidx(oi);
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
@@ -523,11 +560,33 @@ void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
     }
 
     panda_callbacks_mem_before_write(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
-    helper_be_st_name(env, addr, val, oi, retaddr);
+    glue(helper_be_st_name, _internal)(env, addr, val, oi, retaddr);
     panda_callbacks_mem_after_write(cpu, panda_current_pc(cpu), addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
 }
 
+void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
+                                     DATA_TYPE val, TCGMemOpIdx oi,
+                                     uintptr_t retaddr){
+    return helper_be_st_name(env, addr, val, oi, retaddr);
+}
+
 #endif /* DATA_SIZE > 1 */
+#else
+WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
+                                          TCGMemOpIdx oi, uintptr_t retaddr)
+{
+    return glue(helper_le_ld_name,_internal)(env, addr, oi, retaddr);
+}
+
+#if DATA_SIZE > 1
+
+WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
+                                          TCGMemOpIdx oi, uintptr_t retaddr)
+{
+    return glue(helper_be_ld_name,_internal)(env, addr, oi, retaddr);
+}
+
+#endif
 #endif /* !defined(SOFTMMU_CODE_ACCESS) */
 
 #undef READ_ACCESS_TYPE

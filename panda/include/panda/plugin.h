@@ -74,7 +74,10 @@ void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
 extern bool panda_update_pc;
+#ifndef CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+#define CONFIG_SOFTMMU_EXTERN_VAR_ONCE
 extern bool panda_use_memcb;
+#endif
 extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
 extern bool panda_plugin_to_unload;
