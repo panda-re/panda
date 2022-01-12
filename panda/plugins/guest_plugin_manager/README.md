@@ -1,95 +1,92 @@
-# Rust Skeleton
+# Guest Plugin Manager
 
-This is a basic example of how to build a PANDA plugin with Rust.
+The guest plugin manager is a PANDA plugin which handles loading guest agent plugins 
+into the guest, managing communication channels between the guest and the host. 
+Typical usage involves writing a host PANDA plugin which calls the plugin manager in
+order to load the executable, then loading that PANDA plugin as normal (from either the
+PANDA command line or from pypanda).
 
-## Building
+Currently the guest plugin manager only supports Linux guests via the `linjector` plugin
+however support for other guest OS' would be possible in the presence of other backends.
+The responsibility of `linjector` is, as the name would imply, inject a single binary
+into the guest as a new process. The guest plugin manager uses this capability in order
+to load the "Guest Daemon", an executable running the guest responsible for handling
+the spawning of future guest processes and is responsible for communicating with the
+guest_plugin_manager directly.
 
-To check if the plugin will build:
+## APIs and Callbacks
 
-```
-cargo check
-```
+---
 
-To actually build the plugin:
+Name: **add_guest_plugin**
 
-```
-cargo build --release
-```
+Signature:
 
-(remove `--release` if you want to build in debug mode)
-
-The resulting plugin will be located in `target/release/librust_skeleton.so`.
-
-## Structure
-
-```
-├── Cargo.toml
-├── Makefile
-├── README.md
-└── src
-   └── lib.rs
+```c
+typedef ChannelId (*add_guest_plugin)(GuestPlugin);
 ```
 
-* Cargo.toml - The core plugin info. This informs `cargo` how to actually go about building the plugin. It includes the name, dependencies, and features of plugins.
-* Makefile - Instructions for how the PANDA build system will build the plugin.
-* lib.rs - The main source file of your plugin. Additional source files can be referenced from here.
+Description: Adds a guest plugin to be loaded, returns a channel ID representing the
+main channel of the to-be-loaded plugin. Writes to this channel ID before plugin
+load will be queued and will thus be available when the plugin begins reading.
 
-## Cargo.toml
+---
 
-The dependencies section:
+Name: **channel_write**
 
-```toml
-[dependencies]
-panda-re = { version = "0.5", default-features = false }
+Signature:
+
+```c
+typedef void (*channel_write)(ChannelId, const u8*, size_t);
 ```
 
-To add a new dependency, add a new line in the form `name = "version"`.
+Description: Writes bytes from a buffer to the given channel ID, queuing them up for 
+the next guest plugin read. The buffer is copied into a new allocation before being 
+added to the queue, so the act of writing has no strict lifetime requirements.
 
-For example to add [`libc`](https://docs.rs/libc), simply add the following line:
+---
 
-```toml
-libc = "0.2"
+Name: **get_channel_from_name**
+
+Signature:
+
+```c
+typedef ChannelId (*get_channel_from_name)(const char*);
 ```
 
-## Targetting Multiple Architectures
+Description:
 
-In PANDA, a plugin is recompiled once per target architecture (that is to say, the architecture of the guest). To enable this behavior in Rust plugins, we use ["features"](https://doc.rust-lang.org/cargo/reference/features.html) in order to specify which architecture we are building for.
+Given the name of a plugin or channel, return the associated channel, panicking
+if a channel of the given name cannot be found. Channel name should be passed
+as a null-terminated string.
 
-This is controlled by this section of Cargo.toml:
+The provided string has no lifetime requirements, but must be a non-null pointer
+to a valid C string.
 
-```toml
-[features]
-default = ["x86_64"]
+---
 
-x86_64 = ["panda-re/x86_64"]
-i386 = ["panda-re/i386"]
-arm = ["panda-re/arm"]
-ppc = ["panda-re/ppc"]
-mips = ["panda-re/mips"]
-mipsel = ["panda-re/mipsel"]
+## Types
+
+```c
+// A globally unique identifier for a given channel
+typedef uint32_t ChannelId;
+
+// ChannelId - the unique identifier for the channel the message came from
+// const unsigned char* - a pointer to the data being sent from the guest
+// size_t - the length of the data buffer in bytes
+typedef void (*ChannelCB)(ChannelId, const unsigned char*, size_t);
+
+// A plugin to be passed to guest_plugin_manager to be registered
+typedef struct guest_plugin {
+    // A unique name for the given plugin, provided as a non-null C string
+    const char* plugin_name;
+
+    // An optional path to load the guest agent binary. If null, a lookup will be
+    // performed to find the binary from the given name. If non-null must be a valid
+    // C string.
+    const char* guest_binary_path;
+
+    // A callback for when this guest plugin sends a message to the host
+    ChannelCB msg_recieve_cb;
+} GuestPlugin;
 ```
-
-by default `x86_64` is the only feature enabled (which is why we don't need to specify any features to build), this is primarily so that IDE support (rust-analyzer for VSCode/vim/etc, IntelliJ/CLion integration) works out of the box, as IDEs typically do type checking with the default feature set.
-
-To build for, say, `arm` you can use the following command:
-
-```
-cargo build --release --no-default-features --features=arm
-```
-
-And if you wish to prevent certain code from compiling on certain platforms you can use the following:
-
-```rust
-#[cfg(not(feature = "arm"))]
-fn breaks_arm() {
-    // ...
-}
-```
-
-## Other Resources
-
-* [panda-rs documentation](https://docs.rs/panda-re) 
-* [panda-rs announcement blog post](https://panda.re/blog/panda-rs)
-* [panda-sys documentation](https://docs.rs/panda-re-sys)
-* [The Rust Programming Language](https://doc.rust-lang.org/book/)
-* [Some example Rust plugins](https://github.com/panda-re/panda-rs-plugins/)
