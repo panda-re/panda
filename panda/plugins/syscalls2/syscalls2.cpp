@@ -1026,7 +1026,7 @@ bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     if(panda_os_familyno == OS_UNKNOWN){
-        std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
+        std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7sp[01]' " << std::endl;
         return false;
     }
     else if (panda_os_familyno == OS_LINUX) {
