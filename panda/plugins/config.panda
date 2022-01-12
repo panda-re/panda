@@ -15,6 +15,7 @@ forcedexec
 gdb
 hooks
 hooks2
+hw_proc_id
 libfi
 lighthouse_coverage
 loaded

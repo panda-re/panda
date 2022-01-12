@@ -2437,7 +2437,7 @@ class Panda():
 
         if isfile(pjoin(copy_directory, setup_script)):
             setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout)
-            progress("[Setup command]: {setup_result}")
+            progress(f"[Setup command]: {setup_result}")
 
     @blocking
     def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):

@@ -343,7 +343,11 @@ class Qcows():
 
         panda_args.extend(['-loadvm', q.snapshot])
 
-        return " ".join(panda_args)
+        ret = " ".join(panda_args)
+
+        if "-display none" in ret:
+            ret = ret.replace("-display none", "-nographic")
+        return ret
 
 if __name__ == "__main__":
     from sys import argv, stdout
