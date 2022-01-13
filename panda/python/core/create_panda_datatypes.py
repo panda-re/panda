@@ -274,6 +274,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     # get some libc functionality
     define_clean_header(ffi, include_dir + "/libc_includes.h")
+    
+    # QEMU logging functionality
+    define_clean_header(ffi, include_dir + "/qlog.h")
 
     # Now syscalls2 common:
     define_clean_header(ffi, include_dir + "/syscalls2_info.h")

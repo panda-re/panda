@@ -24,18 +24,24 @@ def run_cmd():
 counter = 0
 on = False
 
-@panda.cb_before_block_exec
-def asidchange(cpu, tb):
+panda.qlog.enable("panda")
+
+@panda.cb_asid_changed
+def asidchange(cpu, tb,asdf):
     global counter, on
+    panda.qlog.log("hello from pypanda")
     if counter == 0:
         if not on:
-            print("enabling")
+            print("file")
             panda.qlog.output_to_file("fout")
-            panda.qlog.enable("tb_op")
         else:
-            print("disabling")
-            panda.qlog.tb_op_disable()
+            print("screen")
+            # panda.qlog.tb_op_disable()
+            panda.qlog.output_to_stderr()
         on = not on
-    counter = (counter + 1) % 100000
+    counter = (counter + 1) % 2
+    from time import sleep
+    sleep(1)
+    return 0
 
 panda.run()
