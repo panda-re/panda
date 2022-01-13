@@ -62,6 +62,10 @@ macro_rules! guest_string {
     }};
 }
 
+panda::export_ppp_callback! {
+    pub(crate) fn before_guest_inject(cpu: &mut CPUState);
+}
+
 #[panda::on_all_sys_enter]
 fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
     // Only check process name when a target process name is provided
@@ -188,7 +192,9 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
                 guest_string!(cpu, "/tmp/payload")
             };
 
-            // Execute the host binary
+            before_guest_inject::trigger(cpu);
+
+            // Execute the guest binary
             log::debug!("Performing execve");
             do_execve(guest_path_buf, 0, 0).await;
         })

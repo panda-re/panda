@@ -298,6 +298,8 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/proc_start_linux_ppp.h")
     define_clean_header(ffi, include_dir + "/forcedexec_ppp.h")
     define_clean_header(ffi, include_dir + "/stringsearch_ppp.h")
+    define_clean_header(ffi, include_dir + "/guest_plugin_manager_ppp.h")
+    define_clean_header(ffi, include_dir + "/linjector_ppp.h")
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -373,8 +375,10 @@ def main(install=False,recompile=True):
     # TODO: programtically copy anything that ends with _ppp.h
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/forcedexec",   "forcedexec_ppp.h"))
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/stringsearch", "stringsearch_ppp.h"))
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/guest_plugin_manager", "guest_plugin_manager_ppp.h"))
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/linjector", "linjector_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
-    
+
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)

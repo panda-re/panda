@@ -1,5 +1,6 @@
 use panda::plugins::guest_plugin_manager::guest_plugin_path;
 use panda::prelude::*;
+use panda::PppCallback;
 
 use std::convert::TryFrom;
 
@@ -68,6 +69,7 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
         if let Some(retval) = retval {
             set_hyp_ret_reg(cpu, retval);
         }
+
         true
     } else {
         false
@@ -78,6 +80,18 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
 #[name = "linjector"]
 struct Linjector {
     guest_binary: String,
+}
+
+panda::plugin_import! {
+    static LINJECTOR: LinjectorApi = extern "linjector" {
+        callbacks {
+            fn before_guest_inject(cpu: &mut CPUState);
+        }
+    };
+}
+
+panda::export_ppp_callback! {
+    pub(crate) fn on_guest_agent_load(cpu: &mut CPUState);
 }
 
 #[panda::init]
@@ -95,6 +109,9 @@ fn init(_: &mut PluginHandle) -> bool {
     );
 
     panda::require_plugin(&Linjector { guest_binary });
+
+    PppCallback::new()
+        .before_guest_inject(|cpu| on_guest_agent_load::trigger(cpu));
 
     true
 }
