@@ -1,25 +1,48 @@
-'''
-QEMU_Log_Manager
-
-This class manages the QEMU log. It does so by manipulating two key QEMU
-variables:
-- qemu_loglevel: int mask of the log levels to be logged
-- qemu_logfile: FILE* to the log file
-
-
-This class generates methods for manipulating the log level of the form:
-- [MEMBER_NAME]_enable()
-- [MEMBER_NAME]_disable()
-
-It provides an equivalent method for setting the log file of the form:
-- enable("[MEMBER_NAME]")
-- disable("[MEMBER_NAME]")
-
-It also provides methods for setting a file to log to and a method to remove
-the current log file.
-
-'''
 class QEMU_Log_Manager:
+    '''
+    QEMU_Log_Manager
+
+    This class manages the QEMU log. It does so by manipulating two key QEMU
+    variables:
+    - qemu_loglevel: int mask of the log levels to be logged
+    - qemu_logfile: FILE* to the log file
+
+
+    This class generates methods for manipulating the log level of the form:
+    - [MEMBER_NAME]_enable()
+    - [MEMBER_NAME]_disable()
+
+    It provides an equivalent method for setting the log file of the form:
+    - enable("[MEMBER_NAME]")
+    - disable("[MEMBER_NAME]")
+
+    It also provides methods for setting a file to log to and a method to remove
+    the current log file.
+    
+    The following log types are supported:
+    
+        - TB_OUT_ASM
+        - TB_IN_ASM
+        - TB_OP,
+        - TB_OP_OPT
+        - INT
+        - EXEC
+        - PCALL
+        - TB_CPU
+        - RESET
+        - UNIMP
+        - GUEST_ERROR
+        - MMU
+        - TB_NOCHAIN
+        - PAGE
+        - TRACE
+        - TB_OP_IND
+        - TAINT_OPS
+        - RR
+        - LLVM_IR
+        - LLVM_ASM
+
+    '''
     def __init__(self, panda):
         self.panda = panda
 
