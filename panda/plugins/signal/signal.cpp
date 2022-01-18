@@ -240,7 +240,7 @@ bool init_plugin(void *_self) {
         case OS_FREEBSD: {
             #if defined(TARGET_X86_64)
                 printf("signal: setting up 64-bit FreeBSD.\n");
-                PPP_REG_CB("syscalls2", on_kill_enter, sig_mitm);
+                PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
             #else
                 fprintf(stderr, "[ERROR] signal: Unsuppported architecture for FreeBSD!\n");
                 return false;
