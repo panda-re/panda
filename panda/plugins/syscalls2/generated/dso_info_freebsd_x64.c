@@ -1598,10 +1598,6 @@ static syscall_argtype_t argt_513[] = {SYSCALL_ARG_STR_PTR, SYSCALL_ARG_S32};
 static uint8_t argsz_513[] = {sizeof(uint64_t), sizeof(int32_t)};
 static const char* const argn_513[] = {"path", "name", 0};
 static const char* const argtn_513[] = {"n/a", "n/a", 0};
-static syscall_argtype_t argt_515[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_STRUCT_PTR};
-static uint8_t argsz_515[] = {sizeof(int32_t), sizeof(int32_t), sizeof(uint64_t)};
-static const char* const argn_515[] = {"version", "fd", "rightsp", 0};
-static const char* const argtn_515[] = {"n/a", "n/a", "cap_rights_t", 0};
 static syscall_argtype_t argt_516[] = {};
 static uint8_t argsz_516[] = {};
 static const char* const argn_516[] = {};
@@ -1840,7 +1836,7 @@ syscall_info_t __syscall_info_a[] = {
 	/* note that uninitialized values will be zeroed-out */
 	[0] = {
 		.no = 0,
-		.name = "nosys",
+		.name = "sys_nosys",
 		.nargs = 0,
 		.argt = argt_0,
 		.argsz = argsz_0,
@@ -1860,7 +1856,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[2] = {
 		.no = 2,
-		.name = "fork",
+		.name = "sys_fork",
 		.nargs = 0,
 		.argt = argt_2,
 		.argsz = argsz_2,
@@ -1870,7 +1866,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[3] = {
 		.no = 3,
-		.name = "read",
+		.name = "sys_read",
 		.nargs = 3,
 		.argt = argt_3,
 		.argsz = argsz_3,
@@ -1880,7 +1876,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[4] = {
 		.no = 4,
-		.name = "write",
+		.name = "sys_write",
 		.nargs = 3,
 		.argt = argt_4,
 		.argsz = argsz_4,
@@ -1890,7 +1886,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[5] = {
 		.no = 5,
-		.name = "open",
+		.name = "sys_open",
 		.nargs = 3,
 		.argt = argt_5,
 		.argsz = argsz_5,
@@ -1900,7 +1896,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[6] = {
 		.no = 6,
-		.name = "close",
+		.name = "sys_close",
 		.nargs = 1,
 		.argt = argt_6,
 		.argsz = argsz_6,
@@ -1910,7 +1906,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[7] = {
 		.no = 7,
-		.name = "wait4",
+		.name = "sys_wait4",
 		.nargs = 4,
 		.argt = argt_7,
 		.argsz = argsz_7,
@@ -1920,7 +1916,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[8] = {
 		.no = 8,
-		.name = "creat",
+		.name = "sys_creat",
 		.nargs = 2,
 		.argt = argt_8,
 		.argsz = argsz_8,
@@ -1930,7 +1926,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[9] = {
 		.no = 9,
-		.name = "link",
+		.name = "sys_link",
 		.nargs = 2,
 		.argt = argt_9,
 		.argsz = argsz_9,
@@ -1940,7 +1936,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[10] = {
 		.no = 10,
-		.name = "unlink",
+		.name = "sys_unlink",
 		.nargs = 1,
 		.argt = argt_10,
 		.argsz = argsz_10,
@@ -1950,7 +1946,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[12] = {
 		.no = 12,
-		.name = "chdir",
+		.name = "sys_chdir",
 		.nargs = 1,
 		.argt = argt_12,
 		.argsz = argsz_12,
@@ -1960,7 +1956,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[13] = {
 		.no = 13,
-		.name = "fchdir",
+		.name = "sys_fchdir",
 		.nargs = 1,
 		.argt = argt_13,
 		.argsz = argsz_13,
@@ -1970,7 +1966,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[14] = {
 		.no = 14,
-		.name = "mknod",
+		.name = "sys_mknod",
 		.nargs = 3,
 		.argt = argt_14,
 		.argsz = argsz_14,
@@ -1980,7 +1976,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[15] = {
 		.no = 15,
-		.name = "chmod",
+		.name = "sys_chmod",
 		.nargs = 2,
 		.argt = argt_15,
 		.argsz = argsz_15,
@@ -1990,7 +1986,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[16] = {
 		.no = 16,
-		.name = "chown",
+		.name = "sys_chown",
 		.nargs = 3,
 		.argt = argt_16,
 		.argsz = argsz_16,
@@ -2000,7 +1996,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[18] = {
 		.no = 18,
-		.name = "getfsstat",
+		.name = "sys_getfsstat",
 		.nargs = 3,
 		.argt = argt_18,
 		.argsz = argsz_18,
@@ -2010,7 +2006,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[20] = {
 		.no = 20,
-		.name = "getpid",
+		.name = "sys_getpid",
 		.nargs = 0,
 		.argt = argt_20,
 		.argsz = argsz_20,
@@ -2020,7 +2016,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[21] = {
 		.no = 21,
-		.name = "mount",
+		.name = "sys_mount",
 		.nargs = 4,
 		.argt = argt_21,
 		.argsz = argsz_21,
@@ -2030,7 +2026,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[22] = {
 		.no = 22,
-		.name = "unmount",
+		.name = "sys_unmount",
 		.nargs = 2,
 		.argt = argt_22,
 		.argsz = argsz_22,
@@ -2040,7 +2036,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[23] = {
 		.no = 23,
-		.name = "setuid",
+		.name = "sys_setuid",
 		.nargs = 1,
 		.argt = argt_23,
 		.argsz = argsz_23,
@@ -2050,7 +2046,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[24] = {
 		.no = 24,
-		.name = "getuid",
+		.name = "sys_getuid",
 		.nargs = 0,
 		.argt = argt_24,
 		.argsz = argsz_24,
@@ -2060,7 +2056,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[25] = {
 		.no = 25,
-		.name = "geteuid",
+		.name = "sys_geteuid",
 		.nargs = 0,
 		.argt = argt_25,
 		.argsz = argsz_25,
@@ -2070,7 +2066,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[26] = {
 		.no = 26,
-		.name = "ptrace",
+		.name = "sys_ptrace",
 		.nargs = 4,
 		.argt = argt_26,
 		.argsz = argsz_26,
@@ -2080,7 +2076,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[27] = {
 		.no = 27,
-		.name = "recvmsg",
+		.name = "sys_recvmsg",
 		.nargs = 3,
 		.argt = argt_27,
 		.argsz = argsz_27,
@@ -2090,7 +2086,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[28] = {
 		.no = 28,
-		.name = "sendmsg",
+		.name = "sys_sendmsg",
 		.nargs = 3,
 		.argt = argt_28,
 		.argsz = argsz_28,
@@ -2100,7 +2096,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[29] = {
 		.no = 29,
-		.name = "recvfrom",
+		.name = "sys_recvfrom",
 		.nargs = 6,
 		.argt = argt_29,
 		.argsz = argsz_29,
@@ -2110,7 +2106,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[30] = {
 		.no = 30,
-		.name = "accept",
+		.name = "sys_accept",
 		.nargs = 3,
 		.argt = argt_30,
 		.argsz = argsz_30,
@@ -2120,7 +2116,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[31] = {
 		.no = 31,
-		.name = "getpeername",
+		.name = "sys_getpeername",
 		.nargs = 3,
 		.argt = argt_31,
 		.argsz = argsz_31,
@@ -2130,7 +2126,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[32] = {
 		.no = 32,
-		.name = "getsockname",
+		.name = "sys_getsockname",
 		.nargs = 3,
 		.argt = argt_32,
 		.argsz = argsz_32,
@@ -2140,7 +2136,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[33] = {
 		.no = 33,
-		.name = "access",
+		.name = "sys_access",
 		.nargs = 2,
 		.argt = argt_33,
 		.argsz = argsz_33,
@@ -2150,7 +2146,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[34] = {
 		.no = 34,
-		.name = "chflags",
+		.name = "sys_chflags",
 		.nargs = 2,
 		.argt = argt_34,
 		.argsz = argsz_34,
@@ -2160,7 +2156,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[35] = {
 		.no = 35,
-		.name = "fchflags",
+		.name = "sys_fchflags",
 		.nargs = 2,
 		.argt = argt_35,
 		.argsz = argsz_35,
@@ -2170,7 +2166,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[36] = {
 		.no = 36,
-		.name = "sync",
+		.name = "sys_sync",
 		.nargs = 0,
 		.argt = argt_36,
 		.argsz = argsz_36,
@@ -2180,7 +2176,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[37] = {
 		.no = 37,
-		.name = "kill",
+		.name = "sys_kill",
 		.nargs = 2,
 		.argt = argt_37,
 		.argsz = argsz_37,
@@ -2190,7 +2186,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[38] = {
 		.no = 38,
-		.name = "stat",
+		.name = "sys_stat",
 		.nargs = 2,
 		.argt = argt_38,
 		.argsz = argsz_38,
@@ -2200,7 +2196,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[39] = {
 		.no = 39,
-		.name = "getppid",
+		.name = "sys_getppid",
 		.nargs = 0,
 		.argt = argt_39,
 		.argsz = argsz_39,
@@ -2210,7 +2206,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[40] = {
 		.no = 40,
-		.name = "lstat",
+		.name = "sys_lstat",
 		.nargs = 2,
 		.argt = argt_40,
 		.argsz = argsz_40,
@@ -2220,7 +2216,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[41] = {
 		.no = 41,
-		.name = "dup",
+		.name = "sys_dup",
 		.nargs = 1,
 		.argt = argt_41,
 		.argsz = argsz_41,
@@ -2230,7 +2226,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[42] = {
 		.no = 42,
-		.name = "pipe",
+		.name = "sys_pipe",
 		.nargs = 0,
 		.argt = argt_42,
 		.argsz = argsz_42,
@@ -2240,7 +2236,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[43] = {
 		.no = 43,
-		.name = "getegid",
+		.name = "sys_getegid",
 		.nargs = 0,
 		.argt = argt_43,
 		.argsz = argsz_43,
@@ -2250,7 +2246,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[44] = {
 		.no = 44,
-		.name = "profil",
+		.name = "sys_profil",
 		.nargs = 4,
 		.argt = argt_44,
 		.argsz = argsz_44,
@@ -2260,7 +2256,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[45] = {
 		.no = 45,
-		.name = "ktrace",
+		.name = "sys_ktrace",
 		.nargs = 4,
 		.argt = argt_45,
 		.argsz = argsz_45,
@@ -2270,7 +2266,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[46] = {
 		.no = 46,
-		.name = "sigaction",
+		.name = "sys_sigaction",
 		.nargs = 3,
 		.argt = argt_46,
 		.argsz = argsz_46,
@@ -2280,7 +2276,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[47] = {
 		.no = 47,
-		.name = "getgid",
+		.name = "sys_getgid",
 		.nargs = 0,
 		.argt = argt_47,
 		.argsz = argsz_47,
@@ -2290,7 +2286,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[49] = {
 		.no = 49,
-		.name = "getlogin",
+		.name = "sys_getlogin",
 		.nargs = 2,
 		.argt = argt_49,
 		.argsz = argsz_49,
@@ -2300,7 +2296,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[50] = {
 		.no = 50,
-		.name = "setlogin",
+		.name = "sys_setlogin",
 		.nargs = 1,
 		.argt = argt_50,
 		.argsz = argsz_50,
@@ -2310,7 +2306,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[51] = {
 		.no = 51,
-		.name = "acct",
+		.name = "sys_acct",
 		.nargs = 1,
 		.argt = argt_51,
 		.argsz = argsz_51,
@@ -2320,7 +2316,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[53] = {
 		.no = 53,
-		.name = "sigaltstack",
+		.name = "sys_sigaltstack",
 		.nargs = 2,
 		.argt = argt_53,
 		.argsz = argsz_53,
@@ -2330,7 +2326,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[54] = {
 		.no = 54,
-		.name = "ioctl",
+		.name = "sys_ioctl",
 		.nargs = 3,
 		.argt = argt_54,
 		.argsz = argsz_54,
@@ -2340,7 +2336,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[55] = {
 		.no = 55,
-		.name = "reboot",
+		.name = "sys_reboot",
 		.nargs = 1,
 		.argt = argt_55,
 		.argsz = argsz_55,
@@ -2350,7 +2346,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[56] = {
 		.no = 56,
-		.name = "revoke",
+		.name = "sys_revoke",
 		.nargs = 1,
 		.argt = argt_56,
 		.argsz = argsz_56,
@@ -2360,7 +2356,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[57] = {
 		.no = 57,
-		.name = "symlink",
+		.name = "sys_symlink",
 		.nargs = 2,
 		.argt = argt_57,
 		.argsz = argsz_57,
@@ -2370,7 +2366,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[58] = {
 		.no = 58,
-		.name = "readlink",
+		.name = "sys_readlink",
 		.nargs = 3,
 		.argt = argt_58,
 		.argsz = argsz_58,
@@ -2380,17 +2376,17 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[59] = {
 		.no = 59,
-		.name = "execve",
+		.name = "sys_execve",
 		.nargs = 3,
 		.argt = argt_59,
 		.argsz = argsz_59,
 		.argn = argn_59,
 		.argtn = argtn_59,
-		.noreturn = true
+		.noreturn = false
 	},
 	[60] = {
 		.no = 60,
-		.name = "umask",
+		.name = "sys_umask",
 		.nargs = 1,
 		.argt = argt_60,
 		.argsz = argsz_60,
@@ -2400,7 +2396,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[61] = {
 		.no = 61,
-		.name = "chroot",
+		.name = "sys_chroot",
 		.nargs = 1,
 		.argt = argt_61,
 		.argsz = argsz_61,
@@ -2410,7 +2406,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[62] = {
 		.no = 62,
-		.name = "fstat",
+		.name = "sys_fstat",
 		.nargs = 2,
 		.argt = argt_62,
 		.argsz = argsz_62,
@@ -2420,7 +2416,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[63] = {
 		.no = 63,
-		.name = "getkerninfo",
+		.name = "sys_getkerninfo",
 		.nargs = 4,
 		.argt = argt_63,
 		.argsz = argsz_63,
@@ -2430,7 +2426,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[64] = {
 		.no = 64,
-		.name = "getpagesize",
+		.name = "sys_getpagesize",
 		.nargs = 0,
 		.argt = argt_64,
 		.argsz = argsz_64,
@@ -2440,7 +2436,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[65] = {
 		.no = 65,
-		.name = "msync",
+		.name = "sys_msync",
 		.nargs = 3,
 		.argt = argt_65,
 		.argsz = argsz_65,
@@ -2450,7 +2446,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[66] = {
 		.no = 66,
-		.name = "vfork",
+		.name = "sys_vfork",
 		.nargs = 0,
 		.argt = argt_66,
 		.argsz = argsz_66,
@@ -2460,7 +2456,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[69] = {
 		.no = 69,
-		.name = "sbrk",
+		.name = "sys_sbrk",
 		.nargs = 1,
 		.argt = argt_69,
 		.argsz = argsz_69,
@@ -2470,7 +2466,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[70] = {
 		.no = 70,
-		.name = "sstk",
+		.name = "sys_sstk",
 		.nargs = 1,
 		.argt = argt_70,
 		.argsz = argsz_70,
@@ -2480,7 +2476,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[72] = {
 		.no = 72,
-		.name = "vadvise",
+		.name = "sys_vadvise",
 		.nargs = 1,
 		.argt = argt_72,
 		.argsz = argsz_72,
@@ -2490,7 +2486,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[73] = {
 		.no = 73,
-		.name = "munmap",
+		.name = "sys_munmap",
 		.nargs = 2,
 		.argt = argt_73,
 		.argsz = argsz_73,
@@ -2500,7 +2496,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[74] = {
 		.no = 74,
-		.name = "mprotect",
+		.name = "sys_mprotect",
 		.nargs = 3,
 		.argt = argt_74,
 		.argsz = argsz_74,
@@ -2510,7 +2506,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[75] = {
 		.no = 75,
-		.name = "madvise",
+		.name = "sys_madvise",
 		.nargs = 3,
 		.argt = argt_75,
 		.argsz = argsz_75,
@@ -2520,7 +2516,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[78] = {
 		.no = 78,
-		.name = "mincore",
+		.name = "sys_mincore",
 		.nargs = 3,
 		.argt = argt_78,
 		.argsz = argsz_78,
@@ -2530,7 +2526,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[79] = {
 		.no = 79,
-		.name = "getgroups",
+		.name = "sys_getgroups",
 		.nargs = 2,
 		.argt = argt_79,
 		.argsz = argsz_79,
@@ -2540,7 +2536,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[80] = {
 		.no = 80,
-		.name = "setgroups",
+		.name = "sys_setgroups",
 		.nargs = 2,
 		.argt = argt_80,
 		.argsz = argsz_80,
@@ -2550,7 +2546,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[81] = {
 		.no = 81,
-		.name = "getpgrp",
+		.name = "sys_getpgrp",
 		.nargs = 0,
 		.argt = argt_81,
 		.argsz = argsz_81,
@@ -2560,7 +2556,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[82] = {
 		.no = 82,
-		.name = "setpgid",
+		.name = "sys_setpgid",
 		.nargs = 2,
 		.argt = argt_82,
 		.argsz = argsz_82,
@@ -2570,7 +2566,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[83] = {
 		.no = 83,
-		.name = "setitimer",
+		.name = "sys_setitimer",
 		.nargs = 3,
 		.argt = argt_83,
 		.argsz = argsz_83,
@@ -2580,7 +2576,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[84] = {
 		.no = 84,
-		.name = "wait",
+		.name = "sys_wait",
 		.nargs = 0,
 		.argt = argt_84,
 		.argsz = argsz_84,
@@ -2590,7 +2586,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[85] = {
 		.no = 85,
-		.name = "swapon",
+		.name = "sys_swapon",
 		.nargs = 1,
 		.argt = argt_85,
 		.argsz = argsz_85,
@@ -2600,7 +2596,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[86] = {
 		.no = 86,
-		.name = "getitimer",
+		.name = "sys_getitimer",
 		.nargs = 2,
 		.argt = argt_86,
 		.argsz = argsz_86,
@@ -2610,7 +2606,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[87] = {
 		.no = 87,
-		.name = "gethostname",
+		.name = "sys_gethostname",
 		.nargs = 2,
 		.argt = argt_87,
 		.argsz = argsz_87,
@@ -2620,7 +2616,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[88] = {
 		.no = 88,
-		.name = "sethostname",
+		.name = "sys_sethostname",
 		.nargs = 2,
 		.argt = argt_88,
 		.argsz = argsz_88,
@@ -2630,7 +2626,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[89] = {
 		.no = 89,
-		.name = "getdtablesize",
+		.name = "sys_getdtablesize",
 		.nargs = 0,
 		.argt = argt_89,
 		.argsz = argsz_89,
@@ -2640,7 +2636,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[90] = {
 		.no = 90,
-		.name = "dup2",
+		.name = "sys_dup2",
 		.nargs = 2,
 		.argt = argt_90,
 		.argsz = argsz_90,
@@ -2650,7 +2646,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[92] = {
 		.no = 92,
-		.name = "fcntl",
+		.name = "sys_fcntl",
 		.nargs = 3,
 		.argt = argt_92,
 		.argsz = argsz_92,
@@ -2660,7 +2656,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[93] = {
 		.no = 93,
-		.name = "select",
+		.name = "sys_select",
 		.nargs = 5,
 		.argt = argt_93,
 		.argsz = argsz_93,
@@ -2670,7 +2666,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[95] = {
 		.no = 95,
-		.name = "fsync",
+		.name = "sys_fsync",
 		.nargs = 1,
 		.argt = argt_95,
 		.argsz = argsz_95,
@@ -2680,7 +2676,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[96] = {
 		.no = 96,
-		.name = "setpriority",
+		.name = "sys_setpriority",
 		.nargs = 3,
 		.argt = argt_96,
 		.argsz = argsz_96,
@@ -2690,7 +2686,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[97] = {
 		.no = 97,
-		.name = "socket",
+		.name = "sys_socket",
 		.nargs = 3,
 		.argt = argt_97,
 		.argsz = argsz_97,
@@ -2700,7 +2696,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[98] = {
 		.no = 98,
-		.name = "connect",
+		.name = "sys_connect",
 		.nargs = 3,
 		.argt = argt_98,
 		.argsz = argsz_98,
@@ -2710,7 +2706,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[99] = {
 		.no = 99,
-		.name = "accept",
+		.name = "sys_accept",
 		.nargs = 3,
 		.argt = argt_99,
 		.argsz = argsz_99,
@@ -2720,7 +2716,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[100] = {
 		.no = 100,
-		.name = "getpriority",
+		.name = "sys_getpriority",
 		.nargs = 2,
 		.argt = argt_100,
 		.argsz = argsz_100,
@@ -2730,7 +2726,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[101] = {
 		.no = 101,
-		.name = "send",
+		.name = "sys_send",
 		.nargs = 4,
 		.argt = argt_101,
 		.argsz = argsz_101,
@@ -2740,7 +2736,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[102] = {
 		.no = 102,
-		.name = "recv",
+		.name = "sys_recv",
 		.nargs = 4,
 		.argt = argt_102,
 		.argsz = argsz_102,
@@ -2750,7 +2746,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[103] = {
 		.no = 103,
-		.name = "sigreturn",
+		.name = "sys_sigreturn",
 		.nargs = 1,
 		.argt = argt_103,
 		.argsz = argsz_103,
@@ -2760,7 +2756,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[104] = {
 		.no = 104,
-		.name = "bind",
+		.name = "sys_bind",
 		.nargs = 3,
 		.argt = argt_104,
 		.argsz = argsz_104,
@@ -2770,7 +2766,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[105] = {
 		.no = 105,
-		.name = "setsockopt",
+		.name = "sys_setsockopt",
 		.nargs = 5,
 		.argt = argt_105,
 		.argsz = argsz_105,
@@ -2780,7 +2776,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[106] = {
 		.no = 106,
-		.name = "listen",
+		.name = "sys_listen",
 		.nargs = 2,
 		.argt = argt_106,
 		.argsz = argsz_106,
@@ -2790,7 +2786,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[108] = {
 		.no = 108,
-		.name = "sigvec",
+		.name = "sys_sigvec",
 		.nargs = 3,
 		.argt = argt_108,
 		.argsz = argsz_108,
@@ -2800,7 +2796,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[109] = {
 		.no = 109,
-		.name = "sigblock",
+		.name = "sys_sigblock",
 		.nargs = 1,
 		.argt = argt_109,
 		.argsz = argsz_109,
@@ -2810,7 +2806,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[110] = {
 		.no = 110,
-		.name = "sigsetmask",
+		.name = "sys_sigsetmask",
 		.nargs = 1,
 		.argt = argt_110,
 		.argsz = argsz_110,
@@ -2820,7 +2816,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[111] = {
 		.no = 111,
-		.name = "sigsuspend",
+		.name = "sys_sigsuspend",
 		.nargs = 1,
 		.argt = argt_111,
 		.argsz = argsz_111,
@@ -2830,7 +2826,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[112] = {
 		.no = 112,
-		.name = "sigstack",
+		.name = "sys_sigstack",
 		.nargs = 2,
 		.argt = argt_112,
 		.argsz = argsz_112,
@@ -2840,7 +2836,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[113] = {
 		.no = 113,
-		.name = "recvmsg",
+		.name = "sys_recvmsg",
 		.nargs = 3,
 		.argt = argt_113,
 		.argsz = argsz_113,
@@ -2850,7 +2846,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[114] = {
 		.no = 114,
-		.name = "sendmsg",
+		.name = "sys_sendmsg",
 		.nargs = 3,
 		.argt = argt_114,
 		.argsz = argsz_114,
@@ -2860,7 +2856,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[116] = {
 		.no = 116,
-		.name = "gettimeofday",
+		.name = "sys_gettimeofday",
 		.nargs = 2,
 		.argt = argt_116,
 		.argsz = argsz_116,
@@ -2870,7 +2866,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[117] = {
 		.no = 117,
-		.name = "getrusage",
+		.name = "sys_getrusage",
 		.nargs = 2,
 		.argt = argt_117,
 		.argsz = argsz_117,
@@ -2880,7 +2876,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[118] = {
 		.no = 118,
-		.name = "getsockopt",
+		.name = "sys_getsockopt",
 		.nargs = 5,
 		.argt = argt_118,
 		.argsz = argsz_118,
@@ -2890,7 +2886,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[120] = {
 		.no = 120,
-		.name = "readv",
+		.name = "sys_readv",
 		.nargs = 3,
 		.argt = argt_120,
 		.argsz = argsz_120,
@@ -2900,7 +2896,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[121] = {
 		.no = 121,
-		.name = "writev",
+		.name = "sys_writev",
 		.nargs = 3,
 		.argt = argt_121,
 		.argsz = argsz_121,
@@ -2910,7 +2906,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[122] = {
 		.no = 122,
-		.name = "settimeofday",
+		.name = "sys_settimeofday",
 		.nargs = 2,
 		.argt = argt_122,
 		.argsz = argsz_122,
@@ -2920,7 +2916,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[123] = {
 		.no = 123,
-		.name = "fchown",
+		.name = "sys_fchown",
 		.nargs = 3,
 		.argt = argt_123,
 		.argsz = argsz_123,
@@ -2930,7 +2926,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[124] = {
 		.no = 124,
-		.name = "fchmod",
+		.name = "sys_fchmod",
 		.nargs = 2,
 		.argt = argt_124,
 		.argsz = argsz_124,
@@ -2940,7 +2936,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[125] = {
 		.no = 125,
-		.name = "recvfrom",
+		.name = "sys_recvfrom",
 		.nargs = 6,
 		.argt = argt_125,
 		.argsz = argsz_125,
@@ -2950,7 +2946,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[126] = {
 		.no = 126,
-		.name = "setreuid",
+		.name = "sys_setreuid",
 		.nargs = 2,
 		.argt = argt_126,
 		.argsz = argsz_126,
@@ -2960,7 +2956,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[127] = {
 		.no = 127,
-		.name = "setregid",
+		.name = "sys_setregid",
 		.nargs = 2,
 		.argt = argt_127,
 		.argsz = argsz_127,
@@ -2970,7 +2966,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[128] = {
 		.no = 128,
-		.name = "rename",
+		.name = "sys_rename",
 		.nargs = 2,
 		.argt = argt_128,
 		.argsz = argsz_128,
@@ -2980,7 +2976,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[131] = {
 		.no = 131,
-		.name = "flock",
+		.name = "sys_flock",
 		.nargs = 2,
 		.argt = argt_131,
 		.argsz = argsz_131,
@@ -2990,7 +2986,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[132] = {
 		.no = 132,
-		.name = "mkfifo",
+		.name = "sys_mkfifo",
 		.nargs = 2,
 		.argt = argt_132,
 		.argsz = argsz_132,
@@ -3000,7 +2996,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[133] = {
 		.no = 133,
-		.name = "sendto",
+		.name = "sys_sendto",
 		.nargs = 6,
 		.argt = argt_133,
 		.argsz = argsz_133,
@@ -3010,7 +3006,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[134] = {
 		.no = 134,
-		.name = "shutdown",
+		.name = "sys_shutdown",
 		.nargs = 2,
 		.argt = argt_134,
 		.argsz = argsz_134,
@@ -3020,7 +3016,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[135] = {
 		.no = 135,
-		.name = "socketpair",
+		.name = "sys_socketpair",
 		.nargs = 4,
 		.argt = argt_135,
 		.argsz = argsz_135,
@@ -3030,7 +3026,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[136] = {
 		.no = 136,
-		.name = "mkdir",
+		.name = "sys_mkdir",
 		.nargs = 2,
 		.argt = argt_136,
 		.argsz = argsz_136,
@@ -3040,7 +3036,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[137] = {
 		.no = 137,
-		.name = "rmdir",
+		.name = "sys_rmdir",
 		.nargs = 1,
 		.argt = argt_137,
 		.argsz = argsz_137,
@@ -3050,7 +3046,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[138] = {
 		.no = 138,
-		.name = "utimes",
+		.name = "sys_utimes",
 		.nargs = 2,
 		.argt = argt_138,
 		.argsz = argsz_138,
@@ -3060,7 +3056,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[140] = {
 		.no = 140,
-		.name = "adjtime",
+		.name = "sys_adjtime",
 		.nargs = 2,
 		.argt = argt_140,
 		.argsz = argsz_140,
@@ -3070,7 +3066,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[141] = {
 		.no = 141,
-		.name = "getpeername",
+		.name = "sys_getpeername",
 		.nargs = 3,
 		.argt = argt_141,
 		.argsz = argsz_141,
@@ -3080,7 +3076,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[142] = {
 		.no = 142,
-		.name = "gethostid",
+		.name = "sys_gethostid",
 		.nargs = 0,
 		.argt = argt_142,
 		.argsz = argsz_142,
@@ -3090,7 +3086,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[143] = {
 		.no = 143,
-		.name = "sethostid",
+		.name = "sys_sethostid",
 		.nargs = 1,
 		.argt = argt_143,
 		.argsz = argsz_143,
@@ -3100,7 +3096,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[144] = {
 		.no = 144,
-		.name = "getrlimit",
+		.name = "sys_getrlimit",
 		.nargs = 2,
 		.argt = argt_144,
 		.argsz = argsz_144,
@@ -3110,7 +3106,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[145] = {
 		.no = 145,
-		.name = "setrlimit",
+		.name = "sys_setrlimit",
 		.nargs = 2,
 		.argt = argt_145,
 		.argsz = argsz_145,
@@ -3120,7 +3116,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[146] = {
 		.no = 146,
-		.name = "killpg",
+		.name = "sys_killpg",
 		.nargs = 2,
 		.argt = argt_146,
 		.argsz = argsz_146,
@@ -3130,7 +3126,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[147] = {
 		.no = 147,
-		.name = "setsid",
+		.name = "sys_setsid",
 		.nargs = 0,
 		.argt = argt_147,
 		.argsz = argsz_147,
@@ -3140,7 +3136,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[148] = {
 		.no = 148,
-		.name = "quotactl",
+		.name = "sys_quotactl",
 		.nargs = 4,
 		.argt = argt_148,
 		.argsz = argsz_148,
@@ -3150,7 +3146,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[149] = {
 		.no = 149,
-		.name = "quota",
+		.name = "sys_quota",
 		.nargs = 0,
 		.argt = argt_149,
 		.argsz = argsz_149,
@@ -3160,7 +3156,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[150] = {
 		.no = 150,
-		.name = "getsockname",
+		.name = "sys_getsockname",
 		.nargs = 3,
 		.argt = argt_150,
 		.argsz = argsz_150,
@@ -3170,7 +3166,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[154] = {
 		.no = 154,
-		.name = "nlm_syscall",
+		.name = "sys_nlm_syscall",
 		.nargs = 4,
 		.argt = argt_154,
 		.argsz = argsz_154,
@@ -3180,7 +3176,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[155] = {
 		.no = 155,
-		.name = "nfssvc",
+		.name = "sys_nfssvc",
 		.nargs = 2,
 		.argt = argt_155,
 		.argsz = argsz_155,
@@ -3190,7 +3186,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[156] = {
 		.no = 156,
-		.name = "getdirentries",
+		.name = "sys_getdirentries",
 		.nargs = 4,
 		.argt = argt_156,
 		.argsz = argsz_156,
@@ -3200,7 +3196,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[157] = {
 		.no = 157,
-		.name = "statfs",
+		.name = "sys_statfs",
 		.nargs = 2,
 		.argt = argt_157,
 		.argsz = argsz_157,
@@ -3210,7 +3206,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[158] = {
 		.no = 158,
-		.name = "fstatfs",
+		.name = "sys_fstatfs",
 		.nargs = 2,
 		.argt = argt_158,
 		.argsz = argsz_158,
@@ -3220,7 +3216,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[160] = {
 		.no = 160,
-		.name = "lgetfh",
+		.name = "sys_lgetfh",
 		.nargs = 2,
 		.argt = argt_160,
 		.argsz = argsz_160,
@@ -3230,7 +3226,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[161] = {
 		.no = 161,
-		.name = "getfh",
+		.name = "sys_getfh",
 		.nargs = 2,
 		.argt = argt_161,
 		.argsz = argsz_161,
@@ -3240,7 +3236,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[162] = {
 		.no = 162,
-		.name = "getdomainname",
+		.name = "sys_getdomainname",
 		.nargs = 2,
 		.argt = argt_162,
 		.argsz = argsz_162,
@@ -3250,7 +3246,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[163] = {
 		.no = 163,
-		.name = "setdomainname",
+		.name = "sys_setdomainname",
 		.nargs = 2,
 		.argt = argt_163,
 		.argsz = argsz_163,
@@ -3260,7 +3256,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[164] = {
 		.no = 164,
-		.name = "uname",
+		.name = "sys_uname",
 		.nargs = 1,
 		.argt = argt_164,
 		.argsz = argsz_164,
@@ -3270,7 +3266,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[165] = {
 		.no = 165,
-		.name = "sysarch",
+		.name = "sys_sysarch",
 		.nargs = 2,
 		.argt = argt_165,
 		.argsz = argsz_165,
@@ -3280,7 +3276,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[166] = {
 		.no = 166,
-		.name = "rtprio",
+		.name = "sys_rtprio",
 		.nargs = 3,
 		.argt = argt_166,
 		.argsz = argsz_166,
@@ -3290,7 +3286,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[169] = {
 		.no = 169,
-		.name = "semsys",
+		.name = "sys_semsys",
 		.nargs = 5,
 		.argt = argt_169,
 		.argsz = argsz_169,
@@ -3300,7 +3296,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[175] = {
 		.no = 175,
-		.name = "setfib",
+		.name = "sys_setfib",
 		.nargs = 1,
 		.argt = argt_175,
 		.argsz = argsz_175,
@@ -3310,7 +3306,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[176] = {
 		.no = 176,
-		.name = "ntp_adjtime",
+		.name = "sys_ntp_adjtime",
 		.nargs = 1,
 		.argt = argt_176,
 		.argsz = argsz_176,
@@ -3320,7 +3316,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[181] = {
 		.no = 181,
-		.name = "setgid",
+		.name = "sys_setgid",
 		.nargs = 1,
 		.argt = argt_181,
 		.argsz = argsz_181,
@@ -3330,7 +3326,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[182] = {
 		.no = 182,
-		.name = "setegid",
+		.name = "sys_setegid",
 		.nargs = 1,
 		.argt = argt_182,
 		.argsz = argsz_182,
@@ -3340,7 +3336,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[183] = {
 		.no = 183,
-		.name = "seteuid",
+		.name = "sys_seteuid",
 		.nargs = 1,
 		.argt = argt_183,
 		.argsz = argsz_183,
@@ -3350,7 +3346,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[188] = {
 		.no = 188,
-		.name = "stat",
+		.name = "sys_stat",
 		.nargs = 2,
 		.argt = argt_188,
 		.argsz = argsz_188,
@@ -3360,7 +3356,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[189] = {
 		.no = 189,
-		.name = "fstat",
+		.name = "sys_fstat",
 		.nargs = 2,
 		.argt = argt_189,
 		.argsz = argsz_189,
@@ -3370,7 +3366,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[190] = {
 		.no = 190,
-		.name = "lstat",
+		.name = "sys_lstat",
 		.nargs = 2,
 		.argt = argt_190,
 		.argsz = argsz_190,
@@ -3380,7 +3376,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[191] = {
 		.no = 191,
-		.name = "pathconf",
+		.name = "sys_pathconf",
 		.nargs = 2,
 		.argt = argt_191,
 		.argsz = argsz_191,
@@ -3390,7 +3386,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[192] = {
 		.no = 192,
-		.name = "fpathconf",
+		.name = "sys_fpathconf",
 		.nargs = 2,
 		.argt = argt_192,
 		.argsz = argsz_192,
@@ -3400,7 +3396,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[194] = {
 		.no = 194,
-		.name = "getrlimit",
+		.name = "sys_getrlimit",
 		.nargs = 2,
 		.argt = argt_194,
 		.argsz = argsz_194,
@@ -3410,7 +3406,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[195] = {
 		.no = 195,
-		.name = "setrlimit",
+		.name = "sys_setrlimit",
 		.nargs = 2,
 		.argt = argt_195,
 		.argsz = argsz_195,
@@ -3420,7 +3416,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[196] = {
 		.no = 196,
-		.name = "getdirentries",
+		.name = "sys_getdirentries",
 		.nargs = 4,
 		.argt = argt_196,
 		.argsz = argsz_196,
@@ -3430,7 +3426,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[198] = {
 		.no = 198,
-		.name = "nosys",
+		.name = "sys_nosys",
 		.nargs = 0,
 		.argt = argt_198,
 		.argsz = argsz_198,
@@ -3440,7 +3436,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[202] = {
 		.no = 202,
-		.name = "__sysctl",
+		.name = "sys___sysctl",
 		.nargs = 6,
 		.argt = argt_202,
 		.argsz = argsz_202,
@@ -3450,7 +3446,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[203] = {
 		.no = 203,
-		.name = "mlock",
+		.name = "sys_mlock",
 		.nargs = 2,
 		.argt = argt_203,
 		.argsz = argsz_203,
@@ -3460,7 +3456,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[204] = {
 		.no = 204,
-		.name = "munlock",
+		.name = "sys_munlock",
 		.nargs = 2,
 		.argt = argt_204,
 		.argsz = argsz_204,
@@ -3470,7 +3466,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[205] = {
 		.no = 205,
-		.name = "undelete",
+		.name = "sys_undelete",
 		.nargs = 1,
 		.argt = argt_205,
 		.argsz = argsz_205,
@@ -3480,7 +3476,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[206] = {
 		.no = 206,
-		.name = "futimes",
+		.name = "sys_futimes",
 		.nargs = 2,
 		.argt = argt_206,
 		.argsz = argsz_206,
@@ -3490,7 +3486,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[207] = {
 		.no = 207,
-		.name = "getpgid",
+		.name = "sys_getpgid",
 		.nargs = 1,
 		.argt = argt_207,
 		.argsz = argsz_207,
@@ -3500,7 +3496,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[209] = {
 		.no = 209,
-		.name = "poll",
+		.name = "sys_poll",
 		.nargs = 3,
 		.argt = argt_209,
 		.argsz = argsz_209,
@@ -3510,7 +3506,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[220] = {
 		.no = 220,
-		.name = "__semctl",
+		.name = "sys___semctl",
 		.nargs = 4,
 		.argt = argt_220,
 		.argsz = argsz_220,
@@ -3520,7 +3516,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[221] = {
 		.no = 221,
-		.name = "semget",
+		.name = "sys_semget",
 		.nargs = 3,
 		.argt = argt_221,
 		.argsz = argsz_221,
@@ -3530,7 +3526,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[222] = {
 		.no = 222,
-		.name = "semop",
+		.name = "sys_semop",
 		.nargs = 3,
 		.argt = argt_222,
 		.argsz = argsz_222,
@@ -3540,7 +3536,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[224] = {
 		.no = 224,
-		.name = "msgctl",
+		.name = "sys_msgctl",
 		.nargs = 3,
 		.argt = argt_224,
 		.argsz = argsz_224,
@@ -3550,7 +3546,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[225] = {
 		.no = 225,
-		.name = "msgget",
+		.name = "sys_msgget",
 		.nargs = 2,
 		.argt = argt_225,
 		.argsz = argsz_225,
@@ -3560,7 +3556,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[226] = {
 		.no = 226,
-		.name = "msgsnd",
+		.name = "sys_msgsnd",
 		.nargs = 4,
 		.argt = argt_226,
 		.argsz = argsz_226,
@@ -3570,7 +3566,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[227] = {
 		.no = 227,
-		.name = "msgrcv",
+		.name = "sys_msgrcv",
 		.nargs = 5,
 		.argt = argt_227,
 		.argsz = argsz_227,
@@ -3580,7 +3576,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[229] = {
 		.no = 229,
-		.name = "shmctl",
+		.name = "sys_shmctl",
 		.nargs = 3,
 		.argt = argt_229,
 		.argsz = argsz_229,
@@ -3590,7 +3586,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[230] = {
 		.no = 230,
-		.name = "shmdt",
+		.name = "sys_shmdt",
 		.nargs = 1,
 		.argt = argt_230,
 		.argsz = argsz_230,
@@ -3600,7 +3596,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[231] = {
 		.no = 231,
-		.name = "shmget",
+		.name = "sys_shmget",
 		.nargs = 3,
 		.argt = argt_231,
 		.argsz = argsz_231,
@@ -3610,7 +3606,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[232] = {
 		.no = 232,
-		.name = "clock_gettime",
+		.name = "sys_clock_gettime",
 		.nargs = 2,
 		.argt = argt_232,
 		.argsz = argsz_232,
@@ -3620,7 +3616,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[233] = {
 		.no = 233,
-		.name = "clock_settime",
+		.name = "sys_clock_settime",
 		.nargs = 2,
 		.argt = argt_233,
 		.argsz = argsz_233,
@@ -3630,7 +3626,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[234] = {
 		.no = 234,
-		.name = "clock_getres",
+		.name = "sys_clock_getres",
 		.nargs = 2,
 		.argt = argt_234,
 		.argsz = argsz_234,
@@ -3640,7 +3636,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[235] = {
 		.no = 235,
-		.name = "ktimer_create",
+		.name = "sys_ktimer_create",
 		.nargs = 3,
 		.argt = argt_235,
 		.argsz = argsz_235,
@@ -3650,7 +3646,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[236] = {
 		.no = 236,
-		.name = "ktimer_delete",
+		.name = "sys_ktimer_delete",
 		.nargs = 1,
 		.argt = argt_236,
 		.argsz = argsz_236,
@@ -3660,7 +3656,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[237] = {
 		.no = 237,
-		.name = "ktimer_settime",
+		.name = "sys_ktimer_settime",
 		.nargs = 4,
 		.argt = argt_237,
 		.argsz = argsz_237,
@@ -3670,7 +3666,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[238] = {
 		.no = 238,
-		.name = "ktimer_gettime",
+		.name = "sys_ktimer_gettime",
 		.nargs = 2,
 		.argt = argt_238,
 		.argsz = argsz_238,
@@ -3680,7 +3676,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[239] = {
 		.no = 239,
-		.name = "ktimer_getoverrun",
+		.name = "sys_ktimer_getoverrun",
 		.nargs = 1,
 		.argt = argt_239,
 		.argsz = argsz_239,
@@ -3690,7 +3686,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[240] = {
 		.no = 240,
-		.name = "nanosleep",
+		.name = "sys_nanosleep",
 		.nargs = 2,
 		.argt = argt_240,
 		.argsz = argsz_240,
@@ -3700,7 +3696,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[241] = {
 		.no = 241,
-		.name = "ffclock_getcounter",
+		.name = "sys_ffclock_getcounter",
 		.nargs = 1,
 		.argt = argt_241,
 		.argsz = argsz_241,
@@ -3710,7 +3706,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[242] = {
 		.no = 242,
-		.name = "ffclock_setestimate",
+		.name = "sys_ffclock_setestimate",
 		.nargs = 1,
 		.argt = argt_242,
 		.argsz = argsz_242,
@@ -3720,7 +3716,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[243] = {
 		.no = 243,
-		.name = "ffclock_getestimate",
+		.name = "sys_ffclock_getestimate",
 		.nargs = 1,
 		.argt = argt_243,
 		.argsz = argsz_243,
@@ -3730,7 +3726,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[244] = {
 		.no = 244,
-		.name = "clock_nanosleep",
+		.name = "sys_clock_nanosleep",
 		.nargs = 4,
 		.argt = argt_244,
 		.argsz = argsz_244,
@@ -3740,7 +3736,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[247] = {
 		.no = 247,
-		.name = "clock_getcpuclockid2",
+		.name = "sys_clock_getcpuclockid2",
 		.nargs = 3,
 		.argt = argt_247,
 		.argsz = argsz_247,
@@ -3750,7 +3746,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[248] = {
 		.no = 248,
-		.name = "ntp_gettime",
+		.name = "sys_ntp_gettime",
 		.nargs = 1,
 		.argt = argt_248,
 		.argsz = argsz_248,
@@ -3760,7 +3756,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[250] = {
 		.no = 250,
-		.name = "minherit",
+		.name = "sys_minherit",
 		.nargs = 3,
 		.argt = argt_250,
 		.argsz = argsz_250,
@@ -3770,7 +3766,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[251] = {
 		.no = 251,
-		.name = "rfork",
+		.name = "sys_rfork",
 		.nargs = 1,
 		.argt = argt_251,
 		.argsz = argsz_251,
@@ -3780,7 +3776,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[253] = {
 		.no = 253,
-		.name = "issetugid",
+		.name = "sys_issetugid",
 		.nargs = 0,
 		.argt = argt_253,
 		.argsz = argsz_253,
@@ -3790,7 +3786,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[254] = {
 		.no = 254,
-		.name = "lchown",
+		.name = "sys_lchown",
 		.nargs = 3,
 		.argt = argt_254,
 		.argsz = argsz_254,
@@ -3800,7 +3796,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[255] = {
 		.no = 255,
-		.name = "aio_read",
+		.name = "sys_aio_read",
 		.nargs = 1,
 		.argt = argt_255,
 		.argsz = argsz_255,
@@ -3810,7 +3806,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[256] = {
 		.no = 256,
-		.name = "aio_write",
+		.name = "sys_aio_write",
 		.nargs = 1,
 		.argt = argt_256,
 		.argsz = argsz_256,
@@ -3820,7 +3816,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[257] = {
 		.no = 257,
-		.name = "lio_listio",
+		.name = "sys_lio_listio",
 		.nargs = 4,
 		.argt = argt_257,
 		.argsz = argsz_257,
@@ -3830,7 +3826,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[272] = {
 		.no = 272,
-		.name = "getdents",
+		.name = "sys_getdents",
 		.nargs = 3,
 		.argt = argt_272,
 		.argsz = argsz_272,
@@ -3840,7 +3836,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[274] = {
 		.no = 274,
-		.name = "lchmod",
+		.name = "sys_lchmod",
 		.nargs = 2,
 		.argt = argt_274,
 		.argsz = argsz_274,
@@ -3850,7 +3846,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[276] = {
 		.no = 276,
-		.name = "lutimes",
+		.name = "sys_lutimes",
 		.nargs = 2,
 		.argt = argt_276,
 		.argsz = argsz_276,
@@ -3860,7 +3856,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[278] = {
 		.no = 278,
-		.name = "nstat",
+		.name = "sys_nstat",
 		.nargs = 2,
 		.argt = argt_278,
 		.argsz = argsz_278,
@@ -3870,7 +3866,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[279] = {
 		.no = 279,
-		.name = "nfstat",
+		.name = "sys_nfstat",
 		.nargs = 2,
 		.argt = argt_279,
 		.argsz = argsz_279,
@@ -3880,7 +3876,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[280] = {
 		.no = 280,
-		.name = "nlstat",
+		.name = "sys_nlstat",
 		.nargs = 2,
 		.argt = argt_280,
 		.argsz = argsz_280,
@@ -3890,7 +3886,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[289] = {
 		.no = 289,
-		.name = "preadv",
+		.name = "sys_preadv",
 		.nargs = 4,
 		.argt = argt_289,
 		.argsz = argsz_289,
@@ -3900,7 +3896,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[290] = {
 		.no = 290,
-		.name = "pwritev",
+		.name = "sys_pwritev",
 		.nargs = 4,
 		.argt = argt_290,
 		.argsz = argsz_290,
@@ -3910,7 +3906,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[297] = {
 		.no = 297,
-		.name = "fhstatfs",
+		.name = "sys_fhstatfs",
 		.nargs = 2,
 		.argt = argt_297,
 		.argsz = argsz_297,
@@ -3920,7 +3916,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[298] = {
 		.no = 298,
-		.name = "fhopen",
+		.name = "sys_fhopen",
 		.nargs = 2,
 		.argt = argt_298,
 		.argsz = argsz_298,
@@ -3930,7 +3926,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[299] = {
 		.no = 299,
-		.name = "fhstat",
+		.name = "sys_fhstat",
 		.nargs = 2,
 		.argt = argt_299,
 		.argsz = argsz_299,
@@ -3940,7 +3936,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[300] = {
 		.no = 300,
-		.name = "modnext",
+		.name = "sys_modnext",
 		.nargs = 1,
 		.argt = argt_300,
 		.argsz = argsz_300,
@@ -3950,7 +3946,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[301] = {
 		.no = 301,
-		.name = "modstat",
+		.name = "sys_modstat",
 		.nargs = 2,
 		.argt = argt_301,
 		.argsz = argsz_301,
@@ -3960,7 +3956,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[302] = {
 		.no = 302,
-		.name = "modfnext",
+		.name = "sys_modfnext",
 		.nargs = 1,
 		.argt = argt_302,
 		.argsz = argsz_302,
@@ -3970,7 +3966,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[303] = {
 		.no = 303,
-		.name = "modfind",
+		.name = "sys_modfind",
 		.nargs = 1,
 		.argt = argt_303,
 		.argsz = argsz_303,
@@ -3980,7 +3976,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[304] = {
 		.no = 304,
-		.name = "kldload",
+		.name = "sys_kldload",
 		.nargs = 1,
 		.argt = argt_304,
 		.argsz = argsz_304,
@@ -3990,7 +3986,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[305] = {
 		.no = 305,
-		.name = "kldunload",
+		.name = "sys_kldunload",
 		.nargs = 1,
 		.argt = argt_305,
 		.argsz = argsz_305,
@@ -4000,7 +3996,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[306] = {
 		.no = 306,
-		.name = "kldfind",
+		.name = "sys_kldfind",
 		.nargs = 1,
 		.argt = argt_306,
 		.argsz = argsz_306,
@@ -4010,7 +4006,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[307] = {
 		.no = 307,
-		.name = "kldnext",
+		.name = "sys_kldnext",
 		.nargs = 1,
 		.argt = argt_307,
 		.argsz = argsz_307,
@@ -4020,7 +4016,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[308] = {
 		.no = 308,
-		.name = "kldstat",
+		.name = "sys_kldstat",
 		.nargs = 2,
 		.argt = argt_308,
 		.argsz = argsz_308,
@@ -4030,7 +4026,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[309] = {
 		.no = 309,
-		.name = "kldfirstmod",
+		.name = "sys_kldfirstmod",
 		.nargs = 1,
 		.argt = argt_309,
 		.argsz = argsz_309,
@@ -4040,7 +4036,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[310] = {
 		.no = 310,
-		.name = "getsid",
+		.name = "sys_getsid",
 		.nargs = 1,
 		.argt = argt_310,
 		.argsz = argsz_310,
@@ -4050,7 +4046,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[311] = {
 		.no = 311,
-		.name = "setresuid",
+		.name = "sys_setresuid",
 		.nargs = 3,
 		.argt = argt_311,
 		.argsz = argsz_311,
@@ -4060,7 +4056,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[312] = {
 		.no = 312,
-		.name = "setresgid",
+		.name = "sys_setresgid",
 		.nargs = 3,
 		.argt = argt_312,
 		.argsz = argsz_312,
@@ -4070,7 +4066,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[314] = {
 		.no = 314,
-		.name = "aio_return",
+		.name = "sys_aio_return",
 		.nargs = 1,
 		.argt = argt_314,
 		.argsz = argsz_314,
@@ -4080,7 +4076,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[315] = {
 		.no = 315,
-		.name = "aio_suspend",
+		.name = "sys_aio_suspend",
 		.nargs = 3,
 		.argt = argt_315,
 		.argsz = argsz_315,
@@ -4090,7 +4086,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[316] = {
 		.no = 316,
-		.name = "aio_cancel",
+		.name = "sys_aio_cancel",
 		.nargs = 2,
 		.argt = argt_316,
 		.argsz = argsz_316,
@@ -4100,7 +4096,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[317] = {
 		.no = 317,
-		.name = "aio_error",
+		.name = "sys_aio_error",
 		.nargs = 1,
 		.argt = argt_317,
 		.argsz = argsz_317,
@@ -4110,7 +4106,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[318] = {
 		.no = 318,
-		.name = "aio_read",
+		.name = "sys_aio_read",
 		.nargs = 1,
 		.argt = argt_318,
 		.argsz = argsz_318,
@@ -4120,7 +4116,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[319] = {
 		.no = 319,
-		.name = "aio_write",
+		.name = "sys_aio_write",
 		.nargs = 1,
 		.argt = argt_319,
 		.argsz = argsz_319,
@@ -4130,7 +4126,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[320] = {
 		.no = 320,
-		.name = "lio_listio",
+		.name = "sys_lio_listio",
 		.nargs = 4,
 		.argt = argt_320,
 		.argsz = argsz_320,
@@ -4140,7 +4136,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[321] = {
 		.no = 321,
-		.name = "yield",
+		.name = "sys_yield",
 		.nargs = 0,
 		.argt = argt_321,
 		.argsz = argsz_321,
@@ -4150,7 +4146,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[324] = {
 		.no = 324,
-		.name = "mlockall",
+		.name = "sys_mlockall",
 		.nargs = 1,
 		.argt = argt_324,
 		.argsz = argsz_324,
@@ -4170,7 +4166,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[327] = {
 		.no = 327,
-		.name = "sched_setparam",
+		.name = "sys_sched_setparam",
 		.nargs = 2,
 		.argt = argt_327,
 		.argsz = argsz_327,
@@ -4180,7 +4176,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[328] = {
 		.no = 328,
-		.name = "sched_getparam",
+		.name = "sys_sched_getparam",
 		.nargs = 2,
 		.argt = argt_328,
 		.argsz = argsz_328,
@@ -4190,7 +4186,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[329] = {
 		.no = 329,
-		.name = "sched_setscheduler",
+		.name = "sys_sched_setscheduler",
 		.nargs = 3,
 		.argt = argt_329,
 		.argsz = argsz_329,
@@ -4200,7 +4196,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[330] = {
 		.no = 330,
-		.name = "sched_getscheduler",
+		.name = "sys_sched_getscheduler",
 		.nargs = 1,
 		.argt = argt_330,
 		.argsz = argsz_330,
@@ -4210,7 +4206,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[331] = {
 		.no = 331,
-		.name = "sched_yield",
+		.name = "sys_sched_yield",
 		.nargs = 0,
 		.argt = argt_331,
 		.argsz = argsz_331,
@@ -4220,7 +4216,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[332] = {
 		.no = 332,
-		.name = "sched_get_priority_max",
+		.name = "sys_sched_get_priority_max",
 		.nargs = 1,
 		.argt = argt_332,
 		.argsz = argsz_332,
@@ -4230,7 +4226,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[333] = {
 		.no = 333,
-		.name = "sched_get_priority_min",
+		.name = "sys_sched_get_priority_min",
 		.nargs = 1,
 		.argt = argt_333,
 		.argsz = argsz_333,
@@ -4240,7 +4236,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[334] = {
 		.no = 334,
-		.name = "sched_rr_get_interval",
+		.name = "sys_sched_rr_get_interval",
 		.nargs = 2,
 		.argt = argt_334,
 		.argsz = argsz_334,
@@ -4250,7 +4246,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[335] = {
 		.no = 335,
-		.name = "utrace",
+		.name = "sys_utrace",
 		.nargs = 2,
 		.argt = argt_335,
 		.argsz = argsz_335,
@@ -4260,7 +4256,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[336] = {
 		.no = 336,
-		.name = "sendfile",
+		.name = "sys_sendfile",
 		.nargs = 7,
 		.argt = argt_336,
 		.argsz = argsz_336,
@@ -4270,7 +4266,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[337] = {
 		.no = 337,
-		.name = "kldsym",
+		.name = "sys_kldsym",
 		.nargs = 3,
 		.argt = argt_337,
 		.argsz = argsz_337,
@@ -4280,7 +4276,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[338] = {
 		.no = 338,
-		.name = "jail",
+		.name = "sys_jail",
 		.nargs = 1,
 		.argt = argt_338,
 		.argsz = argsz_338,
@@ -4290,7 +4286,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[339] = {
 		.no = 339,
-		.name = "nnpfs_syscall",
+		.name = "sys_nnpfs_syscall",
 		.nargs = 5,
 		.argt = argt_339,
 		.argsz = argsz_339,
@@ -4300,7 +4296,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[340] = {
 		.no = 340,
-		.name = "sigprocmask",
+		.name = "sys_sigprocmask",
 		.nargs = 3,
 		.argt = argt_340,
 		.argsz = argsz_340,
@@ -4310,7 +4306,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[341] = {
 		.no = 341,
-		.name = "sigsuspend",
+		.name = "sys_sigsuspend",
 		.nargs = 1,
 		.argt = argt_341,
 		.argsz = argsz_341,
@@ -4320,7 +4316,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[342] = {
 		.no = 342,
-		.name = "sigaction",
+		.name = "sys_sigaction",
 		.nargs = 3,
 		.argt = argt_342,
 		.argsz = argsz_342,
@@ -4330,7 +4326,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[343] = {
 		.no = 343,
-		.name = "sigpending",
+		.name = "sys_sigpending",
 		.nargs = 1,
 		.argt = argt_343,
 		.argsz = argsz_343,
@@ -4340,7 +4336,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[344] = {
 		.no = 344,
-		.name = "sigreturn",
+		.name = "sys_sigreturn",
 		.nargs = 1,
 		.argt = argt_344,
 		.argsz = argsz_344,
@@ -4350,7 +4346,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[345] = {
 		.no = 345,
-		.name = "sigtimedwait",
+		.name = "sys_sigtimedwait",
 		.nargs = 3,
 		.argt = argt_345,
 		.argsz = argsz_345,
@@ -4360,7 +4356,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[346] = {
 		.no = 346,
-		.name = "sigwaitinfo",
+		.name = "sys_sigwaitinfo",
 		.nargs = 2,
 		.argt = argt_346,
 		.argsz = argsz_346,
@@ -4370,7 +4366,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[347] = {
 		.no = 347,
-		.name = "__acl_get_file",
+		.name = "sys___acl_get_file",
 		.nargs = 3,
 		.argt = argt_347,
 		.argsz = argsz_347,
@@ -4380,7 +4376,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[348] = {
 		.no = 348,
-		.name = "__acl_set_file",
+		.name = "sys___acl_set_file",
 		.nargs = 3,
 		.argt = argt_348,
 		.argsz = argsz_348,
@@ -4390,7 +4386,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[349] = {
 		.no = 349,
-		.name = "__acl_get_fd",
+		.name = "sys___acl_get_fd",
 		.nargs = 3,
 		.argt = argt_349,
 		.argsz = argsz_349,
@@ -4400,7 +4396,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[350] = {
 		.no = 350,
-		.name = "__acl_set_fd",
+		.name = "sys___acl_set_fd",
 		.nargs = 3,
 		.argt = argt_350,
 		.argsz = argsz_350,
@@ -4410,7 +4406,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[351] = {
 		.no = 351,
-		.name = "__acl_delete_file",
+		.name = "sys___acl_delete_file",
 		.nargs = 2,
 		.argt = argt_351,
 		.argsz = argsz_351,
@@ -4420,7 +4416,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[352] = {
 		.no = 352,
-		.name = "__acl_delete_fd",
+		.name = "sys___acl_delete_fd",
 		.nargs = 2,
 		.argt = argt_352,
 		.argsz = argsz_352,
@@ -4430,7 +4426,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[353] = {
 		.no = 353,
-		.name = "__acl_aclcheck_file",
+		.name = "sys___acl_aclcheck_file",
 		.nargs = 3,
 		.argt = argt_353,
 		.argsz = argsz_353,
@@ -4440,7 +4436,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[354] = {
 		.no = 354,
-		.name = "__acl_aclcheck_fd",
+		.name = "sys___acl_aclcheck_fd",
 		.nargs = 3,
 		.argt = argt_354,
 		.argsz = argsz_354,
@@ -4450,7 +4446,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[355] = {
 		.no = 355,
-		.name = "extattrctl",
+		.name = "sys_extattrctl",
 		.nargs = 5,
 		.argt = argt_355,
 		.argsz = argsz_355,
@@ -4460,7 +4456,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[356] = {
 		.no = 356,
-		.name = "extattr_set_file",
+		.name = "sys_extattr_set_file",
 		.nargs = 5,
 		.argt = argt_356,
 		.argsz = argsz_356,
@@ -4470,7 +4466,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[357] = {
 		.no = 357,
-		.name = "extattr_get_file",
+		.name = "sys_extattr_get_file",
 		.nargs = 5,
 		.argt = argt_357,
 		.argsz = argsz_357,
@@ -4480,7 +4476,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[358] = {
 		.no = 358,
-		.name = "extattr_delete_file",
+		.name = "sys_extattr_delete_file",
 		.nargs = 3,
 		.argt = argt_358,
 		.argsz = argsz_358,
@@ -4490,7 +4486,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[359] = {
 		.no = 359,
-		.name = "aio_waitcomplete",
+		.name = "sys_aio_waitcomplete",
 		.nargs = 2,
 		.argt = argt_359,
 		.argsz = argsz_359,
@@ -4500,7 +4496,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[360] = {
 		.no = 360,
-		.name = "getresuid",
+		.name = "sys_getresuid",
 		.nargs = 3,
 		.argt = argt_360,
 		.argsz = argsz_360,
@@ -4510,7 +4506,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[361] = {
 		.no = 361,
-		.name = "getresgid",
+		.name = "sys_getresgid",
 		.nargs = 3,
 		.argt = argt_361,
 		.argsz = argsz_361,
@@ -4520,7 +4516,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[362] = {
 		.no = 362,
-		.name = "kqueue",
+		.name = "sys_kqueue",
 		.nargs = 0,
 		.argt = argt_362,
 		.argsz = argsz_362,
@@ -4530,7 +4526,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[363] = {
 		.no = 363,
-		.name = "kevent",
+		.name = "sys_kevent",
 		.nargs = 6,
 		.argt = argt_363,
 		.argsz = argsz_363,
@@ -4540,7 +4536,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[371] = {
 		.no = 371,
-		.name = "extattr_set_fd",
+		.name = "sys_extattr_set_fd",
 		.nargs = 5,
 		.argt = argt_371,
 		.argsz = argsz_371,
@@ -4550,7 +4546,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[372] = {
 		.no = 372,
-		.name = "extattr_get_fd",
+		.name = "sys_extattr_get_fd",
 		.nargs = 5,
 		.argt = argt_372,
 		.argsz = argsz_372,
@@ -4560,7 +4556,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[373] = {
 		.no = 373,
-		.name = "extattr_delete_fd",
+		.name = "sys_extattr_delete_fd",
 		.nargs = 3,
 		.argt = argt_373,
 		.argsz = argsz_373,
@@ -4570,7 +4566,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[374] = {
 		.no = 374,
-		.name = "__setugid",
+		.name = "sys___setugid",
 		.nargs = 1,
 		.argt = argt_374,
 		.argsz = argsz_374,
@@ -4580,7 +4576,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[376] = {
 		.no = 376,
-		.name = "eaccess",
+		.name = "sys_eaccess",
 		.nargs = 2,
 		.argt = argt_376,
 		.argsz = argsz_376,
@@ -4590,7 +4586,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[377] = {
 		.no = 377,
-		.name = "afs3_syscall",
+		.name = "sys_afs3_syscall",
 		.nargs = 7,
 		.argt = argt_377,
 		.argsz = argsz_377,
@@ -4600,7 +4596,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[378] = {
 		.no = 378,
-		.name = "nmount",
+		.name = "sys_nmount",
 		.nargs = 3,
 		.argt = argt_378,
 		.argsz = argsz_378,
@@ -4610,7 +4606,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[384] = {
 		.no = 384,
-		.name = "__mac_get_proc",
+		.name = "sys___mac_get_proc",
 		.nargs = 1,
 		.argt = argt_384,
 		.argsz = argsz_384,
@@ -4620,7 +4616,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[385] = {
 		.no = 385,
-		.name = "__mac_set_proc",
+		.name = "sys___mac_set_proc",
 		.nargs = 1,
 		.argt = argt_385,
 		.argsz = argsz_385,
@@ -4630,7 +4626,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[386] = {
 		.no = 386,
-		.name = "__mac_get_fd",
+		.name = "sys___mac_get_fd",
 		.nargs = 2,
 		.argt = argt_386,
 		.argsz = argsz_386,
@@ -4640,7 +4636,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[387] = {
 		.no = 387,
-		.name = "__mac_get_file",
+		.name = "sys___mac_get_file",
 		.nargs = 2,
 		.argt = argt_387,
 		.argsz = argsz_387,
@@ -4650,7 +4646,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[388] = {
 		.no = 388,
-		.name = "__mac_set_fd",
+		.name = "sys___mac_set_fd",
 		.nargs = 2,
 		.argt = argt_388,
 		.argsz = argsz_388,
@@ -4660,7 +4656,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[389] = {
 		.no = 389,
-		.name = "__mac_set_file",
+		.name = "sys___mac_set_file",
 		.nargs = 2,
 		.argt = argt_389,
 		.argsz = argsz_389,
@@ -4670,7 +4666,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[390] = {
 		.no = 390,
-		.name = "kenv",
+		.name = "sys_kenv",
 		.nargs = 4,
 		.argt = argt_390,
 		.argsz = argsz_390,
@@ -4680,7 +4676,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[391] = {
 		.no = 391,
-		.name = "lchflags",
+		.name = "sys_lchflags",
 		.nargs = 2,
 		.argt = argt_391,
 		.argsz = argsz_391,
@@ -4690,7 +4686,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[392] = {
 		.no = 392,
-		.name = "uuidgen",
+		.name = "sys_uuidgen",
 		.nargs = 2,
 		.argt = argt_392,
 		.argsz = argsz_392,
@@ -4700,7 +4696,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[393] = {
 		.no = 393,
-		.name = "sendfile",
+		.name = "sys_sendfile",
 		.nargs = 7,
 		.argt = argt_393,
 		.argsz = argsz_393,
@@ -4710,7 +4706,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[394] = {
 		.no = 394,
-		.name = "mac_syscall",
+		.name = "sys_mac_syscall",
 		.nargs = 3,
 		.argt = argt_394,
 		.argsz = argsz_394,
@@ -4720,7 +4716,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[395] = {
 		.no = 395,
-		.name = "getfsstat",
+		.name = "sys_getfsstat",
 		.nargs = 3,
 		.argt = argt_395,
 		.argsz = argsz_395,
@@ -4730,7 +4726,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[396] = {
 		.no = 396,
-		.name = "statfs",
+		.name = "sys_statfs",
 		.nargs = 2,
 		.argt = argt_396,
 		.argsz = argsz_396,
@@ -4740,7 +4736,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[397] = {
 		.no = 397,
-		.name = "fstatfs",
+		.name = "sys_fstatfs",
 		.nargs = 2,
 		.argt = argt_397,
 		.argsz = argsz_397,
@@ -4750,7 +4746,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[398] = {
 		.no = 398,
-		.name = "fhstatfs",
+		.name = "sys_fhstatfs",
 		.nargs = 2,
 		.argt = argt_398,
 		.argsz = argsz_398,
@@ -4760,7 +4756,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[400] = {
 		.no = 400,
-		.name = "ksem_close",
+		.name = "sys_ksem_close",
 		.nargs = 1,
 		.argt = argt_400,
 		.argsz = argsz_400,
@@ -4770,7 +4766,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[401] = {
 		.no = 401,
-		.name = "ksem_post",
+		.name = "sys_ksem_post",
 		.nargs = 1,
 		.argt = argt_401,
 		.argsz = argsz_401,
@@ -4780,7 +4776,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[402] = {
 		.no = 402,
-		.name = "ksem_wait",
+		.name = "sys_ksem_wait",
 		.nargs = 1,
 		.argt = argt_402,
 		.argsz = argsz_402,
@@ -4790,7 +4786,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[403] = {
 		.no = 403,
-		.name = "ksem_trywait",
+		.name = "sys_ksem_trywait",
 		.nargs = 1,
 		.argt = argt_403,
 		.argsz = argsz_403,
@@ -4800,7 +4796,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[404] = {
 		.no = 404,
-		.name = "ksem_init",
+		.name = "sys_ksem_init",
 		.nargs = 2,
 		.argt = argt_404,
 		.argsz = argsz_404,
@@ -4810,7 +4806,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[405] = {
 		.no = 405,
-		.name = "ksem_open",
+		.name = "sys_ksem_open",
 		.nargs = 5,
 		.argt = argt_405,
 		.argsz = argsz_405,
@@ -4820,7 +4816,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[406] = {
 		.no = 406,
-		.name = "ksem_unlink",
+		.name = "sys_ksem_unlink",
 		.nargs = 1,
 		.argt = argt_406,
 		.argsz = argsz_406,
@@ -4830,7 +4826,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[407] = {
 		.no = 407,
-		.name = "ksem_getvalue",
+		.name = "sys_ksem_getvalue",
 		.nargs = 2,
 		.argt = argt_407,
 		.argsz = argsz_407,
@@ -4840,7 +4836,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[408] = {
 		.no = 408,
-		.name = "ksem_destroy",
+		.name = "sys_ksem_destroy",
 		.nargs = 1,
 		.argt = argt_408,
 		.argsz = argsz_408,
@@ -4850,7 +4846,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[409] = {
 		.no = 409,
-		.name = "__mac_get_pid",
+		.name = "sys___mac_get_pid",
 		.nargs = 2,
 		.argt = argt_409,
 		.argsz = argsz_409,
@@ -4860,7 +4856,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[410] = {
 		.no = 410,
-		.name = "__mac_get_link",
+		.name = "sys___mac_get_link",
 		.nargs = 2,
 		.argt = argt_410,
 		.argsz = argsz_410,
@@ -4870,7 +4866,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[411] = {
 		.no = 411,
-		.name = "__mac_set_link",
+		.name = "sys___mac_set_link",
 		.nargs = 2,
 		.argt = argt_411,
 		.argsz = argsz_411,
@@ -4880,7 +4876,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[412] = {
 		.no = 412,
-		.name = "extattr_set_link",
+		.name = "sys_extattr_set_link",
 		.nargs = 5,
 		.argt = argt_412,
 		.argsz = argsz_412,
@@ -4890,7 +4886,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[413] = {
 		.no = 413,
-		.name = "extattr_get_link",
+		.name = "sys_extattr_get_link",
 		.nargs = 5,
 		.argt = argt_413,
 		.argsz = argsz_413,
@@ -4900,7 +4896,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[414] = {
 		.no = 414,
-		.name = "extattr_delete_link",
+		.name = "sys_extattr_delete_link",
 		.nargs = 3,
 		.argt = argt_414,
 		.argsz = argsz_414,
@@ -4910,17 +4906,17 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[415] = {
 		.no = 415,
-		.name = "__mac_execve",
+		.name = "sys___mac_execve",
 		.nargs = 4,
 		.argt = argt_415,
 		.argsz = argsz_415,
 		.argn = argn_415,
 		.argtn = argtn_415,
-		.noreturn = true
+		.noreturn = false
 	},
 	[416] = {
 		.no = 416,
-		.name = "sigaction",
+		.name = "sys_sigaction",
 		.nargs = 3,
 		.argt = argt_416,
 		.argsz = argsz_416,
@@ -4930,7 +4926,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[417] = {
 		.no = 417,
-		.name = "sigreturn",
+		.name = "sys_sigreturn",
 		.nargs = 1,
 		.argt = argt_417,
 		.argsz = argsz_417,
@@ -4940,7 +4936,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[421] = {
 		.no = 421,
-		.name = "getcontext",
+		.name = "sys_getcontext",
 		.nargs = 1,
 		.argt = argt_421,
 		.argsz = argsz_421,
@@ -4950,7 +4946,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[422] = {
 		.no = 422,
-		.name = "setcontext",
+		.name = "sys_setcontext",
 		.nargs = 1,
 		.argt = argt_422,
 		.argsz = argsz_422,
@@ -4960,7 +4956,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[423] = {
 		.no = 423,
-		.name = "swapcontext",
+		.name = "sys_swapcontext",
 		.nargs = 2,
 		.argt = argt_423,
 		.argsz = argsz_423,
@@ -4970,7 +4966,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[424] = {
 		.no = 424,
-		.name = "swapoff",
+		.name = "sys_swapoff",
 		.nargs = 1,
 		.argt = argt_424,
 		.argsz = argsz_424,
@@ -4980,7 +4976,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[425] = {
 		.no = 425,
-		.name = "__acl_get_link",
+		.name = "sys___acl_get_link",
 		.nargs = 3,
 		.argt = argt_425,
 		.argsz = argsz_425,
@@ -4990,7 +4986,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[426] = {
 		.no = 426,
-		.name = "__acl_set_link",
+		.name = "sys___acl_set_link",
 		.nargs = 3,
 		.argt = argt_426,
 		.argsz = argsz_426,
@@ -5000,7 +4996,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[427] = {
 		.no = 427,
-		.name = "__acl_delete_link",
+		.name = "sys___acl_delete_link",
 		.nargs = 2,
 		.argt = argt_427,
 		.argsz = argsz_427,
@@ -5010,7 +5006,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[428] = {
 		.no = 428,
-		.name = "__acl_aclcheck_link",
+		.name = "sys___acl_aclcheck_link",
 		.nargs = 3,
 		.argt = argt_428,
 		.argsz = argsz_428,
@@ -5020,7 +5016,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[429] = {
 		.no = 429,
-		.name = "sigwait",
+		.name = "sys_sigwait",
 		.nargs = 2,
 		.argt = argt_429,
 		.argsz = argsz_429,
@@ -5030,7 +5026,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[430] = {
 		.no = 430,
-		.name = "thr_create",
+		.name = "sys_thr_create",
 		.nargs = 3,
 		.argt = argt_430,
 		.argsz = argsz_430,
@@ -5040,17 +5036,17 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[431] = {
 		.no = 431,
-		.name = "thr_exit",
+		.name = "sys_thr_exit",
 		.nargs = 1,
 		.argt = argt_431,
 		.argsz = argsz_431,
 		.argn = argn_431,
 		.argtn = argtn_431,
-		.noreturn = true
+		.noreturn = false
 	},
 	[432] = {
 		.no = 432,
-		.name = "thr_self",
+		.name = "sys_thr_self",
 		.nargs = 1,
 		.argt = argt_432,
 		.argsz = argsz_432,
@@ -5060,7 +5056,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[433] = {
 		.no = 433,
-		.name = "thr_kill",
+		.name = "sys_thr_kill",
 		.nargs = 2,
 		.argt = argt_433,
 		.argsz = argsz_433,
@@ -5070,7 +5066,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[436] = {
 		.no = 436,
-		.name = "jail_attach",
+		.name = "sys_jail_attach",
 		.nargs = 1,
 		.argt = argt_436,
 		.argsz = argsz_436,
@@ -5080,7 +5076,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[437] = {
 		.no = 437,
-		.name = "extattr_list_fd",
+		.name = "sys_extattr_list_fd",
 		.nargs = 4,
 		.argt = argt_437,
 		.argsz = argsz_437,
@@ -5090,7 +5086,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[438] = {
 		.no = 438,
-		.name = "extattr_list_file",
+		.name = "sys_extattr_list_file",
 		.nargs = 4,
 		.argt = argt_438,
 		.argsz = argsz_438,
@@ -5100,7 +5096,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[439] = {
 		.no = 439,
-		.name = "extattr_list_link",
+		.name = "sys_extattr_list_link",
 		.nargs = 4,
 		.argt = argt_439,
 		.argsz = argsz_439,
@@ -5110,7 +5106,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[441] = {
 		.no = 441,
-		.name = "ksem_timedwait",
+		.name = "sys_ksem_timedwait",
 		.nargs = 2,
 		.argt = argt_441,
 		.argsz = argsz_441,
@@ -5120,7 +5116,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[442] = {
 		.no = 442,
-		.name = "thr_suspend",
+		.name = "sys_thr_suspend",
 		.nargs = 1,
 		.argt = argt_442,
 		.argsz = argsz_442,
@@ -5130,7 +5126,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[443] = {
 		.no = 443,
-		.name = "thr_wake",
+		.name = "sys_thr_wake",
 		.nargs = 1,
 		.argt = argt_443,
 		.argsz = argsz_443,
@@ -5140,7 +5136,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[444] = {
 		.no = 444,
-		.name = "kldunloadf",
+		.name = "sys_kldunloadf",
 		.nargs = 2,
 		.argt = argt_444,
 		.argsz = argsz_444,
@@ -5150,7 +5146,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[445] = {
 		.no = 445,
-		.name = "audit",
+		.name = "sys_audit",
 		.nargs = 2,
 		.argt = argt_445,
 		.argsz = argsz_445,
@@ -5160,7 +5156,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[446] = {
 		.no = 446,
-		.name = "auditon",
+		.name = "sys_auditon",
 		.nargs = 3,
 		.argt = argt_446,
 		.argsz = argsz_446,
@@ -5170,7 +5166,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[447] = {
 		.no = 447,
-		.name = "getauid",
+		.name = "sys_getauid",
 		.nargs = 1,
 		.argt = argt_447,
 		.argsz = argsz_447,
@@ -5180,7 +5176,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[448] = {
 		.no = 448,
-		.name = "setauid",
+		.name = "sys_setauid",
 		.nargs = 1,
 		.argt = argt_448,
 		.argsz = argsz_448,
@@ -5190,7 +5186,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[449] = {
 		.no = 449,
-		.name = "getaudit",
+		.name = "sys_getaudit",
 		.nargs = 1,
 		.argt = argt_449,
 		.argsz = argsz_449,
@@ -5200,7 +5196,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[450] = {
 		.no = 450,
-		.name = "setaudit",
+		.name = "sys_setaudit",
 		.nargs = 1,
 		.argt = argt_450,
 		.argsz = argsz_450,
@@ -5210,7 +5206,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[451] = {
 		.no = 451,
-		.name = "getaudit_addr",
+		.name = "sys_getaudit_addr",
 		.nargs = 2,
 		.argt = argt_451,
 		.argsz = argsz_451,
@@ -5220,7 +5216,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[452] = {
 		.no = 452,
-		.name = "setaudit_addr",
+		.name = "sys_setaudit_addr",
 		.nargs = 2,
 		.argt = argt_452,
 		.argsz = argsz_452,
@@ -5230,7 +5226,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[453] = {
 		.no = 453,
-		.name = "auditctl",
+		.name = "sys_auditctl",
 		.nargs = 1,
 		.argt = argt_453,
 		.argsz = argsz_453,
@@ -5240,7 +5236,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[454] = {
 		.no = 454,
-		.name = "_umtx_op",
+		.name = "sys__umtx_op",
 		.nargs = 5,
 		.argt = argt_454,
 		.argsz = argsz_454,
@@ -5250,7 +5246,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[455] = {
 		.no = 455,
-		.name = "thr_new",
+		.name = "sys_thr_new",
 		.nargs = 2,
 		.argt = argt_455,
 		.argsz = argsz_455,
@@ -5260,7 +5256,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[456] = {
 		.no = 456,
-		.name = "sigqueue",
+		.name = "sys_sigqueue",
 		.nargs = 3,
 		.argt = argt_456,
 		.argsz = argsz_456,
@@ -5270,7 +5266,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[457] = {
 		.no = 457,
-		.name = "kmq_open",
+		.name = "sys_kmq_open",
 		.nargs = 4,
 		.argt = argt_457,
 		.argsz = argsz_457,
@@ -5280,7 +5276,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[458] = {
 		.no = 458,
-		.name = "kmq_setattr",
+		.name = "sys_kmq_setattr",
 		.nargs = 3,
 		.argt = argt_458,
 		.argsz = argsz_458,
@@ -5290,7 +5286,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[459] = {
 		.no = 459,
-		.name = "kmq_timedreceive",
+		.name = "sys_kmq_timedreceive",
 		.nargs = 5,
 		.argt = argt_459,
 		.argsz = argsz_459,
@@ -5300,7 +5296,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[460] = {
 		.no = 460,
-		.name = "kmq_timedsend",
+		.name = "sys_kmq_timedsend",
 		.nargs = 5,
 		.argt = argt_460,
 		.argsz = argsz_460,
@@ -5310,7 +5306,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[461] = {
 		.no = 461,
-		.name = "kmq_notify",
+		.name = "sys_kmq_notify",
 		.nargs = 2,
 		.argt = argt_461,
 		.argsz = argsz_461,
@@ -5320,7 +5316,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[462] = {
 		.no = 462,
-		.name = "kmq_unlink",
+		.name = "sys_kmq_unlink",
 		.nargs = 1,
 		.argt = argt_462,
 		.argsz = argsz_462,
@@ -5330,7 +5326,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[463] = {
 		.no = 463,
-		.name = "abort2",
+		.name = "sys_abort2",
 		.nargs = 3,
 		.argt = argt_463,
 		.argsz = argsz_463,
@@ -5340,7 +5336,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[464] = {
 		.no = 464,
-		.name = "thr_set_name",
+		.name = "sys_thr_set_name",
 		.nargs = 2,
 		.argt = argt_464,
 		.argsz = argsz_464,
@@ -5350,7 +5346,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[465] = {
 		.no = 465,
-		.name = "aio_fsync",
+		.name = "sys_aio_fsync",
 		.nargs = 2,
 		.argt = argt_465,
 		.argsz = argsz_465,
@@ -5360,7 +5356,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[466] = {
 		.no = 466,
-		.name = "rtprio_thread",
+		.name = "sys_rtprio_thread",
 		.nargs = 3,
 		.argt = argt_466,
 		.argsz = argsz_466,
@@ -5370,7 +5366,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[471] = {
 		.no = 471,
-		.name = "sctp_peeloff",
+		.name = "sys_sctp_peeloff",
 		.nargs = 2,
 		.argt = argt_471,
 		.argsz = argsz_471,
@@ -5380,7 +5376,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[472] = {
 		.no = 472,
-		.name = "sctp_generic_sendmsg",
+		.name = "sys_sctp_generic_sendmsg",
 		.nargs = 7,
 		.argt = argt_472,
 		.argsz = argsz_472,
@@ -5390,7 +5386,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[473] = {
 		.no = 473,
-		.name = "sctp_generic_sendmsg_iov",
+		.name = "sys_sctp_generic_sendmsg_iov",
 		.nargs = 7,
 		.argt = argt_473,
 		.argsz = argsz_473,
@@ -5400,7 +5396,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[474] = {
 		.no = 474,
-		.name = "sctp_generic_recvmsg",
+		.name = "sys_sctp_generic_recvmsg",
 		.nargs = 7,
 		.argt = argt_474,
 		.argsz = argsz_474,
@@ -5410,7 +5406,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[475] = {
 		.no = 475,
-		.name = "pread",
+		.name = "sys_pread",
 		.nargs = 4,
 		.argt = argt_475,
 		.argsz = argsz_475,
@@ -5420,7 +5416,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[476] = {
 		.no = 476,
-		.name = "pwrite",
+		.name = "sys_pwrite",
 		.nargs = 4,
 		.argt = argt_476,
 		.argsz = argsz_476,
@@ -5430,7 +5426,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[478] = {
 		.no = 478,
-		.name = "lseek",
+		.name = "sys_lseek",
 		.nargs = 3,
 		.argt = argt_478,
 		.argsz = argsz_478,
@@ -5440,7 +5436,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[479] = {
 		.no = 479,
-		.name = "truncate",
+		.name = "sys_truncate",
 		.nargs = 2,
 		.argt = argt_479,
 		.argsz = argsz_479,
@@ -5450,7 +5446,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[480] = {
 		.no = 480,
-		.name = "ftruncate",
+		.name = "sys_ftruncate",
 		.nargs = 2,
 		.argt = argt_480,
 		.argsz = argsz_480,
@@ -5460,7 +5456,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[481] = {
 		.no = 481,
-		.name = "thr_kill2",
+		.name = "sys_thr_kill2",
 		.nargs = 3,
 		.argt = argt_481,
 		.argsz = argsz_481,
@@ -5470,7 +5466,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[482] = {
 		.no = 482,
-		.name = "shm_open",
+		.name = "sys_shm_open",
 		.nargs = 3,
 		.argt = argt_482,
 		.argsz = argsz_482,
@@ -5480,7 +5476,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[483] = {
 		.no = 483,
-		.name = "shm_unlink",
+		.name = "sys_shm_unlink",
 		.nargs = 1,
 		.argt = argt_483,
 		.argsz = argsz_483,
@@ -5490,7 +5486,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[484] = {
 		.no = 484,
-		.name = "cpuset",
+		.name = "sys_cpuset",
 		.nargs = 1,
 		.argt = argt_484,
 		.argsz = argsz_484,
@@ -5500,7 +5496,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[485] = {
 		.no = 485,
-		.name = "cpuset_setid",
+		.name = "sys_cpuset_setid",
 		.nargs = 3,
 		.argt = argt_485,
 		.argsz = argsz_485,
@@ -5510,7 +5506,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[486] = {
 		.no = 486,
-		.name = "cpuset_getid",
+		.name = "sys_cpuset_getid",
 		.nargs = 4,
 		.argt = argt_486,
 		.argsz = argsz_486,
@@ -5520,7 +5516,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[487] = {
 		.no = 487,
-		.name = "cpuset_getaffinity",
+		.name = "sys_cpuset_getaffinity",
 		.nargs = 5,
 		.argt = argt_487,
 		.argsz = argsz_487,
@@ -5530,7 +5526,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[488] = {
 		.no = 488,
-		.name = "cpuset_setaffinity",
+		.name = "sys_cpuset_setaffinity",
 		.nargs = 5,
 		.argt = argt_488,
 		.argsz = argsz_488,
@@ -5540,7 +5536,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[489] = {
 		.no = 489,
-		.name = "faccessat",
+		.name = "sys_faccessat",
 		.nargs = 4,
 		.argt = argt_489,
 		.argsz = argsz_489,
@@ -5550,7 +5546,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[490] = {
 		.no = 490,
-		.name = "fchmodat",
+		.name = "sys_fchmodat",
 		.nargs = 4,
 		.argt = argt_490,
 		.argsz = argsz_490,
@@ -5560,7 +5556,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[491] = {
 		.no = 491,
-		.name = "fchownat",
+		.name = "sys_fchownat",
 		.nargs = 5,
 		.argt = argt_491,
 		.argsz = argsz_491,
@@ -5570,17 +5566,17 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[492] = {
 		.no = 492,
-		.name = "fexecve",
+		.name = "sys_fexecve",
 		.nargs = 3,
 		.argt = argt_492,
 		.argsz = argsz_492,
 		.argn = argn_492,
 		.argtn = argtn_492,
-		.noreturn = true
+		.noreturn = false
 	},
 	[493] = {
 		.no = 493,
-		.name = "fstatat",
+		.name = "sys_fstatat",
 		.nargs = 4,
 		.argt = argt_493,
 		.argsz = argsz_493,
@@ -5590,7 +5586,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[494] = {
 		.no = 494,
-		.name = "futimesat",
+		.name = "sys_futimesat",
 		.nargs = 3,
 		.argt = argt_494,
 		.argsz = argsz_494,
@@ -5600,7 +5596,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[495] = {
 		.no = 495,
-		.name = "linkat",
+		.name = "sys_linkat",
 		.nargs = 5,
 		.argt = argt_495,
 		.argsz = argsz_495,
@@ -5610,7 +5606,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[496] = {
 		.no = 496,
-		.name = "mkdirat",
+		.name = "sys_mkdirat",
 		.nargs = 3,
 		.argt = argt_496,
 		.argsz = argsz_496,
@@ -5620,7 +5616,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[497] = {
 		.no = 497,
-		.name = "mkfifoat",
+		.name = "sys_mkfifoat",
 		.nargs = 3,
 		.argt = argt_497,
 		.argsz = argsz_497,
@@ -5630,7 +5626,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[498] = {
 		.no = 498,
-		.name = "mknodat",
+		.name = "sys_mknodat",
 		.nargs = 4,
 		.argt = argt_498,
 		.argsz = argsz_498,
@@ -5640,7 +5636,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[499] = {
 		.no = 499,
-		.name = "openat",
+		.name = "sys_openat",
 		.nargs = 4,
 		.argt = argt_499,
 		.argsz = argsz_499,
@@ -5650,7 +5646,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[500] = {
 		.no = 500,
-		.name = "readlinkat",
+		.name = "sys_readlinkat",
 		.nargs = 4,
 		.argt = argt_500,
 		.argsz = argsz_500,
@@ -5660,7 +5656,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[501] = {
 		.no = 501,
-		.name = "renameat",
+		.name = "sys_renameat",
 		.nargs = 4,
 		.argt = argt_501,
 		.argsz = argsz_501,
@@ -5670,7 +5666,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[502] = {
 		.no = 502,
-		.name = "symlinkat",
+		.name = "sys_symlinkat",
 		.nargs = 3,
 		.argt = argt_502,
 		.argsz = argsz_502,
@@ -5680,7 +5676,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[503] = {
 		.no = 503,
-		.name = "unlinkat",
+		.name = "sys_unlinkat",
 		.nargs = 3,
 		.argt = argt_503,
 		.argsz = argsz_503,
@@ -5690,7 +5686,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[504] = {
 		.no = 504,
-		.name = "posix_openpt",
+		.name = "sys_posix_openpt",
 		.nargs = 1,
 		.argt = argt_504,
 		.argsz = argsz_504,
@@ -5700,7 +5696,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[505] = {
 		.no = 505,
-		.name = "gssd_syscall",
+		.name = "sys_gssd_syscall",
 		.nargs = 1,
 		.argt = argt_505,
 		.argsz = argsz_505,
@@ -5710,7 +5706,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[506] = {
 		.no = 506,
-		.name = "jail_get",
+		.name = "sys_jail_get",
 		.nargs = 3,
 		.argt = argt_506,
 		.argsz = argsz_506,
@@ -5720,7 +5716,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[507] = {
 		.no = 507,
-		.name = "jail_set",
+		.name = "sys_jail_set",
 		.nargs = 3,
 		.argt = argt_507,
 		.argsz = argsz_507,
@@ -5730,7 +5726,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[508] = {
 		.no = 508,
-		.name = "jail_remove",
+		.name = "sys_jail_remove",
 		.nargs = 1,
 		.argt = argt_508,
 		.argsz = argsz_508,
@@ -5740,7 +5736,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[509] = {
 		.no = 509,
-		.name = "closefrom",
+		.name = "sys_closefrom",
 		.nargs = 1,
 		.argt = argt_509,
 		.argsz = argsz_509,
@@ -5750,7 +5746,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[510] = {
 		.no = 510,
-		.name = "__semctl",
+		.name = "sys___semctl",
 		.nargs = 4,
 		.argt = argt_510,
 		.argsz = argsz_510,
@@ -5760,7 +5756,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[511] = {
 		.no = 511,
-		.name = "msgctl",
+		.name = "sys_msgctl",
 		.nargs = 3,
 		.argt = argt_511,
 		.argsz = argsz_511,
@@ -5770,7 +5766,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[512] = {
 		.no = 512,
-		.name = "shmctl",
+		.name = "sys_shmctl",
 		.nargs = 3,
 		.argt = argt_512,
 		.argsz = argsz_512,
@@ -5780,7 +5776,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[513] = {
 		.no = 513,
-		.name = "lpathconf",
+		.name = "sys_lpathconf",
 		.nargs = 2,
 		.argt = argt_513,
 		.argsz = argsz_513,
@@ -5788,19 +5784,9 @@ syscall_info_t __syscall_info_a[] = {
 		.argtn = argtn_513,
 		.noreturn = false
 	},
-	[515] = {
-		.no = 515,
-		.name = "__cap_rights_get",
-		.nargs = 3,
-		.argt = argt_515,
-		.argsz = argsz_515,
-		.argn = argn_515,
-		.argtn = argtn_515,
-		.noreturn = false
-	},
 	[516] = {
 		.no = 516,
-		.name = "cap_enter",
+		.name = "sys_cap_enter",
 		.nargs = 0,
 		.argt = argt_516,
 		.argsz = argsz_516,
@@ -5810,7 +5796,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[517] = {
 		.no = 517,
-		.name = "cap_getmode",
+		.name = "sys_cap_getmode",
 		.nargs = 1,
 		.argt = argt_517,
 		.argsz = argsz_517,
@@ -5820,7 +5806,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[518] = {
 		.no = 518,
-		.name = "pdfork",
+		.name = "sys_pdfork",
 		.nargs = 2,
 		.argt = argt_518,
 		.argsz = argsz_518,
@@ -5830,7 +5816,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[519] = {
 		.no = 519,
-		.name = "pdkill",
+		.name = "sys_pdkill",
 		.nargs = 2,
 		.argt = argt_519,
 		.argsz = argsz_519,
@@ -5840,7 +5826,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[520] = {
 		.no = 520,
-		.name = "pdgetpid",
+		.name = "sys_pdgetpid",
 		.nargs = 2,
 		.argt = argt_520,
 		.argsz = argsz_520,
@@ -5850,7 +5836,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[522] = {
 		.no = 522,
-		.name = "pselect",
+		.name = "sys_pselect",
 		.nargs = 6,
 		.argt = argt_522,
 		.argsz = argsz_522,
@@ -5860,7 +5846,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[523] = {
 		.no = 523,
-		.name = "getloginclass",
+		.name = "sys_getloginclass",
 		.nargs = 2,
 		.argt = argt_523,
 		.argsz = argsz_523,
@@ -5870,7 +5856,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[524] = {
 		.no = 524,
-		.name = "setloginclass",
+		.name = "sys_setloginclass",
 		.nargs = 1,
 		.argt = argt_524,
 		.argsz = argsz_524,
@@ -5880,7 +5866,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[525] = {
 		.no = 525,
-		.name = "rctl_get_racct",
+		.name = "sys_rctl_get_racct",
 		.nargs = 4,
 		.argt = argt_525,
 		.argsz = argsz_525,
@@ -5890,7 +5876,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[526] = {
 		.no = 526,
-		.name = "rctl_get_rules",
+		.name = "sys_rctl_get_rules",
 		.nargs = 4,
 		.argt = argt_526,
 		.argsz = argsz_526,
@@ -5900,7 +5886,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[527] = {
 		.no = 527,
-		.name = "rctl_get_limits",
+		.name = "sys_rctl_get_limits",
 		.nargs = 4,
 		.argt = argt_527,
 		.argsz = argsz_527,
@@ -5910,7 +5896,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[528] = {
 		.no = 528,
-		.name = "rctl_add_rule",
+		.name = "sys_rctl_add_rule",
 		.nargs = 4,
 		.argt = argt_528,
 		.argsz = argsz_528,
@@ -5920,7 +5906,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[529] = {
 		.no = 529,
-		.name = "rctl_remove_rule",
+		.name = "sys_rctl_remove_rule",
 		.nargs = 4,
 		.argt = argt_529,
 		.argsz = argsz_529,
@@ -5930,7 +5916,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[530] = {
 		.no = 530,
-		.name = "posix_fallocate",
+		.name = "sys_posix_fallocate",
 		.nargs = 3,
 		.argt = argt_530,
 		.argsz = argsz_530,
@@ -5940,7 +5926,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[531] = {
 		.no = 531,
-		.name = "posix_fadvise",
+		.name = "sys_posix_fadvise",
 		.nargs = 4,
 		.argt = argt_531,
 		.argsz = argsz_531,
@@ -5950,7 +5936,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[532] = {
 		.no = 532,
-		.name = "wait6",
+		.name = "sys_wait6",
 		.nargs = 6,
 		.argt = argt_532,
 		.argsz = argsz_532,
@@ -5960,7 +5946,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[533] = {
 		.no = 533,
-		.name = "cap_rights_limit",
+		.name = "sys_cap_rights_limit",
 		.nargs = 2,
 		.argt = argt_533,
 		.argsz = argsz_533,
@@ -5970,7 +5956,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[534] = {
 		.no = 534,
-		.name = "cap_ioctls_limit",
+		.name = "sys_cap_ioctls_limit",
 		.nargs = 3,
 		.argt = argt_534,
 		.argsz = argsz_534,
@@ -5980,7 +5966,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[535] = {
 		.no = 535,
-		.name = "cap_ioctls_get",
+		.name = "sys_cap_ioctls_get",
 		.nargs = 3,
 		.argt = argt_535,
 		.argsz = argsz_535,
@@ -5990,7 +5976,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[536] = {
 		.no = 536,
-		.name = "cap_fcntls_limit",
+		.name = "sys_cap_fcntls_limit",
 		.nargs = 2,
 		.argt = argt_536,
 		.argsz = argsz_536,
@@ -6000,7 +5986,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[537] = {
 		.no = 537,
-		.name = "cap_fcntls_get",
+		.name = "sys_cap_fcntls_get",
 		.nargs = 2,
 		.argt = argt_537,
 		.argsz = argsz_537,
@@ -6010,7 +5996,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[538] = {
 		.no = 538,
-		.name = "bindat",
+		.name = "sys_bindat",
 		.nargs = 4,
 		.argt = argt_538,
 		.argsz = argsz_538,
@@ -6020,7 +6006,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[539] = {
 		.no = 539,
-		.name = "connectat",
+		.name = "sys_connectat",
 		.nargs = 4,
 		.argt = argt_539,
 		.argsz = argsz_539,
@@ -6030,7 +6016,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[540] = {
 		.no = 540,
-		.name = "chflagsat",
+		.name = "sys_chflagsat",
 		.nargs = 4,
 		.argt = argt_540,
 		.argsz = argsz_540,
@@ -6040,7 +6026,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[541] = {
 		.no = 541,
-		.name = "accept4",
+		.name = "sys_accept4",
 		.nargs = 4,
 		.argt = argt_541,
 		.argsz = argsz_541,
@@ -6050,7 +6036,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[542] = {
 		.no = 542,
-		.name = "pipe2",
+		.name = "sys_pipe2",
 		.nargs = 2,
 		.argt = argt_542,
 		.argsz = argsz_542,
@@ -6060,7 +6046,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[543] = {
 		.no = 543,
-		.name = "aio_mlock",
+		.name = "sys_aio_mlock",
 		.nargs = 1,
 		.argt = argt_543,
 		.argsz = argsz_543,
@@ -6070,7 +6056,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[544] = {
 		.no = 544,
-		.name = "procctl",
+		.name = "sys_procctl",
 		.nargs = 4,
 		.argt = argt_544,
 		.argsz = argsz_544,
@@ -6080,7 +6066,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[545] = {
 		.no = 545,
-		.name = "ppoll",
+		.name = "sys_ppoll",
 		.nargs = 4,
 		.argt = argt_545,
 		.argsz = argsz_545,
@@ -6090,7 +6076,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[546] = {
 		.no = 546,
-		.name = "futimens",
+		.name = "sys_futimens",
 		.nargs = 2,
 		.argt = argt_546,
 		.argsz = argsz_546,
@@ -6100,7 +6086,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[547] = {
 		.no = 547,
-		.name = "utimensat",
+		.name = "sys_utimensat",
 		.nargs = 4,
 		.argt = argt_547,
 		.argsz = argsz_547,
@@ -6110,7 +6096,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[550] = {
 		.no = 550,
-		.name = "fdatasync",
+		.name = "sys_fdatasync",
 		.nargs = 1,
 		.argt = argt_550,
 		.argsz = argsz_550,
@@ -6120,7 +6106,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[551] = {
 		.no = 551,
-		.name = "fstat",
+		.name = "sys_fstat",
 		.nargs = 2,
 		.argt = argt_551,
 		.argsz = argsz_551,
@@ -6130,7 +6116,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[552] = {
 		.no = 552,
-		.name = "fstatat",
+		.name = "sys_fstatat",
 		.nargs = 4,
 		.argt = argt_552,
 		.argsz = argsz_552,
@@ -6140,7 +6126,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[553] = {
 		.no = 553,
-		.name = "fhstat",
+		.name = "sys_fhstat",
 		.nargs = 2,
 		.argt = argt_553,
 		.argsz = argsz_553,
@@ -6150,7 +6136,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[554] = {
 		.no = 554,
-		.name = "getdirentries",
+		.name = "sys_getdirentries",
 		.nargs = 4,
 		.argt = argt_554,
 		.argsz = argsz_554,
@@ -6160,7 +6146,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[555] = {
 		.no = 555,
-		.name = "statfs",
+		.name = "sys_statfs",
 		.nargs = 2,
 		.argt = argt_555,
 		.argsz = argsz_555,
@@ -6170,7 +6156,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[556] = {
 		.no = 556,
-		.name = "fstatfs",
+		.name = "sys_fstatfs",
 		.nargs = 2,
 		.argt = argt_556,
 		.argsz = argsz_556,
@@ -6180,7 +6166,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[557] = {
 		.no = 557,
-		.name = "getfsstat",
+		.name = "sys_getfsstat",
 		.nargs = 3,
 		.argt = argt_557,
 		.argsz = argsz_557,
@@ -6190,7 +6176,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[558] = {
 		.no = 558,
-		.name = "fhstatfs",
+		.name = "sys_fhstatfs",
 		.nargs = 2,
 		.argt = argt_558,
 		.argsz = argsz_558,
@@ -6200,7 +6186,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[559] = {
 		.no = 559,
-		.name = "mknodat",
+		.name = "sys_mknodat",
 		.nargs = 4,
 		.argt = argt_559,
 		.argsz = argsz_559,
@@ -6210,7 +6196,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[560] = {
 		.no = 560,
-		.name = "kevent",
+		.name = "sys_kevent",
 		.nargs = 6,
 		.argt = argt_560,
 		.argsz = argsz_560,
@@ -6220,7 +6206,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[561] = {
 		.no = 561,
-		.name = "cpuset_getdomain",
+		.name = "sys_cpuset_getdomain",
 		.nargs = 6,
 		.argt = argt_561,
 		.argsz = argsz_561,
@@ -6230,7 +6216,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[562] = {
 		.no = 562,
-		.name = "cpuset_setdomain",
+		.name = "sys_cpuset_setdomain",
 		.nargs = 6,
 		.argt = argt_562,
 		.argsz = argsz_562,
@@ -6240,7 +6226,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[563] = {
 		.no = 563,
-		.name = "getrandom",
+		.name = "sys_getrandom",
 		.nargs = 3,
 		.argt = argt_563,
 		.argsz = argsz_563,
@@ -6250,7 +6236,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[564] = {
 		.no = 564,
-		.name = "getfhat",
+		.name = "sys_getfhat",
 		.nargs = 4,
 		.argt = argt_564,
 		.argsz = argsz_564,
@@ -6260,7 +6246,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[565] = {
 		.no = 565,
-		.name = "fhlink",
+		.name = "sys_fhlink",
 		.nargs = 2,
 		.argt = argt_565,
 		.argsz = argsz_565,
@@ -6270,7 +6256,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[566] = {
 		.no = 566,
-		.name = "fhlinkat",
+		.name = "sys_fhlinkat",
 		.nargs = 3,
 		.argt = argt_566,
 		.argsz = argsz_566,
@@ -6280,7 +6266,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[567] = {
 		.no = 567,
-		.name = "fhreadlink",
+		.name = "sys_fhreadlink",
 		.nargs = 3,
 		.argt = argt_567,
 		.argsz = argsz_567,
@@ -6290,7 +6276,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[568] = {
 		.no = 568,
-		.name = "funlinkat",
+		.name = "sys_funlinkat",
 		.nargs = 4,
 		.argt = argt_568,
 		.argsz = argsz_568,
@@ -6300,7 +6286,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[569] = {
 		.no = 569,
-		.name = "copy_file_range",
+		.name = "sys_copy_file_range",
 		.nargs = 6,
 		.argt = argt_569,
 		.argsz = argsz_569,
@@ -6310,7 +6296,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[570] = {
 		.no = 570,
-		.name = "__sysctlbyname",
+		.name = "sys___sysctlbyname",
 		.nargs = 6,
 		.argt = argt_570,
 		.argsz = argsz_570,
@@ -6320,7 +6306,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[571] = {
 		.no = 571,
-		.name = "shm_open2",
+		.name = "sys_shm_open2",
 		.nargs = 5,
 		.argt = argt_571,
 		.argsz = argsz_571,
@@ -6330,7 +6316,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[572] = {
 		.no = 572,
-		.name = "shm_rename",
+		.name = "sys_shm_rename",
 		.nargs = 3,
 		.argt = argt_572,
 		.argsz = argsz_572,
@@ -6340,7 +6326,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[573] = {
 		.no = 573,
-		.name = "sigfastblock",
+		.name = "sys_sigfastblock",
 		.nargs = 2,
 		.argt = argt_573,
 		.argsz = argsz_573,
@@ -6350,7 +6336,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[574] = {
 		.no = 574,
-		.name = "__realpathat",
+		.name = "sys___realpathat",
 		.nargs = 5,
 		.argt = argt_574,
 		.argsz = argsz_574,
@@ -6360,7 +6346,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[575] = {
 		.no = 575,
-		.name = "close_range",
+		.name = "sys_close_range",
 		.nargs = 3,
 		.argt = argt_575,
 		.argsz = argsz_575,
@@ -6370,7 +6356,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[576] = {
 		.no = 576,
-		.name = "rpctls_syscall",
+		.name = "sys_rpctls_syscall",
 		.nargs = 2,
 		.argt = argt_576,
 		.argsz = argsz_576,
