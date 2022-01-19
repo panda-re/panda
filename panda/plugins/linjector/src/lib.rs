@@ -100,7 +100,16 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             }
         }
 
-        log::debug!("In injector");
+        //log::debug!("In injector");
+        //use panda::regs;
+        //let sp_before = regs::get_reg(cpu, regs::reg_sp());
+        //dbg!(sp_before);
+        //log::debug!("pid = {}", getpid().await);
+        //let sp_after = regs::get_reg(cpu, regs::reg_sp());
+        //dbg!(sp_after);
+        //log::debug!("actual pid = {}", OSI.get_current_process(cpu).pid);
+        //log::debug!("pid = {}", getpid().await);
+        //log::debug!("pid = {}", getpid().await);
         log::debug!("current asid: {:x}", current_asid(cpu));
 
         // mmap a region so we have a buffer in the guest to use
