@@ -663,6 +663,21 @@ class X86_64Arch(PandaArch):
         '''
         return cpu.env_ptr.eip
 
+    def get_retval(self, cpu, convention='default'):
+        '''
+        Overloaded to support FreeBSD syscall ABI
+        In that ABI, if eflags carry bit is set, an error has occured. To standardize
+        pandare.arch returns across architectures/ABIs, we indicate a failure by returnning
+        -ERRNO.
+        '''
+
+        error_flip = False
+        if convention == 'syscall' and self.panda.get_os_family() == 'OS_FREEBSD' and \
+                self.panda.libpanda.cpu_cc_compute_all(cpu.env_ptr, 1) & 1 == 1:
+            error_flip = True
+
+        return super().get_retval(cpu, convention) * (-1 if error_flip else 1)
+
     def set_pc(self, cpu, val):
         '''
         Overloaded function to set the x86_64 program counter
