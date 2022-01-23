@@ -1231,3 +1231,6 @@ struct CPUState {
 	/* padding: 6 */
 	/* last cacheline: 24 bytes */
 };
+
+// XXX AF HACK
+uint32_t cpu_cc_compute_all(CPUX86State *env1, int op);
