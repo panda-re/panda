@@ -18,13 +18,14 @@ PANDAENDCOMMENT */
 // correctly. This needs further investigation.
 // Uncomment next lines to enable debug prints for tracking of system
 // call context. Only for x86
-//#define SYSCALL_RETURN_DEBUG
-//#define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
+// #define DEBUG
+// #define SYSCALL_RETURN_DEBUG
+// #define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-utils.h"
-#include "hooks/hooks_int_fns.h"
+#include "hooks3/hooks3.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -43,7 +44,14 @@ PANDAENDCOMMENT */
 
 void syscall_callback(CPUState *cpu, TranslationBlock* tb, target_ulong pc, int static_callno);
 
-void (*hooks_add_hook)(struct hook*);
+void (*hooks_add_hook)(PluginReg num,
+              target_ulong pc,
+              target_ulong asid,
+              bool always_starts_block,
+              FnCb fun);
+void (*hooks_unregister_plugin)(PluginReg num);
+
+PluginReg plugin_reg_num;
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -974,7 +982,7 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
         if (ctx->double_return){
             ctx->double_return = false;
-            return;
+            return false;
         }else{
             running_syscalls.erase(ctxi);
         }
@@ -991,8 +999,7 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
 #endif
     }
 #endif
-    h->enabled = false;
-    return;
+    return true;
 }
 #endif
 
@@ -1114,7 +1121,6 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
 #endif
 }
 
-
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     int static_callno = -1; // Set to non -1 if syscall num can be
                             // statically identified
@@ -1126,7 +1132,7 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
 #endif
     if(res != 0 && res != (target_ulong) -1){
         TCGOp *op = find_guest_insn_by_addr(res);
-        insert_call(&op, syscall_callback, cpu, tb, res, static_callno);
+        insert_call(&op, call_4p_check_cpu_exit, syscall_callback, cpu, tb, res, static_callno);
     }
 }
 
@@ -1342,12 +1348,17 @@ bool init_plugin(void *self) {
 
     // done parsing arguments
     panda_free_args(plugin_args);
-    void *hooks = panda_get_plugin_by_name("hooks");
-	if (hooks == NULL){
-		panda_require("hooks");
-		hooks = panda_get_plugin_by_name("hooks");
+    void *hooks3 = panda_get_plugin_by_name("hooks3");
+	if (hooks3 == NULL){
+		panda_require("hooks3");
+		hooks3 = panda_get_plugin_by_name("hooks3");
 	}
-    hooks_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+
+    PluginReg (*hooks_register_plugin)() = (PluginReg(*)())dlsym(hooks3,"register_plugin");
+
+    hooks_add_hook = (void(*)(PluginReg, target_ulong, target_ulong, bool, FnCb)) dlsym(hooks3, "add_hook3");
+
+    plugin_reg_num = hooks_register_plugin();
 #else //not x86/arm/mips
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
@@ -1361,10 +1372,13 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    //(void) self;
-    // if we don't clear tb's when this exits we have TBs which can call
-    // into our exited plugin.
-    panda_do_flush_tb();
+    // unregister with hooks
+    void *hooks3 = panda_get_plugin_by_name("hooks3");
+	if (hooks3 != NULL){
+        hooks_unregister_plugin = (void(*)(PluginReg)) dlsym(hooks3, "unregister_plugin");
+        hooks_unregister_plugin(plugin_reg_num);
+	}
+
 #ifdef DEBUG
     std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){

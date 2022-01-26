@@ -189,6 +189,14 @@ void tb_lock(void)
     have_tb_lock++;
 }
 
+int tb_trylock(void){
+    int res = qemu_mutex_trylock(&tcg_ctx.tb_ctx.tb_lock);
+    if (res == 0){
+        have_tb_lock++;
+    }
+    return res;
+}
+
 void tb_unlock(void)
 {
     assert_tb_locked();

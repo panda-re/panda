@@ -825,6 +825,21 @@ void panda_do_flush_tb(void)
     panda_please_flush_tb = true;
 }
 
+
+bool panda_exit_cpu(void)
+{
+    if (panda_please_exit_cpu){
+        panda_please_exit_cpu = false;
+        return true;
+    }else{
+        return false;
+    }
+}
+
+void panda_do_exit_cpu(void){
+    panda_please_exit_cpu = true;
+}
+
 void panda_enable_precise_pc(void)
 {
     panda_update_pc = true;

@@ -143,6 +143,12 @@ T try_parse(const std::string& value)
 extern "C"
 {
 #endif
+/**
+ * Shared function to manage cpu exits.
+ * 
+ * Insert after any call that could trigger a generated cpu exit during.
+ */
+void check_cpu_exit(void*);
 
 /**
  * Search the TCG context for the first guest instruction marker and return a
@@ -164,6 +170,15 @@ TCGOp *find_guest_insn_by_addr(target_ulong addr);
 TCGOp *find_last_guest_insn(void);
 
 void insert_call_1p(TCGOp **after_op, void(*func)(void*), void *val);
+void insert_call_2p(TCGOp **after_op, void(*func)(void*), void *val, void *val2);
+void insert_call_3p(TCGOp **after_op, void(*func)(void*), void *val, void *val2, void* val3);
+void insert_call_4p(TCGOp **after_op, void(*func)(void*), void *val, void *val2, void* val3, void* val4);
+
+void call_1p_check_cpu_exit(void(*func)(void*), void* val);
+void call_2p_check_cpu_exit(void(*func)(void*, void*), void* val, void* val2);
+void call_3p_check_cpu_exit(void(*func)(void*, void*, void*), void* val, void* val2, void* val3);
+void call_4p_check_cpu_exit(void(*func)(void*, void*, void*, void*), void* val, void* val2, void* val3, void* val4);
+void call_5p_check_cpu_exit(void(*func)(void*, void*,void*, void*, void*), void* val, void* val2, void* val3, void* val4, void* val5);
 
 #ifdef __cplusplus
 }

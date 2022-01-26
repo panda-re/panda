@@ -17,6 +17,7 @@ forcedexec
 gdb
 hooks
 hooks2
+hooks3
 hw_proc_id
 keyfind
 libfi
