@@ -1,0 +1,5 @@
+panda-re (3.0.0-dev) unstable; urgency=low
+
+  * Initial debian packaging
+
+ -- PANDA <panda@panda.re>  Tue, 25 Jan 2022 08:14:58 +0500
