@@ -8,7 +8,7 @@ Build-Depends: debhelper (>=10)
 Package: panda-re
 Architecture: amd64
 Priority: optional
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${dist:Depends}
 Description: Platform for Architecture-Neutral Dynamic Analysis
   PANDA is built upon the QEMU whole system emulator, and so analyses have 
   access to all code executing in the guest and all data. PANDA adds the 
