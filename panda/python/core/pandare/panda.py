@@ -2321,7 +2321,9 @@ class Panda():
     @blocking
     def type_serial_cmd(self, cmd):
         #Can send message into socket without guest running (no self.running.wait())
-        self.serial_console.send(cmd.encode("utf8")) # send, not sendline
+        if isinstance(cmd, str):
+            cmd = cmd.encode('utf8')
+        self.serial_console.send(cmd) # send, not sendline
 
     def finish_serial_cmd(self):
         result = self.serial_console.send_eol()
