@@ -51,9 +51,9 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-int64_t get_file_handle_pos(uint64_t handle);
-char *get_cwd(void);
-char *get_handle_name(uint64_t handle);
+int64_t get_file_handle_pos(CPUState *cpu, uint64_t handle);
+char *get_cwd(CPUState *cpu);
+char *get_handle_name(CPUState *cpu, uint64_t handle);
 }
 
 void on_get_current_thread(CPUState *cpu, OsiThread *out);
