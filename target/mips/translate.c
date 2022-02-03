@@ -8001,7 +8001,7 @@ static void gen_mttr(CPUMIPSState *env, DisasContext *ctx, int rd, int rt,
                 gen_helper_mttc0_vpeconf0(cpu_env, t0);
                 break;
             case 4:
-                printf("unimplemented: mttc0_yqmask\n");
+                LOG_DISAS("unimplemented: mttc0_yqmask\n");
                 break;
             default:
                 goto die;
@@ -11667,7 +11667,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
         case 1:
             switch (ctx->opcode & 0x3) {
             case 0x0:
-                printf("INS is untested\n"); // FIXME
+                LOG_DISAS("INS is untested\n"); // FIXME
                 {
                 uint32_t lsb = (ctx->opcode >> 22) & 0x1f;
                 uint32_t msb = (ctx->opcode >> 16) & 0x1f;
@@ -11701,7 +11701,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 break;
             case 2:
                 // MOVZ [rb]
-                printf("MOVZ is untested\n"); // FIXME
+                LOG_DISAS("MOVZ is untested\n"); // FIXME
                 if ((ctx->opcode >> 21) & 1) {
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
@@ -11710,7 +11710,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 tcg_temp_free(t0);
                 } else {
                 // MOVZ [zero]
-                printf("MOVZ is untested\n"); // FIXME
+                LOG_DISAS("MOVZ is untested\n"); // FIXME
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
                 tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, t0, cpu_gpr[rx]);
@@ -11718,7 +11718,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 break;
             default:
-                printf("SHIFT 1/%d: unimplemented\n", ctx->opcode & 0x3);
+                LOG_DISAS("SHIFT 1/%d: unimplemented\n", ctx->opcode & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
@@ -11731,7 +11731,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     break;
                 }
                 {
-                printf("EXT is untested\n"); // FIXME
+                LOG_DISAS("EXT is untested\n"); // FIXME
                 uint32_t lsb = (ctx->opcode >> 22) & 0x1f;
                 uint32_t msbd = (ctx->opcode >> 16) & 0x1f;
                 if (lsb + msbd > 31) {
@@ -11748,7 +11748,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 break;
             case 2:
                 // MOVN [rb]
-                printf("MOVN is untested\n"); // FIXME
+                LOG_DISAS("MOVN is untested\n"); // FIXME
                 if ((ctx->opcode >> 21) & 1) {
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
@@ -11757,7 +11757,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 tcg_temp_free(t0);
                 } else {
                 // MOVN [zero]
-                printf("MOVN is untested\n"); // FIXME
+                LOG_DISAS("MOVN is untested\n"); // FIXME
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
                 tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, t0, cpu_gpr[rx]);
@@ -11765,7 +11765,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 break;
             default:
-                printf("SHIFT 2/%d: unimplemented\n", ctx->opcode & 0x3);
+                LOG_DISAS("SHIFT 2/%d: unimplemented\n", ctx->opcode & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
@@ -11776,7 +11776,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 gen_rdhwr(ctx, ry, (ctx->opcode >> 16) & 0x1f, 0);
                 break;
             default:
-                printf("SHIFT 3/%d: unimplemented\n", ctx->opcode & 0x3);
+                LOG_DISAS("SHIFT 3/%d: unimplemented\n", ctx->opcode & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
@@ -11787,7 +11787,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 // EHB (barrier)
                 break;
             default:
-                printf("SHIFT 4/%d: unimplemented\n", ctx->opcode & 0x3);
+                LOG_DISAS("SHIFT 4/%d: unimplemented\n", ctx->opcode & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
@@ -11796,7 +11796,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             switch (ctx->opcode & 0x3) {
             case 0:
                 if ((ctx->opcode >> 16) & 0x3f) {
-                    printf("SYNC: bad bits\n");
+                    LOG_DISAS("SYNC: bad bits\n");
                     generate_exception_end(ctx, EXCP_RI);
                     break;
                 }
@@ -11805,7 +11805,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 break;
             case 2:
                 // MOVTZ
-                printf("MOVTZ is untested\n"); // FIXME
+                LOG_DISAS("MOVTZ is untested\n"); // FIXME
                 {
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
@@ -11815,7 +11815,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 break;
             default:
-                printf("SHIFT 5/%d: unimplemented\n", ctx->opcode & 0x3);
+                LOG_DISAS("SHIFT 5/%d: unimplemented\n", ctx->opcode & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
@@ -11824,12 +11824,12 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             switch (ctx->opcode & 0x3) {
             case 0:
                 // PAUSE
-                printf("PAUSE unimplemented\n"); // FIXME
+                LOG_DISAS("PAUSE unimplemented\n"); // FIXME
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             case 2:
                 // MOVTN
-                printf("MOVTN is untested\n"); // FIXME
+                LOG_DISAS("MOVTN is untested\n"); // FIXME
                 {
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
@@ -11839,13 +11839,13 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 break;
             default:
-                printf("SHIFT 6/%d: unimplemented\n", ctx->opcode & 0x3);
+                LOG_DISAS("SHIFT 6/%d: unimplemented\n", ctx->opcode & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
             break;
         default:
-            printf("SHIFT %d(/%d): unimplemented\n", sel, ctx->opcode & 0x3);
+            LOG_DISAS("SHIFT %d(/%d): unimplemented\n", sel, ctx->opcode & 0x3);
             generate_exception_end(ctx, EXCP_RI);
             break;
         }
@@ -11949,7 +11949,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 int clrbit = (ctx->opcode >> 16) & 0x1f;
                 int bits_16_20 = clrbit;
                 int lowbits = (ctx->opcode >> 0) & 0x1f;
-                printf("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2_upper, clrbit, ry, lowbits);
+                LOG_DISAS("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2_upper, clrbit, ry, lowbits);
                 if (cp == 0 && clrbit == 0x0) {
                     // MFC0
                     check_cp0_enabled(ctx);
@@ -11972,7 +11972,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 if (cp == 0 && sel2_upper == 1 && lowbits == 1 && (clrbit == 0x2 || clrbit == 0x6)) {
                     // DMT [ry]
-                    printf("DMT is untested\n"); // FIXME
+                    LOG_DISAS("DMT is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
                     gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_VPEControl));
                     if (clrbit == 0x2) {
@@ -11989,7 +11989,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 // I8_MOVR32: unimplemented
                 if (cp == 0 && sel2_upper == 1 && lowbits == 1 && (clrbit == 0x3 || clrbit == 0x7)) {
                     // EMT [ry]
-                    printf("EMT is untested\n"); // FIXME
+                    LOG_DISAS("EMT is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
                     gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_VPEControl));
                     if (clrbit == 0x2) {
@@ -12002,7 +12002,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 if (cp == 0 && sel2_upper == 0 && lowbits == 0xc && (clrbit == 0x2 || clrbit == 0x6)) {
                     // DI [ry]
-                    printf("DI is untested\n"); // FIXME
+                    LOG_DISAS("DI is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
                     gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_Status));
                     if (clrbit == 0x2) {
@@ -12015,7 +12015,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
                 if (cp == 0 && sel2_upper == 0 && lowbits == 0xc && (clrbit == 0x3 || clrbit == 0x7)) {
                     // EI [ry]
-                    printf("EI is untested\n"); // FIXME
+                    LOG_DISAS("EI is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
                     gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_Status));
                     if (clrbit == 0x3) {
@@ -12027,11 +12027,11 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     break;
                 }
             }
-            printf("I8_MOVR32: unimplemented\n");
+            LOG_DISAS("I8_MOVR32: unimplemented\n");
             generate_exception_end(ctx, EXCP_RI);
             break;
         default:
-            printf("I8: unimplemented %x\n", funct);
+            LOG_DISAS("I8: unimplemented %x\n", funct);
             generate_exception_end(ctx, EXCP_RI);
             break;
         }
@@ -12065,7 +12065,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 tcg_gen_xori_tl(cpu_gpr[rx], cpu_gpr[rx], (uint16_t) imm);
                 break;
             default:
-                printf("LI: unimplemented %x\n", sel2);
+                LOG_DISAS("LI: unimplemented %x\n", sel2);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
@@ -12101,7 +12101,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             // FIXME: sign extend ok?
             if (offset & 0x100)
                     offset = offset - 0x200;
-            printf("LL: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
+            LOG_DISAS("LL: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
             // FIXME: LL
             gen_ld(ctx, OPC_LL, rx, rb, offset);
             }
@@ -12116,22 +12116,22 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     offset = offset - 0x200;
             switch ((ctx->opcode >> 19) & 0x3) {
             case 0:
-                printf("LWL: untested\n"); // FIXME
+                LOG_DISAS("LWL: untested\n"); // FIXME
                 gen_ld(ctx, OPC_LWL, rx, rb, offset);
                 break;
             case 2:
-                printf("LWR: untested\n"); // FIXME
+                LOG_DISAS("LWR: untested\n"); // FIXME
                 gen_ld(ctx, OPC_LWR, rx, rb, offset);
                 break;
             default:
-                printf("LWSP 7: unimplemented %x\n", (ctx->opcode >> 19) & 0x3);
+                LOG_DISAS("LWSP 7: unimplemented %x\n", (ctx->opcode >> 19) & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
             }
             break;
         default:
-            printf("LWSP: unimplemented %x\n", sel2);
+            LOG_DISAS("LWSP: unimplemented %x\n", sel2);
             generate_exception_end(ctx, EXCP_RI);
             break;
         }
@@ -12172,7 +12172,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             // TODO: also fix the addr calculation in helper_cache
             {
                 int op = (ctx->opcode >> 16) & 0x1f;
-                printf("CACHE: op %d\n", op);
+                LOG_DISAS("CACHE: op %d\n", op);
 
                 uint32_t offset = (ctx->opcode & 0x1f) | (((ctx->opcode >> 21) & 0xf) << 5);
                 if (offset & 0x100)
@@ -12205,7 +12205,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             // FIXME: sign extend ok?
             if (offset & 0x100)
                     offset = offset - 0x200;
-            printf("SC: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
+            LOG_DISAS("SC: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
             gen_st_cond(ctx, OPC_SC, rx, rb, offset);
             }
             break;
@@ -12219,22 +12219,22 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     offset = offset - 0x200;
             switch ((ctx->opcode >> 19) & 0x3) {
             case 0:
-                printf("SWL: untested\n"); // FIXME
+                LOG_DISAS("SWL: untested\n"); // FIXME
                 gen_st(ctx, OPC_SWL, rx, rb, offset);
                 break;
             case 2:
-                printf("SWR: untested\n"); // FIXME
+                LOG_DISAS("SWR: untested\n"); // FIXME
                 gen_st(ctx, OPC_SWR, rx, rb, offset);
                 break;
             default:
-                printf("SWSP 7: unimplemented %x\n", (ctx->opcode >> 19) & 0x3);
+                LOG_DISAS("SWSP 7: unimplemented %x\n", (ctx->opcode >> 19) & 0x3);
                 generate_exception_end(ctx, EXCP_RI);
                 break;
             }
             }
             break;
         default:
-            printf("SWSP: unimplemented %x\n", sel2);
+            LOG_DISAS("SWSP: unimplemented %x\n", sel2);
             generate_exception_end(ctx, EXCP_RI);
             break;
         }
@@ -18086,7 +18086,7 @@ static void decode_opc_special2_legacy(CPUMIPSState *env, DisasContext *ctx)
         {
             /* interAptiv extension */
             /* different encoding of [mips16] SVRS */
-            printf("SAVERESTORE is untested\n"); // FIXME
+            LOG_DISAS("SAVERESTORE is untested\n"); // FIXME
             int xsregs = (ctx->opcode >> 23) & 0x7;
             int aregs = (ctx->opcode >> 15) & 0xf;
             int do_ra = (ctx->opcode >> 12) & 0x1;
