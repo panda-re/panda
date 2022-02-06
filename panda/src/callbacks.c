@@ -99,18 +99,29 @@ bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
 // Forward declaration
 static void panda_args_set_help_wanted(const char *);
 
+static char* attempt_normalize_path(char* path){
+    char* new_path = g_malloc(PATH_MAX); 
+    if (realpath(path, new_path) == NULL) {
+        g_free(new_path);
+        return path;
+    }else{
+        return new_path;
+    }
+}
+
 bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
     // don't load the same plugin twice
+    const char* rfilename = attempt_normalize_path((char*)filename);
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
-        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
+        if (0 == (strcmp(rfilename, panda_plugins_loaded[i]))) {
             fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;
         }
     }
     // NB: this is really a list of plugins for which we have started loading
     // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
-    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
+    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(rfilename);
     nb_panda_plugins_loaded ++;
     void *plugin = plugin_uuid;//going to be a handle of some sort -> dlopen(filename, RTLD_NOW);
     bool (*init_fn)(void *) = init_fn_ptr; //normally dlsym init_fun
@@ -123,7 +134,7 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     if (plugin_name) {
         strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
     } else {
-        char *pn = g_path_get_basename((char *) filename);
+        char *pn = g_path_get_basename((char *) rfilename);
         *g_strrstr(pn, HOST_DSOSUF) = '\0';
         strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
         g_free(pn);
@@ -264,8 +275,8 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
     // First try relative to PANDA_PLUGIN_DIR
 #ifdef PLUGIN_DIR
     if (g_getenv("PANDA_DIR") != NULL) {
-        plugin_path = g_strdup_printf(
-            "%s/%s/%s" , g_getenv("PANDA_DIR"), PLUGIN_DIR, name_formatted);
+        plugin_path = attempt_normalize_path(g_strdup_printf(
+            "%s/%s/%s" , g_getenv("PANDA_DIR"), PLUGIN_DIR, name_formatted));
         if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
             return plugin_path;
         }
@@ -279,8 +290,9 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
 
     // Second, try relative to PANDA binary as it would be in the build or install directory
     char *dir = g_path_get_dirname(qemu_file);
-    plugin_path = g_strdup_printf("%s/panda/plugins/%s", dir,
-                                  name_formatted);
+    plugin_path = attempt_normalize_path(g_strdup_printf(
+                                "%s/panda/plugins/%s", dir,
+                                  name_formatted));
 
     g_free(dir);
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
@@ -289,9 +301,9 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
     g_free(plugin_path);
 
     // Finally, try relative to the installation path.
-    plugin_path =
+    plugin_path = attempt_normalize_path(
         g_strdup_printf("%s/%s/%s", CONFIG_PANDA_PLUGINDIR,
-                        TARGET_NAME, name_formatted);
+                        TARGET_NAME, name_formatted));
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
         return plugin_path;
     }
