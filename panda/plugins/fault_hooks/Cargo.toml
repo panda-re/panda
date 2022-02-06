@@ -1,0 +1,26 @@
+[package]
+name = "fault_hooks"
+version = "0.1.0"
+authors = ["Luke Craig <Luke.Craig@ll.mit.edu>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/fault_hooks.rs"
+
+[dependencies]
+lazy_static = "1.4.0"
+panda-re = { git = "https://github.com/panda-re/panda-rs", branch="fix_sbe_ebe", default-features = false }
+ord-by-set = { path = "/home/luke/ord-by-set"}
+
+[features]
+default = ["x86_64"]
+
+x86_64 = ["panda-re/x86_64"]
+i386 = ["panda-re/i386"]
+arm = ["panda-re/arm"]
+ppc = ["panda-re/ppc"]
+mips = ["panda-re/mips"]
+mipsel = ["panda-re/mipsel"]
+mips64 = ["panda-re/mips64"]
+aarch64 = ["panda-re/aarch64"]
