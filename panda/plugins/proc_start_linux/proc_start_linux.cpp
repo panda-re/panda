@@ -34,6 +34,16 @@ PPP_CB_BOILERPLATE(on_rec_auxv);
 }
 
 
+#if defined(TARGET_WORDS_BIGENDIAN)
+#if TARGET_LONG_SIZE == 4
+#define fixupendian(x)         {x=bswap32((target_ptr_t)x);}
+#else
+#define fixupendian(x)         {x=bswap64((uint64_t)x);}
+#endif
+#else
+#define fixupendian(x) {}
+#endif
+
 
 #if TARGET_LONG_BITS == 32
 #define ELF(r) Elf32_ ## r
@@ -42,7 +52,7 @@ PPP_CB_BOILERPLATE(on_rec_auxv);
 #endif
 
 void *self_ptr;
-panda_cb pcb_btc_execve;
+panda_cb pcb_sbe_execve;
 
 string read_str(CPUState* cpu, target_ulong ptr){
     string buf = "";
@@ -61,8 +71,8 @@ string read_str(CPUState* cpu, target_ulong ptr){
     return buf;
 }
 
-void btc_execve(CPUState *env, TranslationBlock *tb){
-    if (unlikely(!panda_in_kernel(env))){
+void sbe(CPUState *env, TranslationBlock *tb){
+    if (unlikely(!panda_in_kernel_code_linux(env))){
         target_ulong sp = panda_current_sp(env);
         target_ulong argc;
         if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
@@ -82,7 +92,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
                     printf("failed reading args\n");
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
                     return;
                 }
                 ptrlistpos++;
@@ -105,7 +115,8 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
                     printf("failed reading envp\n");
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
+
                     return;
                 }
                 ptrlistpos++;
@@ -125,10 +136,12 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
 
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
                     return;
                 }
                 ptrlistpos+=2;
+                fixupendian(entrynum);
+                fixupendian(entryval);
                 if (entrynum == AT_NULL){
                     break;
                 }else if (entrynum == AT_ENTRY){
@@ -180,29 +193,22 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             }
             if (vals.entry && vals.phdr){
                 PPP_RUN_CB(on_rec_auxv, env, tb, &vals);
-            }else {
-                return;
             }
         }else{
             // If we can't read from the stack this is an indication that
             // we aren't quite in a usable userspace just yet.
             return;
         }
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+        panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
     }
 }
 
-void run_btc_cb(){
-    panda_do_flush_tb();
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-}
-
 void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
-    run_btc_cb();
+    panda_enable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
 }
 
 void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
-    run_btc_cb();
+    panda_enable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
 }
 
 bool init_plugin(void *self) {
@@ -215,8 +221,9 @@ bool init_plugin(void *self) {
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
-        pcb_btc_execve.before_tcg_codegen = btc_execve;
-        panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+        pcb_sbe_execve.start_block_exec = sbe;
+        panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
+        panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
 
         // why? so we don't get 1000 messages telling us syscalls2 is already loaded
         void* syscalls2 = panda_get_plugin_by_name("syscalls2");
