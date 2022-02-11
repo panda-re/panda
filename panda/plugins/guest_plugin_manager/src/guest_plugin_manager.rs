@@ -3,6 +3,7 @@ use panda::prelude::*;
 use panda::PppCallback;
 
 use std::convert::TryFrom;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod hyp_regs;
 use hyp_regs::{get_hyp_reg, set_hyp_ret_reg};
@@ -83,6 +84,13 @@ struct Linjector {
     proc_name: String,
 }
 
+#[derive(PandaArgs)]
+#[name = "guest_plugin_manager"]
+struct Args {
+    #[arg(default = "cat")]
+    proc_name: String,
+}
+
 panda::plugin_import! {
     static LINJECTOR: LinjectorApi = extern "linjector" {
         callbacks {
@@ -95,8 +103,19 @@ panda::export_ppp_callback! {
     pub(crate) fn on_guest_agent_load(cpu: &mut CPUState);
 }
 
+lazy_static::lazy_static! {
+    static ref ARGS: Args = Args::from_panda_args();
+}
+
+static LOADED: AtomicBool = AtomicBool::new(false);
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
+    if LOADED.swap(true, Ordering::SeqCst) {
+        return true;
+    }
+
+    lazy_static::initialize(&ARGS);
     interface::daemon_manager::init();
 
     let guest_binary = guest_plugin_path("guest_daemon")
@@ -113,7 +132,7 @@ fn init(_: &mut PluginHandle) -> bool {
         // TODO: automatically decide which process to inject into
         panda::require_plugin(&Linjector {
             guest_binary,
-            proc_name: "cat".to_string(),
+            proc_name: ARGS.proc_name.clone(),
         });
 
         PppCallback::new()

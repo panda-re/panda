@@ -9,6 +9,8 @@ use panda::{
     syscall_injection::{fork, run_injector},
 };
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 mod args;
 mod syscalls;
 
@@ -66,8 +68,11 @@ panda::export_ppp_callback! {
     pub(crate) fn before_guest_inject(cpu: &mut CPUState);
 }
 
-#[panda::on_all_sys_enter]
-fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
+extern "C" fn on_sys_enter(
+    cpu: &mut CPUState,
+    pc: SyscallPc,
+    syscall_num: target_ulong,
+) {
     // Only check process name when a target process name is provided
     if args::proc_name() != "[any]" {
         let proc_name = current_process_name(cpu);
@@ -80,6 +85,9 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             return;
         }
     }
+
+    // Once we inject to a process stop looking for syscalls to inject into
+    SYSCALLS.remove_callback_on_all_sys_enter(on_sys_enter);
 
     log::trace!("Attempting injection into syscall {}", syscall_num);
     let file_data = args::elf_to_inject();
@@ -231,14 +239,18 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
 
         // Allow the original process to resume executing
     });
-
-    // Once we inject to a process stop looking for syscalls to inject into
-    SYSCALLS.remove_callback_on_all_sys_enter(on_sys_enter);
 }
+
+static LOADED: AtomicBool = AtomicBool::new(false);
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
+    if LOADED.swap(true, Ordering::SeqCst) {
+        return true;
+    }
+
     args::ensure_init();
+    SYSCALLS.add_callback_on_all_sys_enter(on_sys_enter);
 
     pretty_env_logger::init_custom_env("LINJECTOR_LOG");
     args::load_elf();
