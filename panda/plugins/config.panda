@@ -12,6 +12,7 @@ dynamic_symbols
 edge_coverage
 filereadmon
 forcedexec
+frida
 gdb
 guest_plugin_example
 guest_plugin_manager
@@ -31,7 +32,7 @@ mmio_trace
 net
 network
 osi
-osi_linux
+#osi_linux
 osi_test
 pri
 pri_dwarf

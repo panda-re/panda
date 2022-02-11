@@ -80,6 +80,7 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
 #[name = "linjector"]
 struct Linjector {
     guest_binary: String,
+    proc_name: String,
 }
 
 panda::plugin_import! {
@@ -108,10 +109,16 @@ fn init(_: &mut PluginHandle) -> bool {
         "Guest plugin manager currently only supports Linux"
     );
 
-    panda::require_plugin(&Linjector { guest_binary });
+    std::thread::spawn(|| {
+        // TODO: automatically decide which process to inject into
+        panda::require_plugin(&Linjector {
+            guest_binary,
+            proc_name: "cat".to_string(),
+        });
 
-    PppCallback::new()
-        .before_guest_inject(|cpu| on_guest_agent_load::trigger(cpu));
+        PppCallback::new()
+            .before_guest_inject(|cpu| on_guest_agent_load::trigger(cpu));
+    });
 
     true
 }

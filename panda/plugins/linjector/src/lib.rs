@@ -100,23 +100,18 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             }
         }
 
-        //log::debug!("In injector");
-        //use panda::regs;
-        //let sp_before = regs::get_reg(cpu, regs::reg_sp());
-        //dbg!(sp_before);
-        //log::debug!("pid = {}", getpid().await);
-        //let sp_after = regs::get_reg(cpu, regs::reg_sp());
-        //dbg!(sp_after);
-        //log::debug!("actual pid = {}", OSI.get_current_process(cpu).pid);
-        //log::debug!("pid = {}", getpid().await);
-        //log::debug!("pid = {}", getpid().await);
         log::debug!("current asid: {:x}", current_asid(cpu));
 
         // mmap a region so we have a buffer in the guest to use
         let guest_buf = get_guest_buffer().await;
 
         // Create a memory file descriptor for loading our binary into
-        let mem_fd = do_memfd_create(guest_buf).await;
+        let mem_fd = loop {
+            match do_memfd_create(guest_buf).await {
+                0 => log::trace!("Got memfd of 0, retrying..."),
+                fd => break fd,
+            }
+        };
         log::debug!("Got memory fd {:#x}", mem_fd);
 
         let (fd, is_mem_fd) = if (mem_fd as target_long).is_negative() {
@@ -164,6 +159,14 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
                 &file_data[elf_write_pos..end_write],
             );
 
+            #[cfg(feature = "i386")]
+            {
+                let ebp = panda::regs::get_reg(cpu, panda::regs::Reg::EBP);
+                let esp = panda::regs::get_reg(cpu, panda::regs::Reg::ESP);
+                log::trace!("EBP: {:#08x?} | ESP: {:#08x?}", ebp, esp);
+                panda::mem::virt_memory_dump(cpu, esp, 0x10);
+            }
+
             // Write guest buffer to memory file descriptor
             let written = do_write(fd, guest_buf, PAGE_SIZE).await;
 
@@ -176,7 +179,6 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
         }
 
         log::debug!("Finished writing to memfd");
-        log::debug!("Forking...");
 
         if !is_mem_fd {
             let close_ret = close(fd).await;
@@ -185,9 +187,17 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             }
         }
 
+        log::debug!("Forking...");
+
         // Fork and have the child process spawn the injected elf
-        fork(async move {
+        let child_pid = fork(async move {
             log::debug!("Child process began");
+            log::debug!(
+                "Child process pid: {:#x?}, Child's parent: {:#x?}",
+                OSI.get_current_process(cpu).pid,
+                OSI.get_current_process(cpu).ppid,
+            );
+            log::debug!("Child asid: {:#x?}", panda::current_asid(cpu));
 
             // Daemonize child process
             let session_id = setsid().await;
@@ -205,9 +215,19 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
 
             // Execute the guest binary
             log::debug!("Performing execve");
-            do_execve(guest_path_buf, 0, 0).await;
+            dbg!(do_execve(guest_path_buf, 0, 0).await);
+            panic!();
         })
         .await;
+
+        log::debug!("Fork returned pid: {:#x?}", child_pid);
+        let cpu = unsafe { &mut *get_cpu() };
+        log::debug!(
+            "Parent process pid: {:#x?}, Parent's parent: {:#x?}",
+            OSI.get_current_process(cpu).pid,
+            OSI.get_current_process(cpu).ppid,
+        );
+        log::debug!("Parent asid: {:#x?}", panda::current_asid(cpu));
 
         // Allow the original process to resume executing
     });
