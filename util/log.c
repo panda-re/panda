@@ -41,7 +41,7 @@
 
 static char *logfilename;
 FILE *qemu_logfile;
-int qemu_loglevel;
+long qemu_loglevel;
 static int log_append = 0;
 static GArray *debug_regions;
 
@@ -66,7 +66,7 @@ int qemu_log(const char *fmt, ...)
 static bool log_uses_own_buffers;
 
 /* enable or disable low levels log */
-void qemu_set_log(int log_flags)
+void qemu_set_log(long log_flags)
 {
     qemu_loglevel = log_flags;
 #ifdef CONFIG_TRACE_LOG
@@ -295,14 +295,16 @@ const QEMULogItem qemu_log_items[] = {
 #endif
     { CPU_LOG_RR, "rr",
         "record/replay program points" },
+    { LOG_AVATAR, "avatar",
+	"Show avatar related events (including configurable machine)" },
     { 0, NULL, NULL },
 };
 
 /* takes a comma separated list of log masks. Return 0 if error. */
-int qemu_str_to_log_mask(const char *str)
+long qemu_str_to_log_mask(const char *str)
 {
     const QEMULogItem *item;
-    int mask = 0;
+    long mask = 0;
     char **parts = g_strsplit(str, ",", 0);
     char **tmp;
 
