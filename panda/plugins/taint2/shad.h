@@ -51,7 +51,7 @@ extern uint32_t max_taintset_card;
 
 }
 
-#define CPU_LOG_TAINT_OPS (1 << 28)
+#define CPU_LOG_TAINT_OPS (1UL << 28)
 
 #ifdef TAINT2_DEBUG
 #define tassert(cond) assert((cond))
