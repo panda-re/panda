@@ -22,6 +22,7 @@
 
 //general imports
 #include "qemu/osdep.h"
+#include "qemu/log.h"
 #include "sysemu/sysemu.h"
 #include "exec/address-spaces.h"
 #include "hw/hw.h"
@@ -217,7 +218,7 @@ static SysBusDevice *make_configurable_device(const char *qemu_name,
 #if defined(TARGET_ARM)
     if (!strcmp(qemu_name, "a9mpcore_priv")) {
         /*  TODO more generic irq connection */
-        printf("cooking interrupts\n");
+        qemu_log_mask(LOG_AVATAR, "cooking interrupts\n");
         sysbus_connect_irq(s, 0,
                            qdev_get_gpio_in(DEVICE(first_cpu), ARM_CPU_IRQ));
         sysbus_connect_irq(s, 1,
@@ -241,7 +242,7 @@ static off_t get_file_size(const char * path)
 
     if (stat(path, &stats))
     {
-        printf("ERROR: Getting file size for file %s\n", path);
+        fprintf(stderr, "ERROR: Getting file size for file %s\n", path);
         return 0;
     }
 
@@ -307,7 +308,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     QDICT_ASSERT_KEY_TYPE(mapping, "address", QTYPE_QINT);
     address = qdict_get_int(mapping, "address");
 
-    printf("Configurable: Adding memory region %s (size: 0x%"
+    qemu_log_mask(LOG_AVATAR, "Configurable: Adding memory region %s (size: 0x%"
            PRIx64 ") at address 0x%" PRIx64 "\n", name, size, address);
     memory_region_add_subregion(sysmem, address, ram);
 
@@ -315,7 +316,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
         QDICT_ASSERT_KEY_TYPE(mapping, "alias_at", QTYPE_QINT);
         alias_address = qdict_get_int(mapping, "alias_at");
 
-        printf("Configurable: Adding alias to region %s at address 0x%" PRIx64 "\n", name, alias_address);
+        qemu_log_mask(LOG_AVATAR, "Configurable: Adding alias to region %s at address 0x%" PRIx64 "\n", name, alias_address);
         MemoryRegion *alias;
         alias =  g_new(MemoryRegion, 1);
         memory_region_init_alias(alias, NULL, name, ram, 0, size);
@@ -366,11 +367,11 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
           g_assert(qobject_type(qdict_get(mapping, "file_bytes")) == QTYPE_QINT);
           file_bytes = qdict_get_int(mapping, "file_bytes");
           data_size = file_bytes;
-          printf("File bytes: 0x%lx\n",data_size);
+          qemu_log_mask(LOG_AVATAR, "File bytes: 0x%lx\n",data_size);
 
         }
 
-        printf("Configurable: Inserting %"
+        qemu_log_mask(LOG_AVATAR, "Configurable: Inserting %"
                PRIx64 " bytes of data from %" PRIx64 " in memory region %s\n", data_size, file_offset, name);
         //Size of data to put into a RAM region needs to fit in the RAM region
         g_assert(data_size <= size);
@@ -384,7 +385,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
         close(file);
 
         //And copy the data to the memory, if it is initialized
-        printf("Configurable: Copying 0x%" PRIx64
+        qemu_log_mask(LOG_AVATAR, "Configurable: Copying 0x%" PRIx64
                " byte of data from file %s to address 0x%" PRIx64
                "\n", data_size, filename, address);
         cpu_physical_memory_write_rom(&address_space_memory,
@@ -411,7 +412,7 @@ static void init_peripheral(QDict *device)
     address = qdict_get_int(device, "address");
     name = qdict_get_str(device, "name");
 
-    printf("Configurable: Adding peripheral[%s] region %s at address 0x%" PRIx64 "\n",
+    qemu_log_mask(LOG_AVATAR, "Configurable: Adding peripheral[%s] region %s at address 0x%" PRIx64 "\n",
             qemu_name, name, address);
     if (strcmp(bus, "sysbus") == 0)
     {
@@ -426,7 +427,7 @@ static void init_peripheral(QDict *device)
 
         sb = make_configurable_device(qemu_name, address, properties);
         qdict_put_obj(peripherals, name, (QObject *)sb);
-        printf("putting %s\n", name);
+        qemu_log_mask(LOG_AVATAR, "putting %s\n", name);
     }
     else
     {
@@ -461,7 +462,7 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
 
 #elif defined(TARGET_PPC)
     //Not implemented yet
-    printf("Not yet implemented- can't start execution at 0x%x\n", entry);
+    fprintf(stderr, "Not yet implemented- can't start execution at 0x%x\n", entry);
 #endif
 
 }
@@ -483,7 +484,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     Object *cpuobj;
     if (!cpu_model) cpu_model = "arm926";
 
-    printf("Configurable: Adding processor %s\n", cpu_model);
+    qemu_log_mask(LOG_AVATAR, "Configurable: Adding processor %s\n", cpu_model);
 
     cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_model);
     if (!cpu_oc) {
