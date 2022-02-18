@@ -231,6 +231,12 @@ class PandaArch():
         Note the failure argument only used by subclasses that overload this function. It's provided
         in the signature here so it can be set by a caller without regard for the guest architecture.
         '''
+
+        if val < 0:
+            # The registers store unsigned values so if we get a negative value, just convert it
+            val = self.panda.to_unsigned_guest(val)
+
+
         reg = self._get_ret_val_reg(cpu, convention)
         return self.set_reg(cpu, reg, val)
 
