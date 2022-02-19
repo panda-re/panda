@@ -37,6 +37,7 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
+from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
@@ -96,6 +97,7 @@ class Panda():
         self.ending = False # True during end_analysis
         self.cdrom = None
         self.catch_exceptions=catch_exceptions
+        self.qlog = QEMU_Log_Manager(self)
 
         self.serial_unconsumed_data = b''
 

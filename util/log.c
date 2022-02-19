@@ -263,6 +263,8 @@ const QEMULogItem qemu_log_items[] = {
       "show micro ops after optimization" },
     { CPU_LOG_TB_OP_IND, "op_ind",
       "show micro ops before indirect lowering" },
+    { LOG_PANDA, "panda",
+        "Provides QEMU logging for some PANDA things. This is not pandalog. RR is separate as well."},
     { CPU_LOG_INT, "int",
       "show interrupts/exceptions in short format" },
     { CPU_LOG_EXEC, "exec",

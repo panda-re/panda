@@ -231,6 +231,11 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 
+    # For direct access to -d logging flags
+    # unsigned is a lie. but it's the way QEMU treats it.
+    ffi.cdef("extern unsigned int qemu_loglevel;")
+    ffi.cdef("extern FILE* qemu_logfile;")
+
     # PPP Headers
     # Syscalls - load architecture-specific headers
     if arch == "i386":
@@ -269,6 +274,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     # get some libc functionality
     define_clean_header(ffi, include_dir + "/libc_includes.h")
+    
+    # QEMU logging functionality
+    define_clean_header(ffi, include_dir + "/qlog.h")
 
     # Now syscalls2 common:
     define_clean_header(ffi, include_dir + "/syscalls2_info.h")
