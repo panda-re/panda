@@ -330,7 +330,7 @@ target_ulong get_current_function(CPUState *cpu){
 void initialize_call_obj(CPUState *cpu, Asid curr_asid, target_ulong entrypoint){
     call_infos[entrypoint].asid = curr_asid;
     call_infos[entrypoint].entrypoint =  entrypoint;
-    call_infos[entrypoint].pc = cpu->panda_guest_pc; //same as the passed pc to mem callbacks, get_prog_point, but diferent than tb->pc, since tb->pc is the start of the block, while pc is the trigger
+    call_infos[entrypoint].pc = panda_current_pc(cpu); //same as the passed pc to mem callbacks, get_prog_point, but diferent than tb->pc, since tb->pc is the start of the block, while pc is the trigger
     call_infos[entrypoint].rr_instr_count =  rr_get_guest_instr_count();
 
     // Get the callstack and functionstack for each call.

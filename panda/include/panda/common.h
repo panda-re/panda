@@ -366,7 +366,7 @@ static inline bool address_in_kernel_code_linux(target_ulong addr){
  * Therefore, certain analysis logic can't rely on panda_in_kernel_mode() alone.
  */
 static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
-    return address_in_kernel_code_linux(cpu->panda_guest_pc);
+    return address_in_kernel_code_linux(panda_current_pc(cpu));
 }
 
 /**
