@@ -77,7 +77,7 @@ int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newva
 }
 
 static void start_debugging() {
-    extern long qemu_loglevel;
+    extern int qemu_loglevel;
     if (!debug_asid) {
         debug_asid = panda_current_asid(first_cpu);
         printf("taint2: ENABLING DEBUG MODE for asid 0x" TARGET_FMT_lx "\n",

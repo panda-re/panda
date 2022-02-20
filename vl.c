@@ -4421,7 +4421,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     }
 
     if (log_mask) {
-        long mask;
+        int mask;
         mask = qemu_str_to_log_mask(log_mask);
         if (!mask) {
             qemu_print_log_usage(stdout);

@@ -4,7 +4,7 @@
 
 /* Private global variables, don't use */
 extern FILE *qemu_logfile;
-extern long qemu_loglevel;
+extern int qemu_loglevel;
 
 /* 
  * The new API:
@@ -27,32 +27,31 @@ static inline bool qemu_log_separate(void)
     return qemu_logfile != NULL && qemu_logfile != stderr;
 }
 
-#define CPU_LOG_TB_OUT_ASM (1UL << 0)
-#define CPU_LOG_TB_IN_ASM  (1UL << 1)
-#define CPU_LOG_TB_OP      (1UL << 2)
-#define CPU_LOG_TB_OP_OPT  (1UL << 3)
-#define CPU_LOG_INT        (1UL << 4)
-#define CPU_LOG_EXEC       (1UL << 5)
-#define CPU_LOG_PCALL      (1UL << 6)
-#define CPU_LOG_TB_CPU     (1UL << 8)
-#define CPU_LOG_RESET      (1UL << 9)
-#define LOG_UNIMP          (1UL << 10)
-#define LOG_GUEST_ERROR    (1UL << 11)
-#define CPU_LOG_MMU        (1UL << 12)
-#define CPU_LOG_TB_NOCHAIN (1UL << 13)
-#define CPU_LOG_PAGE       (1UL << 14)
-#define LOG_TRACE          (1UL << 15)
-#define CPU_LOG_TB_OP_IND  (1UL << 16)
+#define CPU_LOG_TB_OUT_ASM (1 << 0)
+#define CPU_LOG_TB_IN_ASM  (1 << 1)
+#define CPU_LOG_TB_OP      (1 << 2)
+#define CPU_LOG_TB_OP_OPT  (1 << 3)
+#define CPU_LOG_INT        (1 << 4)
+#define CPU_LOG_EXEC       (1 << 5)
+#define CPU_LOG_PCALL      (1 << 6)
+#define CPU_LOG_TB_CPU     (1 << 8)
+#define CPU_LOG_RESET      (1 << 9)
+#define LOG_UNIMP          (1 << 10)
+#define LOG_GUEST_ERROR    (1 << 11)
+#define CPU_LOG_MMU        (1 << 12)
+#define CPU_LOG_TB_NOCHAIN (1 << 13)
+#define CPU_LOG_PAGE       (1 << 14)
+#define LOG_TRACE          (1 << 15)
+#define CPU_LOG_TB_OP_IND  (1 << 16)
 #define LOG_PANDA          (1 << 17)
-#define CPU_LOG_TAINT_OPS  (1UL << 28)
-#define CPU_LOG_RR         (1UL << 29)
-#define CPU_LOG_LLVM_IR    (1UL << 30)
-#define CPU_LOG_LLVM_ASM   (1UL << 31)
-#define LOG_AVATAR         (1UL << 32)
+#define CPU_LOG_TAINT_OPS  (1 << 28)
+#define CPU_LOG_RR         (1 << 29)
+#define CPU_LOG_LLVM_IR    (1 << 30)
+#define CPU_LOG_LLVM_ASM   (1 << 31)
 
 /* Returns true if a bit is set in the current loglevel mask
  */
-static inline bool qemu_loglevel_mask(long mask)
+static inline bool qemu_loglevel_mask(int mask)
 {
     return (qemu_loglevel & mask) != 0;
 }
@@ -120,19 +119,19 @@ qemu_log_vprintf(const char *fmt, va_list va)
 
 /* define log items */
 typedef struct QEMULogItem {
-    long mask;
+    int mask;
     const char *name;
     const char *help;
 } QEMULogItem;
 
 extern const QEMULogItem qemu_log_items[];
 
-void qemu_set_log(long log_flags);
+void qemu_set_log(int log_flags);
 void qemu_log_needs_buffers(void);
 void qemu_set_log_filename(const char *filename, Error **errp);
 void qemu_set_dfilter_ranges(const char *ranges, Error **errp);
 bool qemu_log_in_addr_range(uint64_t addr);
-long qemu_str_to_log_mask(const char *str);
+int qemu_str_to_log_mask(const char *str);
 
 /* Print a usage message listing all the valid logging categories
  * to the specified FILE*.

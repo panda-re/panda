@@ -57,7 +57,7 @@ extern uint32_t max_taintset_card;
 #define tassert(cond) assert((cond))
 #define taint_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__);
 #define taint_log_labels(shad, src, size) \
-    extern long qemu_loglevel; \
+    extern int qemu_loglevel; \
     if (qemu_loglevel & CPU_LOG_TAINT_OPS) { \
         bool tainted = false; \
         for (int __i = 0; __i < size; __i++) { \
