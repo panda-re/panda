@@ -8,7 +8,7 @@ from sys import platform
 from threading import current_thread, main_thread
 
 # Set to enable pypanda debugging
-debug = True
+debug = False
 
 def progress(msg):
     """
