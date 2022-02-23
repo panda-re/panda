@@ -1,9 +1,11 @@
 #include "panda/tcg-utils.h"
 #include <vector>
+#include <queue>
 #include <algorithm>
 
 extern "C"
 {
+#include <setjmp.h>
 
 bool qemu_in_vcpu_thread(void);
 
@@ -112,6 +114,31 @@ struct previous_call last_call = {
 };
 
 
+uintptr_t tcg_call_return_addr = 0;
+# define GETPC() \
+    ((uintptr_t)__builtin_extract_return_addr(__builtin_return_address(0)))
+
+struct TLBFill {
+    target_ulong addr;
+    bool requested;
+    bool called;
+};
+jmp_buf *mark;
+
+TLBFill tlb_request = {
+    .addr = 0,
+    .requested = false,
+    .called = false,
+};
+
+void request_tlb_fill(target_ulong);
+
+void request_tlb_fill(target_ulong addr){
+    tlb_request.addr = addr;
+    tlb_request.requested = true;
+}
+
+
 /**
  * Triggering mechanism for CPU exit after retirement of call.
  * 
@@ -121,6 +148,7 @@ struct previous_call last_call = {
  * I tried to macro it. It's far more confusing than the this is.
  */ 
 void call_1p_check_cpu_exit(void(*func)(void*), void* val){
+     tcg_call_return_addr= GETPC();
     if (last_call.valid){
         if (last_call.n == 1 && last_call.func == (uint64_t)func && last_call.cpu == (uint64_t)val){
             last_call.valid = false;
@@ -139,6 +167,7 @@ void call_1p_check_cpu_exit(void(*func)(void*), void* val){
 }
 
 void call_2p_check_cpu_exit(void(*func)(void*,void*), void* val, void* val2){
+     tcg_call_return_addr= GETPC();
     if (last_call.valid){
         if (last_call.n == 2 && last_call.func == (uint64_t)func && last_call.cpu == (uint64_t)val){
             TranslationBlock *tb = (TranslationBlock *)last_call.tb;
@@ -173,6 +202,12 @@ void call_3p_check_cpu_exit(void(*func)(void*,void*,void*), void* val, void* val
         }
     }else{
         func(val, val2, val3);
+        // if (tlb_request.requested){
+        //     tlb_request.called = true;
+        //     tlb_request.requested = false;
+        //     printf("requesting address %lx\n", (long unsigned int)tlb_request.addr & TARGET_PAGE_MASK);
+        //     tlb_fill(first_cpu, tlb_request.addr & TARGET_PAGE_MASK, (MMUAccessType)0, 1, GETPC());
+        // }
         if (panda_exit_cpu() && qemu_in_vcpu_thread() && first_cpu->running){
             printf("exit loop inserting %lx\n", (long unsigned int)(void*)func);
             last_call.valid = true;
@@ -187,6 +222,7 @@ void call_3p_check_cpu_exit(void(*func)(void*,void*,void*), void* val, void* val
 }
 
 void call_4p_check_cpu_exit(void(*func)(void*,void*,void*,void*), void* val, void* val2, void* val3, void* val4){
+     tcg_call_return_addr= GETPC();
     if (last_call.valid){
         if (last_call.n == 4 && last_call.func == (uint64_t)func && last_call.cpu == (uint64_t)val && last_call.a == (uint64_t)val3 && last_call.b == (uint64_t)val4){
             TranslationBlock *tb = (TranslationBlock *)last_call.tb;
@@ -213,6 +249,7 @@ void call_4p_check_cpu_exit(void(*func)(void*,void*,void*,void*), void* val, voi
 
 
 void call_5p_check_cpu_exit(void(*func)(void*,void*,void*,void*,void*), void* val, void* val2, void* val3, void* val4, void* val5){
+     tcg_call_return_addr= GETPC();
     if (last_call.valid){
         if (last_call.n == 5 && last_call.func == (uint64_t)func && last_call.cpu == (uint64_t)val && last_call.a == (uint64_t)val3 && last_call.b == (uint64_t)val4 && last_call.c == (uint64_t)val5){
             TranslationBlock *tb = (TranslationBlock *)last_call.tb;
@@ -237,7 +274,4 @@ void call_5p_check_cpu_exit(void(*func)(void*,void*,void*,void*,void*), void* va
         }
     }
 }
-
-
-
 }
