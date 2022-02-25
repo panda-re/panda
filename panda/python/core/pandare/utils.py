@@ -7,7 +7,7 @@ from colorama import Fore, Style
 from functools import wraps
 from os import devnull
 from subprocess import check_call, STDOUT
-from sys import platform
+from sys import platform, stdout
 from threading import current_thread, main_thread
 
 # Set to enable pypanda debugging
@@ -15,15 +15,23 @@ debug = False
 
 def progress(msg):
     """
-    Print a message with a green "[PYPANDA]" prefix
+    Print a message with a green "[PYPANDA]" prefix if in a tty
+    otherwise just print the message
     """
-    print(Fore.GREEN + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+    if stdout.isatty():
+        print(Fore.GREEN + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+    else:
+        print(f"[PYPANDA] {msg}")
 
 def warn(msg):
     """
-    Print a message with a red "[PYPANDA]" prefix
+    Print a message with a red "[PYPANDA]" prefix if in a tty
+    otherwise just print the message
     """
-    print(Fore.RED + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+    if stdout.isatty():
+        print(Fore.RED + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+    else:
+        print(f"[PYPANDA] {msg}")
 
 def make_iso(directory, iso_path):
     '''
