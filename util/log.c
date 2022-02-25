@@ -265,6 +265,8 @@ const QEMULogItem qemu_log_items[] = {
       "show micro ops before indirect lowering" },
     { LOG_PANDA, "panda",
         "Provides QEMU logging for some PANDA things. This is not pandalog. RR is separate as well."},
+    { LOG_AVATAR, "avatar",
+      "Show avatar related events (including configurable machine)" },
     { CPU_LOG_INT, "int",
       "show interrupts/exceptions in short format" },
     { CPU_LOG_EXEC, "exec",

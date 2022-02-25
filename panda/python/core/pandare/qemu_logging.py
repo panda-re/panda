@@ -38,6 +38,7 @@ class QEMU_Log_Manager:
         - TRACE
         - TB_OP_IND
         - PANDA
+        - AVATAR
         - TAINT_OPS
         - RR
         - LLVM_IR
@@ -65,6 +66,7 @@ class QEMU_Log_Manager:
             "TRACE":15,
             "TB_OP_IND":16,
             "PANDA":17,
+            "AVATAR":18,
             "TAINT_OPS":28,
             "RR":29,
             "LLVM_IR":30,
