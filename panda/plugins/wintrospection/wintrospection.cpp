@@ -54,6 +54,7 @@ void uninit_plugin(void *);
 int64_t get_file_handle_pos(CPUState *cpu, uint64_t handle);
 char *get_cwd(CPUState *cpu);
 char *get_handle_name(CPUState *cpu, uint64_t handle);
+void *get_windows_process_manager(void);
 }
 
 void on_get_current_thread(CPUState *cpu, OsiThread *out);
@@ -91,6 +92,10 @@ static std::map<std::string, uint64_t> system_asid_lookup = {
   {"windows-32-7sp1", 0x185000},
   {"windows-64-7sp1", 0x187000},
 };
+
+void *get_windows_process_manager(void) {
+  return g_process_manager.get();
+}
 
 /* ******************************************************************
  Helpers
