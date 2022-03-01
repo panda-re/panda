@@ -1,4 +1,7 @@
-use panda::mem::{read_guest_type, virtual_memory_read};
+use std::mem::size_of;
+
+use panda::mem::{read_guest_type, virtual_memory_read_into};
+use panda::plugins::osi2::{symbol_from_name, type_from_name};
 use panda::prelude::*;
 
 use once_cell::sync::OnceCell;
@@ -34,28 +37,50 @@ fn exit(_: &mut PluginHandle) {
     println!("Exiting");
 }
 
+fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
+    let symbol_table = symbol_table();
+
+    let cpu_offset = symbol_table
+        .symbol_from_name("__per_cpu_offset")
+        .expect("Could not find symbol for __per_cpu_offset in volatility profile")
+        .address as target_ptr_t;
+
+    let cpu_num = cpu.cpu_index as target_ptr_t;
+
+    let cpu_offset: target_ulong = read_guest_type(
+        cpu,
+        cpu_offset + (size_of::<target_ulong>() as target_ptr_t * cpu_num),
+    )
+    .unwrap();
+
+    cpu_offset
+}
+
+/// Max length of process command (`comm` field in task_struct)
+const TASK_COMM_LEN: usize = 16;
+
 fn current_process_name(cpu: &mut CPUState) -> String {
     // it's zero at the moment, but we do determine it
     let _kaslr_offset = kaslr_offset(cpu);
 
-    let symbol_table = symbol_table();
-    let cur_task = symbol_table.symbol_from_name("current_task").unwrap();
-    let task_struct = symbol_table.type_from_name("task_struct").unwrap();
-    let comm_offset = task_struct.fields.get("comm").unwrap().offset as target_ulong;
-    let cpu_offset = symbol_table
-        .symbol_from_name("__per_cpu_offset")
-        .unwrap()
-        .address as target_ptr_t;
-    let cpu_0_offset: target_ulong = read_guest_type(cpu, cpu_offset).unwrap();
-    let current_task_ptr: target_ptr_t =
-        read_guest_type(cpu, cur_task.address as target_ulong + cpu_0_offset).unwrap();
-    let mut comm_data = virtual_memory_read(cpu, current_task_ptr + comm_offset, 16).unwrap();
+    let cur_task = symbol_from_name("current_task").unwrap();
+    let task_struct = type_from_name("task_struct").unwrap();
+    let comm_offset = task_struct.offset_of("comm") as target_ptr_t;
 
-    let string_end = comm_data.iter().position(|x| *x == 0u8).unwrap_or(0x10);
+    let task_addr = cur_task.addr() + current_cpu_offset(cpu);
+    let current_task_ptr = read_guest_type::<target_ptr_t>(cpu, task_addr).unwrap();
 
-    comm_data.truncate(string_end);
+    let mut comm_data = [0; TASK_COMM_LEN];
+    let comm_ptr = current_task_ptr + comm_offset;
+    virtual_memory_read_into(cpu, comm_ptr, &mut comm_data).unwrap();
 
-    String::from_utf8(comm_data).unwrap()
+    // Find null terminator, if it exists, with a max length of sizeof(comm)
+    let task_comm_len = comm_data
+        .iter()
+        .position(|&x| x == 0u8)
+        .unwrap_or(TASK_COMM_LEN);
+
+    String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned()
 }
 
 #[panda::asid_changed]

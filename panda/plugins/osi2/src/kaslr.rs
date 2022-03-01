@@ -17,6 +17,7 @@ const MAX_OVERLOOK_LEN: usize = 16;
 
 fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
     let symbol_table = symbol_table();
+
     let init_task_address = symbol_table.symbol_from_name("init_task").unwrap().address;
     let task_struct = symbol_table.type_from_name("task_struct").unwrap();
     let task_comm_offset = task_struct.fields["comm"].offset;

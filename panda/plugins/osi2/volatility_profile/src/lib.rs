@@ -95,19 +95,19 @@ impl VolatilityJson {
         serde_json::from_str(&contents).unwrap()
     }
 
-    pub fn enum_from_name(self: &VolatilityJson, name: &str) -> Option<&VolatilityEnum> {
+    pub fn enum_from_name(&self, name: &str) -> Option<&VolatilityEnum> {
         self.enums.get(name)
     }
 
-    pub fn base_type_from_name(self: &VolatilityJson, name: &str) -> Option<&VolatilityBaseType> {
+    pub fn base_type_from_name(&self, name: &str) -> Option<&VolatilityBaseType> {
         self.base_types.get(name)
     }
 
-    pub fn symbol_from_name(self: &VolatilityJson, name: &str) -> Option<&VolatilitySymbol> {
+    pub fn symbol_from_name(&self, name: &str) -> Option<&VolatilitySymbol> {
         self.symbols.get(name)
     }
 
-    pub fn type_from_name(self: &VolatilityJson, name: &str) -> Option<&VolatilityStruct> {
+    pub fn type_from_name(&self, name: &str) -> Option<&VolatilityStruct> {
         self.user_types.get(name)
     }
 }
