@@ -125,7 +125,11 @@ fn current_process_name(cpu: &mut CPUState) -> String {
     let cpu_0_offset: target_ulong = read_guest_type(cpu, cpu_offset).unwrap();
     let current_task_ptr: target_ptr_t =
         read_guest_type(cpu, cur_task.address as target_ulong + cpu_0_offset).unwrap();
-    let comm_data = virtual_memory_read(cpu, current_task_ptr + comm_offset, 16).unwrap();
+    let mut comm_data = virtual_memory_read(cpu, current_task_ptr + comm_offset, 16).unwrap();
+
+    let string_end = comm_data.iter().position(|x| *x == 0u8).unwrap_or(0x10);
+
+    comm_data.truncate(string_end);
 
     String::from_utf8(comm_data).unwrap()
 }
