@@ -1,0 +1,9 @@
+[package]
+name = "volatility_profile"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+lzma-rs = "0.2.0"
+serde = {version = "1.0.130", features = ["derive"] }
+serde_json = "1.0.69"

@@ -1,18 +1,11 @@
-use std::io::Cursor;
-
-use panda::mem::{virt_to_phys, virtual_memory_read};
+use panda::mem::{read_guest_type, virt_to_phys, virtual_memory_read};
 use panda::prelude::*;
-use panda::sys::panda_virt_to_phys_external;
-mod json_types;
-use json_types::VTypeJson;
-
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
 use once_cell::sync::OnceCell;
-
 use regex::bytes::Regex;
+use volatility_profile::VolatilityJson;
 
-static SYMBOL_TABLE: OnceCell<VTypeJson> = OnceCell::new();
+static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 static KASLR_OFFSET: OnceCell<target_ulong> = OnceCell::new();
 const PAGE_SIZE: target_ulong = 0x1000;
 const MAX_OVERLOOK_LEN: usize = 16;
@@ -34,6 +27,9 @@ fn determine_kaslr_offset(cpu: &mut CPUState) {
     println!("start: {:x} {:x}", start, end);
 
     let mut ptr = start;
+
+    // TODO: Regex is probably overkill for this, probably worth just switching to
+    // a standard substring search
     let swapper_searcher: regex::bytes::Regex =
         Regex::new(r"swapper(/0|\x00\x00)\x00\x00\x00\x00\x00\x00").unwrap();
 
@@ -44,56 +40,52 @@ fn determine_kaslr_offset(cpu: &mut CPUState) {
      */
 
     let mut tmp_overflow = [0u8; MAX_OVERLOOK_LEN - 1];
-    let mut tmp_overflow_addr: Option<target_ulong> = None;
+    let mut tmp_overflow_addr = None;
 
     while ptr < end - PAGE_SIZE - 1 {
-        match virt_to_phys(cpu, ptr) {
-            target_ulong::MAX => {}
-            _ => {
-                if let Ok(mut res) = virtual_memory_read(cpu, ptr, PAGE_SIZE as usize) {
-                    let mut had_overflow: bool = false;
+        if virt_to_phys(cpu, ptr).is_some() {
+            if let Ok(mut res) = virtual_memory_read(cpu, ptr, PAGE_SIZE as usize) {
+                let mut had_overflow: bool = false;
 
-                    // do we have a valid previous page? if so add to the array
-                    if let Some(overflow_addr) = tmp_overflow_addr {
-                        if overflow_addr == ptr - PAGE_SIZE {
-                            // save previous start before we potentially change the vector
-                            had_overflow = true;
-                            res.append(&mut tmp_overflow.to_vec());
-                            res.rotate_right(tmp_overflow.len());
-                        }
+                // do we have a valid previous page? if so add to the array
+                if let Some(overflow_addr) = tmp_overflow_addr {
+                    if overflow_addr == ptr - PAGE_SIZE {
+                        // save previous start before we potentially change the vector
+                        had_overflow = true;
+                        res.append(&mut tmp_overflow.to_vec());
+                        res.rotate_right(tmp_overflow.len());
                     }
+                }
 
-                    let (start, end) = if had_overflow {
-                        (tmp_overflow.len(), tmp_overflow.len() * 2)
+                let (start, end) = if had_overflow {
+                    (tmp_overflow.len(), tmp_overflow.len() * 2)
+                } else {
+                    (0, tmp_overflow.len())
+                };
+                tmp_overflow.copy_from_slice(&res[start..end]);
+                tmp_overflow_addr = Some(ptr);
+
+                // use jetscii implementation. Might be more efficient search
+                if let Some(m) = swapper_searcher.find(&res) {
+                    let offset_found: target_ulong = if had_overflow {
+                        ptr as target_ulong + m.start() as target_ulong
+                            - tmp_overflow.len() as target_ulong
                     } else {
-                        (0, tmp_overflow.len())
+                        ptr as target_ulong + m.start() as target_ulong
                     };
-                    tmp_overflow.copy_from_slice(&res[start..end]);
-                    tmp_overflow_addr = Some(ptr);
-
-                    // use jetscii implementation. Might be more efficient search
-                    if let Some(m) = swapper_searcher.find(&res) {
-                        let offset_found: target_ulong = if had_overflow {
-                            ptr as target_ulong + m.start() as target_ulong
-                                - tmp_overflow.len() as target_ulong
-                        } else {
-                            ptr as target_ulong + m.start() as target_ulong
-                        };
-                        let kaslr_offset: target_ulong = offset_found - unshifted_comm_address;
-                        KASLR_OFFSET.set(kaslr_offset).unwrap();
-                        println!("found value at {:x}", offset_found);
-                        println!("expected value at {:x}", unshifted_comm_address);
-                        println!("determined offset is {:x}", kaslr_offset as target_long);
-                        return;
-                    }
+                    let kaslr_offset = offset_found - unshifted_comm_address;
+                    KASLR_OFFSET.set(kaslr_offset).unwrap();
+                    println!("found value at {:x}", offset_found);
+                    println!("expected value at {:x}", unshifted_comm_address);
+                    println!("determined offset is {:x}", kaslr_offset as target_long);
+                    return;
                 }
             }
         }
-        if ptr % (PAGE_SIZE << 5) == 0 {
-            println!("{:#x?}", ptr);
-        }
+
         ptr += PAGE_SIZE;
     }
+
     println!("failed search");
     KASLR_OFFSET.set(0).unwrap();
 }
@@ -102,19 +94,15 @@ fn determine_kaslr_offset(cpu: &mut CPUState) {
 fn init(_: &mut PluginHandle) -> bool {
     println!("initializing osi2");
     let filename = "/home/jmcleod/dev/ubuntu:4.4.0-170-generic:32.json.xz";
-    SYMBOL_TABLE.set(VTypeJson::from_file(filename)).unwrap();
+    SYMBOL_TABLE
+        .set(VolatilityJson::from_compressed_file(filename))
+        .unwrap();
     true
 }
 
 #[panda::uninit]
 fn exit(_: &mut PluginHandle) {
     println!("Exiting");
-}
-
-fn read_little_endian_int(cpu: &mut CPUState, address: target_ulong) -> u32 {
-    let comm_data = virtual_memory_read(cpu, address, 4).unwrap();
-    let mut rdr = Cursor::new(comm_data);
-    rdr.read_u32::<LittleEndian>().unwrap()
 }
 
 fn current_process_name(cpu: &mut CPUState) -> String {
@@ -129,22 +117,17 @@ fn current_process_name(cpu: &mut CPUState) -> String {
     let symbol_table = SYMBOL_TABLE.get().unwrap();
     let cur_task = symbol_table.symbol_from_name("current_task").unwrap();
     let task_struct = symbol_table.type_from_name("task_struct").unwrap();
-    let comm = task_struct.fields.get("comm").unwrap();
-    let comm_offset = comm.offset as u64;
-    let cpu_offset = symbol_table.symbol_from_name("__per_cpu_offset").unwrap();
-    let cpu_0_offset = read_little_endian_int(cpu, cpu_offset.address as target_ulong);
-    let current_task_ptr = read_little_endian_int(
-        cpu,
-        cur_task.address as target_ulong + cpu_0_offset as target_ulong,
-    );
-    let comm_data = virtual_memory_read(
-        cpu,
-        current_task_ptr as target_ulong + comm_offset as target_ulong,
-        16,
-    )
-    .unwrap();
-    let data_string = String::from_utf8(comm_data).unwrap();
-    data_string
+    let comm_offset = task_struct.fields.get("comm").unwrap().offset as target_ulong;
+    let cpu_offset = symbol_table
+        .symbol_from_name("__per_cpu_offset")
+        .unwrap()
+        .address as target_ptr_t;
+    let cpu_0_offset: target_ulong = read_guest_type(cpu, cpu_offset).unwrap();
+    let current_task_ptr: target_ptr_t =
+        read_guest_type(cpu, cur_task.address as target_ulong + cpu_0_offset).unwrap();
+    let comm_data = virtual_memory_read(cpu, current_task_ptr + comm_offset, 16).unwrap();
+
+    String::from_utf8(comm_data).unwrap()
 }
 
 #[panda::asid_changed]
