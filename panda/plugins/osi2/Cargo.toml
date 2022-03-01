@@ -10,13 +10,10 @@ name = "osi2"
 path = "src/osi2.rs"
 
 [dependencies]
-byteorder = "1.4.3"
-lzma-rs = "0.2.0"
 once_cell = "1.8.0"
-panda-re = { version = "0.20.0", default-features = false }
+panda-re = { version = "0.29", default-features = false }
 regex = "1.5.4"
-serde = {version = "1.0.130", features = ["derive"] }
-serde_json = "1.0.69"
+volatility_profile = { path = "./volatility_profile" }
 
 [features]
 default = ["x86_64"]
