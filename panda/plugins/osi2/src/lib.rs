@@ -16,7 +16,11 @@ mod kaslr;
 use kaslr::kaslr_offset;
 
 // TODO: needs to not be a hardcoded path
+#[cfg(feature = "i386")]
 const FILENAME: &str = "/home/jmcleod/dev/ubuntu:4.4.0-170-generic:32.json.xz";
+
+#[cfg(feature = "x86_64")]
+const FILENAME: &str = "/home/jmcleod/dev/ubuntu:4.15.0-72-generic:64.json.xz";
 
 fn symbol_table() -> &'static VolatilityJson {
     SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(FILENAME))
@@ -45,13 +49,12 @@ fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
         .expect("Could not find symbol for __per_cpu_offset in volatility profile")
         .address as target_ptr_t;
 
+    let kaslr_offset = kaslr_offset(cpu);
     let cpu_num = cpu.cpu_index as target_ptr_t;
+    let offset_in_array = size_of::<target_ulong>() as target_ptr_t * cpu_num;
 
-    let cpu_offset: target_ulong = read_guest_type(
-        cpu,
-        cpu_offset + (size_of::<target_ulong>() as target_ptr_t * cpu_num),
-    )
-    .unwrap();
+    let cpu_offset_ptr = kaslr_offset + cpu_offset + offset_in_array;
+    let cpu_offset: target_ulong = read_guest_type(cpu, cpu_offset_ptr).unwrap();
 
     cpu_offset
 }
