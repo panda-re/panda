@@ -650,6 +650,12 @@ void initialize_introspection(CPUState *cpu) {
       std::unique_ptr<WindowsProcessManager>(new WindowsProcessManager());
   task_change(cpu);
 
+  // Hooking SwapContext on windows 2000 doesn't seem to be enough to detect
+  // all tasks changes, fallback to ASID change heuristic for now.
+  if (strncmp(panda_os_name, "windows-32-2000", 15) == 0) {
+    return;
+  }
+
   uint64_t swapcontext_offset = g_kernel_manager->get_swapcontext_offset();
 
   // we do not know exactly when a nt!SwapContext executes, and we must use the
