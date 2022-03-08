@@ -1,6 +1,6 @@
 use panda::prelude::*;
 use panda::sys::get_cpu;
-use std::{ffi::CStr, os::raw::c_char};
+use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 use volatility_profile::*;
 
 use crate::symbol_table;
@@ -52,6 +52,22 @@ pub extern "C" fn value_of_symbol(symbol: &VolatilitySymbol) -> target_ptr_t {
     symbol.address as target_ptr_t
 }
 
+/// Gets the name of the symbol as a C-compatible string, or null if the symbol cannot
+/// be found. Must be freed via `free_osi2_str`.
+#[no_mangle]
+pub extern "C" fn name_of_symbol(symbol: &VolatilitySymbol) -> *mut c_char {
+    let name = symbol_table()
+        .symbols
+        .iter()
+        .find_map(|(key, val)| (val == symbol).then(move || key));
+
+    name.cloned()
+        .map(|name| CString::new(name).ok())
+        .flatten()
+        .map(CString::into_raw)
+        .unwrap_or(std::ptr::null_mut())
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn symbol_value_from_name(name: *const c_char) -> target_ptr_t {
     if let Some(sym) = symbol_from_name(name) {
@@ -87,4 +103,11 @@ pub unsafe extern "C" fn size_of_struct(vol_struct: &VolatilityStruct) -> target
 #[no_mangle]
 pub extern "C" fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
     crate::current_cpu_offset(cpu)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn free_osi2_str(string: *mut c_char) {
+    if !string.is_null() {
+        drop(CString::from_raw(string));
+    }
 }

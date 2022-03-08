@@ -22,7 +22,7 @@ pub struct VolatilityEnum {
     pub constants: HashMap<String, i64>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VolatilitySymbol {
     #[serde(rename = "type")]
     pub type_val: Option<Map<String, Value>>,
