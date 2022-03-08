@@ -1,4 +1,5 @@
 use panda::prelude::*;
+use panda::sys::get_cpu;
 use std::{ffi::CStr, os::raw::c_char};
 use volatility_profile::*;
 
@@ -43,16 +44,26 @@ pub unsafe extern "C" fn type_from_name(name: *const c_char) -> Option<&'static 
 
 #[no_mangle]
 pub extern "C" fn addr_of_symbol(symbol: &VolatilitySymbol) -> target_ptr_t {
+    (symbol.address as target_ptr_t) + kaslr_offset(unsafe { &mut *get_cpu() })
+}
+
+#[no_mangle]
+pub extern "C" fn value_of_symbol(symbol: &VolatilitySymbol) -> target_ptr_t {
     symbol.address as target_ptr_t
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn symbol_addr_from_name(name: *const c_char) -> target_ptr_t {
+pub unsafe extern "C" fn symbol_value_from_name(name: *const c_char) -> target_ptr_t {
     if let Some(sym) = symbol_from_name(name) {
         sym.address as target_ptr_t
     } else {
         panic!("Invalid symbol name, could not retrieve volatility symbol")
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn symbol_addr_from_name(name: *const c_char) -> target_ptr_t {
+    symbol_value_from_name(name) + kaslr_offset(&mut *get_cpu())
 }
 
 #[no_mangle]
