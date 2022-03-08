@@ -185,13 +185,6 @@ void tcg_llvm_destroy(void);
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
 
-extern const char *aflFile;
-extern const char *aflOutFile;
-extern unsigned long aflPanicAddr[256];
-extern unsigned long aflStateAddr[256];
-extern uint8_t aflStateAddrEntries;
-extern uint8_t aflPanicAddrEntries;
-
 static const char *data_dir[16];
 static int data_dir_idx;
 const char *bios_name = NULL;
@@ -3439,55 +3432,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                     graphic_rotate != 180 && graphic_rotate != 270) {
                     error_report("only 90, 180, 270 deg rotation is available");
                     exit(1);
-                }
-                break;
-            case QEMU_OPTION_aflFile:
-                aflFile = malloc(strlen(optarg)+1);
-                strcpy((char *)aflFile, optarg);
-                break;
-            case QEMU_OPTION_aflOutFile:
-                aflOutFile = malloc(strlen(optarg)+1);
-                strcpy((char *)aflOutFile, optarg);
-                break;
-            case QEMU_OPTION_aflPanicAddr:
-                {
-                    unsigned char idx = 0;
-                    char *optarg_cpy = strdup(optarg);
-
-                    char *opt_start = optarg_cpy, *opt_end = optarg_cpy;
-                    while (opt_end != NULL) {
-                        opt_end = strchr(opt_start, ',');
-                        if (opt_end != NULL) *opt_end = '\0';
-                        aflPanicAddr[idx] = strtoul(opt_start, NULL, 16);
-                        fprintf(stderr, "adding aflPanicAddr 0x%08x\n",aflPanicAddr[idx]);
-                        opt_start = opt_end + 1;
-                        idx += 1;
-                    }
-
-                    aflPanicAddrEntries = idx;
-                }
-                break;
-            case QEMU_OPTION_aflStateAddr:
-                {
-                    unsigned char idx = 0;
-                    char *optarg_cpy = strdup(optarg);
-
-                    char *opt_start = optarg_cpy, *opt_end = optarg_cpy;
-                    while (opt_end != NULL) {
-                        if (idx >= 256) {
-                          fprintf(stderr, "Exceeded maximum AFL state entries\n");
-                          break;
-                        }
-
-                        opt_end = strchr(opt_start, ',');
-                        if (opt_end != NULL) *opt_end = '\0';
-                        aflStateAddr[idx] = strtoul(opt_start, NULL, 16);
-                        fprintf(stderr, "adding aflStateAddr 0x%08x\n",aflStateAddr[idx]);
-                        opt_start = opt_end + 1;
-                        idx += 1;
-                    }
-                    aflStateAddrEntries = idx;
-                    free(optarg_cpy);
                 }
                 break;
             case QEMU_OPTION_kernel:

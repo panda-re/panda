@@ -16,12 +16,11 @@
 
 #define AFL_MAX_STATE_ADDR 256
 #define AFL_MAX_PANIC_ADDR 256
+#define AFL_PERSISTENT_CRASHLOG
 
 extern const char *aflFile;
-extern const char *aflOutFile;
+extern const char *aflReplayFile;
 extern unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR];
-extern unsigned long aflStateAddr[AFL_MAX_STATE_ADDR];
-extern uint8_t aflStateAddrEntries;
 extern uint8_t aflPanicAddrEntries;
 
 extern int aflEnableTicks;
@@ -36,6 +35,7 @@ extern int afl_wants_cpu_to_stop;
 extern unsigned int afl_panic_exit_always;
 
 void afl_setup(void);
+void afl_firmwire_setup(void);
 void afl_forkserver(CPUArchState*);
 
 void afl_persistent_start(void);

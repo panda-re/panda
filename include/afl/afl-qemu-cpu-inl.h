@@ -78,7 +78,7 @@ unsigned int afl_panic_exit_always = 0;
 /* big_endian32(length); Value */
 uint8_t *afl_persistent_cache;
 uint8_t *afl_persistent_cache_pos;
-char *afl_persistent_crash_log_dir;
+char *afl_persistent_crash_log_dir = NULL;
 
 static int forkserver_installed = 0;
 
@@ -89,12 +89,10 @@ int aflEnableTicks = 0;         /* re-enable ticks for each test */
 int aflGotLog = 0;              /* we've seen dmesg logging */
 int aflFastExit = 0;              /* we've seen dmesg logging */
 
-/* from command line options */
+/* from environment variables */
 const char *aflFile = "/tmp/work";
-const char *aflOutFile = NULL;
+const char *aflReplayFile = NULL;
 unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR] = {0};
-unsigned long aflStateAddr[AFL_MAX_STATE_ADDR] = {0};
-uint8_t aflStateAddrEntries = 0;
 uint8_t aflPanicAddrEntries = 0;
 
 __thread target_ulong afl_prev_loc;
@@ -107,6 +105,9 @@ unsigned int afl_forksrv_pid;
 u8 * shared_buf;
 u32 *shared_buf_len;
 u8   sharedmem_fuzzing = 0;
+
+// MTK hack
+extern CPUState *aflCurrentCPU; // alyssa loves you
 
 /* Instrumentation ratio: */
 
@@ -275,7 +276,68 @@ static ssize_t uninterrupted_read(int fd, void *buf, size_t cnt)
 
 /**//* All right, let's await orders... */
 
-extern CPUState *aflCurrentCPU; // alyssa loves you
+void afl_firmwire_setup() {
+  char * env = NULL;
+
+  aflDebug = getenv("AFL_DEBUG") != NULL;
+
+  env = getenv("AFL_INPUT_FILE");
+
+  if (env) {
+    aflFile = malloc(strlen(env)+1);
+    strcpy((char *)aflFile, env);
+  }
+
+  env = getenv("AFL_INPUT_REPLAY_FILE");
+
+  if (env) {
+    aflFile = malloc(strlen(env)+1);
+    strcpy((char *)aflReplayFile, env);
+  }
+
+  env = getenv("AFL_PANIC_ADDR");
+
+  if (env) {
+    unsigned char idx = 0;
+    char *envarg_cpy = strdup(env);
+
+    char *env_start = envarg_cpy, *env_end = envarg_cpy;
+    while (env_end != NULL) {
+        env_end = strchr(env_start, ',');
+        if (env_end != NULL) *env_end = '\0';
+        aflPanicAddr[idx] = strtoul(env_start, NULL, 16);
+        env_start = env_end + 1;
+        idx += 1;
+    }
+
+    aflPanicAddrEntries = idx;
+  }
+
+  if (getenv(SHM_FUZZ_ENV_VAR)) {
+     sharedmem_fuzzing = 1;
+  }
+
+  /* shannon afl mod for persistent mode */
+  env = getenv("AFL_ENABLE_PERSISTENT_MODE");
+
+  if (env) {
+    is_persistent = 1;
+    afl_persistent_cnt = atoi(env);
+    if (afl_persistent_cnt <= 0) {
+      AFL_DPRINTF("Invalid persistent mode count\n");
+      exit(3);
+    }
+  }
+
+  if (getenv("AFL_FAST_EXIT")) {
+    aflFastExit = 1;
+    AFL_DPRINTF("Fast exit mode active\n");
+  }
+
+#if defined(AFL_PERSISTENT_CRASHLOG)
+  afl_persistent_crash_log_dir = getenv("AFL_PERSISTENT_CRASH_LOG_DIR");
+#endif
+}
 
 void afl_forkserver(CPUArchState *env) {
 
@@ -285,42 +347,16 @@ void afl_forkserver(CPUArchState *env) {
   if (forkserver_installed == 1) return;
   forkserver_installed = 1;
 
-  /*if (getenv("AFL_QEMU_DEBUG_MAPS")) open_self_maps(env, 0);*/
-
-  // if (!afl_area_ptr) return; // not necessary because of fixed dummy buffer
-
   pid_t child_pid;
   int   t_fd[2];
   u8    child_stopped = 0;
   u32   was_killed;
   int   status = 0;
 
-  if (getenv(SHM_FUZZ_ENV_VAR)) {
-     sharedmem_fuzzing = 1;
-  }
+  // AFL runtime settings
+  afl_firmwire_setup();
 
-
-  /* shannon afl mod for persistent mode */
-  char * persistentCnt = getenv("SHANNON_ENABLE_PERSISTENT_MODE");
-
-  if (persistentCnt) {
-    is_persistent = 1;
-    afl_persistent_cnt = atoi(persistentCnt);
-    if (afl_persistent_cnt <= 0) {
-      AFL_DPRINTF("Invalid persistent mode count\n");
-      exit(3);
-    }
-  }
-
-  if (getenv("SHANNON_FAST_EXIT")) {
-    aflFastExit = 1;
-    AFL_DPRINTF("Fast exit mode active\n");
-  }
-
-#define AFL_PERSISTENT_CRASHLOG
 #if defined(AFL_PERSISTENT_CRASHLOG)
-  afl_persistent_crash_log_dir = getenv("AFL_PERSISTENT_CRASH_LOG_DIR");
-
   if (afl_persistent_crash_log_dir) {
     if (!*afl_persistent_crash_log_dir) {
       /* Ignore empty names */
@@ -357,8 +393,6 @@ void afl_forkserver(CPUArchState *env) {
     status |= (FS_OPT_SET_MAPSIZE(MAP_SIZE) | FS_OPT_MAPSIZE);
   if (sharedmem_fuzzing != 0) status |= FS_OPT_SHDMEM_FUZZ;
   if (status) status |= (FS_OPT_ENABLED);
-
-  aflDebug = getenv("AFL_DEBUG") != NULL;
 
   AFL_DPRINTF("Sending status %08x to forkserver\n", status);
 

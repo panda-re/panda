@@ -34,8 +34,6 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
      * execution.
      * N.B. We assume a single cpu here!
      */
-    //afl_state_var = cpu_ldq_data(env, aflStateAddr);
-    //AFL_DPRINTF("State at start work: 0x%x\n", afl_state_var);
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
     aflCurrentCPU = current_cpu;
@@ -86,23 +84,23 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
         cpu_physical_memory_rw(ptr, shared_buf, *shared_buf_len, 1);
         return *shared_buf_len;
     }
-    if (aflOutFile) {
+    if (aflReplayFile) {
 
-        AFL_DPRINTF("Replaying next testcase trace from %20s", aflOutFile);
+        AFL_DPRINTF("Replaying next testcase trace from %20s", aflReplayFile);
 
         if (!afl_persistent_cache) {
 
-            fp = fopen(aflOutFile, "rb");
+            fp = fopen(aflReplayFile, "rb");
 
             if (fp == NULL) {
-                AFL_DPRINTF("Unable to open fuzz input file %s\n", aflOutFile);
-                perror(aflOutFile);
+                AFL_DPRINTF("Unable to open fuzz input file %s\n", aflReplayFile);
+                perror(aflReplayFile);
                 return 0;
             }
 
             fseek(fp, 0L, SEEK_END);
             uint32_t flen = ftell(fp);
-            AFL_DPRINTF("Read %ud bytes from %s\n", flen, aflOutFile);
+            AFL_DPRINTF("Read %ud bytes from %s\n", flen, aflReplayFile);
             fseek(fp, 0L, SEEK_SET);
             /* Alloc one additional last 0 length element for EOF. */
             afl_persistent_cache = calloc(sizeof(char), flen + sizeof(uint32_t));
@@ -128,7 +126,7 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
 
         }
 
-        AFL_DPRINTF("Replaying packet from %s\n", aflOutFile);
+        AFL_DPRINTF("Replaying packet from %s\n", aflReplayFile);
 
         uint32_t len = afl_persistent_cache_cur_input_len();
         if (!len) {
@@ -175,22 +173,6 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
       return 0;
     }
 
-    if (aflStateAddrEntries > 0) {
-        uint8_t delim_bytes[] = { 0xff, 0xff };
-        uint8_t * delim = memmem(bufptr, retsz, delim_bytes, sizeof(delim_bytes));
-        if(!delim){
-            return 0;
-        }
-        for(int i=0 ; bufptr+i < delim ; i+=2){
-            if (bufptr[i] >= aflStateAddrEntries) return 0;
-            cpu_stb_data(env, aflStateAddr[bufptr[i]], bufptr[i+1]);
-        }
-
-        bufptr = delim + sizeof(delim_bytes);
-        retsz = retsz - (bufptr - buffer);
-    }
-
-
     afl_maybe_add_to_persistent_log(bufptr, retsz);
 
     // Shannon has one contigous address space, so we can directly write physmem
@@ -232,13 +214,8 @@ static target_ulong doneWork(CPUArchState *env, target_ulong val)
         exit(64 | val);
 #endif
     afl_request_tsl(NULL, 0, 0, 0, 0, 0, STOP_AFL);
-    //new_state = cpu_ldq_data(env, aflStateAddr);
-    //AFL_DPRINTF("State at done work: 0x%x\n", new_state);
-    //if ((uint8_t) new_state != (uint8_t) afl_state_var){
-    //exit(64 | val);
-    //}
 
-    if (is_persistent || aflOutFile) {
+    if (is_persistent || aflReplayFile) {
         /* Go to the next round, if we're fuzzing in persistent,
         or we are replaying a trace */
         aflStart = 0; /* Stop capturing coverage */
@@ -353,7 +330,7 @@ void helper_aflInterceptPanic(void)
         g_free(digest);
         digest = NULL;
 
-        FILE *f = fopen(path, "w");
+        FILE *f = fopen(path, "wb");
 
         if (!f) {
             perror(path);
