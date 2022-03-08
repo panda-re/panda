@@ -47,6 +47,6 @@ Another small change regarding MIPS emulation is that we had to replace `first_c
 
 One of our core-additions to PANDA is the integration with a fuzzer. Specifically, we use the same hypercall-based approach as presented by [Triforce-AFL](https://github.com/nccgroup/TriforceAFL), but significantly extend upon it.
 
-First of all, we integrated the improved coverage collection techniques provided by [AFL++](https://github.com/AFLplusplus/AFLplusplus) and implemented persistent mode fuzzing, which both leads to a significantly improved fuzzing throughput. Then, for ARM-emulation (i.e., Shannon-based firmware), we also implemented compcov/laf-intel-style instrumentation for compare operations. Besides this, we introduced a couple of additional commandline arguments to steer execution during fuzzing.
+First of all, we integrated the improved coverage collection techniques provided by [AFL++](https://github.com/AFLplusplus/AFLplusplus) and implemented persistent mode fuzzing, which both leads to a significantly improved fuzzing throughput. Then, for ARM-emulation (i.e., Shannon-based firmware), we also implemented compcov/laf-intel-style instrumentation for compare operations.
 
 The major part of our additions can be found in the [include/afl](include-afl)-directory.
