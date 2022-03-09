@@ -1274,6 +1274,18 @@ class Panda():
             integer: value of current ASID
         '''
         return self.libpanda.panda_current_asid(cpu)
+    
+    def get_id(self, cpu):
+        '''
+        Get current hw_proc_id ID
+
+        Args:
+            cpu (CPUState): CPUState structure
+        
+        Returns:
+            integer: value of current hw_proc_id
+        '''
+        return self.plugins["hw_proc_id"].get_id(cpu)
 
     def disas2(self, code, size):
         '''
