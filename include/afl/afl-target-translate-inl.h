@@ -9,8 +9,7 @@ CPUState *aflCurrentCPU;
 
 void gen_aflBBlock(target_ulong pc);
 
-static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
-        target_ulong persistent)
+static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks)
 {
     int pid = getpid();
     AFL_DPRINTF("pid %d: startForkServer\n", pid);
@@ -37,8 +36,6 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
     aflCurrentCPU = current_cpu;
-    // set by calling process now
-    //afl_persistent_cnt = persistent;
 #endif
     return 0;
 }
@@ -251,7 +248,7 @@ uint32_t helper_aflCall32(CPUArchState *env, uint32_t code, uint32_t a0, uint32_
 
 target_ulong helper_aflCall(CPUArchState *env, target_ulong code, target_ulong a0, target_ulong a1) {
     switch(code) {
-    case 1: return (uint32_t)startForkserver(env, a0, a1);
+    case 1: return (uint32_t)startForkserver(env, a0);
     case 2: return (uint32_t)getWork(env, a0, a1);
     case 3: return (uint32_t)startWork(env, a0, a1);
     case 4: return (uint32_t)doneWork(env, a0);
