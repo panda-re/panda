@@ -10,8 +10,8 @@ path = "src/fault_hooks.rs"
 
 [dependencies]
 lazy_static = "1.4.0"
-panda-re = { git = "https://github.com/panda-re/panda-rs", branch="fix_sbe_ebe", default-features = false }
-ord-by-set = { path = "/home/luke/ord-by-set"}
+panda-re =  {version = "0.32.0", default-features = false }
+ord-by-set = "1.0.3"
 
 [features]
 default = ["x86_64"]
