@@ -12,6 +12,7 @@ dynamic_symbols
 edge_coverage
 filereadmon
 forcedexec
+fault_hooks
 gdb
 hooks
 hooks2
