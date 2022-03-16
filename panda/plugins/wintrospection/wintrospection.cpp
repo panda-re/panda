@@ -71,12 +71,19 @@ void on_get_modules(CPUState *cpu, GArray **out);
 void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
 
 void initialize_introspection(CPUState *cpu);
+void task_change(CPUState *cpu);
 
 std::unique_ptr<WindowsKernelManager> g_kernel_manager;
 std::unique_ptr<WindowsProcessManager> g_process_manager;
 
 bool g_initialized_kernel;
 uint64_t swapcontext_address;
+
+// last thread id seen from on_get_current_thread
+static uint64_t last_seen_tid = std::numeric_limits<uint64_t>::max();
+
+// true when using asid change heuristic to detect task changes
+static bool using_asid_change_heuristic = true;
 
 // globals for toggling callbacks
 void* self = NULL;
@@ -276,6 +283,19 @@ char *get_handle_name(CPUState *cpu, uint64_t handle) {
   return name;
 }
 
+static inline uint64_t get_current_thread_id(CPUState *cpu) {
+  auto kernel = g_kernel_manager->get_kernel_object();
+  uint64_t tid = kosi_get_current_tid(kernel);
+
+  // if the thread id changed, ensure the pid is also updated
+  if(using_asid_change_heuristic && (tid != last_seen_tid)) {
+      last_seen_tid = tid;
+      task_change(cpu);
+  }
+
+  return tid;
+}
+
 /* ******************************************************************
  PPP Callbacks
 ****************************************************************** */
@@ -287,11 +307,10 @@ void on_get_current_thread(CPUState *cpu, OsiThread **out) {
 
   OsiThread *t = (OsiThread *)g_malloc(sizeof(OsiThread));
 
-  auto proc = g_process_manager->get_process_object();
-  auto kernel = g_kernel_manager->get_kernel_object();
+  t->tid = get_current_thread_id(cpu);
 
+  auto proc = g_process_manager->get_process_object();
   t->pid = proc->pid;
-  t->tid = kosi_get_current_tid(kernel);
 
   *out = t;
 }
@@ -305,6 +324,9 @@ void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h,
   if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
     *pid = (target_pid_t)-1;
   } else {
+    if(using_asid_change_heuristic) {
+        get_current_thread_id(cpu);
+    }
     *pid = g_process_manager->get_process_object()->pid;
   }
 }
@@ -315,6 +337,10 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
   }
 
   OsiProcHandle *p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+
+  if(using_asid_change_heuristic) {
+      get_current_thread_id(cpu);
+  }
 
   auto process = g_process_manager->get_process_object();
   p->taskd = process->eprocess_address;
@@ -370,6 +396,10 @@ void on_get_current_process(CPUState *cpu, OsiProc **out) {
   }
 
   OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
+
+  if(using_asid_change_heuristic) {
+      get_current_thread_id(cpu);
+  }
 
   auto proc = g_process_manager->get_process_object();
   if (proc->eprocess_address == 0) {
@@ -663,6 +693,8 @@ void initialize_introspection(CPUState *cpu) {
   if (swapcontext_offset == 0x0) {
     return;
   }
+
+  using_asid_change_heuristic = false;
 
   GArray *mods = get_modules(cpu);
   for (int i = 0; i < mods->len; i++) {
