@@ -1,6 +1,3 @@
-#![feature(hash_drain_filter)]
-#![feature(drain_filter)]
-
 use api::FAULT_HOOK_MANAGER;
 use panda::{current_pc, prelude::*};
 

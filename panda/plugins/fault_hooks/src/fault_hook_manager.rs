@@ -120,7 +120,7 @@ impl FaultHookManager {
         self.add_hooks
             .lock()
             .unwrap()
-            .drain_filter(|h| h.plugin_num == num);
+            .retain(|h| h.plugin_num != num);
 
         // try to write. if not possible, add to remove hooks
         if let Ok(mut hooks) = self.hooks.try_write() {
