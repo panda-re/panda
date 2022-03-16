@@ -146,11 +146,16 @@ target_ulong panda_current_pc(CPUState *cpu) {
     if (cpu == NULL) {
         return 0;
     }
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    target_ulong pc, cs_base;
-    uint32_t flags;
-    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-    return pc;
+    // give precise PC if enabled
+    if (panda_update_pc){
+        return cpu->panda_guest_pc;
+    }else{
+        CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+        target_ulong pc, cs_base;
+        uint32_t flags;
+        cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+        return pc;
+    }
 }
 
 /**

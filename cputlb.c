@@ -36,6 +36,9 @@
 #include "panda/rr/rr_log.h"
 #include "panda/callbacks/cb-support.h"
 
+// less frustrating than importing common.h
+extern target_ulong panda_current_pc(CPUState *cpu);
+
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
 /* #define DEBUG_TLB */
 /* #define DEBUG_TLB_LOG */

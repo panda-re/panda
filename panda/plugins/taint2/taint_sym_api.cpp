@@ -133,7 +133,7 @@ void reg_branch_pc(z3::expr condition, bool concrete) {
     if(!symexEnabled) taint2_enable_sym();
 
     z3::expr pc(context);
-    target_ulong current_pc = first_cpu->panda_guest_pc;
+    target_ulong current_pc = panda_current_pc(first_cpu);
 
     pc = (concrete ? condition : !condition);
 #ifndef SYM_NOOPT

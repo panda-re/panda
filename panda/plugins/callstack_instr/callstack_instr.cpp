@@ -459,7 +459,7 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 
     }
 
-    p->pc = cpu->panda_guest_pc;
+    p->pc = panda_current_pc(cpu);
 }
 
 // prepare OSI support that is needed for the threaded stack type

@@ -273,7 +273,7 @@ void panda_disable_precise_pc(void);
 ```
 These functions enable or disable precise tracking of the program counter.
 After enabling precise PC tracking, the program counter will be available in
-`env->panda_guest_pc` and can be assumed to accurately reflect the guest state.
+`env->panda_guest_pc` and can be assumed to accurately reflect the guest state. In most cases the helper function `panda_current_pc` should be used. It will provide the precise PC if enabled.
 
 Some plugins (`taint2`, `callstack_instr`, etc) add instrumentation that runs
 *inside* a basic block of emulated code.  If such a plugin is enabled mid-replay
@@ -375,6 +375,10 @@ Possible return values are:
     ```
     Writes a textual representation of disassembly of the guest code
     at virtual address `code` of `size` bytes.
+  * ```C
+    target_ulong panda_current_pc(CPUState *cpu);
+    ```
+    Returns current program counter. If `panda_precise_pc` has been enabled it returns the precise value.
 
 ## Record/Replay Details
 
