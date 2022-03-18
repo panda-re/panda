@@ -167,14 +167,6 @@ extern "C" fn on_sys_enter(
                 &file_data[elf_write_pos..end_write],
             );
 
-            #[cfg(feature = "i386")]
-            {
-                let ebp = panda::regs::get_reg(cpu, panda::regs::Reg::EBP);
-                let esp = panda::regs::get_reg(cpu, panda::regs::Reg::ESP);
-                log::trace!("EBP: {:#08x?} | ESP: {:#08x?}", ebp, esp);
-                panda::mem::virt_memory_dump(cpu, esp, 0x10);
-            }
-
             // Write guest buffer to memory file descriptor
             let written = do_write(fd, guest_buf, PAGE_SIZE).await;
 

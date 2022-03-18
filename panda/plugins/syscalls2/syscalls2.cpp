@@ -381,7 +381,6 @@ target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc) {
         target_ulong ret = 0x0;
         target_ulong ret_ptr =
             ((CPUX86State *)cpu->env_ptr)->regs[R_ESP] + 0x0C;
-        printf("esp: %08x\n", ((CPUX86State *)cpu->env_ptr)->regs[R_ESP]);
         panda_virtual_memory_read(cpu, ret_ptr, (uint8_t *)&ret, sizeof(ret));
         assert(ret != 0x0);
         return ret;

@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-panda-channels = "0.1"
+panda-channels = "0.2"

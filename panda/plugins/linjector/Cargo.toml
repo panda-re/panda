@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-panda-re = { version = "0.27.0", default-features = false, features = ["syscall-injection"] }
+panda-re = { version = "0.33.0", default-features = false, features = ["syscall-injection"] }
 once_cell = "1.8.0"
 object = "0.26.2"
 lazy_static = "1.4.0"

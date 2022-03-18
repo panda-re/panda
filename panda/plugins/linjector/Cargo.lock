@@ -18,6 +18,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-init"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6945cc5422176fc5e602e590c2878d2c2acd9a4fe20a4baa7c28022521698ec6"
+
+[[package]]
 name = "async-trait"
 version = "0.1.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -370,10 +376,9 @@ checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "panda-re"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68395bf0c407fd5cd77e2fc726d99f1834c0c2518ec67e0119f1b5355fa57306"
+version = "0.32.0"
 dependencies = [
+ "array-init",
  "async-trait",
  "dashmap",
  "dirs",
@@ -394,9 +399,7 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f911983e92df86c86f314ac54719798a091b06d64f528a0834c73da75ac6439f"
+version = "0.21.0"
 dependencies = [
  "darling",
  "doc-comment",
@@ -408,8 +411,6 @@ dependencies = [
 [[package]]
 name = "panda-re-sys"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
 
 [[package]]
 name = "parking_lot"
