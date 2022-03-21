@@ -79,7 +79,10 @@ std::unique_ptr<WindowsProcessManager> g_process_manager;
 bool g_initialized_kernel;
 uint64_t swapcontext_address;
 
-// last thread id seen from on_get_current_thread
+// last process address seen
+static uint64_t last_seen_paddr = 0;
+
+// last thread id seen
 static uint64_t last_seen_tid = std::numeric_limits<uint64_t>::max();
 
 // true when using asid change heuristic to detect task changes
@@ -283,17 +286,31 @@ char *get_handle_name(CPUState *cpu, uint64_t handle) {
   return name;
 }
 
-static inline uint64_t get_current_thread_id(CPUState *cpu) {
+// fill in thread id and process id into OsiThread structure
+// when using asid change heuristic, update g_process_manager if process id
+// changed since the last time fill_thread was called
+static inline void fill_thread(CPUState *cpu, OsiThread *t) {
   auto kernel = g_kernel_manager->get_kernel_object();
   uint64_t tid = kosi_get_current_tid(kernel);
 
-  // if the thread id changed, ensure the pid is also updated
+  // if the thread id changed, process may also have changed
   if(using_asid_change_heuristic && (tid != last_seen_tid)) {
-      last_seen_tid = tid;
-      task_change(cpu);
+    last_seen_tid = tid;
+    uint64_t paddr = kosi_get_current_process_address(kernel);
+    if(paddr != last_seen_paddr) {
+      last_seen_paddr = paddr;
+      g_process_manager.reset(new WindowsProcessManager());
+      g_process_manager->initialize(kernel, paddr);
+      notify_task_change(cpu);
+    }
   }
 
-  return tid;
+  auto proc = g_process_manager->get_process_object();
+
+  if(t) {
+    t->pid = proc->pid;
+    t->tid = tid;
+  }
 }
 
 /* ******************************************************************
@@ -306,12 +323,7 @@ void on_get_current_thread(CPUState *cpu, OsiThread **out) {
   }
 
   OsiThread *t = (OsiThread *)g_malloc(sizeof(OsiThread));
-
-  t->tid = get_current_thread_id(cpu);
-
-  auto proc = g_process_manager->get_process_object();
-  t->pid = proc->pid;
-
+  fill_thread(cpu, t);
   *out = t;
 }
 
@@ -325,7 +337,8 @@ void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h,
     *pid = (target_pid_t)-1;
   } else {
     if(using_asid_change_heuristic) {
-        get_current_thread_id(cpu);
+        // process may have changed
+        fill_thread(cpu, NULL);
     }
     *pid = g_process_manager->get_process_object()->pid;
   }
@@ -339,7 +352,8 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
   OsiProcHandle *p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
 
   if(using_asid_change_heuristic) {
-      get_current_thread_id(cpu);
+    // process may have changed
+    fill_thread(cpu, NULL);
   }
 
   auto process = g_process_manager->get_process_object();
@@ -398,7 +412,8 @@ void on_get_current_process(CPUState *cpu, OsiProc **out) {
   OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
 
   if(using_asid_change_heuristic) {
-      get_current_thread_id(cpu);
+    // process may have changed
+    fill_thread(cpu, NULL);
   }
 
   auto proc = g_process_manager->get_process_object();
@@ -549,8 +564,8 @@ void task_change(CPUState *cpu) {
   g_process_manager.reset(new WindowsProcessManager());
 
   auto kernel = g_kernel_manager->get_kernel_object();
-  g_process_manager->initialize(kernel,
-                                kosi_get_current_process_address(kernel));
+  last_seen_paddr = kosi_get_current_process_address(kernel);
+  g_process_manager->initialize(kernel, last_seen_paddr);
 
   notify_task_change(cpu);
 }
