@@ -12,7 +12,8 @@ PLUGIN_TARGET_DIR=panda/guest_plugins
 PLUGIN_BIN_DIR=$(PLUGIN_TARGET_DIR)/bin
 PLUGIN_OUT_PATH=$(PLUGIN_BIN_DIR)/$(PLUGIN_NAME)
 
-CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABI_LINKER ?= "arm-linux-musleabi-cc"
+CARGO_TARGET_ARMV5TE_UNKNOWN_LINUX_MUSLEABI_LINKER ?= "arm-linux-musleabi-cc"
+CARGO_TARGET_ARMV5TE_UNKNOWN_LINUX_MUSLEABI_RUSTFLAGS = "-C target-cpu=arm926ej-s"
 
 BUILD_TARGET=$(addprefix build-,$(TARGET_NAME))
 
@@ -24,7 +25,7 @@ build-x86_64: $(PLUGIN_OUT_PATH)
 build-i386: TARGET_TRIPLE=i686-unknown-linux-musl
 build-i386: $(PLUGIN_OUT_PATH)
 
-build-arm: TARGET_TRIPLE=arm-unknown-linux-musleabi
+build-arm: TARGET_TRIPLE=armv5te-unknown-linux-musleabi
 build-arm: $(PLUGIN_OUT_PATH)
 
 build-aarch64: TARGET_TRIPLE=aarch64-unknown-linux-musl
