@@ -212,6 +212,7 @@ class Panda():
 
         # Callbacks
         self.register_cb_decorators()
+        self.plugin_register_count = 0
         self.registered_callbacks = {} # name -> {procname: "bash", enabled: False, callback: None}
 
         # Register asid_changed CB if and only if a callback requires procname
@@ -2681,7 +2682,8 @@ class Panda():
         cb = self.callback_dictionary[callback]
 
         # Generate a unique handle for each callback type using the number of previously registered CBs of that type added to a constant
-        handle = self.ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))
+        self.plugin_register_count += 1
+        handle = self.ffi.cast('void *', self.plugin_register_count)
 
         # XXX: We should have another layer of indirection here so we can catch
         #      exceptions raised during execution of the CB and abort analysis
