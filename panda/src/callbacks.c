@@ -1446,7 +1446,9 @@ void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
     panda_cb_list *plist;
     const char *cmd = qdict_get_try_str(qdict, "cmd");
     for(plist = panda_cbs[PANDA_CB_MONITOR]; plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.monitor(plist->context, mon, cmd);
+        if (plist->enabled){
+            plist->entry.monitor(plist->context, mon, cmd);
+        }
     }
 }
 
