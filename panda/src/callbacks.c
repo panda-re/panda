@@ -99,7 +99,7 @@ bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
 // Forward declaration
 static void panda_args_set_help_wanted(const char *);
 
-char* attempt_normalize_path(static char* path){
+static char* attempt_normalize_path(static char* path){
     char* new_path = g_malloc(PATH_MAX); 
     if (realpath(path, new_path) == NULL) {
         strncpy(new_path, path, PATH_MAX);
