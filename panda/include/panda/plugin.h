@@ -29,6 +29,22 @@ PANDAENDCOMMENT */
 extern "C" {
 #endif
 
+#ifndef CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+#define CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+extern bool panda_use_memcb;
+#endif
+
+#if 0
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
+extern bool panda_use_memcb;
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+#endif
+
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
@@ -74,10 +90,6 @@ void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
 extern bool panda_update_pc;
-#ifndef CONFIG_SOFTMMU_EXTERN_VAR_ONCE
-#define CONFIG_SOFTMMU_EXTERN_VAR_ONCE
-extern bool panda_use_memcb;
-#endif
 extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
 extern bool panda_plugin_to_unload;
