@@ -104,7 +104,7 @@ static char* attempt_normalize_path(const char* path){
     if (realpath(path, new_path) == NULL) {
         strncpy(new_path, path, PATH_MAX);
     }
-    g_free(path);
+    g_free((char*)path);
     return new_path;
 }
 
