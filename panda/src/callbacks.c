@@ -99,19 +99,18 @@ bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
 // Forward declaration
 static void panda_args_set_help_wanted(const char *);
 
-static char* attempt_normalize_path(char* path){
+char* attempt_normalize_path(static char* path){
     char* new_path = g_malloc(PATH_MAX); 
     if (realpath(path, new_path) == NULL) {
-        g_free(new_path);
-        return path;
-    }else{
-        return new_path;
+        strncpy(new_path, path, PATH_MAX);
     }
+    g_free(path);
+    return new_path;
 }
 
 bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
     // don't load the same plugin twice
-    const char* rfilename = attempt_normalize_path((char*)filename);
+    char* rfilename = attempt_normalize_path(strdup(filename));
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
         if (0 == (strcmp(rfilename, panda_plugins_loaded[i]))) {
@@ -134,7 +133,7 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     if (plugin_name) {
         strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
     } else {
-        char *pn = g_path_get_basename((char *) rfilename);
+        char *pn = g_path_get_basename(rfilename);
         *g_strrstr(pn, HOST_DSOSUF) = '\0';
         strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
         g_free(pn);
