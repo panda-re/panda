@@ -37,7 +37,7 @@ class TestPlugin(PyPlugin):
             print("Running test plugin")
             panda.disable_callback('test_before_block')
 
-    def __del__(self):
+    def uninit(self):
         print("Uninitialized test plugin")
 ```
 

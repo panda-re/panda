@@ -60,7 +60,7 @@ class ProcGraph(PyPlugin):
             self.time_data.append((proc_key, self.n_insns))
             self.n_insns = 0
 
-    def __del__(self):
+    def uninit(self):
         col_size = self.total_insns / self.n_cols
         pids = set([x for x,y in self.time_data]) # really a list of (pid, tid) tuples
         merged = {} # pid: [(True, 100), False, 9999)
