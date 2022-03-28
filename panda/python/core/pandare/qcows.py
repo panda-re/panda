@@ -5,7 +5,6 @@ Module for fetching generic PANDA images and managing their metadata.
 
 import logging
 from os import path, remove, makedirs
-from sys import argv
 from subprocess import check_call
 from collections import namedtuple
 from shlex import split as shlex_split
@@ -310,6 +309,8 @@ class Qcows():
         Returns:
             string: Path to qcow
         '''
+        from sys import argv
+
         if len(argv) > idx:
             return Qcows.get_qcow(argv[idx])
         else:
