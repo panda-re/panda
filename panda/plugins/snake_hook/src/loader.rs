@@ -32,6 +32,13 @@ fn parse_files(files: &str) -> Vec<PluginFile> {
 }
 
 /// Use PyPANDA's pyplugin - load the requested plugins with the provided arguments
+
+#[cfg(not(Py_3_7))]
+pub(crate) fn initialize_pyplugins(args: Args) {
+    panic!("Your version of Python is too old to run PyPlugins via snake hook. Please update to 3.7+");
+}
+
+#[cfg(Py_3_7)]
 pub(crate) fn initialize_pyplugins(args: Args) {
     let use_flask = args.flask;
     let libpanda_path = executable_dir().join(format!("libpanda-{}.so", ARCH));
