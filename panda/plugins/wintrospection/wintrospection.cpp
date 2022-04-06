@@ -71,12 +71,22 @@ void on_get_modules(CPUState *cpu, GArray **out);
 void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
 
 void initialize_introspection(CPUState *cpu);
+void task_change(CPUState *cpu);
 
 std::unique_ptr<WindowsKernelManager> g_kernel_manager;
 std::unique_ptr<WindowsProcessManager> g_process_manager;
 
 bool g_initialized_kernel;
 uint64_t swapcontext_address;
+
+// last process address seen
+static uint64_t last_seen_paddr = 0;
+
+// last thread id seen
+static uint64_t last_seen_tid = std::numeric_limits<uint64_t>::max();
+
+// true when using asid change heuristic to detect task changes
+static bool using_asid_change_heuristic = true;
 
 // globals for toggling callbacks
 void* self = NULL;
@@ -276,6 +286,33 @@ char *get_handle_name(CPUState *cpu, uint64_t handle) {
   return name;
 }
 
+// fill in thread id and process id into OsiThread structure
+// when using asid change heuristic, update g_process_manager if process id
+// changed since the last time fill_thread was called
+static inline void fill_thread(CPUState *cpu, OsiThread *t) {
+  auto kernel = g_kernel_manager->get_kernel_object();
+  uint64_t tid = kosi_get_current_tid(kernel);
+
+  // if the thread id changed, process may also have changed
+  if(using_asid_change_heuristic && (tid != last_seen_tid)) {
+    last_seen_tid = tid;
+    uint64_t paddr = kosi_get_current_process_address(kernel);
+    if(paddr != last_seen_paddr) {
+      last_seen_paddr = paddr;
+      g_process_manager.reset(new WindowsProcessManager());
+      g_process_manager->initialize(kernel, paddr);
+      notify_task_change(cpu);
+    }
+  }
+
+  auto proc = g_process_manager->get_process_object();
+
+  if(t) {
+    t->pid = proc->pid;
+    t->tid = tid;
+  }
+}
+
 /* ******************************************************************
  PPP Callbacks
 ****************************************************************** */
@@ -286,13 +323,7 @@ void on_get_current_thread(CPUState *cpu, OsiThread **out) {
   }
 
   OsiThread *t = (OsiThread *)g_malloc(sizeof(OsiThread));
-
-  auto proc = g_process_manager->get_process_object();
-  auto kernel = g_kernel_manager->get_kernel_object();
-
-  t->pid = proc->pid;
-  t->tid = kosi_get_current_tid(kernel);
-
+  fill_thread(cpu, t);
   *out = t;
 }
 
@@ -305,6 +336,10 @@ void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h,
   if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
     *pid = (target_pid_t)-1;
   } else {
+    if(using_asid_change_heuristic) {
+        // process may have changed
+        fill_thread(cpu, NULL);
+    }
     *pid = g_process_manager->get_process_object()->pid;
   }
 }
@@ -315,6 +350,11 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
   }
 
   OsiProcHandle *p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+
+  if(using_asid_change_heuristic) {
+    // process may have changed
+    fill_thread(cpu, NULL);
+  }
 
   auto process = g_process_manager->get_process_object();
   p->taskd = process->eprocess_address;
@@ -370,6 +410,11 @@ void on_get_current_process(CPUState *cpu, OsiProc **out) {
   }
 
   OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
+
+  if(using_asid_change_heuristic) {
+    // process may have changed
+    fill_thread(cpu, NULL);
+  }
 
   auto proc = g_process_manager->get_process_object();
   if (proc->eprocess_address == 0) {
@@ -519,8 +564,8 @@ void task_change(CPUState *cpu) {
   g_process_manager.reset(new WindowsProcessManager());
 
   auto kernel = g_kernel_manager->get_kernel_object();
-  g_process_manager->initialize(kernel,
-                                kosi_get_current_process_address(kernel));
+  last_seen_paddr = kosi_get_current_process_address(kernel);
+  g_process_manager->initialize(kernel, last_seen_paddr);
 
   notify_task_change(cpu);
 }
@@ -650,6 +695,12 @@ void initialize_introspection(CPUState *cpu) {
       std::unique_ptr<WindowsProcessManager>(new WindowsProcessManager());
   task_change(cpu);
 
+  // Hooking SwapContext on windows 2000 doesn't seem to be enough to detect
+  // all tasks changes, fallback to ASID change heuristic for now.
+  if (strncmp(panda_os_name, "windows-32-2000", 15) == 0) {
+    return;
+  }
+
   uint64_t swapcontext_offset = g_kernel_manager->get_swapcontext_offset();
 
   // we do not know exactly when a nt!SwapContext executes, and we must use the
@@ -657,6 +708,8 @@ void initialize_introspection(CPUState *cpu) {
   if (swapcontext_offset == 0x0) {
     return;
   }
+
+  using_asid_change_heuristic = false;
 
   GArray *mods = get_modules(cpu);
   for (int i = 0; i < mods->len; i++) {
