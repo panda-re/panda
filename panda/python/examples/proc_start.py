@@ -9,19 +9,23 @@ Run with: python3 proc_start.py
 from pandare import Panda
 from rich import print
 from sys import argv
+import debugpy
 
-arch = argv[1] if len(argv) > 1 else "arm"
+arch = argv[1] if len(argv) > 1 else "mips"
 panda = Panda(generic=arch)
 
 @panda.queue_blocking
 def do_stuff():
     panda.revert_sync("root")
     for command in ["ls -la", "whoami", "sleep 1", "uname -r"]:
-        print(panda.run_serial_cmd("LD_SHOW_AUXV=1 "+command))
+        print("Output start:")
+        print(panda.run_serial_cmd("LD_SHOW_AUXV=1 "+command,no_timeout=True))
+        print("Output end")
     panda.end_analysis()
 
 @panda.ppp("proc_start_linux","on_rec_auxv")
 def rec_auxv(cpu, tb, av):
+    debugpy.breakpoint()
     print("[bold magenta][START PyPANDA on_recv_auxv][/bold magenta]")
     print("[bold red]Arguments: [/bold red]",end="")
     for i in range(av.argc):
