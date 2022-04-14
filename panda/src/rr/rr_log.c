@@ -74,6 +74,10 @@ RR_log_entry* rr_queue_head;
 RR_log_entry* rr_queue_tail;
 RR_log_entry* rr_queue_end; // end of buffer.
 
+// RR2 variables
+char* rr2_name(const char* fpath);
+void rr_finalize_write_log(void);
+
 // mz 11.06.2009 Flags to manage nested recording
 volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
@@ -258,7 +262,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
 /******************************************************************************************/
 
 static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb) {
-    size_t result = fwrite(ptr, size, nmemb, rr_nondet_log->fp);
+    size_t result = fwrite(ptr, size, nmemb, rr_nondet_log->file.record_fp);
     rr_assert(result == nmemb);
     return result;
 }
@@ -275,7 +279,6 @@ static inline void rr_write_item(RR_log_entry item)
     RR_WRITE_ITEM(item.header.prog_point.guest_instr_count);
     rr_fwrite(&(item.header.kind), 1, 1);
     rr_fwrite(&(item.header.callsite_loc), 1, 1);
-
     // mz also save the program point in the log structure to ensure that our
     // header will include the latest program point.
     rr_nondet_log->last_prog_point = item.header.prog_point;
@@ -286,47 +289,47 @@ static inline void rr_write_item(RR_log_entry item)
             break;
         case RR_INPUT_2:
             RR_WRITE_ITEM(item.variant.input_2);
-            break;
+	    break;
         case RR_INPUT_4:
             RR_WRITE_ITEM(item.variant.input_4);
-            break;
+	    break;
         case RR_INPUT_8:
             RR_WRITE_ITEM(item.variant.input_8);
-            break;
+	    break;
         case RR_INTERRUPT_REQUEST:
             RR_WRITE_ITEM(item.variant.interrupt_request);
-            break;
+	    break;
         case RR_EXIT_REQUEST:
             RR_WRITE_ITEM(item.variant.exit_request);
-            break;
+	    break;
         case RR_PENDING_INTERRUPTS:
             RR_WRITE_ITEM(item.variant.pending_interrupts);
-            break;
+	    break;
         case RR_EXCEPTION:
             RR_WRITE_ITEM(item.variant.exception_index);
             break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item.variant.call_args;
             rr_fwrite(&(args->kind), 1, 1);
-            switch (args->kind) {
+	    switch (args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_WRITE_ITEM(args->variant.cpu_mem_rw_args);
                     rr_fwrite(args->variant.cpu_mem_rw_args.buf, 1,
-                            args->variant.cpu_mem_rw_args.len);
-                    break;
+                            args->variant.cpu_mem_rw_args.len); 
+		    break;
                 case RR_CALL_CPU_MEM_UNMAP:
                     RR_WRITE_ITEM(args->variant.cpu_mem_unmap);
-                    rr_fwrite(args->variant.cpu_mem_unmap.buf, 1,
+		    rr_fwrite(args->variant.cpu_mem_unmap.buf, 1,
                                 args->variant.cpu_mem_unmap.len);
                     break;
                 case RR_CALL_CPU_REG_WRITE:
                     RR_WRITE_ITEM(args->variant.cpu_reg_write_args);
-                    rr_fwrite(args->variant.cpu_reg_write_args.buf, 1,
+		    rr_fwrite(args->variant.cpu_reg_write_args.buf, 1,
                                 args->variant.cpu_reg_write_args.len);
                     break;
                 case RR_CALL_MEM_REGION_CHANGE:
                     RR_WRITE_ITEM(args->variant.mem_region_change_args);
-                    rr_fwrite(args->variant.mem_region_change_args.name, 1,
+		    rr_fwrite(args->variant.mem_region_change_args.name, 1,
                             args->variant.mem_region_change_args.len);
                     break;
                 case RR_CALL_HD_TRANSFER:
@@ -334,10 +337,10 @@ static inline void rr_write_item(RR_log_entry item)
                     break;
                 case RR_CALL_NET_TRANSFER:
                     RR_WRITE_ITEM(args->variant.net_transfer_args);
-                    break;
+		    break;
                 case RR_CALL_HANDLE_PACKET:
                     RR_WRITE_ITEM(args->variant.handle_packet_args);
-                    rr_fwrite(args->variant.handle_packet_args.buf,
+		    rr_fwrite(args->variant.handle_packet_args.buf,
                             args->variant.handle_packet_args.size, 1);
                     break;
                 case RR_CALL_SERIAL_RECEIVE:
@@ -694,7 +697,7 @@ static inline void free_entry_params(RR_log_entry* entry)
 }
 
 static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
-    size_t result = fread(ptr, size, nmemb, rr_nondet_log->fp);
+    size_t result = rrfile_fread(ptr, size, nmemb, rr_nondet_log->file.replay_rr);
     rr_nondet_log->bytes_read += nmemb * size;
     rr_assert(result == nmemb);
     return result;
@@ -753,7 +756,7 @@ static RR_log_entry *rr_read_item(void) {
 
     rr_assert(rr_in_replay());
     rr_assert(!rr_log_is_empty());
-    rr_assert(rr_nondet_log->fp != NULL);
+    rr_assert(rr_nondet_log->file.replay_rr != NULL);
 
     item->header.file_pos = rr_nondet_log->bytes_read;
 
@@ -887,7 +890,7 @@ void rr_fill_queue(void) {
     rr_assert(rr_queue_empty());
 
     while (!rr_log_is_empty() && num_entries < RR_QUEUE_MAX_LEN) {
-        RR_header header = rr_read_item()->header;
+	RR_header header = rr_read_item()->header;
         num_entries++;
 
         if ((header.kind == RR_SKIPPED_CALL
@@ -1197,8 +1200,8 @@ void rr_create_record_log(const char* filename)
 
     rr_nondet_log->type = RECORD;
     rr_nondet_log->name = g_strdup(filename);
-    rr_nondet_log->fp = fopen(rr_nondet_log->name, "w");
-    rr_assert(rr_nondet_log->fp != NULL);
+    rr_nondet_log->file.record_fp = fopen(rr_nondet_log->name, "w");
+    rr_assert(rr_nondet_log->file.record_fp != NULL);
 
     if (rr_debug_whisper()) {
         qemu_log("opened %s for write.\n", rr_nondet_log->name);
@@ -1217,19 +1220,19 @@ void rr_create_record_log(const char* filename)
 // create replay log
 void rr_create_replay_log(const char* filename)
 {
-    struct stat statbuf = {0};
     // create log
     rr_nondet_log = g_new0(RR_log, 1);
     rr_assert(rr_nondet_log != NULL);
-
+    
     rr_nondet_log->type = REPLAY;
     rr_nondet_log->name = g_strdup(filename);
-    rr_nondet_log->fp = fopen(rr_nondet_log->name, "r");
-    rr_assert(rr_nondet_log->fp != NULL);
+    if (!RRFILE_SUCCESS(rrfile_open_read(filename, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
+        fprintf(stderr, "Failed to open nondetlog from RR archive\n");
+        exit(1);
+    } 
 
     // mz fill in log size
-    stat(rr_nondet_log->name, &statbuf);
-    rr_nondet_log->size = statbuf.st_size;
+    rr_nondet_log->size = rrfile_section_size(rr_nondet_log->file.replay_rr);
     rr_nondet_log->bytes_read = 0;
     if (rr_debug_whisper()) {
         qemu_log("opened %s for read.  len=%llu bytes.\n", rr_nondet_log->name,
@@ -1240,19 +1243,22 @@ void rr_create_replay_log(const char* filename)
             sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
 }
 
+void rr_finalize_write_log(void)
+{
+    if (rr_nondet_log->type == RECORD) {
+        if (rr_nondet_log->file.record_fp) {
+            rewind(rr_nondet_log->file.record_fp);
+            rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
+                    sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
+            fclose(rr_nondet_log->file.record_fp);
+            rr_nondet_log->file.record_fp = NULL;
+        }
+    }
+}
+
 // close file and free associated memory
 void rr_destroy_log(void)
 {
-    if (rr_nondet_log->fp) {
-        // mz if in record, update the header with the last written prog point.
-        if (rr_nondet_log->type == RECORD) {
-            rewind(rr_nondet_log->fp);
-            rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
-                    sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
-        }
-        fclose(rr_nondet_log->fp);
-        rr_nondet_log->fp = NULL;
-    }
     g_free(rr_nondet_log->name);
     g_free(rr_nondet_log);
     rr_nondet_log = NULL;
@@ -1266,7 +1272,7 @@ void replay_progress(void)
 {
     if (rr_nondet_log && !panda_get_library_mode()) { // Silent if no nondet_log or if we're replaying in library mode
         if (rr_log_is_empty()) {
-            printf("%s:  log is empty.\n", rr_nondet_log->name);
+            printf("%s/%s:  log is empty.\n", rr_nondet_log->name, "nondetlog");
         } else {
             struct rusage rusage;
             getrusage(RUSAGE_SELF, &rusage);
@@ -1328,6 +1334,11 @@ static inline void rr_get_nondet_log_file_name(char* rr_name, char* rr_path,
 {
     rr_assert(rr_name != NULL && rr_path != NULL);
     snprintf(file_name, file_name_len, "%s/%s-rr-nondet.log", rr_path, rr_name);
+}
+
+static void rr_get_cmdline_file_name(char *rr_name, char *rr_path, char *file_name, size_t file_name_len) {
+    rr_assert (rr_name != NULL && rr_path != NULL);
+    snprintf(file_name, file_name_len, "%s/%s-rr.cmd", rr_path, rr_name);
 }
 
 void rr_reset_state(CPUState* cpu)
@@ -1417,6 +1428,21 @@ void hmp_end_replay(Monitor* mon, const QDict* qdict)
 
 static time_t rr_start_time;
 
+extern int gargc;
+extern char **gargv;
+
+char* rr2_name(const char* fpath)
+{
+    size_t rr2_size = strlen(fpath) + 6;
+    char* rr2_name = (char*) malloc(rr2_size);
+    if (!rr2_name) {
+        return NULL;
+    }
+    strncpy(rr2_name, fpath, rr2_size);
+    strncat(rr2_name, ".rr2", rr2_size);
+    return rr2_name;
+}
+
 // mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 {
@@ -1446,6 +1472,14 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         snapshot_ret = load_vmstate(rr_control.snapshot);
     }
 
+    char *rr2_path = rr2_name(file_name_full);
+    fprintf(stderr, "Creating rr2 archive file at: %s\n", rr2_path);
+    struct rr_file_state* rr_archive = rrfile_open_write(rr2_path);
+    if (!rr_archive) {
+        return -2;
+    }
+    free(rr2_path);
+
     // write PANDA memory snapshot
     global_state_store_running(); // force running state
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
@@ -1457,8 +1491,27 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     qemu_fclose(snp);
     // log_all_cpu_states();
 
+    if (!rrfile_add_recording_file(rr_archive, "snapshot", name_buf)) {
+        fprintf(stderr, "Failed to add snapshot file to archive!\n");
+        return -3;
+    }
+
     // save the time so we can report how long record takes
     time(&rr_start_time);
+
+    // save the cmd line so we dont have to guess mem size and arch later
+    rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    FILE *fp = fopen(name_buf, "w");
+    int i;
+    for (i=0; i<gargc; i++) {
+        fprintf (fp, "%s ", gargv[i]);
+    }
+    fprintf (fp, "\n");
+    fclose(fp);
+    if (!rrfile_add_recording_file(rr_archive, "capture.cmd", name_buf)) {
+        fprintf(stderr, "Failed to add snapshot file to archive!\n");
+        return -3;
+    }
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
@@ -1470,6 +1523,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     g_free(rr_name_base);
     // set global to turn on recording
     rr_control.mode = RR_RECORD;
+    rrfile_set_working(rr_archive);
     return snapshot_ret;
 #endif
 }
@@ -1497,6 +1551,14 @@ void rr_do_end_record(void)
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
     }
+    
+    // Write the nondetlog to the archive
+    printf("Finalizing the recording\n");
+    rr_finalize_write_log();
+    struct rr_file_state* rr_archive = rrfile_get_working();
+    rrfile_add_recording_file(rr_archive, "nondetlog", rr_nondet_log->name);
+    rrfile_finalize(rr_archive);
+    printf("...complete!\n");
 
     // log_all_cpu_states();
 
@@ -1549,18 +1611,13 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
     // first retrieve snapshot
-    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    snprintf(name_buf, sizeof(name_buf), "%s/snapshot", file_name_full);
     if (rr_debug_whisper()) {
         qemu_log("reading snapshot:\t%s\n", name_buf);
     }
+    
     printf("loading snapshot\n");
-    QIOChannelFile* ioc =
-        qio_channel_file_new_path(name_buf, O_RDONLY, 0, NULL);
-    if (ioc == NULL) {
-        printf ("... snapshot file doesn't exist?\n");
-        abort();
-    }
-    QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
+    QEMUFile* snp = load_snapshot_rr(file_name_full, "snapshot");
 
     qemu_system_reset(VMRESET_SILENT);
     MigrationIncomingState* mis = migration_incoming_get_current();
@@ -1580,9 +1637,9 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     time(&rr_start_time);
 
     // second, open non-deterministic input log for read.
-    rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    snprintf(name_buf, sizeof(name_buf), "%s/nondetlog", file_name_full);
     printf("opening nondet log for read :\t%s\n", name_buf);
-    rr_create_replay_log(name_buf);
+    rr_create_replay_log(file_name_full);
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
     // set global to turn on replay

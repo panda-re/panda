@@ -6,6 +6,7 @@
 
 #define RR_LOG_STANDALONE
 #include "panda/include/panda/rr/rr_log.h"
+#include "panda/include/panda/rr/panda_rr2.h"
 #include "qemu/osdep.h"
 #include "cpu.h"
 
@@ -26,8 +27,9 @@ volatile sig_atomic_t rr_skipped_callsite_location = 0;
 RR_log *rr_nondet_log = NULL;
 
 static inline uint8_t log_is_empty(void) {
-    if ((rr_nondet_log->type == REPLAY) &&
-        (rr_nondet_log->size - ftell(rr_nondet_log->fp) == 0)) {
+    if ((rr_nondet_log->type == REPLAY) && 
+	((rr_nondet_log->size - rr_nondet_log->bytes_read) == 0)
+	) {
         return 1;
     }
     else {
@@ -46,6 +48,7 @@ static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
 void rr_spit_prog_point(RR_prog_point pp) {
   rr_spit_prog_point_fp(stdout,pp);
 }
+
 
 static void rr_spit_log_entry(RR_log_entry item) {
     rr_spit_prog_point(item.header.prog_point);
@@ -167,116 +170,108 @@ static RR_log_entry *rr_read_item(void) {
     //mz read header
     assert (rr_in_replay());
     assert ( ! log_is_empty());
-    assert (rr_nondet_log->fp != NULL);
+    assert (rr_nondet_log->file.replay_rr != NULL);
 
     //mz XXX we assume that the log is not trucated - should probably fix this.
-    if (fread(&(item->header.prog_point.guest_instr_count),
-                sizeof(item->header.prog_point.guest_instr_count), 1, rr_nondet_log->fp) != 1) {
+    if (rrfile_fread(&(item->header.prog_point.guest_instr_count),
+                sizeof(item->header.prog_point.guest_instr_count), 1, rr_nondet_log->file.replay_rr) != 1) {
         //mz an error occurred
-        if (feof(rr_nondet_log->fp)) {
-            // replay is done - we've reached the end of file
-            //mz we should never get here!
-            assert(0);
-        } 
-        else {
-            //mz some other kind of error
-            //mz XXX something more graceful, perhaps?
-            assert(0);
-        }
+	assert(0);
     }
     //mz this is more compact, as it doesn't include extra padding.
-    assert(fread(&(item->header.kind), 1, 1, rr_nondet_log->fp) == 1);
-    assert(fread(&(item->header.callsite_loc), 1, 1, rr_nondet_log->fp) == 1);
+    assert(rrfile_fread(&(item->header.kind), 1, 1, rr_nondet_log->file.replay_rr) == 1);
+    assert(rrfile_fread(&(item->header.callsite_loc), 1, 1, rr_nondet_log->file.replay_rr) == 1);
+    rr_nondet_log->bytes_read += sizeof(RR_prog_point) + sizeof(item->header.kind) + sizeof(item->header.callsite_loc);
 
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
-            assert(fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_INPUT_2:
-            assert(fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_INPUT_4:
-            assert(fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_INPUT_8:
-            assert(fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_INTERRUPT_REQUEST:
-            assert(fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_EXIT_REQUEST:
-            assert(fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_PENDING_INTERRUPTS:
-            assert(fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_EXCEPTION:
-            assert(fread(&(item->variant.exception_index), sizeof(item->variant.exception_index), 1, rr_nondet_log->fp) == 1);
+            assert(rrfile_fread(&(item->variant.exception_index), sizeof(item->variant.exception_index), 1, rr_nondet_log->file.replay_rr) == 1);
             break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
-                assert(fread(&(args->kind), 1, 1, rr_nondet_log->fp) == 1);
+                assert(rrfile_fread(&(args->kind), 1, 1, rr_nondet_log->file.replay_rr) == 1);
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
-                        assert(fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp) == 1);
+                        assert(rrfile_fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->file.replay_rr) == 1);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         //args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
                         //assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
-                        fseek(rr_nondet_log->fp, args->variant.cpu_mem_rw_args.len, SEEK_CUR);
+                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.cpu_mem_rw_args.len);
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
-                        assert(fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp) == 1);
+                        assert(rrfile_fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->file.replay_rr) == 1);
                         //mz buffer length in args->variant.cpu_mem_unmap.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         //args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
                         //mz read the buffer
                         //assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
-                        fseek(rr_nondet_log->fp, args->variant.cpu_mem_unmap.len, SEEK_CUR);
+                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.cpu_mem_unmap.len);
                         break;
                     case RR_CALL_MEM_REGION_CHANGE:
-                        assert(fread(&(args->variant.mem_region_change_args),
+                        assert(rrfile_fread(&(args->variant.mem_region_change_args),
                             sizeof(args->variant.mem_region_change_args), 1,
-                            rr_nondet_log->fp) == 1);
-                        fseek(rr_nondet_log->fp, args->variant.mem_region_change_args.len, SEEK_CUR);
+                            rr_nondet_log->file.replay_rr) == 1);
+                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.mem_region_change_args.len);
                         break;
                     case RR_CALL_HD_TRANSFER:
-                        assert(fread(&(args->variant.hd_transfer_args),
-                              sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp) == 1);
+                        assert(rrfile_fread(&(args->variant.hd_transfer_args),
+                              sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->file.replay_rr) == 1);
                         break;
                     case RR_CALL_HANDLE_PACKET:
-                        assert(fread(&(args->variant.handle_packet_args),
-                              sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->fp) == 1);
-                        fseek(rr_nondet_log->fp,
-                            args->variant.handle_packet_args.size, SEEK_CUR);
+                        assert(rrfile_fread(&(args->variant.handle_packet_args),
+                              sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->file.replay_rr) == 1);
+                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr,
+                            args->variant.handle_packet_args.size);
                         break;
                     case RR_CALL_NET_TRANSFER:
-                        assert(fread(&(args->variant.net_transfer_args),
-                              sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->fp) == 1);
+                        assert(rrfile_fread(&(args->variant.net_transfer_args),
+                              sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->file.replay_rr) == 1);
                         break;
                     case RR_CALL_SERIAL_RECEIVE:
-                        assert(fread(&(args->variant.serial_receive_args),
+                        assert(rrfile_fread(&(args->variant.serial_receive_args),
                                      sizeof(args->variant.serial_receive_args),
-                                     1, rr_nondet_log->fp) == 1);
+                                     1, rr_nondet_log->file.replay_rr) == 1);
                         break;
                     case RR_CALL_SERIAL_READ:
-                        assert(fread(&(args->variant.serial_read_args),
+                        assert(rrfile_fread(&(args->variant.serial_read_args),
                                      sizeof(args->variant.serial_read_args), 1,
-                                     rr_nondet_log->fp) == 1);
+                                     rr_nondet_log->file.replay_rr) == 1);
                         break;
                     case RR_CALL_SERIAL_SEND:
-                        assert(fread(&(args->variant.serial_send_args),
+                        assert(rrfile_fread(&(args->variant.serial_send_args),
                                      sizeof(args->variant.serial_send_args), 1,
-                                     rr_nondet_log->fp) == 1);
+                                     rr_nondet_log->file.replay_rr) == 1);
                         break;
                     case RR_CALL_SERIAL_WRITE:
-                        assert(fread(&(args->variant.serial_write_args),
+                        assert(rrfile_fread(&(args->variant.serial_write_args),
                                      sizeof(args->variant.serial_write_args), 1,
-                                     rr_nondet_log->fp) == 1);
+                                     rr_nondet_log->file.replay_rr) == 1);
                         break;
                     default:
                         //mz unimplemented
@@ -299,7 +294,6 @@ static RR_log_entry *rr_read_item(void) {
 
 // create replay log
 void rr_create_replay_log (const char *filename) {
-  struct stat statbuf = {0};
   // create log
   rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
   assert (rr_nondet_log != NULL);
@@ -307,16 +301,19 @@ void rr_create_replay_log (const char *filename) {
 
   rr_nondet_log->type = REPLAY;
   rr_nondet_log->name = g_strdup(filename);
-  rr_nondet_log->fp = fopen(rr_nondet_log->name, "r");
-  assert(rr_nondet_log->fp != NULL);
+  if (!RRFILE_SUCCESS(rrfile_open_read(filename, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
+      fprintf(stderr, "Failed to open nondetlog from RR archive\n");
+      exit(1);
+  } 
+  assert(rr_nondet_log->file.replay_rr != NULL);
 
   //mz fill in log size
-  stat(rr_nondet_log->name, &statbuf);
-  rr_nondet_log->size = statbuf.st_size;
+  rr_nondet_log->size = rrfile_section_size(rr_nondet_log->file.replay_rr);
   fprintf (stdout, "opened %s for read.  len=%llu bytes.\n",
      rr_nondet_log->name, rr_nondet_log->size);
   //mz read the last program point from the log header.
-  assert(fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp) == 1);
+  assert(rrfile_fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->file.replay_rr) == 1);
+  rr_nondet_log->bytes_read += sizeof(RR_prog_point);
 }
 
 int main(int argc, char **argv) {

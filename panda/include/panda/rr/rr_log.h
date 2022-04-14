@@ -14,6 +14,7 @@
 #include "panda/cheaders.h"
 #endif
 #include "panda/rr/rr_log_all.h"
+#include "panda/rr/panda_rr2.h"
 
 // accessors
 uint64_t rr_get_pc(void);
@@ -141,7 +142,11 @@ typedef struct RR_log_t {
     RR_prog_point last_prog_point; // to report progress
 
     char* name; // file name
-    FILE* fp;   // file pointer for log
+    union {
+    	FILE* record_fp;   // file pointer for log
+    	struct rr_file* replay_rr;
+    } file;
+
     unsigned long long
         size; // for a log being opened for read, this will be the size in bytes
     uint64_t bytes_read;

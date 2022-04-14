@@ -3255,6 +3255,31 @@ if ! compile_prog "$glib_cflags -Werror" "$glib_libs" ; then
 fi
 
 ##########################################
+# libarchive support probe
+if $pkg_config --modversion libarchive > /dev/null 2>&1 ; then
+    archive_libs=`$pkg_config --libs libarchive`
+    LIBS="$archive_libs $LIBS"
+else
+    echo "libarchive is required to compile PANDA"
+    exit 1
+fi
+
+##########################################
+# openssl support probe
+if $pkg_config --modversion libssl > /dev/null 2>&1; then
+    if $pkg_config --modversion libcrypto > /dev/null 2>&1; then
+        ssl_libs=`$pkg_config --libs libssl libcrypto`
+        LIBS="$ssl_libs $LIBS"
+    else
+        echo "libcrypto is required to compile PANDA"
+        exit1
+    fi
+else
+    echo "libssl (openssl) is required to compile PANDA"
+    exit 1
+fi
+
+##########################################
 # SHA command probe for modules
 if test "$modules" = yes; then
     shacmd_probe="sha1sum sha1 shasum"
