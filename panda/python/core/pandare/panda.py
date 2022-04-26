@@ -839,7 +839,7 @@ class Panda():
         elif fmt=='str':
             return self.ffi.string(buf, length)
         elif fmt=='ptrlist':
-            # This one is weird. Chunmk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
+            # This one is weird. Chunk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
             # return a list
             bytelen = int(self.bits/8)
             if (length % bytelen != 0):
