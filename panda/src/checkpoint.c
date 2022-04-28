@@ -196,7 +196,7 @@ void panda_restore(void *opaque) {
     first_cpu->rr_guest_instr_count = checkpoint->guest_instr_count;
     first_cpu->panda_guest_pc = panda_current_pc(first_cpu);
     rr_nondet_log->bytes_read = checkpoint->nondet_log_position;
-    fseek(rr_nondet_log->fp, checkpoint->nondet_log_position, SEEK_SET);
+    rrfile_fseek_set(&rr_nondet_log->file.replay_rr, rr_nondet_log->name, checkpoint->nondet_log_position);
     rr_queue_head = rr_queue_tail = NULL;
 
     memcpy(rr_number_of_log_entries, checkpoint->number_of_log_entries,
