@@ -289,47 +289,47 @@ static inline void rr_write_item(RR_log_entry item)
             break;
         case RR_INPUT_2:
             RR_WRITE_ITEM(item.variant.input_2);
-	    break;
+            break;
         case RR_INPUT_4:
             RR_WRITE_ITEM(item.variant.input_4);
-	    break;
+            break;
         case RR_INPUT_8:
             RR_WRITE_ITEM(item.variant.input_8);
-	    break;
+            break;
         case RR_INTERRUPT_REQUEST:
             RR_WRITE_ITEM(item.variant.interrupt_request);
-	    break;
+            break;
         case RR_EXIT_REQUEST:
             RR_WRITE_ITEM(item.variant.exit_request);
-	    break;
+            break;
         case RR_PENDING_INTERRUPTS:
             RR_WRITE_ITEM(item.variant.pending_interrupts);
-	    break;
+            break;
         case RR_EXCEPTION:
             RR_WRITE_ITEM(item.variant.exception_index);
             break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item.variant.call_args;
             rr_fwrite(&(args->kind), 1, 1);
-	    switch (args->kind) {
+            switch (args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_WRITE_ITEM(args->variant.cpu_mem_rw_args);
                     rr_fwrite(args->variant.cpu_mem_rw_args.buf, 1,
-                            args->variant.cpu_mem_rw_args.len); 
-		    break;
+                            args->variant.cpu_mem_rw_args.len);
+                    break;
                 case RR_CALL_CPU_MEM_UNMAP:
                     RR_WRITE_ITEM(args->variant.cpu_mem_unmap);
-		    rr_fwrite(args->variant.cpu_mem_unmap.buf, 1,
+                    rr_fwrite(args->variant.cpu_mem_unmap.buf, 1,
                                 args->variant.cpu_mem_unmap.len);
                     break;
                 case RR_CALL_CPU_REG_WRITE:
                     RR_WRITE_ITEM(args->variant.cpu_reg_write_args);
-		    rr_fwrite(args->variant.cpu_reg_write_args.buf, 1,
+                    rr_fwrite(args->variant.cpu_reg_write_args.buf, 1,
                                 args->variant.cpu_reg_write_args.len);
                     break;
                 case RR_CALL_MEM_REGION_CHANGE:
                     RR_WRITE_ITEM(args->variant.mem_region_change_args);
-		    rr_fwrite(args->variant.mem_region_change_args.name, 1,
+                    rr_fwrite(args->variant.mem_region_change_args.name, 1,
                             args->variant.mem_region_change_args.len);
                     break;
                 case RR_CALL_HD_TRANSFER:
@@ -337,10 +337,10 @@ static inline void rr_write_item(RR_log_entry item)
                     break;
                 case RR_CALL_NET_TRANSFER:
                     RR_WRITE_ITEM(args->variant.net_transfer_args);
-		    break;
+                    break;
                 case RR_CALL_HANDLE_PACKET:
                     RR_WRITE_ITEM(args->variant.handle_packet_args);
-		    rr_fwrite(args->variant.handle_packet_args.buf,
+                    rr_fwrite(args->variant.handle_packet_args.buf,
                             args->variant.handle_packet_args.size, 1);
                     break;
                 case RR_CALL_SERIAL_RECEIVE:
