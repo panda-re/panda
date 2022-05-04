@@ -65,8 +65,9 @@ gcc --version | awk '/gcc/ && ($3+0)<7.1{print "Fatal error: GCC too old"; exit 
 g++ --version | awk '/g\+\+/ && ($3+0)<7.1{print "Fatal error: G++ too old"; exit 1}' || exit 1
 
 # Untested GCC - it's probably going to have some warnings - Just disable Werror and hope it works
-gcc --version | awk '/gcc/   && ($3+0)>9.3{print "WARNING: Your GCC is too new: disabling -Werror and hoping this builds"; exit 1}' || COMPILER_CONFIG="--extra-cflags=-Wno-error"
-g++ --version | awk '/g\+\+/ && ($3+0)>9.3{print "WARNING: Your G++ is too new: disabling -Werror and hoping this builds"; exit 1}' ||  COMPILER_CONFIG="--extra-cxxflags=-Wno-error"
+COMPILER_CONFIG=""
+gcc --version | awk '/gcc/   && ($3+0)>9.3{print "WARNING: Your GCC is too new: disabling -Werror and hoping this builds"; exit 1}' || COMPILER_CONFIG+= "--extra-cflags=-Wno-error"
+g++ --version | awk '/g\+\+/ && ($3+0)>9.3{print "WARNING: Your G++ is too new: disabling -Werror and hoping this builds"; exit 1}' ||  COMPILER_CONFIG +=" --extra-cxxflags=-Wno-error"
 
 ### Check for protobuf v2.
 if ! pkg-config --exists protobuf; then
