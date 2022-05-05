@@ -345,12 +345,8 @@ void helper_aflInterceptPanic(void)
     }
 
 #endif
-    if(aflFastExit) {
-        abort();
-    } else {
-        exit(-1);
-    }
-
+    // always abort as AFL needs to receive this signal to detect a crash
+    abort();
 }
 
 void gen_aflBBlock(target_ulong pc)
