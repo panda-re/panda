@@ -46,6 +46,13 @@ pub extern "C" fn add_guest_plugin(plugin: GuestPlugin) -> ChannelId {
     add_channel(Some(&name), plugin.msg_receive_cb)
 }
 
+/// Create a new anonymous channel provided a callback for writes performed by the guest,
+/// returning the channel ID.
+#[no_mangle]
+pub unsafe extern "C" fn allocate_channel(callback: ChannelCB) -> ChannelId {
+    add_channel(None, callback)
+}
+
 /// Writes bytes from a buffer to the given channel ID, queuing them up for the next
 /// guest plugin read. The buffer is copied into a new allocation before being added
 /// to the queue, so the act of writing has no strict lifetime requirements.
