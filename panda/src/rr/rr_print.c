@@ -28,8 +28,7 @@ RR_log *rr_nondet_log = NULL;
 
 static inline uint8_t log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) && 
-	((rr_nondet_log->size - rr_nondet_log->bytes_read) == 0)
-	) {
+	((rr_nondet_log->size - rr_nondet_log->bytes_read) == 0)){
         return 1;
     }
     else {
@@ -181,39 +180,48 @@ static RR_log_entry *rr_read_item(void) {
     //mz this is more compact, as it doesn't include extra padding.
     assert(rrfile_fread(&(item->header.kind), 1, 1, rr_nondet_log->file.replay_rr) == 1);
     assert(rrfile_fread(&(item->header.callsite_loc), 1, 1, rr_nondet_log->file.replay_rr) == 1);
-    rr_nondet_log->bytes_read += sizeof(RR_prog_point) + sizeof(item->header.kind) + sizeof(item->header.callsite_loc);
+    rr_nondet_log->bytes_read += sizeof(RR_prog_point) + 2;
 
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
             assert(rrfile_fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.input_1);
             break;
         case RR_INPUT_2:
             assert(rrfile_fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.input_2);
             break;
         case RR_INPUT_4:
             assert(rrfile_fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.input_4);
             break;
         case RR_INPUT_8:
             assert(rrfile_fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
             assert(rrfile_fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.interrupt_request);
             break;
         case RR_EXIT_REQUEST:
             assert(rrfile_fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.exit_request);
             break;
         case RR_PENDING_INTERRUPTS:
             assert(rrfile_fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.pending_interrupts);
             break;
         case RR_EXCEPTION:
             assert(rrfile_fread(&(item->variant.exception_index), sizeof(item->variant.exception_index), 1, rr_nondet_log->file.replay_rr) == 1);
+            rr_nondet_log->bytes_read += sizeof(item->variant.exception_index);
             break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
                 assert(rrfile_fread(&(args->kind), 1, 1, rr_nondet_log->file.replay_rr) == 1);
+            	rr_nondet_log->bytes_read += 1;
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
                         assert(rrfile_fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->file.replay_rr) == 1);
@@ -223,6 +231,7 @@ static RR_log_entry *rr_read_item(void) {
                         //mz read the buffer
                         //assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
                         rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.cpu_mem_rw_args.len);
+            		rr_nondet_log->bytes_read += sizeof(args->variant.cpu_mem_rw_args) + args->variant.cpu_mem_rw_args.len;
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
                         assert(rrfile_fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->file.replay_rr) == 1);
@@ -232,46 +241,55 @@ static RR_log_entry *rr_read_item(void) {
                         //mz read the buffer
                         //assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
                         rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.cpu_mem_unmap.len);
+			rr_nondet_log->bytes_read += sizeof(args->variant.cpu_mem_unmap) +  args->variant.cpu_mem_unmap.len;
                         break;
                     case RR_CALL_MEM_REGION_CHANGE:
                         assert(rrfile_fread(&(args->variant.mem_region_change_args),
                             sizeof(args->variant.mem_region_change_args), 1,
                             rr_nondet_log->file.replay_rr) == 1);
                         rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.mem_region_change_args.len);
+            		rr_nondet_log->bytes_read += sizeof(args->variant.mem_region_change_args) + args->variant.mem_region_change_args.len;
                         break;
                     case RR_CALL_HD_TRANSFER:
                         assert(rrfile_fread(&(args->variant.hd_transfer_args),
                               sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->file.replay_rr) == 1);
+			rr_nondet_log->bytes_read += sizeof(args->variant.hd_transfer_args);
                         break;
                     case RR_CALL_HANDLE_PACKET:
                         assert(rrfile_fread(&(args->variant.handle_packet_args),
                               sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->file.replay_rr) == 1);
                         rrfile_fseek_cur(rr_nondet_log->file.replay_rr,
                             args->variant.handle_packet_args.size);
+			rr_nondet_log->bytes_read += sizeof(args->variant.handle_packet_args) + args->variant.handle_packet_args.size;
                         break;
                     case RR_CALL_NET_TRANSFER:
                         assert(rrfile_fread(&(args->variant.net_transfer_args),
                               sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->file.replay_rr) == 1);
+			rr_nondet_log->bytes_read += sizeof(args->variant.net_transfer_args);
                         break;
                     case RR_CALL_SERIAL_RECEIVE:
                         assert(rrfile_fread(&(args->variant.serial_receive_args),
                                      sizeof(args->variant.serial_receive_args),
                                      1, rr_nondet_log->file.replay_rr) == 1);
+			rr_nondet_log->bytes_read += sizeof(args->variant.serial_receive_args);
                         break;
                     case RR_CALL_SERIAL_READ:
                         assert(rrfile_fread(&(args->variant.serial_read_args),
                                      sizeof(args->variant.serial_read_args), 1,
                                      rr_nondet_log->file.replay_rr) == 1);
+			rr_nondet_log->bytes_read += sizeof(args->variant.serial_read_args);
                         break;
                     case RR_CALL_SERIAL_SEND:
                         assert(rrfile_fread(&(args->variant.serial_send_args),
                                      sizeof(args->variant.serial_send_args), 1,
                                      rr_nondet_log->file.replay_rr) == 1);
+			rr_nondet_log->bytes_read += sizeof(args->variant.serial_send_args);
                         break;
                     case RR_CALL_SERIAL_WRITE:
                         assert(rrfile_fread(&(args->variant.serial_write_args),
                                      sizeof(args->variant.serial_write_args), 1,
                                      rr_nondet_log->file.replay_rr) == 1);
+			rr_nondet_log->bytes_read += sizeof(args->variant.serial_write_args);
                         break;
                     default:
                         //mz unimplemented
@@ -301,7 +319,7 @@ void rr_create_replay_log (const char *filename) {
 
   rr_nondet_log->type = REPLAY;
   rr_nondet_log->name = g_strdup(filename);
-  if (!RRFILE_SUCCESS(rrfile_open_read(filename, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
+  if (!RRFILE_SUCCESS(rrfile_open_read(rr_nondet_log->name, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
       fprintf(stderr, "Failed to open nondetlog from RR archive\n");
       exit(1);
   } 
@@ -309,6 +327,8 @@ void rr_create_replay_log (const char *filename) {
 
   //mz fill in log size
   rr_nondet_log->size = rrfile_section_size(rr_nondet_log->file.replay_rr);
+  
+  rr_nondet_log->bytes_read = 0;
   fprintf (stdout, "opened %s for read.  len=%llu bytes.\n",
      rr_nondet_log->name, rr_nondet_log->size);
   //mz read the last program point from the log header.

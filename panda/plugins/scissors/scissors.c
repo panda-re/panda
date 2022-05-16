@@ -250,7 +250,7 @@ static void start_snip(uint64_t count) {
     fwrite(&prog_point.guest_instr_count,
            sizeof(prog_point.guest_instr_count), 1, newlog);
     
-    fseek(oldlog, ftell(rr_nondet_log->fp), SEEK_SET);
+    fseek(oldlog, rr_nondet_log->bytes_read, SEEK_SET);
     
     // If there are items in the queue, then start copying the log
     // from there
