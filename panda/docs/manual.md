@@ -450,17 +450,37 @@ more details.
 
 You can also debug the guest under replay using PANDA's [**time-travel debugging**](./time-travel.md).
 
+The current record format produces a `.tar.gz` file with extention ending in
+`.rr2`. The compressed file contains a magic `RRv2`, the `snapshot`, the
+`nondetlog`, a `capture.cmd` containing the command line command used to initiate
+PANDA for recording, and a `sha1` file containing the sha1 hashes of the other
+files. The replay command supports both the new `rr2` format, as well as the
+old format. When you start a replay, the format will automatically be detected.
+For `rr2`, make sure to include the full name, including the `.rr2` extention.
+
 ### Sharing Recordings
 
-To make it easier to share record/replay logs, PANDA has two scripts,
-`rrpack.py` and `rrunpack.py`, that bundle up and compress a recording.
-These can be found in the `scripts` directory. To pack up a recording,
+With the new format, recordings and their metadata are automatically compressed into
+a `rr2` file. To produce a `rr2` file with an old recording use the `rr2pack.py
+script, which can be found in the `scripts` directory. To pack up a recording,
 just use:
+
+    scripts/rr2pack.py <name> --output <output_name>
+
+This will bundle up `<name>-rr-snp` and `<name>-rr-nondet.log` and put
+them into PANDA's packed record/replay format in a file named
+`<output_name>.rr2`. This file can be unpacked using:
+
+    tar -xvf <output_name>.rr2
+
+
+For older recordings use the `scripts/rrpack.py`, to pack an old recording into
+the old packed record/replay format use:
 
     scripts/rrpack.py <name>
 
 This will bundle up `<name>-rr-snp` and `<name>-rr-nondet.log` and put
-them into PANDA's packed record/replay format in a file named
+them into PANDA's old packed record/replay format, in a file named
 `<name>.rr`. This file can be unpacked and verified using:
 
     scripts/rrunpack.py <name>.rr
