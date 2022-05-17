@@ -82,4 +82,7 @@ void rrfile_set_working(struct rr_file_state* rr_archive);
 
 struct rr_file_state* rrfile_get_working(void);
 
+bool has_rr2_file_extention(const char *filename);
+bool is_gzip(const char *filename);
+bool is_rr2_file(const char *filename);
 #endif

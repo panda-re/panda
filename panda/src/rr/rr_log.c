@@ -697,7 +697,12 @@ static inline void free_entry_params(RR_log_entry* entry)
 }
 
 static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
-    size_t result = rrfile_fread(ptr, size, nmemb, rr_nondet_log->file.replay_rr);
+    size_t result;
+    if (rr_nondet_log->rr2){
+	result = rrfile_fread(ptr, size, nmemb, rr_nondet_log->file.replay_rr);
+    } else {
+        result = fread(ptr, size, nmemb, rr_nondet_log->file.record_fp);
+    }
     rr_nondet_log->bytes_read += nmemb * size;
     rr_assert(result == nmemb);
     return result;
@@ -756,7 +761,12 @@ static RR_log_entry *rr_read_item(void) {
 
     rr_assert(rr_in_replay());
     rr_assert(!rr_log_is_empty());
-    rr_assert(rr_nondet_log->file.replay_rr != NULL);
+    if (rr_nondet_log->rr2){
+        rr_assert(rr_nondet_log->file.replay_rr != NULL);
+    }
+    else{
+        rr_assert(rr_nondet_log->file.record_fp != NULL);
+    }
 
     item->header.file_pos = rr_nondet_log->bytes_read;
 
@@ -1217,22 +1227,15 @@ void rr_create_record_log(const char* filename)
             sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
 }
 
-// create replay log
-void rr_create_replay_log(const char* filename)
+void rr1_create_replay_log(void)
 {
-    // create log
-    rr_nondet_log = g_new0(RR_log, 1);
-    rr_assert(rr_nondet_log != NULL);
-    
-    rr_nondet_log->type = REPLAY;
-    rr_nondet_log->name = g_strdup(filename);
-    if (!RRFILE_SUCCESS(rrfile_open_read(filename, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
-        fprintf(stderr, "Failed to open nondetlog from RR archive\n");
-        exit(1);
-    } 
+    struct stat statbuf = {0};
+    rr_nondet_log->file.record_fp = fopen(rr_nondet_log->name, "r");
+    rr_assert(rr_nondet_log->file.record_fp != NULL);
 
     // mz fill in log size
-    rr_nondet_log->size = rrfile_section_size(rr_nondet_log->file.replay_rr);
+    stat(rr_nondet_log->name, &statbuf);
+    rr_nondet_log->size = statbuf.st_size;
     rr_nondet_log->bytes_read = 0;
     if (rr_debug_whisper()) {
         qemu_log("opened %s for read.  len=%llu bytes.\n", rr_nondet_log->name,
@@ -1241,6 +1244,42 @@ void rr_create_replay_log(const char* filename)
     // mz read the last program point from the log header.
     rr_fread(&(rr_nondet_log->last_prog_point.guest_instr_count),
             sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
+}
+
+void rr2_create_replay_log(void)
+{
+    if (!RRFILE_SUCCESS(rrfile_open_read(rr_nondet_log->name, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
+        fprintf(stderr, "Failed to open nondetlog from RR archive\n");
+        exit(1);
+    } 
+
+    // mz fill in log size
+    rr_nondet_log->size = rrfile_section_size(rr_nondet_log->file.replay_rr);
+    rr_nondet_log->bytes_read = 0;
+    if (rr_debug_whisper()) {
+        qemu_log("opened %s/%s for read.  len=%llu bytes.\n", rr_nondet_log->name,
+                 "nondetlog", rr_nondet_log->size);
+    }
+    // mz read the last program point from the log header.
+    rr_fread(&(rr_nondet_log->last_prog_point.guest_instr_count),
+            sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
+}
+
+// create replay log
+void rr_create_replay_log(const char* filename)
+{
+    rr_nondet_log = g_new0(RR_log, 1);
+    rr_assert(rr_nondet_log != NULL);
+
+    rr_nondet_log->type = REPLAY;
+    rr_nondet_log->name = g_strdup(filename);
+    rr_nondet_log->rr2 = is_rr2_file(filename);
+    if (rr_nondet_log->rr2) {
+        rr2_create_replay_log();
+    }
+    else {
+        rr1_create_replay_log();
+    }
 }
 
 void rr_finalize_write_log(void)
@@ -1272,7 +1311,11 @@ void replay_progress(void)
 {
     if (rr_nondet_log && !panda_get_library_mode()) { // Silent if no nondet_log or if we're replaying in library mode
         if (rr_log_is_empty()) {
-            printf("%s/%s:  log is empty.\n", rr_nondet_log->name, "nondetlog");
+	    if (rr_nondet_log->rr2){
+		printf("%s/%s:  log is empty.\n", rr_nondet_log->name, "nondetlog");
+	    } else {
+		printf("%s:  log is empty.\n", rr_nondet_log->name);
+            }
         } else {
             struct rusage rusage;
             getrusage(RUSAGE_SELF, &rusage);
@@ -1581,41 +1624,15 @@ void rr_do_end_record(void)
 #endif
 }
 
-// file_name_full should be full path to the record/replay log
-int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
-{
-
-#ifdef TARGET_MIPS
-  fprintf(stderr, "Record/replay unsupported on MIPS\n");
-  exit(1);
-#endif
-
-#ifdef CONFIG_SOFTMMU
-    char name_buf[1024];
-    // decompose file_name_base into path & file.
-    char* rr_path = g_strdup(file_name_full);
-    char* rr_name = g_strdup(file_name_full);
+int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_full){
     __attribute__((unused)) int snapshot_ret;
 
-    vm_stop(RUN_STATE_PAUSED); // Stop execution of the CPU thread while the replay is being set up
-    rr_path = dirname(rr_path);
-    rr_name = basename(rr_name);
-    rr_replay_complete = false;
-
-    // When we start a replay, re-initialize state
-    // so we can do this multiple times
-    rr_next_progress = 1;
-
-    if (rr_debug_whisper()) {
-        qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
-        qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
-    }
     // first retrieve snapshot
-    snprintf(name_buf, sizeof(name_buf), "%s/snapshot", file_name_full);
+    snprintf(name_buf, name_buf_size, "%s/snapshot", file_name_full);
     if (rr_debug_whisper()) {
         qemu_log("reading snapshot:\t%s\n", name_buf);
     }
-    
+
     printf("loading snapshot\n");
     QEMUFile* snp = load_snapshot_rr(file_name_full, "snapshot");
 
@@ -1626,20 +1643,93 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     qemu_fclose(snp);
     migration_incoming_state_destroy();
 
+    return snapshot_ret;
+}
+
+int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf_size){
+    __attribute__((unused)) int snapshot_ret;
+
+    // first retrieve snapshot
+    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, name_buf_size);
+    if (rr_debug_whisper()) {
+        qemu_log("reading snapshot:\t%s\n", name_buf);
+    }
+    printf("loading snapshot\n");
+    QIOChannelFile* ioc =
+        qio_channel_file_new_path(name_buf, O_RDONLY, 0, NULL);
+    if (ioc == NULL) {
+        printf ("... snapshot file doesn't exist?\n");
+        abort();
+    }
+    QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
+
+    qemu_system_reset(VMRESET_SILENT);
+    MigrationIncomingState* mis = migration_incoming_get_current();
+    mis->from_src_file = snp;
+    snapshot_ret = qemu_loadvm_state(snp);
+    qemu_fclose(snp);
+    migration_incoming_state_destroy();
+
+    return snapshot_ret;
+}
+
+// file_name_full should be full path to the record/replay log
+int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
+{
+
+#ifdef TARGET_MIPS
+  fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  exit(1);
+#endif
+
+#ifdef CONFIG_SOFTMMU
+    __attribute__((unused)) int snapshot_ret;
+    char name_buf[1024];
+    char replay_log_path[1024];
+    // decompose file_name_base into path & file.
+    char* rr_path = g_strdup(file_name_full);
+    char* rr_name = g_strdup(file_name_full);
+
+
+    vm_stop(RUN_STATE_PAUSED); // Stop execution of the CPU thread while the replay is being set up
+    rr_path = dirname(rr_path);
+    rr_name = basename(rr_name);
+    rr_replay_complete = false;
+
+    bool rr2_replay = is_rr2_file(file_name_full);
+    // When we start a replay, re-initialize state
+    // so we can do this multiple times
+    rr_next_progress = 1;
+
+    if (rr_debug_whisper()) {
+        qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
+        qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
+    }
+    
+    if (rr2_replay){
+        snapshot_ret = rr2_load_snapshot(name_buf, sizeof(name_buf), file_name_full);
+        snprintf(name_buf, sizeof(name_buf), "%s/nondetlog", file_name_full);
+        strcpy(replay_log_path, file_name_full);
+    }
+    else {
+        snapshot_ret = rr1_load_snapshot(rr_name, rr_path, name_buf, sizeof(name_buf));
+	rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+        strcpy(replay_log_path, name_buf);
+    }
     if (snapshot_ret < 0) {
         fprintf(stderr, "Failed to load vmstate\n");
         return snapshot_ret;
     }
     printf("... done.\n");
+
     // log_all_cpu_states();
 
     // save the time so we can report how long replay takes
     time(&rr_start_time);
 
     // second, open non-deterministic input log for read.
-    snprintf(name_buf, sizeof(name_buf), "%s/nondetlog", file_name_full);
     printf("opening nondet log for read :\t%s\n", name_buf);
-    rr_create_replay_log(file_name_full);
+    rr_create_replay_log(replay_log_path);
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
     // set global to turn on replay

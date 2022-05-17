@@ -215,7 +215,7 @@ size_t rrfile_fread(void* input_ptr, size_t size, size_t nmemb, struct rr_file* 
         if (bytes_read != size) {
             return n;
         }
-        ptr += size;
+	ptr += size;
         n += 1;
     }
     return n;
@@ -464,4 +464,34 @@ void rrfile_fseek_set(struct rr_file** rr, const char *filename, size_t len) {
     rrfile_qemu_getbuffer(*rr, buffer, 0, len);
     rrfile_free(copy);
     free(buffer);
+}
+
+bool has_rr2_file_extention(const char *filename){
+    char* ext;
+    if ((ext = strrchr(filename,'.')) != NULL && strcmp(ext,".rr2") == 0){
+          return true;
+        }
+    return false;
+}
+
+bool is_gzip(const char *filename){
+    FILE *fp;
+    fp = fopen(filename,"r");
+    unsigned char buffer[2];
+    size_t nmemb = 2;
+    size_t result = fread(buffer,1,nmemb,fp);
+    if (result != nmemb){return false;}
+    if (buffer[0] == 0x1f && buffer[1] == 0x8b){return true;}
+    return false;
+}
+
+bool is_rr2_file(const char *filename){
+    struct stat buffer;
+    if (has_rr2_file_extention(filename) &&
+        stat(filename,&buffer) == 0 &&
+        is_gzip(filename))
+    {
+        return true;
+    }
+    return false;
 }

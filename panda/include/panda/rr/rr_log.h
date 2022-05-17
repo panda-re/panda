@@ -141,6 +141,7 @@ typedef struct RR_log_t {
     RR_log_type type;              // record or replay
     RR_prog_point last_prog_point; // to report progress
 
+    bool rr2; // indicate if using rr2 format
     char* name; // file name
     union {
     	FILE* record_fp;   // file pointer for log

@@ -162,6 +162,29 @@ static inline void free_entry_params(RR_log_entry *entry)
     }
 }
 
+static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb){
+    size_t result;
+    if (rr_nondet_log->rr2){
+        result = rrfile_fread(ptr, size, nmemb, rr_nondet_log->file.replay_rr);
+    }
+    else{
+	result = fread(ptr, size, nmemb, rr_nondet_log->file.record_fp);
+    }
+    rr_nondet_log->bytes_read += nmemb * size;
+    assert(result == nmemb);
+    return result;
+}
+
+void rr_fseek_cur(size_t size){
+    if (rr_nondet_log->rr2){
+        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, size);
+    }
+    else{
+        fseek(rr_nondet_log->file.record_fp, size, SEEK_CUR);
+    }
+    rr_nondet_log->bytes_read += size;
+}
+
 //mz fill an entry
 static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = alloc_new_entry();
@@ -169,127 +192,97 @@ static RR_log_entry *rr_read_item(void) {
     //mz read header
     assert (rr_in_replay());
     assert ( ! log_is_empty());
-    assert (rr_nondet_log->file.replay_rr != NULL);
+    if (rr_nondet_log->rr2) {
+        assert(rr_nondet_log->file.replay_rr != NULL);
+    }
+    else {
+        assert(rr_nondet_log->file.record_fp != NULL);
+    }
+
+#define RR_READ_ITEM(field) rr_fread(&(field), sizeof(field), 1)
 
     //mz XXX we assume that the log is not trucated - should probably fix this.
-    if (rrfile_fread(&(item->header.prog_point.guest_instr_count),
-                sizeof(item->header.prog_point.guest_instr_count), 1, rr_nondet_log->file.replay_rr) != 1) {
-        //mz an error occurred
-	assert(0);
-    }
+    RR_READ_ITEM(item->header.prog_point.guest_instr_count);
+
     //mz this is more compact, as it doesn't include extra padding.
-    assert(rrfile_fread(&(item->header.kind), 1, 1, rr_nondet_log->file.replay_rr) == 1);
-    assert(rrfile_fread(&(item->header.callsite_loc), 1, 1, rr_nondet_log->file.replay_rr) == 1);
-    rr_nondet_log->bytes_read += sizeof(RR_prog_point) + 2;
+    rr_fread(&(item->header.kind), 1, 1);
+    rr_fread(&(item->header.callsite_loc), 1, 1);
 
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
-            assert(rrfile_fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.input_1);
+            RR_READ_ITEM(item->variant.input_1);
             break;
         case RR_INPUT_2:
-            assert(rrfile_fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.input_2);
+            RR_READ_ITEM(item->variant.input_2);
             break;
         case RR_INPUT_4:
-            assert(rrfile_fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.input_4);
+            RR_READ_ITEM(item->variant.input_4);
             break;
         case RR_INPUT_8:
-            assert(rrfile_fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.input_8);
+            RR_READ_ITEM(item->variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
-            assert(rrfile_fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.interrupt_request);
+            RR_READ_ITEM(item->variant.interrupt_request);
             break;
         case RR_EXIT_REQUEST:
-            assert(rrfile_fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.exit_request);
+            RR_READ_ITEM(item->variant.exit_request);
             break;
         case RR_PENDING_INTERRUPTS:
-            assert(rrfile_fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.pending_interrupts);
+            RR_READ_ITEM(item->variant.pending_interrupts);
             break;
         case RR_EXCEPTION:
-            assert(rrfile_fread(&(item->variant.exception_index), sizeof(item->variant.exception_index), 1, rr_nondet_log->file.replay_rr) == 1);
-            rr_nondet_log->bytes_read += sizeof(item->variant.exception_index);
+            RR_READ_ITEM(item->variant.exception_index);
             break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
-                assert(rrfile_fread(&(args->kind), 1, 1, rr_nondet_log->file.replay_rr) == 1);
-            	rr_nondet_log->bytes_read += 1;
+                rr_fread(&(args->kind), 1, 1);
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
-                        assert(rrfile_fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->file.replay_rr) == 1);
+			RR_READ_ITEM(args->variant.cpu_mem_rw_args);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         //args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
                         //assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
-                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.cpu_mem_rw_args.len);
-            		rr_nondet_log->bytes_read += sizeof(args->variant.cpu_mem_rw_args) + args->variant.cpu_mem_rw_args.len;
+                        rr_fseek_cur(args->variant.cpu_mem_rw_args.len);
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
-                        assert(rrfile_fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->file.replay_rr) == 1);
+			RR_READ_ITEM(args->variant.cpu_mem_unmap);
                         //mz buffer length in args->variant.cpu_mem_unmap.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         //args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
                         //mz read the buffer
                         //assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
-                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.cpu_mem_unmap.len);
-			rr_nondet_log->bytes_read += sizeof(args->variant.cpu_mem_unmap) +  args->variant.cpu_mem_unmap.len;
+                        rr_fseek_cur(args->variant.cpu_mem_unmap.len);
                         break;
                     case RR_CALL_MEM_REGION_CHANGE:
-                        assert(rrfile_fread(&(args->variant.mem_region_change_args),
-                            sizeof(args->variant.mem_region_change_args), 1,
-                            rr_nondet_log->file.replay_rr) == 1);
-                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr, args->variant.mem_region_change_args.len);
-            		rr_nondet_log->bytes_read += sizeof(args->variant.mem_region_change_args) + args->variant.mem_region_change_args.len;
+			RR_READ_ITEM(args->variant.mem_region_change_args);
+                        rr_fseek_cur(args->variant.mem_region_change_args.len);
                         break;
                     case RR_CALL_HD_TRANSFER:
-                        assert(rrfile_fread(&(args->variant.hd_transfer_args),
-                              sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->file.replay_rr) == 1);
-			rr_nondet_log->bytes_read += sizeof(args->variant.hd_transfer_args);
+			RR_READ_ITEM(args->variant.hd_transfer_args);
                         break;
                     case RR_CALL_HANDLE_PACKET:
-                        assert(rrfile_fread(&(args->variant.handle_packet_args),
-                              sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->file.replay_rr) == 1);
-                        rrfile_fseek_cur(rr_nondet_log->file.replay_rr,
-                            args->variant.handle_packet_args.size);
-			rr_nondet_log->bytes_read += sizeof(args->variant.handle_packet_args) + args->variant.handle_packet_args.size;
+			RR_READ_ITEM(args->variant.handle_packet_args);
+                        rr_fseek_cur(args->variant.handle_packet_args.size);
                         break;
                     case RR_CALL_NET_TRANSFER:
-                        assert(rrfile_fread(&(args->variant.net_transfer_args),
-                              sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->file.replay_rr) == 1);
-			rr_nondet_log->bytes_read += sizeof(args->variant.net_transfer_args);
+			RR_READ_ITEM(args->variant.net_transfer_args);
                         break;
                     case RR_CALL_SERIAL_RECEIVE:
-                        assert(rrfile_fread(&(args->variant.serial_receive_args),
-                                     sizeof(args->variant.serial_receive_args),
-                                     1, rr_nondet_log->file.replay_rr) == 1);
-			rr_nondet_log->bytes_read += sizeof(args->variant.serial_receive_args);
+			RR_READ_ITEM(args->variant.serial_receive_args);
                         break;
                     case RR_CALL_SERIAL_READ:
-                        assert(rrfile_fread(&(args->variant.serial_read_args),
-                                     sizeof(args->variant.serial_read_args), 1,
-                                     rr_nondet_log->file.replay_rr) == 1);
-			rr_nondet_log->bytes_read += sizeof(args->variant.serial_read_args);
+			RR_READ_ITEM(args->variant.serial_read_args);
                         break;
                     case RR_CALL_SERIAL_SEND:
-                        assert(rrfile_fread(&(args->variant.serial_send_args),
-                                     sizeof(args->variant.serial_send_args), 1,
-                                     rr_nondet_log->file.replay_rr) == 1);
-			rr_nondet_log->bytes_read += sizeof(args->variant.serial_send_args);
+			RR_READ_ITEM(args->variant.serial_send_args);
                         break;
                     case RR_CALL_SERIAL_WRITE:
-                        assert(rrfile_fread(&(args->variant.serial_write_args),
-                                     sizeof(args->variant.serial_write_args), 1,
-                                     rr_nondet_log->file.replay_rr) == 1);
-			rr_nondet_log->bytes_read += sizeof(args->variant.serial_write_args);
+			RR_READ_ITEM(args->variant.serial_write_args);
                         break;
                     default:
                         //mz unimplemented
@@ -310,15 +303,21 @@ static RR_log_entry *rr_read_item(void) {
     return item;
 }
 
-// create replay log
-void rr_create_replay_log (const char *filename) {
-  // create log
-  rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
-  assert (rr_nondet_log != NULL);
-  memset(rr_nondet_log, 0, sizeof(RR_log));
+void rr1_create_replay_log(void){
+  struct stat statbuf = {0};
+  rr_nondet_log->file.record_fp = fopen(rr_nondet_log->name, "r");
+  assert(rr_nondet_log->file.record_fp != NULL);
 
-  rr_nondet_log->type = REPLAY;
-  rr_nondet_log->name = g_strdup(filename);
+  //mz fill in log size
+  stat(rr_nondet_log->name, &statbuf);
+  rr_nondet_log->size = statbuf.st_size;
+  fprintf (stdout, "opened %s for read.  len=%llu bytes.\n",
+     rr_nondet_log->name, rr_nondet_log->size);
+  //mz read the last program point from the log header.
+  rr_fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1);
+}
+
+void rr2_create_replay_log(void){
   if (!RRFILE_SUCCESS(rrfile_open_read(rr_nondet_log->name, "nondetlog", &(rr_nondet_log->file.replay_rr)))) {
       fprintf(stderr, "Failed to open nondetlog from RR archive\n");
       exit(1);
@@ -332,8 +331,26 @@ void rr_create_replay_log (const char *filename) {
   fprintf (stdout, "opened %s for read.  len=%llu bytes.\n",
      rr_nondet_log->name, rr_nondet_log->size);
   //mz read the last program point from the log header.
-  assert(rrfile_fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->file.replay_rr) == 1);
-  rr_nondet_log->bytes_read += sizeof(RR_prog_point);
+  rr_fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1);
+}
+
+// create replay log
+void rr_create_replay_log (const char *filename) {
+  // create log
+  rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
+  assert (rr_nondet_log != NULL);
+  memset(rr_nondet_log, 0, sizeof(RR_log));
+
+  rr_nondet_log->type = REPLAY;
+  rr_nondet_log->name = g_strdup(filename);
+  //check if using rr2 format
+  rr_nondet_log->rr2 = is_rr2_file(filename);
+  if (rr_nondet_log->rr2){
+    rr2_create_replay_log();
+  }
+  else{
+    rr1_create_replay_log();
+  }
 }
 
 int main(int argc, char **argv) {
