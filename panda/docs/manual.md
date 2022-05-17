@@ -461,7 +461,7 @@ For `rr2`, make sure to include the full name, including the `.rr2` extention.
 ### Sharing Recordings
 
 With the new format, recordings and their metadata are automatically compressed into
-a `rr2` file. To produce a `rr2` file with an old recording use the `rr2pack.py
+a `rr2` file. To produce a `rr2` file with an old recording use the `rr2pack.py`
 script, which can be found in the `scripts` directory. To pack up a recording,
 just use:
 
@@ -474,7 +474,7 @@ them into PANDA's packed record/replay format in a file named
     tar -xvf <output_name>.rr2
 
 
-For older recordings use the `scripts/rrpack.py`, to pack an old recording into
+For older recordings use the `scripts/rrpack.py`. To pack an old recording into
 the old packed record/replay format use:
 
     scripts/rrpack.py <name>
