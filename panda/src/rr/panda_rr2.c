@@ -240,10 +240,13 @@ struct rr_file_state* rrfile_open_write(const char* fpath)
     }
 
     // Open a temporary file to write hashes to
-    size_t hash_fpath_len = strlen(fpath) + 10;
+    const char * hashtmp = "-hashtmp";
+    size_t hash_fpath_len = strlen(fpath) + strlen(hashtmp) + 1;
     rstate->hash_fpath = (char*)malloc(hash_fpath_len);
-    strncpy(rstate->hash_fpath, fpath, hash_fpath_len);
-    strncat(rstate->hash_fpath, "-hashtmp", hash_fpath_len);
+    memcpy(rstate->hash_fpath, fpath, strlen(fpath));
+    memcpy(rstate->hash_fpath + strlen(fpath), hashtmp, strlen(hashtmp));
+    rstate->hash_fpath[hash_fpath_len] = '\0'; 
+
     rstate->hash_fp = fopen(rstate->hash_fpath, "w");
     if (rstate->hash_fp < 0) {
         fprintf(stderr, "Failed to open temporary hash file at %s\n", rstate->hash_fpath);
