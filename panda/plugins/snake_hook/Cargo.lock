@@ -163,9 +163,9 @@ dependencies = [
 
 [[package]]
 name = "inline-python"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c178e725a9d7a2cd53fedcc0411424c48b240f7d7416a4803a46381a0ef8788d"
+checksum = "e2090a070ce14a62b0605bb08e545b28ff785b24b9fabfc56a402a5987e7a299"
 dependencies = [
  "inline-python-macros",
  "pyo3",
@@ -173,9 +173,9 @@ dependencies = [
 
 [[package]]
 name = "inline-python-macros"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7156c4a14ca399598b2a2c5d26d8c421721661445a1c22e906d3aa77952610bc"
+checksum = "f772582b7328d339524184f3980438daf380bf75edb05543356790192a17fafc"
 dependencies = [
  "libc",
  "proc-macro2",

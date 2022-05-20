@@ -32,11 +32,12 @@ mmio_trace
 net
 network
 osi
-#osi_linux
+osi_linux
 osi_test
 pri
 pri_dwarf
 pri_simple
+print_tcp_servers
 proc_start_linux
 proc_trace
 recctrl
@@ -53,6 +54,6 @@ trace
 track_intexc
 unigrams
 win2000x86intro
-#win7x86intro
+win7x86intro
 wintrospection
 winxpx86intro

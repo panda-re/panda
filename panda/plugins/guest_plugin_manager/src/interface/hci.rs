@@ -52,8 +52,10 @@ pub fn hyp_write(
     if let Ok(buf_out) =
         virtual_memory_read(cpu, buf_ptr as target_ulong, buf_size)
     {
+        let bytes_read = buf_out.len();
         publish_message_from_guest(channel_id, buf_out);
-        Some(0)
+
+        Some(bytes_read)
     } else {
         println!("Failed to read virtual memory in hyp_write");
         None
