@@ -8,8 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-#panda-re = { version = "0.26", default-features = false }
-panda-re = { path = "../../../../panda-rs/panda-rs", default-features = false }
+panda-re = { version = "0.34", default-features = false }
 bincode = "1"
 serde = { version = "1", features = ["derive"] }
 tabled = { version = "0.6", features = ["color"] }
