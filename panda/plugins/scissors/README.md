@@ -10,6 +10,8 @@ For example, if you're doing a heavyweight analysis like taint tracking, and you
 
 If you don't know what starting and ending instruction count contains your region of interest, you can use QEMU's debug output to determine it. Running a replay with `-d in_asm,rr` will print the rr instruction counts of each guest instruction. 
 
+The plugin can handle both the old and new record and replay format. The file produced by the plugin will be in the new rr2 format.
+
 Arguments
 ---------
 
@@ -30,10 +32,18 @@ None.
 Example
 -------
 
-Snipping from instruction 12345 to 8675309 into `foo_reduced`:
+Snipping from instruction 12345 to 8675309 into `foo_reduced.rr2`, with the old
+format as input:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
+    -panda scissors:name=foo_reduced,start=12345,end=8675309
+```
+Or snipping from instruction 12345 to 8675309 into `foo_reduced.rr2`, with the
+new rr2 format:
+
+```sh
+$PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo.rr2 \
     -panda scissors:name=foo_reduced,start=12345,end=8675309
 ```
 

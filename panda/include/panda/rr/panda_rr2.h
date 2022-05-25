@@ -69,6 +69,12 @@ bool rrfile_add_recording_file(struct rr_file_state* rstate, const char* type,
                                const char* fpath);
 
 /**
+ * copy a file file from one recording archive to another recording archive
+ */
+int rrfile_copy_recording_file(struct rr_file_state* rstate, const char* type,
+                               char * replay_name);
+
+/**
  * Close a newly create rr2 file, calculating file hashes, etc
  */
 void rrfile_finalize(struct rr_file_state*);

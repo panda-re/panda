@@ -322,6 +322,48 @@ bool rrfile_add_recording_file(struct rr_file_state* rstate, const char* type,
     return true;
 }
 
+int rrfile_copy_recording_file(struct rr_file_state* rstate, const char* type,
+			       char * replay_name)
+{
+    if (!is_valid_rrv2_file(type)) {
+        fprintf(stderr, "Invalid rrv2 file type: %s\n", type);
+        return false;
+    }
+    struct rr_file* rr = NULL;
+    int status = rrfile_open_read(replay_name, type, &(rr));
+    if (!RRFILE_SUCCESS(status)) {
+        return status;
+    }
+    int64_t contents_size = archive_entry_size(rr->entry);
+    if (contents_size <= 0) {
+        rrfile_free(rr);
+        return 7;
+    }
+    if (ARCHIVE_OK != archive_write_header(rstate->archive, rr->entry)) {
+        fprintf(stderr, "Failed to write archive header!\n");
+        fprintf(stderr, "Error: %s\n", archive_error_string(rstate->archive));
+        rrfile_free(rr);
+        return 8;
+    }
+    void *buff;
+    buff = calloc(1, contents_size + 1);
+    ssize_t read_size = archive_read_data(rr->archive, buff, contents_size);
+    if (read_size != contents_size) {
+        fprintf(stderr, "Failed to read entire command line\n");
+        rrfile_free(rr);
+        free(buff);
+        return 9;
+    }
+    status = archive_write_data(rstate->archive, buff, contents_size);
+    rrfile_free(rr);
+    free(buff);
+    if (status <= 0) {
+        fprintf(stderr, "Failed to archive_write_data\n");
+        return 10;
+    }
+    return 0;
+}
+
 void rrfile_finalize(struct rr_file_state* rstate)
 {
     if (rstate->hash_fp) {
