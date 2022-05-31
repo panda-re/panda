@@ -1,5 +1,5 @@
 ARG BASE_IMAGE="ubuntu:20.04"
-ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,aarch64-softmmu"
+ARG TARGET_LIST="i386-softmmu"
 
 ### BASE IMAGE
 FROM $BASE_IMAGE as base
