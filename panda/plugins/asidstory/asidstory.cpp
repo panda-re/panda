@@ -58,6 +58,7 @@ extern "C" {
 
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
+#include "osi/os_intro.h"
 
 #include "asidstory.h"
 
@@ -537,15 +538,17 @@ void save_proc_range(uint64_t instr_end) {
 }
 
 
-// when asid changes, try to figure out current proc, which can fail in which case
+// when task changes, try to figure out current proc, which can fail in which case
 // the before_block_exec callback will try again at the start of each subsequent
 // block until we succeed in determining current proc.
 // also, if proc has changed, we record the fact that a process was seen to be running
 // from now back to last asid change
-bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+void asidstory_task_changed(CPUState *env) {
 
+  target_ulong new_asid = panda_current_asid(env);
+  
     // some fool trying to use asidstory for boot?
-    if (new_asid == 0) return false;
+  if (new_asid == 0) return ;
 
     uint64_t curr_instr = get_instr_count();
 
@@ -586,8 +589,6 @@ bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong n
     asid_at_asid_changed = new_asid;
 
     if (debug) printf ("asid_changed: process_mode unknown\n");
-
-    return false;
 }
 
 
@@ -765,9 +766,11 @@ bool init_plugin(void *self) {
     // this sets up OS introspection API
     assert(init_osi_api());
 
+    PPP_REG_CB("osi", on_task_change, asidstory_task_changed);
+
     panda_cb pcb;
-    pcb.asid_changed = asidstory_asid_changed;
-    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+    // pcb.asid_changed = asidstory_asid_changed;
+    // panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
