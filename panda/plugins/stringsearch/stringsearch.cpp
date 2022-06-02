@@ -245,13 +245,14 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("stringsearch");
 
+    verbose = panda_parse_bool_opt(args, "verbose",
+				   "enables verbose logging");
+
     const char *arg_str = panda_parse_string_opt(args, "str", "", "a single string to search for");
     size_t arg_len = strlen(arg_str);
     if (arg_len > 0) {
         add_string(arg_str);
     }
-    verbose = panda_parse_bool_opt(args, "verbose",
-                                             "enables verbose logging");
 
     n_callers = panda_parse_uint64_opt(args, "callers", 16, "depth of callstack for matches");
     if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
