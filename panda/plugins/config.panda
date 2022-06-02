@@ -11,6 +11,7 @@ coverage
 dynamic_symbols
 edge_coverage
 filereadmon
+filemon
 forcedexec
 gdb
 hooks
@@ -43,6 +44,7 @@ snake_hook
 stringsearch
 syscalls2
 syscalls_logger
+syshist
 textprinter
 trace
 track_intexc

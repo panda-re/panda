@@ -97,3 +97,5 @@ RUN ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
     if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
+
+RUN apt-get --yes install screen emacs less
