@@ -1476,15 +1476,12 @@ extern char **gargv;
 
 char* rr2_name(const char* fpath)
 {
-    const char * rr2_ext = ".rr2";
-    size_t rr2_size = strlen(fpath) + strlen(rr2_ext) + 1;
-    char* rr2_name = (char*) malloc(rr2_size);
+    size_t needed = snprintf(NULL, 0, "%s.rr2", fpath);
+    char* rr2_name = malloc(needed+1);
     if (!rr2_name) {
         return NULL;
     }
-    memcpy(rr2_name, fpath, strlen(fpath));
-    memcpy(rr2_name + strlen(fpath), rr2_ext, strlen(rr2_ext) + 1);
-    rr2_name[rr2_size] = '\0';
+    snprintf(rr2_name, needed+1, "%s.rr2", fpath);
     return rr2_name;
 }
 
