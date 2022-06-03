@@ -3145,7 +3145,12 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
         = QSIMPLEQ_HEAD_INITIALIZER(bdo_queue);
 
     // PANDA stuff
-    gargv = argv;
+    gargv = malloc(argc * sizeof(gargv));
+    int i;
+    for(i=0; i < argc ; ++i )
+    {
+        gargv[i] = strdup(argv[i]);
+    }
     gargc = argc;
     if (pmm == PANDA_NORMAL)
         qemu_file = this_executable_path(argv[0]);

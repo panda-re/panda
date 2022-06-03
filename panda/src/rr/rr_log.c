@@ -1609,6 +1609,7 @@ void rr_do_end_record(void)
     g_free(rr_path_base);
     g_free(rr_name_base);
 
+    free(gargv);
     // cleanup rr_control struct
     assert(rr_control.name != NULL);
     g_free(rr_control.name);
