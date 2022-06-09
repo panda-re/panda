@@ -62,6 +62,7 @@ def copy_objs():
         softmmu = arch+"-softmmu"
         path      = os.path.join(*[build_root, softmmu, libname])
         plugindir = os.path.join(*[build_root, softmmu, "panda", "plugins"])
+        guestplugindir = os.path.join(*[build_root, softmmu, "panda", "guest_plugins"])
         llvm1     = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
         llvm2     = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
 
@@ -81,6 +82,11 @@ def copy_objs():
             shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
 
         shutil.copytree(plugindir,  new_plugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
+
+        new_guestplugindir = os.path.join(lib_dir, softmmu, "panda/guest_plugins")
+        print("\n\n")
+        print(guestplugindir, new_guestplugindir)
+        shutil.copytree(guestplugindir,  new_guestplugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
 
     # Strip libpandas and plugins to save space (Need <100mb for pypi)
     if pypi_build:
@@ -163,6 +169,8 @@ setup(name='pandare',
           'data/*-softmmu/llvm-helpers*.bc*', # Llvm-helpers
           'data/*-softmmu/panda/plugins/*',   # All plugins
           'data/*-softmmu/panda/plugins/**/*',# All plugin files
+          'data/*-softmmu/panda/guest_plugins/*',   # All plugins
+          'data/*-softmmu/panda/guest_plugins/**/*',# All plugin files
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           ]},

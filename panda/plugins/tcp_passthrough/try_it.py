@@ -13,11 +13,15 @@ def run_cmd():
 
     run("sleep 2")
 
-    panda.load_plugin("print_tcp_servers", {
-        "print_sockets": True,
+    panda.load_plugin("tcp_passthrough", {
+        "print_sockets": False,
         "forward_port": 8000,
         "host_port": 4343
     })
+
+    print("Before")
+    panda.plugins["tcp_passthrough"].print_socket_info()
+    print("After")
 
     run("cat")
     panda.end_analysis()

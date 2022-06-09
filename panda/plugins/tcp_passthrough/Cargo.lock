@@ -352,7 +352,9 @@ checksum = "decf7381921fea4dcb2549c5667eda59b3ec297ab7e2b5fc33eac69d2e7da87b"
 
 [[package]]
 name = "panda-re"
-version = "0.33.0"
+version = "0.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6848dfa0312ec610a889292351238c728a1e2622d9fbff94194475dc0eb29de0"
 dependencies = [
  "array-init",
  "dirs",
@@ -372,6 +374,8 @@ dependencies = [
 [[package]]
 name = "panda-re-macros"
 version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29772398be20723c90088ae4380d62e25cefe54c174d9082532b258985e41d04"
 dependencies = [
  "darling",
  "doc-comment",
@@ -383,6 +387,8 @@ dependencies = [
 [[package]]
 name = "panda-re-sys"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
 
 [[package]]
 name = "papergrid"
@@ -405,20 +411,6 @@ name = "pkg-config"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
-
-[[package]]
-name = "print_tcp_servers"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "dashmap",
- "once_cell",
- "owo-colors",
- "panda-re",
- "serde",
- "tabled",
- "tcp_shared_types",
-]
 
 [[package]]
 name = "proc-macro2"
@@ -586,6 +578,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tcp_passthrough"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "dashmap",
+ "once_cell",
+ "owo-colors",
+ "panda-re",
+ "serde",
+ "tabled",
+ "tcp_shared_types",
 ]
 
 [[package]]

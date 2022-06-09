@@ -37,7 +37,7 @@ osi_test
 pri
 pri_dwarf
 pri_simple
-print_tcp_servers
+tcp_passthrough
 proc_start_linux
 proc_trace
 recctrl

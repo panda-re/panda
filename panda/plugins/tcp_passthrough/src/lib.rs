@@ -35,7 +35,7 @@ fn send_request(req: Request) {
 }
 
 #[derive(PandaArgs)]
-#[name = "print_tcp_servers"]
+#[name = "tcp_passthrough"]
 struct Args {
     print_sockets: bool,
     forward_port: u32,

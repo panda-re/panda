@@ -267,6 +267,7 @@ char *panda_guest_plugin_path(const char *plugin_name) {
         g_free(plugin_path);
         return path;
     }
+    printf("Failed to find guest plugin '%s' at '%s'", plugin_name, plugin_path);
     g_free(plugin_path);
 
     // Return null if plugin resolution failed.

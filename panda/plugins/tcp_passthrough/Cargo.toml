@@ -1,5 +1,5 @@
 [package]
-name = "print_tcp_servers"
+name = "tcp_passthrough"
 version = "0.1.0"
 authors = ["Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
 edition = "2018"

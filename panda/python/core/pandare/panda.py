@@ -671,6 +671,8 @@ class Panda():
         argstrs_ffi = []
         if isinstance(args, dict):
             for k,v in args.items():
+                if type(v) is bool:
+                    v = "true" if v else "false"
                 this_arg_s = "{}={}".format(k,v)
                 this_arg = self.ffi.new("char[]", bytes(this_arg_s, "utf-8"))
                 argstrs_ffi.append(this_arg)
