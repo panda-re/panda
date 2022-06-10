@@ -75,7 +75,6 @@ RR_log_entry* rr_queue_tail;
 RR_log_entry* rr_queue_end; // end of buffer.
 
 // RR2 variables
-char* rr2_name(const char* fpath);
 void rr_finalize_write_log(void);
 
 // mz 11.06.2009 Flags to manage nested recording
@@ -1272,12 +1271,13 @@ void rr_create_replay_log(const char* filename)
     rr_assert(rr_nondet_log != NULL);
 
     rr_nondet_log->type = REPLAY;
-    rr_nondet_log->name = g_strdup(filename);
     rr_nondet_log->rr2 = is_rr2_file(filename);
     if (rr_nondet_log->rr2) {
+        rr_nondet_log->name = rr2_name(filename);
         rr2_create_replay_log();
     }
     else {
+        rr_nondet_log->name = g_strdup(filename);
         rr1_create_replay_log();
     }
 }
@@ -1473,17 +1473,6 @@ static time_t rr_start_time;
 
 extern int gargc;
 extern char **gargv;
-
-char* rr2_name(const char* fpath)
-{
-    size_t needed = snprintf(NULL, 0, "%s.rr2", fpath);
-    char* rr2_name = malloc(needed+1);
-    if (!rr2_name) {
-        return NULL;
-    }
-    snprintf(rr2_name, needed+1, "%s.rr2", fpath);
-    return rr2_name;
-}
 
 // mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
@@ -1707,9 +1696,11 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     }
     
     if (rr2_replay){
-        snapshot_ret = rr2_load_snapshot(name_buf, sizeof(name_buf), file_name_full);
-        snprintf(name_buf, sizeof(name_buf), "%s/nondetlog", file_name_full);
-        strcpy(replay_log_path, file_name_full);
+        char* rr2_filename = rr2_name(file_name_full);
+        snapshot_ret = rr2_load_snapshot(name_buf, sizeof(name_buf), rr2_filename);
+        snprintf(name_buf, sizeof(name_buf), "%s/nondetlog", rr2_filename);
+        strcpy(replay_log_path, rr2_filename);
+        free(rr2_filename);
     }
     else {
         snapshot_ret = rr1_load_snapshot(rr_name, rr_path, name_buf, sizeof(name_buf));

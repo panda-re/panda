@@ -342,13 +342,14 @@ void rr_create_replay_log (const char *filename) {
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = REPLAY;
-  rr_nondet_log->name = g_strdup(filename);
   //check if using rr2 format
   rr_nondet_log->rr2 = is_rr2_file(filename);
   if (rr_nondet_log->rr2){
+    rr_nondet_log->name = rr2_name(filename);
     rr2_create_replay_log();
   }
   else{
+    rr_nondet_log->name = g_strdup(filename);
     rr1_create_replay_log();
   }
 }

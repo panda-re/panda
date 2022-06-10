@@ -527,13 +527,33 @@ bool is_gzip(const char *filename){
     return false;
 }
 
-bool is_rr2_file(const char *filename){
-    struct stat buffer;
-    if (has_rr2_file_extention(filename) &&
-        stat(filename,&buffer) == 0 &&
-        is_gzip(filename))
-    {
-        return true;
+char* rr2_name(const char* fpath)
+{
+    char* rr2_name;
+    if (has_rr2_file_extention(fpath)){
+        rr2_name = strdup(fpath);
+    } else {
+        size_t needed = snprintf(NULL, 0, "%s.rr2", fpath);
+        rr2_name = malloc(needed+1);
+        if (!rr2_name) {
+            return NULL;
+        }
+        snprintf(rr2_name, needed+1, "%s.rr2", fpath);
     }
-    return false;
+    return rr2_name;
+}
+
+bool is_rr2_file(const char *filename){
+    bool rr2_file;
+    struct stat buffer;
+    char* rr2_filename = rr2_name(filename);
+    if (stat(rr2_filename,&buffer) == 0 &&
+        is_gzip(rr2_filename))
+    {
+        rr2_file = true;
+    } else {
+        rr2_file = false;
+    }
+    free(rr2_filename);
+    return rr2_file;
 }
