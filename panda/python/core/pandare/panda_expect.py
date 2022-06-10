@@ -334,7 +334,7 @@ class Expect(object):
         if len(lines_out[-1].strip()):
             self.current_line.append(lines_out[-1])
 
-    def expect(self, expectation=None, timeout=30):
+    def expect(self, expectation=None, timeout=45):
         '''
         Assumptions: as you send a command, the guest may send back
             The same command + ansi control codes.

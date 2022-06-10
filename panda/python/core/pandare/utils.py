@@ -9,6 +9,8 @@ from os import devnull
 from subprocess import check_call, STDOUT
 from sys import platform, stdout
 from threading import current_thread, main_thread
+from os.path import isfile
+import  tarfile
 
 # Set to enable pypanda debugging
 debug = False
@@ -101,6 +103,32 @@ def blocking(func):
     wrapper.__blocking__ = True
     wrapper.__name__ = func.__name__ + " (with async thread)"
     return wrapper
+
+
+def rr2_name(name):
+    return name if name.endswith(".rr2") else name + ".rr2"
+
+def rr2_recording(name):
+    def is_gzip(name):
+        rr = open(name, "rb")
+        return rr.read(2) == b'\x1f\x8b'
+
+    rr2_filename = rr2_name(name)
+    if isfile(rr2_filename) and is_gzip(rr2_filename):
+        return True
+    return False
+
+def rr2_contains_member(name, member):
+    rr2_filename = rr2_name(name)
+    contains_member = False
+    if rr2_recording(rr2_filename):
+        try:
+            tar = tarfile.open(rr2_filename)
+            tar.getmember(member)
+            contains_member = True
+        except (KeyError, IsADirectoryError, FileNotFoundError, tarfile.ReadError):
+            pass
+    return contains_member
 
 class GArrayIterator():
     '''
