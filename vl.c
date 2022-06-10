@@ -3146,10 +3146,10 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
     // PANDA stuff
     gargv = malloc(argc * sizeof(gargv));
-    int i;
-    for(i=0; i < argc ; ++i )
+    int j;
+    for(j=0; j < argc ; ++j )
     {
-        gargv[i] = strdup(argv[i]);
+        gargv[j] = strdup(argv[j]);
     }
     gargc = argc;
     if (pmm == PANDA_NORMAL)
