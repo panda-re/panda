@@ -59,11 +59,11 @@ def run_cmd():
     def run(cmd):
         print(panda.run_serial_cmd(cmd, no_timeout=True))
 
+    # Start up an HTTP server as a background job
     run("python3 -m http.server &")
 
+    # Give the HTTP server time to start up before pulling socket info
     run("sleep 2")
-
-    panda.load_plugin("tcp_passthrough")
 
     # Print a table of the TCP servers in the guest
     panda.print_socket_info()
@@ -79,7 +79,9 @@ def run_cmd():
         for socket in socket_info:
             print(f" {socket.ip}:{socket.port}\t{socket.pid}\t{socket.is_server}")
 
+    # Injecting into a cat command, but this could be anything
     run("cat")
+
     panda.end_analysis()
 
 panda.run()
