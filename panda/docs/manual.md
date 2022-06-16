@@ -456,7 +456,6 @@ The current record format produces a `.tar.gz` file with extention ending in
 PANDA for recording, and a `sha1` file containing the sha1 hashes of the other
 files. The replay command supports both the new `rr2` format, as well as the
 old format. When you start a replay, the format will automatically be detected.
-For `rr2`, make sure to include the full name, including the `.rr2` extention.
 
 ### Sharing Recordings
 
