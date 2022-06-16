@@ -261,7 +261,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
 /******************************************************************************************/
 
 static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb) {
-    size_t result = fwrite(ptr, size, nmemb, rr_nondet_log->file.record_fp);
+    size_t result = fwrite(ptr, size, nmemb, rr_nondet_log->file.fp);
     rr_assert(result == nmemb);
     return result;
 }
@@ -700,7 +700,7 @@ static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
     if (rr_nondet_log->rr2){
 	result = rrfile_fread(ptr, size, nmemb, rr_nondet_log->file.replay_rr);
     } else {
-        result = fread(ptr, size, nmemb, rr_nondet_log->file.record_fp);
+        result = fread(ptr, size, nmemb, rr_nondet_log->file.fp);
     }
     rr_nondet_log->bytes_read += nmemb * size;
     rr_assert(result == nmemb);
@@ -764,7 +764,7 @@ static RR_log_entry *rr_read_item(void) {
         rr_assert(rr_nondet_log->file.replay_rr != NULL);
     }
     else{
-        rr_assert(rr_nondet_log->file.record_fp != NULL);
+        rr_assert(rr_nondet_log->file.fp != NULL);
     }
 
     item->header.file_pos = rr_nondet_log->bytes_read;
@@ -1209,8 +1209,8 @@ void rr_create_record_log(const char* filename)
 
     rr_nondet_log->type = RECORD;
     rr_nondet_log->name = g_strdup(filename);
-    rr_nondet_log->file.record_fp = fopen(rr_nondet_log->name, "w");
-    rr_assert(rr_nondet_log->file.record_fp != NULL);
+    rr_nondet_log->file.fp = fopen(rr_nondet_log->name, "w");
+    rr_assert(rr_nondet_log->file.fp != NULL);
 
     if (rr_debug_whisper()) {
         qemu_log("opened %s for write.\n", rr_nondet_log->name);
@@ -1229,8 +1229,8 @@ void rr_create_record_log(const char* filename)
 void rr1_create_replay_log(void)
 {
     struct stat statbuf = {0};
-    rr_nondet_log->file.record_fp = fopen(rr_nondet_log->name, "r");
-    rr_assert(rr_nondet_log->file.record_fp != NULL);
+    rr_nondet_log->file.fp = fopen(rr_nondet_log->name, "r");
+    rr_assert(rr_nondet_log->file.fp != NULL);
 
     // mz fill in log size
     stat(rr_nondet_log->name, &statbuf);
@@ -1285,12 +1285,12 @@ void rr_create_replay_log(const char* filename)
 void rr_finalize_write_log(void)
 {
     if (rr_nondet_log->type == RECORD) {
-        if (rr_nondet_log->file.record_fp) {
-            rewind(rr_nondet_log->file.record_fp);
+        if (rr_nondet_log->file.fp) {
+            rewind(rr_nondet_log->file.fp);
             rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
                     sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
-            fclose(rr_nondet_log->file.record_fp);
-            rr_nondet_log->file.record_fp = NULL;
+            fclose(rr_nondet_log->file.fp);
+            rr_nondet_log->file.fp = NULL;
         }
     }
 }

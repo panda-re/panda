@@ -144,7 +144,7 @@ typedef struct RR_log_t {
     bool rr2; // indicate if using rr2 format
     char* name; // file name
     union {
-    	FILE* record_fp;   // file pointer for log
+    	FILE* fp; // file pointer for creating recording log and non-rr2 replays
     	struct rr_file* replay_rr;
     } file;
 

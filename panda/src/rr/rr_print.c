@@ -168,7 +168,7 @@ static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb){
         result = rrfile_fread(ptr, size, nmemb, rr_nondet_log->file.replay_rr);
     }
     else{
-	result = fread(ptr, size, nmemb, rr_nondet_log->file.record_fp);
+	result = fread(ptr, size, nmemb, rr_nondet_log->file.fp);
     }
     rr_nondet_log->bytes_read += nmemb * size;
     assert(result == nmemb);
@@ -180,7 +180,7 @@ void rr_fseek_cur(size_t size){
         rrfile_fseek_cur(rr_nondet_log->file.replay_rr, size);
     }
     else{
-        fseek(rr_nondet_log->file.record_fp, size, SEEK_CUR);
+        fseek(rr_nondet_log->file.fp, size, SEEK_CUR);
     }
     rr_nondet_log->bytes_read += size;
 }
@@ -196,7 +196,7 @@ static RR_log_entry *rr_read_item(void) {
         assert(rr_nondet_log->file.replay_rr != NULL);
     }
     else {
-        assert(rr_nondet_log->file.record_fp != NULL);
+        assert(rr_nondet_log->file.fp != NULL);
     }
 
 #define RR_READ_ITEM(field) rr_fread(&(field), sizeof(field), 1)
@@ -305,8 +305,8 @@ static RR_log_entry *rr_read_item(void) {
 
 void rr1_create_replay_log(void){
   struct stat statbuf = {0};
-  rr_nondet_log->file.record_fp = fopen(rr_nondet_log->name, "r");
-  assert(rr_nondet_log->file.record_fp != NULL);
+  rr_nondet_log->file.fp = fopen(rr_nondet_log->name, "r");
+  assert(rr_nondet_log->file.fp != NULL);
 
   //mz fill in log size
   stat(rr_nondet_log->name, &statbuf);
