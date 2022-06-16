@@ -55,6 +55,7 @@ void rr_fseek_cur(size_t size);
 // used from monitor.c
 int rr_do_begin_record(const char* name, CPUState* cpu_state);
 void rr_do_end_record(void);
+int load_snapshot_state(QEMUFile* snp);
 int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_full);
 int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf_size);
 int rr_do_begin_replay(const char* name, CPUState* cpu_state);

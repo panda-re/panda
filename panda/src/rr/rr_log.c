@@ -1613,18 +1613,9 @@ void rr_do_end_record(void)
 #endif
 }
 
-int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_full){
+int load_snapshot_state(QEMUFile* snp){
     __attribute__((unused)) int snapshot_ret;
-
-    // first retrieve snapshot
-    snprintf(name_buf, name_buf_size, "%s/snapshot", file_name_full);
-    if (rr_debug_whisper()) {
-        qemu_log("reading snapshot:\t%s\n", name_buf);
-    }
-
-    printf("loading snapshot\n");
-    QEMUFile* snp = load_snapshot_rr(file_name_full, "snapshot");
-
+    
     qemu_system_reset(VMRESET_SILENT);
     MigrationIncomingState* mis = migration_incoming_get_current();
     mis->from_src_file = snp;
@@ -1635,10 +1626,19 @@ int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_f
     return snapshot_ret;
 }
 
-int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf_size){
-    __attribute__((unused)) int snapshot_ret;
+int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_full){
+    snprintf(name_buf, name_buf_size, "%s/snapshot", file_name_full);
+    if (rr_debug_whisper()) {
+        qemu_log("reading snapshot:\t%s\n", name_buf);
+    }
 
-    // first retrieve snapshot
+    printf("loading snapshot\n");
+    QEMUFile* snp = load_snapshot_rr(file_name_full, "snapshot");
+
+    return load_snapshot_state(snp);
+}
+
+int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf_size){
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, name_buf_size);
     if (rr_debug_whisper()) {
         qemu_log("reading snapshot:\t%s\n", name_buf);
@@ -1650,16 +1650,10 @@ int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf
         printf ("... snapshot file doesn't exist?\n");
         abort();
     }
+    
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
 
-    qemu_system_reset(VMRESET_SILENT);
-    MigrationIncomingState* mis = migration_incoming_get_current();
-    mis->from_src_file = snp;
-    snapshot_ret = qemu_loadvm_state(snp);
-    qemu_fclose(snp);
-    migration_incoming_state_destroy();
-
-    return snapshot_ret;
+    return load_snapshot_state(snp);
 }
 
 // file_name_full should be full path to the record/replay log

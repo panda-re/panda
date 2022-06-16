@@ -145,7 +145,7 @@ typedef struct RR_log_t {
     char* name; // file name
     union {
     	FILE* fp; // file pointer for creating recording log and non-rr2 replays
-    	struct rr_file* replay_rr;
+    	struct rr_file* replay_rr; // struct used for log when running rr2 replays
     } file;
 
     unsigned long long
