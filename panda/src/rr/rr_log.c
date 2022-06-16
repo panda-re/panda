@@ -74,7 +74,7 @@ RR_log_entry* rr_queue_head;
 RR_log_entry* rr_queue_tail;
 RR_log_entry* rr_queue_end; // end of buffer.
 
-// RR2 variables
+// RR2 function
 void rr_finalize_write_log(void);
 
 // mz 11.06.2009 Flags to manage nested recording
