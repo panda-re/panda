@@ -1,0 +1,12 @@
+[package]
+name = "tcp_servers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+panda-channels = "0.2"
+bincode = "1"
+serde = { version = "1", features = ["derive"] }
+
+proc-net-tcp = { git = "https://github.com/panda-re/proc-net-tcp" }
+tcp_shared_types = { path = "../../plugins/tcp_passthrough/tcp_shared_types" }
