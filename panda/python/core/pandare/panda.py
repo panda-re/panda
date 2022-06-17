@@ -38,6 +38,7 @@ from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
+from .tcp_passthrough import TcpPassthrough, SocketInfo
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -90,6 +91,7 @@ class Panda():
         self.os_type = os
         self.qcow = qcow
         self.plugins = plugin_list(self)
+        self.tcp = TcpPassthrough(self)
         self.expect_prompt = expect_prompt
         self.lambda_cnt = 0
         self.__sighandler = None
