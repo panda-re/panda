@@ -33,6 +33,8 @@ fn init(_: &mut PluginHandle) -> bool {
     // Ensure symbol table is initialized
     let _ = symbol_table();
 
+    println!("osi2 symbol table loaded");
+
     true
 }
 
@@ -86,8 +88,8 @@ fn current_process_name(cpu: &mut CPUState) -> String {
     String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned()
 }
 
-#[panda::asid_changed]
-fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-    println!("found process {}", current_process_name(cpu));
-    false
-}
+//#[panda::asid_changed]
+//fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
+//    println!("found process {}", current_process_name(cpu));
+//    false
+//}

@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
+    fmt,
     fs::{self, File},
     io::BufReader,
     path::Path,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VolatilityBaseType {
     pub size: i64,
     pub signed: bool,
@@ -15,7 +16,7 @@ pub struct VolatilityBaseType {
     pub endian: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VolatilityEnum {
     pub size: i64,
     pub base: String,
@@ -25,23 +26,110 @@ pub struct VolatilityEnum {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VolatilitySymbol {
     #[serde(rename = "type")]
-    pub type_val: Option<Map<String, Value>>,
+    pub type_val: Option<VolatilityType>,
     pub address: u64,
     pub constant_data: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum VolatilityType {
+    Base {
+        name: String,
+    },
+
+    Array {
+        count: u64,
+        subtype: Box<VolatilityType>,
+    },
+
+    Pointer {
+        subtype: Box<VolatilityType>,
+    },
+
+    Struct {
+        name: String,
+    },
+
+    Enum {
+        name: String,
+    },
+
+    Union {
+        name: String,
+    },
+
+    Bitfield {
+        bit_position: u64,
+        bit_length: u64,
+
+        #[serde(rename = "type")]
+        base_type: Box<VolatilityType>,
+    },
+
+    Function,
+}
+
+impl fmt::Display for VolatilityType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VolatilityType::Base { name } => f.write_str(&name),
+            VolatilityType::Array { count, subtype } => {
+                write!(f, "{}[{}]", subtype.to_string(), count)
+            }
+            VolatilityType::Pointer { subtype } => write!(f, "{}*", subtype),
+            VolatilityType::Struct { name } => write!(f, "struct {}", name),
+            VolatilityType::Enum { name } => write!(f, "enum {}", name),
+            VolatilityType::Union { name } => write!(f, "union {}", name),
+            VolatilityType::Bitfield {
+                bit_position,
+                bit_length,
+                base_type,
+            } => write!(
+                f,
+                "(bitfield {}[{}..{}])",
+                base_type,
+                bit_position,
+                bit_position + bit_length
+            ),
+            VolatilityType::Function => write!(f, "func_ptr"),
+        }
+    }
+}
+
+impl VolatilityType {
+    pub fn to_string(&self) -> String {
+        match self {
+            VolatilityType::Base { name } => name.clone(),
+            VolatilityType::Array { count, subtype } => {
+                format!("{}[{}]", subtype.to_string(), count)
+            }
+            VolatilityType::Pointer { subtype } => format!("{}*", subtype.to_string()),
+            VolatilityType::Struct { name } => todo!(),
+            VolatilityType::Enum { name } => todo!(),
+            VolatilityType::Union { name } => todo!(),
+            VolatilityType::Bitfield {
+                bit_position,
+                bit_length,
+                base_type,
+            } => todo!(),
+            VolatilityType::Function => todo!(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VolatilityStructField {
     #[serde(rename = "type")]
-    pub type_val: Option<Map<String, Value>>,
+    pub type_val: Option<VolatilityType>,
     pub offset: i64,
     pub anonymous: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VolatilityStruct {
     pub size: i64,
-    pub fields: HashMap<String, VolatilityStructField>,
+    pub fields: BTreeMap<String, VolatilityStructField>,
     pub kind: String,
 }
 

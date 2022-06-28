@@ -1,17 +1,17 @@
 [package]
-name = "osi2"
+name = "osi2_strace"
 version = "0.1.0"
-authors = ["Luke Craig <Luke.Craig@ll.mit.edu>", "Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
-edition = "2021"
+authors = ["Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
+edition = "2018"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-once_cell = "1.8.0"
-panda-re = { version = "0.35", default-features = false }
-regex = "1.5.4"
-volatility_profile = { path = "./volatility_profile" }
+panda-re = { version = "0.35.0", default-features = false }
+chumsky = "0.8"
+log = "0.4"
+once_cell = "1"
 
 [features]
 default = ["x86_64"]
