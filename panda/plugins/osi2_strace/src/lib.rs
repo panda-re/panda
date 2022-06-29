@@ -1,4 +1,4 @@
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use panda::{
     abi::syscall::{SYSCALL_ARGS, SYSCALL_RET},
     plugins::{
@@ -10,6 +10,7 @@ use panda::{
 };
 use std::{
     collections::HashMap,
+    fs::File,
     io::Write,
     mem,
     sync::{
@@ -23,8 +24,6 @@ use c_type_parser::Type;
 
 mod osi_arg_type;
 use osi_arg_type::OsiArgType;
-
-mod syscall_exception;
 
 #[derive(OsiType, Debug)]
 #[osi(type_name = "syscall_metadata")]
@@ -56,19 +55,38 @@ osi2::osi_static! {
 
 static SYSCALL_INFO: OnceCell<Vec<Option<SyscallInfo>>> = OnceCell::new();
 
-//fn override_type() -> Option<OsiArgType> {
-//
-//}
-
-enum Event {
-    Enter,
-    Exit,
+#[derive(PandaArgs)]
+#[name = "osi2_strace"]
+struct Args {
+    #[arg(default = "[no]")]
+    dump_prototypes: String,
 }
 
+// Prototype differences:
+//
+// Different:
+// * sys_clone - different arg order (CONFIG_CLONE_BACKWARDS)
+// * sys_signalstack - `struct signalstack*` vs `stack_t*`
+//
+// Missing:
+// * sys_ioperm
+// * sys_sigreturn
+// * sys_rt_signreturn
+// * sys_mbind
+// * sys_get_mempolicy
+// * sys_set_mempolicy
+// * sys_migrate_pages
+// * sys_move_pages
+// * All syscalls newer than 376 (sys_mlock2)
+
+static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
+
 #[panda::init]
+#[allow(unused_must_use)]
 fn init(_: &mut PluginHandle) -> bool {
     println!("Initializing osi2_strace");
     osi2::OSI2.ensure_init();
+    Lazy::force(&ARGS);
 
     let first_bb = panda::Callback::new();
 
@@ -82,25 +100,37 @@ fn init(_: &mut PluginHandle) -> bool {
             return;
         }
 
+        let mut proto_file = if ARGS.dump_prototypes != "[no]" {
+            File::create(&ARGS.dump_prototypes)
+                .map_err(|_| {
+                    log::warn!("Prototypes file could not be created");
+                })
+                .ok()
+        } else {
+            None
+        };
+
         let ptr_size = mem::size_of::<target_ptr_t>() as target_ptr_t;
 
-        let sys_meta_start = osi2::symbol_addr_from_name("__start_syscalls_metadata");
-        let sys_meta_end = osi2::symbol_addr_from_name("__stop_syscalls_metadata");
-
         let sys_call_table = osi2::symbol_addr_from_name("sys_call_table");
-
-        let syscall_count = (sys_meta_end - sys_meta_start) / ptr_size;
+        let sys_ni_syscall = osi2::symbol_addr_from_name("sys_ni_syscall");
 
         let mut converted_types = HashMap::new();
-        let mut syscall_info = Vec::with_capacity(syscall_count as usize);
+        let mut syscall_info = vec![];
         let ptr = SYSCALLS_METADATA.read(cpu).unwrap();
-        for i in 0..syscall_count {
+
+        let mut i = 0;
+
+        loop {
             let current_syscall;
             if let Ok(ptr) = target_ptr_t::osi_read(cpu, ptr + (ptr_size * i)) {
-                if let Ok(meta) = SyscallMetadata::osi_read(cpu, ptr) {
+                if ptr == 0 {
+                    current_syscall = None;
+                } else if let Ok(meta) = SyscallMetadata::osi_read(cpu, ptr) {
                     let name = cpu.mem_read_string(meta.name);
 
                     let mut args = Vec::with_capacity(meta.nb_args as usize);
+                    let mut args_str = Vec::with_capacity(meta.nb_args as usize);
                     for j in 0..(meta.nb_args as target_ptr_t) {
                         let arg_name = if let Ok(ptr) =
                             target_ptr_t::osi_read(cpu, meta.args + (j * ptr_size))
@@ -119,6 +149,17 @@ fn init(_: &mut PluginHandle) -> bool {
                         } else {
                             String::from("[type]")
                         };
+
+                        args_str.push(format!(
+                            "{}{}{}",
+                            arg_type.replace(" *", " __user *"),
+                            if arg_type.contains(' ') && arg_type.ends_with('*') {
+                                ""
+                            } else {
+                                " "
+                            },
+                            arg_name
+                        ));
 
                         let arg_type =
                             converted_types
@@ -140,10 +181,22 @@ fn init(_: &mut PluginHandle) -> bool {
                             name: arg_name,
                             arg_type: arg_type.clone(),
                         });
-                        //args.push(format!("{} {}", arg_type, arg_name));
                     }
 
-                    //println!("{}: {}({})", meta.syscall_nr, name, args.join(", "));
+                    if let Some(f) = proto_file.as_mut() {
+                        writeln!(
+                            f,
+                            "{} long {}({});",
+                            meta.syscall_nr,
+                            name,
+                            if args_str.is_empty() {
+                                "void".into()
+                            } else {
+                                args_str.join(", ")
+                            }
+                        )
+                        .unwrap();
+                    }
 
                     let fn_addr = target_ptr_t::osi_read(
                         cpu,
@@ -157,13 +210,48 @@ fn init(_: &mut PluginHandle) -> bool {
                         fn_addr,
                     });
                 } else {
+                    println!("metadata read fail {} @ {:#x?}", i, ptr);
                     current_syscall = None;
                 }
             } else {
+                println!("ptr read fail {}", i);
                 current_syscall = None;
             }
 
+            if current_syscall.is_none() {
+                let this_syscall =
+                    target_ptr_t::osi_read(cpu, sys_call_table + (i * ptr_size)).ok();
+                let next_syscall =
+                    target_ptr_t::osi_read(cpu, sys_call_table + ((i + 1) * ptr_size)).ok();
+
+                if this_syscall != Some(sys_ni_syscall)
+                    && target_ptr_t::osi_read(cpu, ptr + (ptr_size * (i + 1)))
+                        .ok()
+                        .map(|x| x == 0)
+                        .unwrap_or(true)
+                    && next_syscall != Some(sys_ni_syscall)
+                {
+                    break;
+                }
+
+                if let Some(f) = proto_file.as_mut() {
+                    writeln!(
+                        f,
+                        "// no metadata for syscall {}{}",
+                        i,
+                        if this_syscall == Some(sys_ni_syscall) {
+                            " (not implemented)"
+                        } else {
+                            ""
+                        }
+                    )
+                    .unwrap();
+                }
+            }
+
             syscall_info.push(current_syscall);
+
+            i += 1;
         }
 
         //println!("syscalls: {:#x?}", syscall_info);
@@ -171,92 +259,94 @@ fn init(_: &mut PluginHandle) -> bool {
 
         first_bb.disable();
 
-        let last_callno = Arc::new(AtomicU64::new(0));
-        let last_callno_exit = Arc::clone(&last_callno);
+        if proto_file.is_none() {
+            let last_callno = Arc::new(AtomicU64::new(0));
+            let last_callno_exit = Arc::clone(&last_callno);
 
-        let last_handled = Arc::new(AtomicBool::new(true));
-        let last_handled_exit = Arc::clone(&last_handled);
+            let last_handled = Arc::new(AtomicBool::new(true));
+            let last_handled_exit = Arc::clone(&last_handled);
 
-        PppCallback::new().on_all_sys_enter(move |cpu, _pc, callno| {
-            if !last_handled.swap(false, Ordering::SeqCst) {
-                println!();
-            }
-
-            last_callno.store(callno as u64, Ordering::SeqCst);
-
-            let syscall = SYSCALL_INFO
-                .get()
-                .unwrap()
-                .get(callno as usize)
-                .cloned()
-                .flatten();
-
-            if let Some(syscall) = syscall {
-                let mut regs = SYSCALL_ARGS.iter().cloned();
-
-                let stdout = std::io::stdout();
-                let mut stdout = stdout.lock();
-
-                let count = syscall.args.iter().position(|x| x.name == "count");
-                let count = count.map(|count| SYSCALL_ARGS[count].read(cpu));
-
-                let mut is_first = true;
-                write!(stdout, "{}(", syscall.name);
-                for arg in &syscall.args {
-                    if !is_first {
-                        write!(stdout, ", ");
-                    }
-
-                    write!(stdout, "{}=", arg.name);
-                    is_first = false;
-
-                    if arg.name == "buf" && arg.arg_type.is_const() && count.is_some() {
-                        let ptr = regs.next().unwrap().read(cpu);
-                        let count = count.unwrap();
-
-                        if let Some(mem) = cpu.try_mem_read(ptr, count as usize) {
-                            let escaped = mem
-                                .into_iter()
-                                .map(std::ascii::escape_default)
-                                .flatten()
-                                .collect::<Vec<u8>>();
-
-                            let escaped = String::from_utf8(escaped).unwrap();
-
-                            write!(stdout, "\"{}\"", escaped);
-
-                            continue;
-                        }
-                    }
-                    arg.arg_type.read_display(cpu, &mut stdout, &mut regs);
+            PppCallback::new().on_all_sys_enter(move |cpu, _pc, callno| {
+                if !last_handled.swap(false, Ordering::SeqCst) {
+                    println!();
                 }
-                write!(stdout, ")");
-                stdout.flush();
-                //println!("{}(...) - {:?}", syscall.name, syscall.args);
-            } else {
-                println!("UNK_sys_{}(...)", callno);
-            }
-        });
 
-        let last_callno = last_callno_exit;
-        let last_handled = last_handled_exit;
+                last_callno.store(callno as u64, Ordering::SeqCst);
 
-        PppCallback::new().on_all_sys_return(move |cpu, _, callno| {
-            if callno as u64 == last_callno.load(Ordering::SeqCst) {
-                last_handled.store(true, Ordering::SeqCst);
-                let ret_val = panda::regs::get_reg(cpu, SYSCALL_RET) as u32 as i32;
-                if ret_val.is_negative() {
-                    // error case
-                    if let Some(name) = errno_name(ret_val) {
-                        println!(" = {} ({})", ret_val, name);
+                let syscall = SYSCALL_INFO
+                    .get()
+                    .unwrap()
+                    .get(callno as usize)
+                    .cloned()
+                    .flatten();
+
+                if let Some(syscall) = syscall {
+                    let mut regs = SYSCALL_ARGS.iter().cloned();
+
+                    let stdout = std::io::stdout();
+                    let mut stdout = stdout.lock();
+
+                    let count = syscall.args.iter().position(|x| x.name == "count");
+                    let count = count.map(|count| SYSCALL_ARGS[count].read(cpu));
+
+                    let mut is_first = true;
+                    write!(stdout, "{}(", syscall.name);
+                    for arg in &syscall.args {
+                        if !is_first {
+                            write!(stdout, ", ");
+                        }
+
+                        write!(stdout, "{}=", arg.name);
+                        is_first = false;
+
+                        if arg.name == "buf" && arg.arg_type.is_const() && count.is_some() {
+                            let ptr = regs.next().unwrap().read(cpu);
+                            let count = count.unwrap();
+
+                            if let Some(mem) = cpu.try_mem_read(ptr, count as usize) {
+                                let escaped = mem
+                                    .into_iter()
+                                    .map(std::ascii::escape_default)
+                                    .flatten()
+                                    .collect::<Vec<u8>>();
+
+                                let escaped = String::from_utf8(escaped).unwrap();
+
+                                write!(stdout, "\"{}\"", escaped);
+
+                                continue;
+                            }
+                        }
+                        arg.arg_type.read_display(cpu, &mut stdout, &mut regs);
+                    }
+                    write!(stdout, ")");
+                    stdout.flush();
+                    //println!("{}(...) - {:?}", syscall.name, syscall.args);
+                } else {
+                    println!("UNK_sys_{}(...)", callno);
+                }
+            });
+
+            let last_callno = last_callno_exit;
+            let last_handled = last_handled_exit;
+
+            PppCallback::new().on_all_sys_return(move |cpu, _, callno| {
+                if callno as u64 == last_callno.load(Ordering::SeqCst) {
+                    last_handled.store(true, Ordering::SeqCst);
+                    let ret_val = panda::regs::get_reg(cpu, SYSCALL_RET) as u32 as i32;
+                    if ret_val.is_negative() {
+                        // error case
+                        if let Some(name) = errno_name(ret_val) {
+                            println!(" = {} ({})", ret_val, name);
+                        } else {
+                            println!(" = {}", ret_val);
+                        }
                     } else {
                         println!(" = {}", ret_val);
                     }
-                } else {
-                    println!(" = {}", ret_val);
                 }
-            }
-        });
+            });
+        }
     });
 
     true
