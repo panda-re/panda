@@ -97,6 +97,7 @@ impl OsiArgType {
         }
     }
 
+    #[allow(unused_must_use)]
     pub(crate) fn read_display<W, RegIter>(&self, cpu: &mut CPUState, f: &mut W, regs: &mut RegIter)
     where
         W: Write,
@@ -149,6 +150,7 @@ impl OsiArgType {
         }
     }
 
+    #[allow(unused_must_use)]
     pub(crate) fn read_display_ptr<W>(&self, cpu: &mut CPUState, f: &mut W, ptr: target_ptr_t)
     where
         W: Write,
