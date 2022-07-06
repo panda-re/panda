@@ -4,7 +4,7 @@ use panda::mem::{read_guest_type, virtual_memory_read_into};
 use panda::plugins::osi2::{symbol_from_name, type_from_name};
 use panda::prelude::*;
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
@@ -15,15 +15,17 @@ mod kaslr;
 
 use kaslr::kaslr_offset;
 
-// TODO: needs to not be a hardcoded path
-#[cfg(feature = "i386")]
-const FILENAME: &str = "/home/jmcleod/dev/ubuntu:4.4.0-170-generic:32.json.xz";
+#[derive(PandaArgs)]
+#[name = "osi2"]
+struct Args {
+    #[arg(required, about = "Path to a volatility 3 symbol table to use")]
+    profile: String,
+}
 
-#[cfg(feature = "x86_64")]
-const FILENAME: &str = "/home/jmcleod/dev/ubuntu:4.15.0-72-generic:64.json.xz";
+const ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 
 fn symbol_table() -> &'static VolatilityJson {
-    SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(FILENAME))
+    SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(&ARGS.profile))
 }
 
 #[panda::init]
