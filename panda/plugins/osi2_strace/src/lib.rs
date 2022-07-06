@@ -1,11 +1,14 @@
 use once_cell::sync::{Lazy, OnceCell};
+
+use panda::{
+    plugins::osi2::{self, OsiType},
+    prelude::*,
+};
+
+#[cfg(not(feature = "ppc"))]
 use panda::{
     abi::syscall::{SYSCALL_ARGS, SYSCALL_RET},
-    plugins::{
-        osi2::{self, OsiType},
-        syscalls2::Syscalls2Callbacks,
-    },
-    prelude::*,
+    plugins::syscalls2::Syscalls2Callbacks,
     PppCallback,
 };
 use std::{
@@ -81,6 +84,13 @@ struct Args {
 
 static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 
+#[cfg(feature = "ppc")]
+#[panda::init]
+fn init(_: &mut PluginHandle) -> bool {
+    panic!("osi2_strace not supported from this architecture")
+}
+
+#[cfg(not(feature = "ppc"))]
 #[panda::init]
 #[allow(unused_must_use)]
 fn init(_: &mut PluginHandle) -> bool {
