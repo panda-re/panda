@@ -1509,12 +1509,12 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     if (!rr_archive) {
         return -2;
     }
-    free(rr2_path);
+
 
     // write PANDA memory snapshot
     global_state_store_running(); // force running state
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("writing snapshot:\t%s\n", name_buf);
+    printf("writing snapshot:\t%s/snapshot\n", rr2_path);
     QIOChannelFile* ioc =
         qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
@@ -1546,10 +1546,11 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("opening nondet log for write:\t%s\n", name_buf);
+    printf("opening nondet log for write:\t%s/nondetlog\n", rr2_path);
     rr_create_record_log(name_buf);
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
+    free(rr2_path);
     g_free(rr_path_base);
     g_free(rr_name_base);
     // set global to turn on recording
