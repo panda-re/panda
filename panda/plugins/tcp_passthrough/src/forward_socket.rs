@@ -20,10 +20,17 @@ fn incoming_tcp(channel_id: u32, data: &[u8]) {
     }
 }
 
-pub fn forward(ip: Ipv4Addr, guest_port: u16, host_port: u16) {
+pub fn forward(ip: Ipv4Addr, guest_port: u16, host_port: u16, localhost_only: bool) {
     thread::spawn(move || {
-        let listener =
-            TcpListener::bind(("localhost", host_port)).expect("Could not bind to host port");
+        let listener = TcpListener::bind((
+            if localhost_only {
+                "localhost"
+            } else {
+                "0.0.0.0"
+            },
+            host_port,
+        ))
+        .expect("Could not bind to host port");
         eprintln!("Listening on localhost:{}...", host_port);
 
         for stream in listener.incoming() {

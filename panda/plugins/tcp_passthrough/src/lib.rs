@@ -21,7 +21,7 @@ pub extern "C" fn print_socket_info() {
 }
 
 fn forward_socket_internal(ip: Ipv4Addr, port: u16, host_port: u16) {
-    forward_socket::forward(ip, port, host_port);
+    forward_socket::forward(ip, port, host_port, false);
 }
 
 /// Information about a given socket binding
