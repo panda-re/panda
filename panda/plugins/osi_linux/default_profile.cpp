@@ -48,6 +48,14 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
         target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
 
         current_task_addr=task_thread_info+0xC;
+
+        //because some kernel versions use both per_cpu variables AND access the task_struct 
+        //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
+        err = struct_get(cpu, &ts, current_task_addr, 0);
+        assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+        fixupendian(ts);
+        return ts;
+
     }
 #elif defined(TARGET_MIPS)
     // __current_thread_info is stored in KERNEL r28
