@@ -194,7 +194,7 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
     update_symbols_in_space(cpu);
 
-    for (const auto section : symbols[asid]){
+    for (const auto &section : symbols[asid]){
         string n = section.first;
         auto section_vec = section.second;
         size_t found;
