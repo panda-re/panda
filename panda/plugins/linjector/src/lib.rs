@@ -89,7 +89,7 @@ extern "C" fn on_sys_enter(
     // Once we inject to a process stop looking for syscalls to inject into
     SYSCALLS.remove_callback_on_all_sys_enter(on_sys_enter);
 
-    log::trace!("Attempting injection into syscall {}", syscall_num);
+    log::debug!("Attempting injection into syscall {}", syscall_num);
     let file_data = args::elf_to_inject();
 
     // Inject our syscall chain into the current system call. This injector

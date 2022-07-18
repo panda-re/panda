@@ -20,6 +20,10 @@ mod sys_nums;
 #[path = "syscalls/arm.rs"]
 mod sys_nums;
 
+#[cfg(feature = "mips")]
+#[path = "syscalls/arm.rs"]
+mod sys_nums;
+
 use sys_nums::*;
 
 const NULL: target_ulong = 0;

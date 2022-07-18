@@ -16,6 +16,9 @@ pub const REG_ORDER: [Reg; 5] = [RAX, RBX, RCX, RDX, RDI];
 #[cfg(feature = "arm")]
 pub const REG_ORDER: [Reg; 5] = [R0, R1, R2, R3, R4];
 
+#[cfg(feature = "mips")]
+pub const REG_ORDER: [Reg; 5] = [V0, A0, A1, A2, A3];
+
 // =================== Return Value ===================
 #[cfg(feature = "i386")]
 pub const RET_REG: Reg = EAX;
@@ -25,6 +28,9 @@ pub const RET_REG: Reg = RAX;
 
 #[cfg(feature = "arm")]
 pub const RET_REG: Reg = R0;
+
+#[cfg(feature = "mips")]
+pub const RET_REG: Reg = V0;
 
 pub fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
     let reg_to_read = REG_ORDER[num];
