@@ -1,4 +1,6 @@
 ARG BASE_IMAGE="ubuntu:20.04"
+# Note PANDA supports ubuntu:22.04, but docker versions <= 20.10.7 can't run 22.04 containers
+
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,aarch64-softmmu"
 
 ### BASE IMAGE
