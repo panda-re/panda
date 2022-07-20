@@ -1,24 +1,28 @@
 use panda::{
-    current_asid,
-    enums::MemRWStatus,
-    mem::virtual_memory_write,
-    plugins::osi::OSI,
+    current_asid, enums::MemRWStatus, mem::virtual_memory_write,
+    plugins::osi::OSI, prelude::*, sys::get_cpu,
+};
+
+#[cfg(not(feature = "ppc"))]
+use panda::{
     plugins::syscalls2::SYSCALLS,
-    prelude::*,
-    sys::get_cpu,
     syscall_injection::{fork, run_injector},
 };
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
 mod args;
+
+#[cfg(not(feature = "ppc"))]
 mod syscalls;
 
+#[cfg(not(feature = "ppc"))]
 use syscalls::{
     chdir, close, do_execve, do_memfd_create, do_mmap, do_write, getpid, open,
     setsid, O_CLOEXEC, O_CREAT, O_RDWR, O_TRUNC, PAGE_SIZE,
 };
 
+#[cfg(not(feature = "ppc"))]
 /// mmap a buffer and ensure it's paged in, then return the address to it
 async fn get_guest_buffer() -> target_ptr_t {
     // mmap in a new page
@@ -68,6 +72,7 @@ panda::export_ppp_callback! {
     pub(crate) fn before_guest_inject(cpu: &mut CPUState);
 }
 
+#[cfg(not(feature = "ppc"))]
 extern "C" fn on_sys_enter(
     cpu: &mut CPUState,
     pc: SyscallPc,
@@ -235,6 +240,7 @@ extern "C" fn on_sys_enter(
 
 static LOADED: AtomicBool = AtomicBool::new(false);
 
+#[cfg(not(feature = "ppc"))]
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     if LOADED.swap(true, Ordering::SeqCst) {
@@ -255,6 +261,12 @@ fn init(_: &mut PluginHandle) -> bool {
     }
 
     true
+}
+
+#[cfg(feature = "ppc")]
+#[panda::init]
+fn init(_: &mut PluginHandle) -> bool {
+    panic!("linjector not supported on PowerPC")
 }
 
 #[panda::uninit]

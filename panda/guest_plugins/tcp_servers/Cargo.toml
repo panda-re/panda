@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-panda-channels = "0.2"
+#panda-channels = "0.2"
+panda-channels = { path = "/home/jmcleod/dev/panda-channels" }
 bincode = "1"
 serde = { version = "1", features = ["derive"] }
 

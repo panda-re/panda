@@ -20,8 +20,16 @@ mod sys_nums;
 #[path = "syscalls/arm.rs"]
 mod sys_nums;
 
-#[cfg(feature = "mips")]
-#[path = "syscalls/arm.rs"]
+#[cfg(any(feature = "mips", feature = "mipsel"))]
+#[path = "syscalls/mips.rs"]
+mod sys_nums;
+
+#[cfg(feature = "mips64")]
+#[path = "syscalls/mips64.rs"]
+mod sys_nums;
+
+#[cfg(feature = "aarch64")]
+#[path = "syscalls/aarch64.rs"]
 mod sys_nums;
 
 use sys_nums::*;

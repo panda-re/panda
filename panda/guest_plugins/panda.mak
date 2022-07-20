@@ -12,8 +12,17 @@ PLUGIN_TARGET_DIR=panda/guest_plugins
 PLUGIN_BIN_DIR=$(PLUGIN_TARGET_DIR)/bin
 PLUGIN_OUT_PATH=$(PLUGIN_BIN_DIR)/$(PLUGIN_NAME)
 
-CARGO_TARGET_ARMV5TE_UNKNOWN_LINUX_MUSLEABI_LINKER ?= "arm-linux-musleabi-cc"
-CARGO_TARGET_ARMV5TE_UNKNOWN_LINUX_MUSLEABI_RUSTFLAGS = "-C target-cpu=arm926ej-s"
+export CARGO_TARGET_ARMV5TE_UNKNOWN_LINUX_MUSLEABI_LINKER ?= arm-linux-musleabi-cc
+export CARGO_TARGET_ARMV5TE_UNKNOWN_LINUX_MUSLEABI_RUSTFLAGS = -C target-cpu=arm926ej-s
+
+export CARGO_TARGET_MIPS_UNKNOWN_LINUX_MUSL_LINKER ?= mips-linux-musl-cc
+#export CARGO_TARGET_MIPS_UNKNOWN_LINUX_MUSL_RUSTFLAGS = "-C linker=mips-linux-musl-cc"
+
+export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_MUSL_LINKER ?= mipsel-linux-musl-cc
+
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER ?= aarch64-linux-musl-cc
+
+export CARGO_TARGET_MIPS64_UNKNOWN_LINUX_MUSLABI64_LINKER ?= mips64-linux-musl-cc
 
 BUILD_TARGET=$(addprefix build-,$(TARGET_NAME))
 
@@ -39,3 +48,6 @@ build-mipsel: $(PLUGIN_OUT_PATH)
 
 build-mips64: TARGET_TRIPLE=mips64-unknown-linux-muslabi64
 build-mips64: $(PLUGIN_OUT_PATH)
+
+# Do not build for PowerPC
+build-ppc: ;
