@@ -1,4 +1,5 @@
 use panda_channels::{get_main_raw_channel, hypercall, RawChannel};
+use std::{io::Write, thread, time::Duration};
 
 mod loader;
 
@@ -11,25 +12,6 @@ struct Packet {
     payload: Vec<u8>,
 }
 
-impl PacketKind {
-    fn from(kind: u32) -> Option<Self> {
-        match kind {
-            0 => Some(Self::LoadPlugin),
-            _ => None,
-        }
-    }
-}
-
-fn split_header(header: [u8; 8]) -> ([u8; 4], [u8; 4]) {
-    let [x1, x2, x3, x4, y1, y2, y3, y4] = header;
-
-    ([x1, x2, x3, x4], [y1, y2, y3, y4])
-}
-
-use memfd::MemfdOptions;
-use std::{
-    io::Write, os::unix::prelude::AsRawFd, path::Path, process::Command, thread, time::Duration,
-};
 fn read_packet(reader: &mut RawChannel) -> Option<Packet> {
     //let plugin_file = MemfdOptions::new()
     //    .close_on_exec(true)
