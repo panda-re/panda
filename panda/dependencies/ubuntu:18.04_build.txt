@@ -25,6 +25,9 @@ protobuf-compiler
 python3-dev
 zip
 
+# hyperfuse build deps
+libfuse-dev
+
 # pypanda dependencies
 python3-setuptools
 python3-wheel

@@ -62,7 +62,9 @@ dependencies = [
 
 [[package]]
 name = "panda-channels"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "529d17650397380d80c95c6027ffcb48eaf4095a0c513eb7e827f0c3c0e52e9c"
 dependencies = [
  "lazy_static",
  "parking_lot",
