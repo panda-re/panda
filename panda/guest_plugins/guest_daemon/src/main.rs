@@ -1,4 +1,3 @@
-#![feature(asm)]
 use panda_channels::{get_main_raw_channel, hypercall, RawChannel};
 
 mod loader;
