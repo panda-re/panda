@@ -1650,6 +1650,17 @@ class Panda():
         os_name_new = self.ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)
 
+    def get_os_family(self):
+        '''
+        Get the current OS family name. Valid values are the entries in `OSFamilyEnum`
+
+        Returns:
+            string: one of OS_UNKNOWN, OS_WINDOWS, OS_LINUX, OS_FREEBSD
+        '''
+
+        family_num = self.libpanda.panda_os_familyno
+        family_name = self.ffi.string(self.ffi.cast("PandaOsFamily", family_num))
+        return family_name
 
     def get_mappings(self, cpu):
         '''
@@ -2323,7 +2334,9 @@ class Panda():
     @blocking
     def type_serial_cmd(self, cmd):
         #Can send message into socket without guest running (no self.running.wait())
-        self.serial_console.send(cmd.encode("utf8")) # send, not sendline
+        if isinstance(cmd, str):
+            cmd = cmd.encode('utf8')
+        self.serial_console.send(cmd) # send, not sendline
 
     def finish_serial_cmd(self):
         result = self.serial_console.send_eol()

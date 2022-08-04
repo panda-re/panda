@@ -440,8 +440,8 @@ class Expect(object):
             self.consumed_first = True
 
         # Newlines will call problems
-        assert len(msg.decode().split("\n")) <= 2, "Multiline cmds unsupported"
-        self.last_msg = msg.decode().replace("\n", "")
+        assert len(msg.decode(errors='ignore').split("\n")) <= 2, "Multiline cmds unsupported"
+        self.last_msg = msg.decode(errors='ignore').replace("\n", "")
         os.write(self.fd, msg)
         if self.logfile:
             self.logfile.write(msg)
