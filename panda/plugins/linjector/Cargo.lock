@@ -376,9 +376,9 @@ checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "panda-re"
-version = "0.36.0"
+version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42ef6b74de7d4809607e9b029016c74342680159366ef7d2bdd5ae9bd1ff6416"
+checksum = "b094a991ea9676cab2aca1281d22246883ed325a43b5fc0de413d03c1ea1a5be"
 dependencies = [
  "array-init",
  "async-trait",

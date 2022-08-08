@@ -1,14 +1,44 @@
 use memfd::MemfdOptions;
-use std::{io::Write, os::unix::prelude::AsRawFd, process::Command};
+use std::{
+    fs,
+    io::Write,
+    os::unix::{fs::OpenOptionsExt, prelude::AsRawFd},
+    process::Command,
+};
 
 pub(crate) fn load_plugin(payload: Vec<u8>) {
-    let plugin_file = MemfdOptions::new().create("pluginfd").unwrap();
-    let fd = plugin_file.as_raw_fd();
-    let mut plugin_file = plugin_file.into_file();
+    let (path, mut file) = if let Ok(plugin_file) = MemfdOptions::new().create("pluginfd") {
+        let fd = plugin_file.as_raw_fd();
 
-    plugin_file.write_all(&payload).unwrap();
+        (format!("/proc/self/fd/{}", fd), plugin_file.into_file())
+    } else {
+        match fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .mode(0o777)
+            .custom_flags(libc::O_CLOEXEC)
+            .open("/tmp/plugin_file")
+        {
+            Ok(file) => (String::from("/tmp/plugin_file"), file),
+            Err(err) => {
+                eprintln!("Failed to write to /tmp");
+                panic!("{:?}", err);
+            }
+        }
+    };
 
-    Command::new(format!("/proc/self/fd/{}", fd))
+    file.write_all(&payload).unwrap();
+    let _ = file.flush();
+    let _ = file.sync_all();
+
+    let mut file = Some(file);
+
+    if path.starts_with("/tmp") {
+        drop(file.take());
+    }
+
+    eprintln!("Running guest plugin...");
+    Command::new(path)
         .spawn()
-        .unwrap();
+        .expect("Failed to run guest plugin");
 }
