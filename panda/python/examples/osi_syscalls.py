@@ -16,11 +16,13 @@ panda = Panda(generic=arch)
 @panda.ppp("syscalls2", "on_sys_read_return")
 def on_sys_read_return(cpu, pc, fd, buf, count):
     proc = panda.plugins['osi'].get_current_process(cpu)
+    thread = panda.plugins['osi'].get_current_thread(cpu)
+    tid = thread.tid
     procname = panda.ffi.string(proc.name) if proc != panda.ffi.NULL else "error"
     fname_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
     fname = panda.ffi.string(fname_ptr) if fname_ptr != panda.ffi.NULL else "error"
     rc = panda.plugins['syscalls2'].get_syscall_retval(cpu)
-    print(f"[PANDA] {procname} read {rc} bytes from {fname}")
+    print(f"[PANDA] {procname} (pid={proc.pid},tid={thread.tid}) read {rc} bytes from {fname}")
 
 @panda.ppp("syscalls2", "on_sys_execve_enter")
 def on_sys_execve_enter(cpu, pc, fname_ptr, argv_ptr, envp):

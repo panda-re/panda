@@ -71,6 +71,11 @@ target_ulong panda_current_pc(CPUState *cpu);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 /**
+ * @brief Return the max address of system memory that maps to RAM.
+ */
+Int128 panda_find_max_ram_address(void);
+
+/**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
 
@@ -338,22 +343,30 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
 }
 
 /**
- * @brief Determines if guest is currently executing kernelspace code, regardless of privilege level.
- * Necessary because there's a small bit of kernelspace code that runs AFTER a switch to usermode privileges.
- * Therefore, certain analysis logic can't rely on panda_in_kernel_mode() alone.
+ * @brief Checks the top bit of the address to determine if the address
+ * is in kernel space.
  * Checking the MSB means this should work even if KASLR is enabled.
  */
-static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
+static inline bool address_in_kernel_code_linux(target_ulong addr){
     // https://www.kernel.org/doc/html/latest/vm/highmem.html
     // https://github.com/torvalds/linux/blob/master/Documentation/x86/x86_64/mm.rst
     // If addr MSB set -> kernelspace!
 
     target_ulong msb_mask = ((target_ulong)1 << ((sizeof(target_long) * 8) - 1));
-    if (msb_mask & cpu->panda_guest_pc) {
+    if (msb_mask & addr) {
         return true;
     } else {
         return false;
     }
+}
+
+/**
+ * @brief Determines if guest is currently executing kernelspace code, regardless of privilege level.
+ * Necessary because there's a small bit of kernelspace code that runs AFTER a switch to usermode privileges.
+ * Therefore, certain analysis logic can't rely on panda_in_kernel_mode() alone.
+ */
+static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
+    return address_in_kernel_code_linux(panda_current_pc(cpu));
 }
 
 /**

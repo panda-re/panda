@@ -172,7 +172,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
-    -os windows-32-7 -panda syscalls2 -panda filereadmon
+    -os windows-32-7sp1 -panda syscalls2 -panda filereadmon
 ```
 
 If you'd like more examples, you can have a look at `loaded`, `filereadmon` and `file_taint`, all of which use `syscalls2`.

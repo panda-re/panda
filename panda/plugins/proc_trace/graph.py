@@ -7,6 +7,8 @@ Example usage with a recording of the generic x86 qcow, run from the local direc
     panda-system-x86_64 -m 1g -os linux-64-ubuntu:4.15.0-72-generic-noaslr-nokaslr -replay trace_test -panda snake_hook:files=graph.py
 '''
 
+from pandare import PyPlugin
+
 class ProcGraph(PyPlugin):
     def __init__(self, panda):
         # Data collection
@@ -58,7 +60,7 @@ class ProcGraph(PyPlugin):
             self.time_data.append((proc_key, self.n_insns))
             self.n_insns = 0
 
-    def __del__(self):
+    def uninit(self):
         col_size = self.total_insns / self.n_cols
         pids = set([x for x,y in self.time_data]) # really a list of (pid, tid) tuples
         merged = {} # pid: [(True, 100), False, 9999)
@@ -87,7 +89,9 @@ class ProcGraph(PyPlugin):
         for (pid, tid) in sorted(self.procinfo, key=lambda v: self.procinfo[v]['count'], reverse=True):
             details = self.procinfo[(pid, tid)]
             names = ", ".join([x.decode() for x in details['names']])
-            print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {details['last']:<8} {names}")
+
+            end = f"{details['last']:<8}" if details['last'] is not None else "N/A"
+            print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {end} {names}")
 
 
         # Render output: Stage 2: ascii art
@@ -104,7 +108,7 @@ class ProcGraph(PyPlugin):
                 counted = 0
                 on_count = 0
                 off_count = 0
-                import ipdb
+                #import ipdb
                 while (counted < col_size and len(queue)): #or pending is not None:
                     if pending is not None:
                         (on_bool, cnt) = pending

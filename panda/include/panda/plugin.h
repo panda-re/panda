@@ -92,9 +92,13 @@ extern PandaOsFamily panda_os_familyno; // numeric identifier for family
 
 
 
+/* Internal callback functions that plugins shouldn't use. These unset the flag when called so must be handled */
+bool panda_break_exec(void);
 bool panda_flush_tb(void);
 
+/* Regular functions plugins should use */
 void panda_do_flush_tb(void);
+void panda_do_break_exec(void);
 void panda_enable_precise_pc(void);
 void panda_disable_precise_pc(void);
 void panda_enable_memcb(void);
@@ -154,8 +158,11 @@ char** str_split(char *a_str, const char a_delim);
 extern gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 extern int panda_argc;
 
+
 char *panda_guest_plugin_path(const char *name);
+char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* name);
 char *panda_plugin_path(const char *name);
+char* panda_shared_library_path(const char* name);
 void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args);
 void panda_require(const char *plugin_name);
 bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);

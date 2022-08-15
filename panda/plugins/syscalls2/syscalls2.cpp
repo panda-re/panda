@@ -1026,7 +1026,7 @@ bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     if(panda_os_familyno == OS_UNKNOWN){
-        std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
+        std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7sp[01]' " << std::endl;
         return false;
     }
     else if (panda_os_familyno == OS_LINUX) {
@@ -1068,7 +1068,7 @@ bool init_plugin(void *self) {
             std::cerr << PANDA_MSG "using profile for windows sp3 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP3_X86];
         }
-        if (0 == strcmp(panda_os_variant, "7")) {
+        if (0 == strncmp(panda_os_variant, "7", 1)) {
             std::cerr << PANDA_MSG "using profile for windows 7 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_7_X86];
         }

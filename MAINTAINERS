@@ -1123,6 +1123,7 @@ e1000e
 M: Dmitry Fleytman <dmitry@daynix.com>
 S: Maintained
 F: hw/net/e1000e*
+F: tests/qtest/fuzz-e1000e-test.c
 
 Generic Loader
 M: Alistair Francis <alistair.francis@xilinx.com>

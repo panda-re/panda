@@ -34,7 +34,16 @@ extern uint64_t rr_get_guest_instr_count(void);
 panda_arg_list *args;
 wtap_dumper *plugin_log;
 
+#if (VERSION_MAJOR>=3 && VERSION_MINOR >= 6)
+#define TOONEW
+#endif
+
 bool init_plugin(void *self) {
+#ifdef TOONEW
+    printf("Wireshark too new. Please update the network plugin\n");
+    return false;
+#else
+
     panda_cb pcb;
     int err;
     int i;
@@ -52,6 +61,7 @@ bool init_plugin(void *self) {
     .dsbs_growing = NULL
     };
     #endif
+
 
     if (args != NULL) {
         for (i = 0; i < args->nargs; i++) {
@@ -110,6 +120,7 @@ bool init_plugin(void *self) {
     pcb.replay_handle_packet = handle_packet;
     panda_register_callback(self, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
     return true;
+#endif
 }
 
 void uninit_plugin(void *self) {
@@ -132,6 +143,7 @@ void uninit_plugin(void *self) {
     }
 }
 
+#ifndef TOONEW
 void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
                    uint64_t buf_addr_rec) {
     int err;
@@ -193,4 +205,5 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     }
     return;
 }
+#endif
 

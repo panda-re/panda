@@ -28,6 +28,10 @@
 #include "kernel_profile.h"
 #include "endian_helpers.h"
 
+#ifdef TARGET_MIPS
+#include "hw_proc_id/hw_proc_id_ext.h"
+#endif
+
 extern struct kernelinfo ki;
 extern struct KernelProfile const *kernel_profile;
 

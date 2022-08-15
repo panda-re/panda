@@ -1,4 +1,6 @@
 ARG BASE_IMAGE="ubuntu:20.04"
+# Note PANDA supports ubuntu:22.04, but docker versions <= 20.10.7 can't run 22.04 containers
+
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,aarch64-softmmu"
 
 ### BASE IMAGE
@@ -31,14 +33,21 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
 
 # Then install capstone from source
 RUN cd /tmp && \
-    curl -o cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-    tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
-    rm -rf /tmp/capstone-4.0.2 && ldconfig
+    git clone https://github.com/capstone-engine/capstone/ -b 4.0.2 && \
+    cd capstone/ && ./make.sh && make install && cd /tmp && \
+    rm -rf /tmp/capstone && ldconfig
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Sanity check to ensure cargo is installed
 RUN cargo --help
+
+# install libosi
+RUN cd /tmp && \
+    git clone https://github.com/panda-re/libosi && \
+    mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
+    cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
+    cd /tmp && rm -rf libosi/ && ldconfig 
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -75,9 +84,10 @@ RUN cd /panda/panda/python/core && \
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
-# Copy panda + libcapstone.so*
+# Copy panda + libcapstone.so* + libosi libraries
 COPY --from=installer /usr/local /usr/local
 COPY --from=installer /usr/lib/libcapstone* /usr/lib/
+COPY --from=installer /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"

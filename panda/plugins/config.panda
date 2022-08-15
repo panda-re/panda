@@ -20,6 +20,7 @@ guest_shell
 hooks
 hooks2
 hyperfuse
+hw_proc_id
 libfi
 lighthouse_coverage
 linjector
@@ -53,7 +54,4 @@ textprinter
 trace
 track_intexc
 unigrams
-win2000x86intro
-win7x86intro
 wintrospection
-winxpx86intro

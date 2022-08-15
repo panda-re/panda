@@ -78,7 +78,7 @@ void taint_state_changed(Addr a, uint64_t size)
 
     // Get current PID (if in user-mode and OSI gave us a process) and PC.
     IDATaintReport report;
-    report.pc = first_cpu->panda_guest_pc;
+    report.pc = panda_current_pc(first_cpu);
     report.pid = 0;
     char *process_name = NULL;
     if (false == panda_in_kernel(first_cpu)) {
