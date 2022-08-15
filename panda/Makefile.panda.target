@@ -189,7 +189,12 @@ endif
 
 HAS_GUEST_TOOLCHAIN="no"
 ifeq ($(TARGET_NAME),x86_64)
-	HAS_GUEST_TOOLCHAIN="yes"
+    ifeq (, $(shell rustup target list --installed | grep $(GUEST_RUST_TARGET)))
+    	GUEST_PLUGIN_DISABLE_REASON="rust target ${GUEST_RUST_TARGET} not installed"
+    	HAS_GUEST_TOOLCHAIN="no"
+    else
+    	HAS_GUEST_TOOLCHAIN="yes"
+    endif
 else ifeq ($(TARGET_NAME),ppc)
 	HAS_GUEST_TOOLCHAIN="no"
 	GUEST_PLUGIN_DISABLE_REASON="unsupported on ppc"
