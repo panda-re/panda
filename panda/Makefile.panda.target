@@ -165,8 +165,53 @@ ifdef EXTRA_GUEST_PLUGINS_PATH
 	ALL_GUEST_PLUGIN_RULES+=$(EXTRA_GUEST_PLUGIN_SUBDIR_RULES)
 endif
 
+ifeq ($(TARGET_NAME),i386)
+	GUEST_CC=i486-linux-musl-gcc
+	GUEST_RUST_TARGET=i686-unknown-linux-musl
+else ifeq ($(TARGET_NAME),x86_64)
+	GUEST_RUST_TARGET=mipsel-unknown-linux-musl
+else ifeq ($(TARGET_NAME),mips)
+	GUEST_CC=mips-linux-musl-gcc
+	GUEST_RUST_TARGET=mips-unknown-linux-musl
+else ifeq ($(TARGET_NAME),mipsel)
+	GUEST_CC=mipsel-linux-musl-gcc
+	GUEST_RUST_TARGET=mipsel-unknown-linux-musl
+else ifeq ($(TARGET_NAME),mips64)
+	GUEST_CC=mips64-linux-musl-gcc
+	GUEST_RUST_TARGET=mips64-unknown-linux-muslabi64
+else ifeq ($(TARGET_NAME),arm)
+	GUEST_CC=arm-linux-musleabi-gcc
+	GUEST_RUST_TARGET=armv5te-unknown-linux-musleabi
+else ifeq ($(TARGET_NAME),aarch64)
+	GUEST_CC=aarch64-linux-musl-gcc
+	GUEST_RUST_TARGET=aarch64-unknown-linux-musl
+endif
+
+HAS_GUEST_TOOLCHAIN="no"
+ifeq ($(TARGET_NAME),x86_64)
+	HAS_GUEST_TOOLCHAIN="yes"
+else ifeq ($(TARGET_NAME),ppc)
+	HAS_GUEST_TOOLCHAIN="no"
+	GUEST_PLUGIN_DISABLE_REASON="unsupported on ppc"
+else ifneq (, $(shell which $(GUEST_CC)))
+    ifeq (, $(shell rustup target list --installed | grep $(GUEST_RUST_TARGET)))
+    	GUEST_PLUGIN_DISABLE_REASON="rust target ${GUEST_RUST_TARGET} not installed"
+    	HAS_GUEST_TOOLCHAIN="no"
+    else
+    	HAS_GUEST_TOOLCHAIN="yes"
+    endif
+else
+	GUEST_PLUGIN_DISABLE_REASON="musl toolchain not in PATH"
+endif
+
+ifeq ($(HAS_GUEST_TOOLCHAIN),"yes")
 build_guest_plugins: $(ALL_GUEST_PLUGIN_RULES)
 	@echo "GUEST_PLUGINS: ${PANDA_GUEST_PLUGINS} ${EXTRA_GUEST_PLUGINS}"
+else
+build_guest_plugins:
+	@echo "GUEST_PLUGINS: disabled on arch ${TARGET_NAME}, ${GUEST_PLUGIN_DISABLE_REASON}"
+endif
+
 
 guest-plugin-%:
 	$(call quiet-command,mkdir -p ../panda/guest_plugins/$*,)
