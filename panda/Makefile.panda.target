@@ -169,7 +169,7 @@ ifeq ($(TARGET_NAME),i386)
 	GUEST_CC=i486-linux-musl-gcc
 	GUEST_RUST_TARGET=i686-unknown-linux-musl
 else ifeq ($(TARGET_NAME),x86_64)
-	GUEST_RUST_TARGET=mipsel-unknown-linux-musl
+	GUEST_RUST_TARGET=x86_64-unknown-linux-musl
 else ifeq ($(TARGET_NAME),mips)
 	GUEST_CC=mips-linux-musl-gcc
 	GUEST_RUST_TARGET=mips-unknown-linux-musl
