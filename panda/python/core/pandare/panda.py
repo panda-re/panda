@@ -1635,10 +1635,13 @@ class Panda():
         Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
 
             "windows[-_]32[-_]xpsp[23]",
-            "windows[-_]32[-_]7",
             "windows[-_]32[-_]2000",
+            "windows[-_]32[-_]7sp[01]",
+            "windows[-_]64[-_]7sp[01]",
             "linux[-_]32[-_].+",
             "linux[-_]64[-_].+",
+            "freebsd[-_]32[-_].+",
+            "freebsd[-_]64[-_].+",
 
             Args:
                 os_name (str): Name that matches the format for the os flag.
