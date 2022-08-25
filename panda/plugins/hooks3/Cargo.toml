@@ -12,7 +12,7 @@ path = "src/hooks3.rs"
 [dependencies]
 lazy_static = "1.4.0"
 panda-re = { git = "https://github.com/panda-re/panda-rs", default-features = false}
-ord-by-set = { path = "/home/luke/ord-by-set"}
+ord-by-set = "1.0.3"
 
 [features]
 default = ["arm"]
