@@ -208,6 +208,76 @@ qemu_plugin_tb_get_insn(const struct qemu_plugin_tb *tb, size_t idx)
 }
 
 /*
+ * Register information
+ *
+ * These queries allow the plugin to retrieve information about each
+ * the current state of registers in the CPU
+ */
+
+uint64_t qemu_plugin_get_pc(void) {
+    CPUState *cpu = current_cpu;
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    target_ulong pc, cs_base;
+    uint32_t flags;
+    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    return (uint64_t)pc;
+}
+
+bool qemu_plugin_read_guest_virt_mem(uint64_t gva, char* buf, size_t length) {
+#ifdef CONFIG_USER_ONLY
+  return false;
+#else
+    // Convert virtual address to physical, then read it
+    CPUState *cpu = current_cpu;
+    uint64_t page = gva & TARGET_PAGE_MASK;
+    hwaddr gpa = cpu_get_phys_page_debug(cpu, page);
+    if (gpa == (hwaddr)-1) {
+        return false;
+    }
+
+    gpa += (gva & ~TARGET_PAGE_MASK);
+    cpu_physical_memory_rw(gpa, buf, length, false);
+    return true;
+#endif
+}
+
+int32_t qemu_plugin_get_reg32(unsigned int reg_idx, bool* error) {
+    // Should we directly use gdbsub.c's gdb_read_register?
+    CPUState *cpu = current_cpu;
+    CPUClass *cc = CPU_GET_CLASS(cpu);
+    GByteArray* result = g_byte_array_sized_new(4);
+
+    int32_t rv = 0;
+    int bytes_read = cc->gdb_read_register(cpu, result, reg_idx);
+    *error = (bytes_read == 0);
+    if (*error) {
+      return 0;
+    }
+    memcpy(&rv, result->data, sizeof(rv));
+
+    g_byte_array_free(result, true);
+    return rv;
+}
+
+int64_t qemu_plugin_get_reg64(unsigned int reg_idx, bool* error) {
+    // Should we directly use gdbsub.c's gdb_read_register?
+    CPUState *cpu = current_cpu;
+    CPUClass *cc = CPU_GET_CLASS(cpu);
+    GByteArray* result = g_byte_array_sized_new(8);
+
+    int64_t rv = 0;
+    int bytes_read = cc->gdb_read_register(cpu, result, reg_idx);
+    *error = (bytes_read == 0);
+    if (*error) {
+      return 0;
+    }
+
+    memcpy(&rv, result->data, sizeof(rv));
+    g_byte_array_free(result, true);
+    return rv;
+}
+
+/*
  * Instruction information
  *
  * These queries allow the plugin to retrieve information about each

@@ -355,8 +355,29 @@ size_t qemu_plugin_tb_n_insns(const struct qemu_plugin_tb *tb);
 uint64_t qemu_plugin_tb_vaddr(const struct qemu_plugin_tb *tb);
 
 /**
- * qemu_plugin_import_function() - return pointer to a function in another
- * plugin
+ * qemu_plugin_get_pc() - returns current program counter
+ *
+ */
+uint64_t qemu_plugin_get_pc(void);
+
+/**
+ * qemu_plugin_get_reg32() - returns a 32-bit register
+ * @reg_idx: register index
+ * @error: set to true if an error occurs
+ *
+ */
+int32_t qemu_plugin_get_reg32(unsigned int reg_idx, bool* error);
+
+/**
+ * qemu_plugin_get_reg64() - returns a 64-bit register
+ * @reg_idx: register index
+ * @error: set to true if an error occurs
+ *
+ */
+int64_t qemu_plugin_get_reg64(unsigned int reg_idx, bool* error);
+
+/**
+ * qemu_plugin_import_function() - return pointer to a function in another plugin
  * @plugin: plugin name
  * @function: function name
  *
@@ -409,6 +430,16 @@ bool qemu_plugin_reg_callback(const char *target_plugin, const char *cb_name,
  */
 bool qemu_plugin_unreg_callback(const char *target_plugin, const char *cb_name,
                                 cb_func_t function_pointer);
+
+/**
+ * qemu_plugin_read_guest_virt_mem() - Read a buffer of guest memory
+ * @gva: Guest virtual address
+ * @buf: Buffer to copy guest memory into
+ * @length: Size of buf
+ *
+ * Returns: True if the memory was successfully copied into buf
+ */
+bool qemu_plugin_read_guest_virt_mem(uint64_t gva, char* buf, size_t length);
 
 /**
  * qemu_plugin_tb_get_insn() - retrieve handle for instruction
