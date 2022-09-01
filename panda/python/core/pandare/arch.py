@@ -199,8 +199,7 @@ class PandaArch():
         stack_idx = int(argloc.split("stack_")[1])
         stack_base = self.get_reg(cpu, self.reg_sp)
         offset = reg_sz * (stack_idx+1)
-        if self.panda.virtual_memory_write(cpu, stack_base + offset, val):
-            raise ValueError
+        self.panda.virtual_memory_write(cpu, stack_base + offset, val)
 
     def _read_stack(self, cpu, argloc):
         '''

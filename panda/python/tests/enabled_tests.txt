@@ -1,5 +1,6 @@
 file_fake.py
 file_hook.py
+memory_tests.py
 monitor_cmds.py
 multi_proc_cbs.py
 sleep_in_cb.py
