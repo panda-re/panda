@@ -33,6 +33,15 @@ PPP_PROT_REG_CB(on_rec_auxv);
 PPP_CB_BOILERPLATE(on_rec_auxv);
 }
 
+// uncomment to look under the hood
+//#define DEBUG
+
+#ifdef DEBUG
+#define log(...) printf(__VA_ARGS__)
+#else
+#define log(...)
+#endif
+
 
 #if defined(TARGET_WORDS_BIGENDIAN)
 #if TARGET_LONG_SIZE == 4
@@ -229,18 +238,18 @@ void sbe(CPUState *cpu, TranslationBlock *tb){
             if (!status && vals->entry && vals->phdr){
                 PPP_RUN_CB(on_rec_auxv, cpu, tb, vals);
             }else if (status == FAIL_READ_ARGV){
-                printf("failed to read argv\n");
+                log("failed to read argv\n");
             }else if (status == FAIL_READ_ENVP){
-                printf("failed to read envp\n");
+                log("failed to read envp\n");
             }else if (status == FAIL_READ_AUXV){
-                printf("failed to read auxv\n");
+                log("failed to read auxv\n");
             }
             panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
             free(vals);
             has_been_in_kernel = false;
         }else{
             // this would be the case where fault_hooks would work well.
-            printf("got here and could not read stack\n");
+            // printf("got here and could not read stack\n");
         }
     } else if (in_kernel){
         has_been_in_kernel = true;
