@@ -5085,6 +5085,14 @@ PANDA_MAIN_FINISH:
         rr_do_end_record();
     }
 
+    int x;
+    for(x=0; x < gargc ; ++x )
+    {
+        free(gargv[x]);
+        gargv[x] = NULL;
+    }
+    free(gargv);
+
     replay_disable_events();
     iothread_stop_all();
 

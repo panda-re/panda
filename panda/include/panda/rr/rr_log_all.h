@@ -56,11 +56,14 @@ void rr_fseek_cur(size_t size);
 int rr_do_begin_record(const char* name, CPUState* cpu_state);
 void rr_do_end_record(void);
 int load_snapshot_state(QEMUFile* snp);
-int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_full);
-int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf_size);
 int rr_do_begin_replay(const char* name, CPUState* cpu_state);
 void rr_do_end_replay(int is_error);
 void rr_reset_state(CPUState* cpu_state);
+
+//misc rr2 record and replay functions
+int rr2_add_recording_files(char* rr_name, char* rr_path);
+int rr2_load_snapshot(char* name_buf, int name_buf_size, const char* file_name_full);
+int rr1_load_snapshot(char* rr_name, char* rr_path, char* name_buf, int name_buf_size);
 
 // mz display indication of replay progress
 extern void replay_progress(void);

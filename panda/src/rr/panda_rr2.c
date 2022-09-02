@@ -27,6 +27,8 @@ struct rr_file_state {
     FILE* hash_fp;
 };
 
+// Used to hold state between rr_do_begin_record and rr_do_end_record
+// Add back in for second release of rr2
 struct rr_file_state* g_rr_file_state = NULL;
 
 void rrfile_set_working(struct rr_file_state* rr_archive)

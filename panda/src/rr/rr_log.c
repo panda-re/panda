@@ -84,6 +84,9 @@ volatile sig_atomic_t rr_skipped_callsite_location = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
+// for holding info to create rr2 compressed file
+struct rr_file_info*  recording_info = NULL;
+
 bool rr_replay_complete = false;
 
 // our own assertion mechanism
@@ -1393,6 +1396,60 @@ void rr_reset_state(CPUState* cpu)
     cpu->rr_guest_instr_count = 0;
 }
 
+/******************************************************************************************/
+/* RR2 RECORDING MANAGEMENT */
+/******************************************************************************************/
+
+void rrfile_info_create(struct rr_file_info** rr_info, char* rr_path, char* rr_name)
+{
+    *rr_info  = (struct rr_file_info *) g_malloc(sizeof(struct rr_file_info));
+    (*rr_info)->path = g_strdup(rr_path);
+    (*rr_info)->name = g_strdup(rr_name);;
+}
+
+void rrfile_info_clear(struct rr_file_info** rr_info)
+{
+    g_free((*rr_info)->path);
+    g_free((*rr_info)->name);
+    g_free(*rr_info);
+    *rr_info = NULL;
+}
+
+int rr2_add_recording_files(char* rr_name, char* rr_path){
+    char name_buf[1024];
+
+    char *rr2_path = rr2_name(rr_name);
+    printf("Creating rr2 archive file at: %s\n", rr2_path);
+    struct rr_file_state* rr_archive = rrfile_open_write(rr2_path);
+    if (!rr_archive) {
+        return -2;
+    }
+
+    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("    moving snapshot %s to %s/snapshot\n", name_buf, rr2_path);
+    if (!rrfile_add_recording_file(rr_archive, "snapshot", name_buf)) {
+        fprintf(stderr, "Failed to add snapshot file to archive!\n");
+        return -3;
+    }
+
+    rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("    moving cmdline file %s to %s/capture.cmd\n", name_buf, rr2_path);
+    if (!rrfile_add_recording_file(rr_archive, "capture.cmd", name_buf)) {
+        fprintf(stderr, "Failed to add snapshot file to archive!\n");
+        return -4;
+    }
+
+    rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("    moving nondet log %s to %s/nondetlog\n", name_buf, rr2_path);
+    rrfile_add_recording_file(rr_archive, "nondetlog", name_buf);
+    rrfile_finalize(rr_archive);
+
+    free(rr2_path);
+    return 0;
+}
+
+
+
 //////////////////////////////////////////////////////////////
 //
 // QMP commands
@@ -1491,6 +1548,11 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     char* rr_name_base = g_strdup(file_name_full);
     char* rr_path = dirname(rr_path_base);
     char* rr_name = basename(rr_name_base);
+    if (has_rr2_file_extention(rr_name)){
+        printf("Recording using rr2 format\n");
+        rrfile_info_create(&recording_info, rr_path, rr_name);
+    }
+
     int snapshot_ret = -1;
     if (rr_debug_whisper()) {
         qemu_log("Begin vm record for file_name_full = %s\n", file_name_full);
@@ -1503,18 +1565,10 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         snapshot_ret = load_vmstate(rr_control.snapshot);
     }
 
-    char *rr2_path = rr2_name(file_name_full);
-    fprintf(stderr, "Creating rr2 archive file at: %s\n", rr2_path);
-    struct rr_file_state* rr_archive = rrfile_open_write(rr2_path);
-    if (!rr_archive) {
-        return -2;
-    }
-
-
     // write PANDA memory snapshot
     global_state_store_running(); // force running state
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("writing snapshot:\t%s/snapshot\n", rr2_path);
+    printf("writing snapshot:\t%s\n", name_buf);
     QIOChannelFile* ioc =
         qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
@@ -1522,16 +1576,12 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     qemu_fclose(snp);
     // log_all_cpu_states();
 
-    if (!rrfile_add_recording_file(rr_archive, "snapshot", name_buf)) {
-        fprintf(stderr, "Failed to add snapshot file to archive!\n");
-        return -3;
-    }
-
     // save the time so we can report how long record takes
     time(&rr_start_time);
 
     // save the cmd line so we dont have to guess mem size and arch later
     rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("writing cmdline to file:\t%s\n", name_buf);
     FILE *fp = fopen(name_buf, "w");
     int i;
     for (i=0; i<gargc; i++) {
@@ -1539,23 +1589,19 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     }
     fprintf (fp, "\n");
     fclose(fp);
-    if (!rrfile_add_recording_file(rr_archive, "capture.cmd", name_buf)) {
-        fprintf(stderr, "Failed to add snapshot file to archive!\n");
-        return -3;
-    }
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("opening nondet log for write:\t%s/nondetlog\n", rr2_path);
+    printf("opening nondet log for write:\t%s\n", name_buf);
     rr_create_record_log(name_buf);
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
-    free(rr2_path);
+
     g_free(rr_path_base);
     g_free(rr_name_base);
     // set global to turn on recording
     rr_control.mode = RR_RECORD;
-    rrfile_set_working(rr_archive);
+
     return snapshot_ret;
 #endif
 }
@@ -1569,7 +1615,7 @@ void rr_do_end_record(void)
 
     char* rr_path_base = g_strdup(rr_nondet_log->name);
     char* rr_name_base = g_strdup(rr_nondet_log->name);
-    // char *rr_path = dirname(rr_path_base);
+    //char* rr_path = dirname(rr_path_base);
     char* rr_name = basename(rr_name_base);
 
     if (rr_debug_whisper()) {
@@ -1587,9 +1633,12 @@ void rr_do_end_record(void)
     // Write the nondetlog to the archive
     printf("Finalizing the recording\n");
     rr_finalize_write_log();
-    struct rr_file_state* rr_archive = rrfile_get_working();
-    rrfile_add_recording_file(rr_archive, "nondetlog", rr_nondet_log->name);
-    rrfile_finalize(rr_archive);
+
+    if (recording_info){
+        rr2_add_recording_files(recording_info->name, recording_info->path);
+	rrfile_info_clear(&recording_info);
+    }
+
     printf("...complete!\n");
 
     // log_all_cpu_states();
@@ -1599,7 +1648,6 @@ void rr_do_end_record(void)
     g_free(rr_path_base);
     g_free(rr_name_base);
 
-    free(gargv);
     // cleanup rr_control struct
     assert(rr_control.name != NULL);
     g_free(rr_control.name);

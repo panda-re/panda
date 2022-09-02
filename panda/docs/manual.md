@@ -450,17 +450,18 @@ more details.
 
 You can also debug the guest under replay using PANDA's [**time-travel debugging**](./time-travel.md).
 
-The current record format produces a `.tar.gz` file with extention ending in
-`.rr2`. The compressed file contains a magic `RRv2`, the `snapshot`, the
-`nondetlog`, a `capture.cmd` containing the command line command used to initiate
-PANDA for recording, and a `sha1` file containing the sha1 hashes of the other
-files. The replay command supports both the new `rr2` format, as well as the
-old format. When you start a replay, the format will automatically be detected.
+To create a recording with the new `rr2` format, simply add `.rr2` as an 
+extention to your `begin_record` call, e.g. `begin_record new_format.rr2`. The 
+new format produces a `.tar.gz` file with extention ending in `.rr2`. 
+The compressed file contains a magic `RRv2`, the `snapshot`, the `nondetlog`, a 
+`capture.cmd` containing the command line command used to initiate PANDA for 
+recording, and a `sha1` file containing the sha1 hashes of the other files. 
+The replay command supports both the new `rr2` format, as well as the old 
+format. When you start a replay, the format will automatically be detected.
 
 ### Sharing Recordings
 
-With the new format, recordings and their metadata are automatically compressed into
-a `rr2` file. To produce a `rr2` file with an old recording use the `rr2pack.py`
+To produce a `rr2` file with an old recording use the `rr2pack.py`
 script, which can be found in the `scripts` directory. To pack up a recording,
 just use:
 

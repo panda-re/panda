@@ -17,6 +17,14 @@ struct rr_file {
     struct archive_entry* entry;
 };
 
+// Used to hold path and name info when creating a new recording
+struct rr_file_info {
+    char* path;
+    char* name;
+};
+void rrfile_info_create(struct rr_file_info** rr_info, char* rr_path, char* rr_name);
+void rrfile_info_clear(struct rr_file_info** rr_info);
+
 // Used to hold state when creating a new recording
 struct rr_file_state;
 
