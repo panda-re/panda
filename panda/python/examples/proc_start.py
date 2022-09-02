@@ -9,7 +9,6 @@ Run with: python3 proc_start.py
 from pandare import Panda
 from rich import print
 from sys import argv
-import debugpy
 
 arch = argv[1] if len(argv) > 1 else "mips"
 panda = Panda(generic=arch)
@@ -25,7 +24,6 @@ def do_stuff():
 
 @panda.ppp("proc_start_linux","on_rec_auxv")
 def rec_auxv(cpu, tb, av):
-    debugpy.breakpoint()
     print("[bold magenta][START PyPANDA on_recv_auxv][/bold magenta]")
     print("[bold red]Arguments: [/bold red]",end="")
     for i in range(av.argc):

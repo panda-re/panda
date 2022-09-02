@@ -217,7 +217,6 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
 bool has_been_in_kernel = false;
 
 void sbe(CPUState *cpu, TranslationBlock *tb){
-    printf("in sbe " TARGET_FMT_lx "\n", panda_current_pc(cpu));
     bool in_kernel = panda_in_kernel_code_linux(cpu);
     if (unlikely(!panda_in_kernel_code_linux(cpu) && has_been_in_kernel)){
         // check that we can read the stack
