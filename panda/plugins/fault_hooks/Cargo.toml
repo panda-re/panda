@@ -10,7 +10,7 @@ path = "src/fault_hooks.rs"
 
 [dependencies]
 lazy_static = "1.4.0"
-panda-re =  {version = "0.32.0", default-features = false }
+panda-re =  {version = "0.37.0", default-features = false }
 ord-by-set = "1.0.3"
 
 [features]

@@ -22,6 +22,7 @@ pub extern "C" fn fault_hooks_register_plugin() -> PluginNum {
     PLUGIN_REG_NUM.fetch_add(1, Ordering::SeqCst)
 }
 
+
 #[no_mangle]
 pub extern "C" fn fault_hooks_unregister_plugin(num: PluginNum) {
     FAULT_HOOK_MANAGER.remove_plugin(num);

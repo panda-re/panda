@@ -38,33 +38,33 @@ def neg_1():
 
 @panda.ppp("proc_start_linux", "on_rec_auxv")
 def recv_auxv(cpu, tb, auxv):
+    print(f"on_recv_auxv")
     procname = panda.ffi.string(auxv.execfn)
     print(f"started proc {procname} {auxv.phdr:#x} {auxv.entry:#x}")
     entry = auxv.entry
     asid = panda.current_asid(cpu)
     global mapp
-    mapp[asid] = []
-    panda.disable_ppp("recv_auxv")
-    for mapping in panda.get_mappings(cpu):
-        name = panda.ffi.string(mapping.name)
-        if panda.virt_to_phys(cpu,mapping.base) == neg_1():
-            print(f"{name} {mapping.base:#x}-{mapping.base+mapping.size:#x} {asid:#x}")
-            hook_thing(mapping.base, asid)
-            mapp[asid].append((name, asid, mapping.base, mapping.size))
+    @panda.hook(entry)
+    def entry_hook(cpu, tb, h):
+        print("got to entry hook")
+        h.enabled = False
+        mapp[asid] = []
+        panda.disable_ppp("recv_auxv")
+        for mapping in panda.get_mappings(cpu):
+            name = panda.ffi.string(mapping.name)
+            if panda.virt_to_phys(cpu,mapping.base) == neg_1():
+                print(f"{name} {mapping.base:#x}-{mapping.base+mapping.size:#x} {asid:#x}")
+                hook_thing(mapping.base, asid)
+                mapp[asid].append((name, asid, mapping.base, mapping.size))
+        
+        @panda.ppp("syscalls2","on_sys_exit_group_enter",name="inner_exit")
+        def sys_exit(cpu, pc, *args):
+            panda.disable_ppp("inner_exit")
+            print("At end of program")
+            asid = panda.current_asid(cpu)
+            for mapping in panda.get_mappings(cpu):
+                name = panda.ffi.string(mapping.name)
+                if panda.virt_to_phys(cpu,mapping.base) == neg_1():
+                    print(f"{name} {mapping.base:#x} {asid:#x} unmapped")
 
-# @panda.ppp("syscalls2","on_sys_execve_enter")
-def execve(cpu, *args):
-    import ipdb
-    ipdb.set_trace()
-
-@panda.ppp("syscalls2","on_sys_exit_group_enter")
-def sys_exit(cpu, pc, *args):
-    print("At end of program")
-    asid = panda.current_asid(cpu)
-    for mapping in panda.get_mappings(cpu):
-        name = panda.ffi.string(mapping.name)
-        if panda.virt_to_phys(cpu,mapping.base) == neg_1():
-            print(f"{name} {mapping.base:#x} {asid:#x} unmapped")
-
-# panda.load_plugin("fault_hooks")
 panda.run()
