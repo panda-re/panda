@@ -429,8 +429,9 @@ end_record:
     so be careful to choose a unique name.
 
     The recording log consists of two parts: the snapshot, which is
-    named `<name>-rr-snp`, and the recording log, which is named
-    `<name>-rr-nondet.log`.
+    named `<name>-rr-snp`, the recording log, which is named
+    `<name>-rr-nondet.log`, and the command line command used to initiate 
+    PANDA, which is named `<name>-rr.cmd`.
 
 * `end_record`
 
