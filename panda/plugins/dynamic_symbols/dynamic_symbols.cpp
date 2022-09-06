@@ -266,16 +266,16 @@ string read_str(CPUState* cpu, target_ulong ptr){
 }
 
 int get_numelements_hash(CPUState* cpu, target_ulong dt_hash){
-    //printf("in dt_hash_section 0x%llx\n", (long long unsigned int) dt_hash);
+    printf("in dt_hash_section 0x%llx\n", (long long unsigned int) dt_hash);
     struct dt_hash_section dt;
 
     if (panda_virtual_memory_read(cpu, dt_hash, (uint8_t*) &dt, sizeof(struct dt_hash_section))!= MEMTX_OK){
-        //printf("got error 2\n");
+        printf("got error 2\n");
         return -1;
         //goto nextloop;
     }
     fixupendian(dt.nbuckets);
-    //printf("Nbucks: 0x%x\n", dt.nbuckets);
+    printf("Nbucks: 0x%x\n", dt.nbuckets);
     return dt.nbuckets;
 }
 
@@ -331,14 +331,14 @@ int get_numelements_gnu_hash(CPUState* cpu, target_ulong gnu_hash){
 }
 
 int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_hash, target_ulong gnu_hash, target_ulong dynamic_section, target_ulong symtab, int numelements_dyn){
-    //printf("Get numelembs symtab 0x%x, 0x%x\n", base, dt_hash);
+    // printf("Get numelembs symtab 0x%x, 0x%x\n", base, dt_hash);
     if (base != dt_hash){
         int result = get_numelements_hash(cpu, dt_hash);
         if (result != -1)
             return result;
     }
     if (base != gnu_hash){
-        //printf("trying gnu_hash\n");
+        printf("trying gnu_hash\n");
         int result = get_numelements_gnu_hash(cpu, gnu_hash);
         if (result != -1)
             return result;
@@ -347,7 +347,7 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
     // (not included) so we find it by finding the next
     // closest section
     //  target_ulong strtab_min = strtab + 0x100000;
-    //printf("continuing onto the end\n");
+    printf("continuing onto the end\n");
     target_ulong symtab_min = symtab + 0x100000;
     ELF(Dyn) tag;
     for (int j=0; j< numelements_dyn; j++){
@@ -381,7 +381,7 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
     // we already read this one
     if (symbols[asid].find(name) != symbols[asid].end() && symbols[asid][name]->size() > 0){
         error_case(current->name, m->name, " in symbols[asid] already and has");
-        //printf("%s %s already exists \n", current->name, m->name);
+        printf("%s %s already exists \n", current->name, m->name);
         return;
     }
 
@@ -411,25 +411,29 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
         // attempt to read memory allocation
         if (panda_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){
             error_case(current->name, m->name, "4 CNREH");
-            //printf("cant read elf header\n");
+            printf("cant read elf header\n");
             return;
         }
 
 
         target_ulong phnum = ehdr.e_phnum;
         target_ulong phoff = ehdr.e_phoff;
+        target_ulong phsize = ehdr.e_phentsize;
         fixupendian(phnum);
         fixupendian(phoff);
+        fixupendian(phsize);
 
         ELF(Phdr) dynamic_phdr;
 
-        //printf("Read Phdr from 0x%x + 0x%x + j*0x%lx\n", m->base, phoff, (sizeof(ELF(Phdr))));
+        // printf("Read Phdr from 0x%x + 0x%x + j*0x%lx\n", m->base, phoff, (sizeof(ELF(Phdr))));
+        target_ulong ph = m->base + phoff;
 
         for (int j=0; j<phnum; j++){
-            if (panda_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
+            if (panda_virtual_memory_read(cpu, ph, (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
                 error_case(current->name, m->name, "5 DPHDR");
                 return;
             }
+            ph += phsize;
 
             fixupendian(dynamic_phdr.p_type)
 
@@ -437,11 +441,11 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                 break;
             }else if (dynamic_phdr.p_type == PT_NULL){
                 error_case(current->name, m->name, "PTNULL");
-                //printf("hit PT_NULL\n");
+                printf("hit PT_NULL\n");
                 return;
             }else if (j == phnum -1){
                 error_case(current->name, m->name, "END");
-                //printf("hit phnum-1\n");
+                printf("hit phnum-1\n");
                 return;
             }
         }
@@ -571,19 +575,16 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
 
 
 void update_symbols_in_space(CPUState* cpu){
-    if (panda_in_kernel(cpu)){
-        return;
-    }
-    OsiProc *current = get_current_process(cpu);
-    target_ulong asid = panda_current_asid(cpu);
-    GArray *ms = get_mappings(cpu, current);
-    if (ms == NULL) {
-        return;
-    } else {
-        //iterate over mappings
-        for (int i = 0; i < ms->len; i++) {
-            OsiModule *m = &g_array_index(ms, OsiModule, i);
-            find_symbols(cpu, asid, current, m);
+    if (!panda_in_kernel(cpu)){
+        OsiProc *current = get_current_process(cpu);
+        target_ulong asid = panda_current_asid(cpu);
+        GArray *ms = get_mappings(cpu, current);
+        if (ms) {
+            //iterate over mappings
+            for (int i = 0; i < ms->len; i++) {
+                OsiModule *m = &g_array_index(ms, OsiModule, i);
+                find_symbols(cpu, asid, current, m);
+            }
         }
     }
 }
@@ -614,6 +615,7 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
 void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
     target_ulong asid = panda_current_asid(env);
     symbols.erase(asid);
+    printf("recv_auxv\n");
     struct hook h;
 
 #ifdef TARGET_ARM
