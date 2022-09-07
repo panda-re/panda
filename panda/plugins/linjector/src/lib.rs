@@ -42,7 +42,8 @@ async fn get_guest_buffer() -> target_ptr_t {
 
 fn current_process_name(cpu: &mut CPUState) -> String {
     let proc = OSI.get_current_process(cpu);
-    proc.get_name().into_owned()
+    proc.map(|name| name.get_name().into_owned())
+        .unwrap_or_default()
 }
 
 /// Convert to bytes and add null terminator
