@@ -118,26 +118,26 @@ fn init(_: &mut PluginHandle) -> bool {
     lazy_static::initialize(&ARGS);
     interface::daemon_manager::init();
 
-    let guest_binary = guest_plugin_path("guest_daemon")
-        .expect("Failed to retrieve guest_daemon guest plugin path")
-        .to_string_lossy()
-        .into_owned();
+    //let guest_binary = guest_plugin_path("guest_daemon")
+    //    .expect("Failed to retrieve guest_daemon guest plugin path")
+    //    .to_string_lossy()
+    //    .into_owned();
 
-    assert!(
-        panda::os::family().is_linux(),
-        "Guest plugin manager currently only supports Linux"
-    );
+    //assert!(
+    //    panda::os::family().is_linux(),
+    //    "Guest plugin manager currently only supports Linux"
+    //);
 
-    std::thread::spawn(|| {
-        // TODO: automatically decide which process to inject into
-        panda::require_plugin(&Linjector {
-            guest_binary,
-            proc_name: ARGS.proc_name.clone(),
-        });
+    //std::thread::spawn(|| {
+    //    // TODO: automatically decide which process to inject into
+    //    panda::require_plugin(&Linjector {
+    //        guest_binary,
+    //        proc_name: ARGS.proc_name.clone(),
+    //    });
 
-        PppCallback::new()
-            .before_guest_inject(|cpu| on_guest_agent_load::trigger(cpu));
-    });
+    //    PppCallback::new()
+    //        .before_guest_inject(|cpu| on_guest_agent_load::trigger(cpu));
+    //});
 
     true
 }

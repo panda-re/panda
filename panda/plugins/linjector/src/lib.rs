@@ -200,8 +200,8 @@ extern "C" fn on_sys_enter(
             log::debug!("Child process began");
             log::debug!(
                 "Child process pid: {:#x?}, Child's parent: {:#x?}",
-                OSI.get_current_process(cpu).pid,
-                OSI.get_current_process(cpu).ppid,
+                OSI.get_current_process(cpu).map(|proc| proc.pid),
+                OSI.get_current_process(cpu).map(|proc| proc.ppid),
             );
             log::debug!("Child asid: {:#x?}", panda::current_asid(cpu));
 
@@ -230,8 +230,8 @@ extern "C" fn on_sys_enter(
         let cpu = unsafe { &mut *get_cpu() };
         log::debug!(
             "Parent process pid: {:#x?}, Parent's parent: {:#x?}",
-            OSI.get_current_process(cpu).pid,
-            OSI.get_current_process(cpu).ppid,
+            OSI.get_current_process(cpu).map(|proc| proc.pid),
+            OSI.get_current_process(cpu).map(|proc| proc.ppid),
         );
         log::debug!("Parent asid: {:#x?}", panda::current_asid(cpu));
 

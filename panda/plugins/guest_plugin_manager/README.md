@@ -14,6 +14,8 @@ to load the "Guest Daemon", an executable running the guest responsible for hand
 the spawning of future guest processes and is responsible for communicating with the
 guest_plugin_manager directly.
 
+**Note:** injection of `guest_daemon` plugin must be done before guest plugin manager takes effect.
+
 ## APIs and Callbacks
 
 ---
