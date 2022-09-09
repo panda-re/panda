@@ -326,6 +326,7 @@ class Qcows():
         panda_args = [build_dir + f"/{arch}-softmmu/panda-system-{arch}"]
         biospath = path.realpath(path.join(build_dir, "pc-bios"))
         panda_args.extend(["-L", biospath])
+        panda_args.extend(["-os", q.os])
 
         if arch == 'mips64':
             panda_args.extend(["-drive", f"file={qcow},if=virtio"])
