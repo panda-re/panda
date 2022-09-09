@@ -106,7 +106,7 @@ static void panda_args_set_help_wanted(const char *);
 static char* attempt_normalize_path(char* path){
     char* new_path = g_malloc(PATH_MAX); 
     if (realpath(path, new_path) == NULL) {
-        strncpy(new_path, path, PATH_MAX);
+        strncpy(new_path, path, PATH_MAX-1);
     }
     g_free((char*)path);
     return new_path;
