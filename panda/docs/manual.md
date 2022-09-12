@@ -111,10 +111,12 @@ are [more complicated setups](https://en.wikibooks.org/wiki/QEMU/Monitor)
 too). Type `begin_record "replay_name"` to start the recording process, and use
 `end_record` to end it.
 
-Recording will create two files: `replay_name-rr-snp`, the VM snapshot at
-beginning of recording, and `replay_name-rr-nondet.log`, the log of all
-nondeterministic inputs. You need both of those to reproduce the segment of
-execution.
+Recording will create three files: `replay_name-rr-snp`, the VM snapshot at
+beginning of recording, `replay_name-rr-nondet.log`, the log of all
+nondeterministic inputs, and `replay_name-rr.cmd`, a file containing the 
+command line used to run PANDA. You need the first two file to reproduce the 
+segment of execution. The third file, `replay_name-rr.cmd`, can be used to 
+verify arguments, such as memory size, to use in a replay.
 
 ### Replay
 
@@ -428,9 +430,9 @@ end_record:
     currently no safeguard to prevent overwriting previous recordings,
     so be careful to choose a unique name.
 
-    The recording log consists of two parts: the snapshot, which is
+    The recording log consists of three parts: the snapshot, which is
     named `<name>-rr-snp`, the recording log, which is named
-    `<name>-rr-nondet.log`, and the command line command used to initiate 
+    `<name>-rr-nondet.log`, and a file containing the command line used to run 
     PANDA, which is named `<name>-rr.cmd`.
 
 * `end_record`
