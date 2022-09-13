@@ -319,10 +319,11 @@ class Qcows():
     @staticmethod
     def cli(target):
         from .panda import Panda
+        from os import environ
         q = Qcows.get_qcow_info(target)
         qcow = Qcows.get_qcow(target)
         arch = q.arch
-        build_dir = Panda._find_build_dir(arch)
+        build_dir = Panda._find_build_dir(arch, find_executable=True)
         panda_args = [build_dir + f"/{arch}-softmmu/panda-system-{arch}"]
         biospath = path.realpath(path.join(build_dir, "pc-bios"))
         panda_args.extend(["-L", biospath])
@@ -349,6 +350,10 @@ class Qcows():
 
         if "-display none" in ret:
             ret = ret.replace("-display none", "-nographic")
+
+        # Repalce /home/username with ~ when we can
+        if 'HOME' in environ:
+            ret = ret.replace(environ['HOME'], '~')
         return ret
 
 if __name__ == "__main__":
