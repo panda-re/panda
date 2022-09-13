@@ -26,6 +26,7 @@ class Expect(object):
 
         self.name = name
         self.logfile = None
+        logfile_base = "/tmp/expect"
 
         if logfile_base:
             self.set_logging(f"{logfile_base}_{name}.txt")
@@ -156,6 +157,21 @@ class Expect(object):
 
                     # Next is one char for cmd
                     cmd = chr(msg[shift])
+
+                    if cmd == '?':
+                        if len(arg_s) >= 6:
+                            this_cmd = arg_s[:6]
+                            if b'h' in this_cmd:
+                                cut = this_cmd.index(b'h')
+                            elif b'l' in this_cmd:
+                                cut = this_cmd.index(b'l')
+                            else:
+                                print("WARNING: Unknown '?' based ANSI command, no H/L terminator detected:", repr(this_cmd))
+                                continue
+                            # update args and shift buffer
+                            args.append(int(this_cmd[1:cut])) # Consume ? at start
+                            shift += cut
+
                     reformatted.append((cmd, args))
 
                     idx = shift # final char
@@ -322,6 +338,10 @@ class Expect(object):
 
                 elif typ == 'm':
                     # alter character attributes - just ignore
+                    pass
+                elif typ == '?':
+                    # Ignoring these for now - "private sequences" seeing ?2004{h,l} in ubuntu 22.04 bash
+                    print("IGNORING:", typ, args)
                     pass
 
                 else:

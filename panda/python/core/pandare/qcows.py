@@ -56,6 +56,17 @@ SUPPORTED_IMAGES = {
             url="https://panda-re.mit.edu/qcows/linux/debian/7.3/x86_64/debian_7.3_x86_64.qcow",
             extra_args="-display none"),
 
+    'x86_64_new': Image(
+            arch='x86_64',
+            os="linux-64-ubuntu:5.15.0-47-amd64", # XXX TODO needs OSI
+            prompt=rb"root@ubuntu:.*# ",
+            qcow="ubuntu-2204.qcow2",# Backwards compatability 
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1G',
+            url="https://panda.re/qcows/linux/ubuntu/2204/x86_64/ubuntu-2204.qcow2",
+            extra_args="-display none"),
+
     'ppc_wheezy': Image(
             arch='ppc',
             os="linux-64-debian:3.2.0-4-ppc-pae",

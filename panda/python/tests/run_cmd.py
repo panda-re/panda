@@ -5,7 +5,7 @@
 # but also for running multiple commands sequentially
 
 from pandare import Panda
-panda = Panda(generic="x86_64")
+panda = Panda(generic="x86_64_new")
 
 @panda.queue_blocking
 def run_cmds():
