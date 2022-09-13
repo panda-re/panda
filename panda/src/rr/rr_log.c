@@ -1547,8 +1547,8 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     char* rr_path_base = g_strdup(file_name_full);
     char* rr_name_base = g_strdup(file_name_full);
     char* rr_path = dirname(rr_path_base);
-    char* rr_name = basename(rr_name_base);
-    if (has_rr2_file_extention(rr_name)){
+    char* rr_name = remove_rr2_ext(basename(rr_name_base));
+    if (has_rr2_file_extention(rr_name_base)){
         printf("Recording using rr2 format\n");
         rrfile_info_create(&recording_info, rr_path, rr_name);
     }
@@ -1599,6 +1599,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 
     g_free(rr_path_base);
     g_free(rr_name_base);
+    free(rr_name);
     // set global to turn on recording
     rr_control.mode = RR_RECORD;
 
