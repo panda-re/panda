@@ -548,15 +548,14 @@ char* rr2_name(const char* fpath)
 bool is_rr2_file(const char *filename){
     bool rr2_file;
     struct stat buffer;
-    char* rr2_filename = rr2_name(filename);
-    if (stat(rr2_filename,&buffer) == 0 &&
-        is_gzip(rr2_filename))
+    if (has_rr2_file_extention(filename) &&
+        stat(filename,&buffer) == 0 &&
+        is_gzip(filename))
     {
         rr2_file = true;
     } else {
         rr2_file = false;
     }
-    free(rr2_filename);
     return rr2_file;
 }
 
