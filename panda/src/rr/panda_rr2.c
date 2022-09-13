@@ -559,3 +559,17 @@ bool is_rr2_file(const char *filename){
     free(rr2_filename);
     return rr2_file;
 }
+
+char* remove_rr2_ext(const char* base_name){
+    char* rr_name;
+    if (has_rr2_file_extention(base_name)){
+        size_t size = strlen(base_name);
+        rr_name = malloc(size-4);
+        memcpy(rr_name, base_name, size-4);
+        rr_name[size-4] = '\0';
+     } else {
+        rr_name = strdup(base_name);
+     }
+     return rr_name;
+}
+

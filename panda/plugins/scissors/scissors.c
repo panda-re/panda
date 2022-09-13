@@ -34,18 +34,19 @@ static uint64_t start_count;
 static uint64_t actual_start_count;
 static uint64_t end_count;
 
-size_t needed;
 static char *nondet_name;
 static char *snp_name;
 static char *cmdline_file_name;
+static char *new_rr2_name;
 
-static bool rr2;
+extern const char *replay_name;
+static bool oldlog_rr2;
+static bool newlog_rr2;
 union {
-    struct rr_file* rr2; // used if input is rr2 format
-    FILE * rr1; // used if input is old format
+    struct rr_file *rr2; // used if input is rr2 format
+    FILE *rr1; // used if input is old format
 } oldlog;
 static FILE *newlog = NULL;
-static char * new_rr_name;
 struct rr_file_state* new_rr_archive;
 static size_t bytes_read = 0;
 static RR_log_type rr_nondet_log_type;
@@ -78,7 +79,7 @@ static INLINEIT size_t rr_fwrite(void *ptr, size_t size, size_t nmemb, FILE *f) 
 
 static INLINEIT size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
     size_t result;
-    if(rr2){
+    if (oldlog_rr2) {
         result = rrfile_fread(ptr, size, nmemb, oldlog.rr2);
     } else {
         result = fread(ptr, size, nmemb, oldlog.rr1);
@@ -110,12 +111,21 @@ static INLINEIT RR_log_entry *alloc_new_entry(void)
 }
 
 static void rr_fseek_set(size_t bytes){
-  if(rr2) {
+  if (oldlog_rr2) {
       rrfile_fseek_set(&(oldlog.rr2), rr_nondet_log->name, bytes);
   } else {
       fseek(oldlog.rr1, bytes, SEEK_SET);
   }
   bytes_read = bytes;
+}
+
+static inline char *rr1_cmdline_file_name(const char* replay_name) {
+    size_t needed;
+    char* cmdline_name;
+    needed = snprintf(NULL, 0, "%s-rr.cmd", replay_name);
+    cmdline_name = malloc(needed+1);
+    snprintf(cmdline_name, needed+1, "%s-rr.cmd", replay_name);
+    return cmdline_name;
 }
 
 // Returns guest instr count (in old replay counting mode)
@@ -244,7 +254,6 @@ static RR_prog_point copy_entry(void) {
 static inline void save_snp_shot(void) {
     // Force running state
     global_state_store_running();
-    printf("writing snapshot:\t%s/snapshot\n", new_rr_name);
     QIOChannelFile* ioc =
         qio_channel_file_new_path(snp_name, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
@@ -253,19 +262,35 @@ static inline void save_snp_shot(void) {
 }
 
 static void create_command_file(void) {
-    if (rr2){
-        sassert((rrfile_copy_recording_file(new_rr_archive, "capture.cmd", rr_nondet_log->name) == 0), 5);
+    FILE *fp = fopen(cmdline_file_name, "w");
+    sassert(fp!=NULL, 5);
+
+    if (oldlog_rr2) {
+        char* cmdline_contents;
+        rrfile_read_cmdline(replay_name, &cmdline_contents);
+        fwrite(cmdline_contents, 1, strlen(cmdline_contents), fp);
     } else {
-        FILE *fp = fopen(cmdline_file_name, "w");
-        fprintf (fp, "created with the scissors plugin\n");
-        fclose(fp);
-        sassert(rrfile_add_recording_file(new_rr_archive, "capture.cmd", cmdline_file_name), 5);
+        char* old_cmdline_name = rr1_cmdline_file_name(replay_name);
+        struct stat buffer;
+        if (stat(old_cmdline_name, &buffer) == 0) {
+            FILE *old_fp = fopen(old_cmdline_name, "r");
+            sassert(old_fp!=NULL, 6);
+            char c;
+            while ((c = fgetc(old_fp)) != EOF) {
+                fputc(c, fp);
+            }
+            fclose(old_fp);
+        } else {
+            fprintf (fp, "created with the scissors plugin\n");
+        }
+        if (old_cmdline_name) free(old_cmdline_name);
     }
+    fclose(fp);
 }
 
 static bool open_old_log(void){
     bool success;
-    if (rr2){
+    if (oldlog_rr2) {
         success = (rrfile_open_read(rr_nondet_log->name, "nondetlog", &(oldlog.rr2)) == 0) ? true : false;
     } else {
         success = (oldlog.rr1 = fopen(rr_nondet_log->name, "r"));
@@ -273,41 +298,58 @@ static bool open_old_log(void){
     return success;
 }
 
+static void write_to_rr2(void) {
+    printf("Moving files over to rr2 archive %s\n", new_rr2_name);
+    printf("    moving snapshot to %s/snapshot ...\n", new_rr2_name);
+    sassert(rrfile_add_recording_file(new_rr_archive, "snapshot", snp_name), 7);
+
+    printf("    moving cmdline to %s/capture.cmd ...\n", new_rr2_name);
+    sassert(rrfile_add_recording_file(new_rr_archive, "capture.cmd", cmdline_file_name), 8);
+
+    printf("    moving nondetlog entries to %s/nondetlog ...\n", new_rr2_name);
+    sassert(rrfile_add_recording_file(new_rr_archive, "nondetlog", nondet_name), 9);
+    rrfile_finalize(new_rr_archive);
+}
+
 static void clean_up(void){
-  free(nondet_name);
-  free(snp_name);
-  free(cmdline_file_name);
-  free(new_rr_name);
-  if (rr2){
-      rrfile_free(oldlog.rr2);
-  }
+    free(nondet_name);
+    free(snp_name);
+    free(cmdline_file_name);
+    if (newlog_rr2) {
+        free(new_rr2_name);
+    }
+    if (oldlog_rr2) {
+        rrfile_free(oldlog.rr2);
+    }
 }
 
 static void start_snip(uint64_t count) {
-    rr2 = rr_nondet_log->rr2;
-    sassert(open_old_log(), 6);
+    oldlog_rr2 = rr_nondet_log->rr2;
+    sassert(open_old_log(), 10);
     rr_nondet_log_type = rr_nondet_log->type;
     rr_nondet_log_size = rr_nondet_log->size;
 
     // initiate rr2 file creation
-    new_rr_archive = rrfile_open_write(new_rr_name);
-    sassert(new_rr_archive, 7);
+    if (newlog_rr2) {
+        new_rr_archive = rrfile_open_write(new_rr2_name);
+        sassert(new_rr_archive, 11);
+    }
 
-    sassert(rr_fread(&orig_last_prog_point, sizeof(RR_prog_point), 1) == 1, 8);
+    sassert(rr_fread(&orig_last_prog_point, sizeof(RR_prog_point), 1) == 1, 12);
     printf("Original ending prog point: %" PRId64 "\n", (uint64_t) orig_last_prog_point.guest_instr_count);
 
     actual_start_count = count;
-    printf("Saving snapshot at instr count %" PRIx64 "...\n ", count);
+    printf("Saving snapshot at instr count %" PRIx64 "...\n", count);
+    printf("Writing snapshot to %s ...\n", snp_name);
     save_snp_shot();
-    sassert(rrfile_add_recording_file(new_rr_archive, "snapshot", snp_name), 9);
 
-    printf("Writing replay cmdline to %s/capture.cmd ...\n", new_rr_name);
+    printf("Writing cmdline to %s ...\n", cmdline_file_name);
     create_command_file();
 
     printf("Beginning cut-and-paste process at prog point: % " PRId64 "\n", (uint64_t) rr_get_guest_instr_count());
-    printf("Writing entries to %s/nondetlog...\n", new_rr_name);
+    printf("Writing entries to %s ...\n", nondet_name);
     newlog = fopen(nondet_name, "w");
-    sassert(newlog, 10);
+    sassert(newlog, 13);
     // We'll fix this up later.
     RR_prog_point prog_point = {0};
     fwrite(&prog_point.guest_instr_count,
@@ -366,17 +408,18 @@ static void end_snip(void) {
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
     sassert(fwrite(&(end.prog_point.guest_instr_count),
-                sizeof(end.prog_point.guest_instr_count), 1, newlog) == 1, 11);
-    sassert(fwrite(&(end.kind), 1, 1, newlog) == 1, 12);
-    sassert(fwrite(&(end.callsite_loc), 1, 1, newlog) == 1, 13);
+                sizeof(end.prog_point.guest_instr_count), 1, newlog) == 1, 14);
+    sassert(fwrite(&(end.kind), 1, 1, newlog) == 1, 15);
+    sassert(fwrite(&(end.callsite_loc), 1, 1, newlog) == 1, 16);
 
     rewind(newlog);
     fwrite(&prog_point.guest_instr_count,
             sizeof(prog_point.guest_instr_count), 1, newlog);
     fclose(newlog);
 
-    rrfile_add_recording_file(new_rr_archive, "nondetlog", nondet_name);
-    rrfile_finalize(new_rr_archive);
+    if (newlog_rr2) {
+        write_to_rr2();
+    }
     clean_up();
     printf("...complete!\n");
     done = true;
@@ -420,28 +463,12 @@ void before_block_exec(CPUState *env, TranslationBlock *tb) {
     return;
 }
 
-static inline void initialize_nondetlog_name(char* sciss_dir, const char* name) {
-    needed = snprintf(NULL, 0, "%s/%s-rr-nondet.log", sciss_dir, name);
-    nondet_name = malloc(needed+1);
-    snprintf(nondet_name, needed+1, "%s/%s-rr-nondet.log", sciss_dir, name);
-}
-
-static inline void initialize_snp_name(char* sciss_dir, const char* name) {
-    needed = snprintf(NULL, 0, "%s/%s-rr-snp", sciss_dir, name);
-    snp_name = malloc(needed+1);
-    snprintf(snp_name, needed+1, "%s/%s-rr-snp", sciss_dir, name);
-}
-
-static void initialize_cmdline_file_name(char* sciss_dir, const char* name) {
-    needed = snprintf(NULL, 0, "%s/%s-rr.cmd", sciss_dir, name);
-    cmdline_file_name = malloc(needed+1);
-    snprintf(cmdline_file_name, needed+1, "%s/%s-rr.cmd", sciss_dir, name);
-}
-
-static void initialize_new_rr_name(char* sciss_dir, const char* name) {
-    needed = snprintf(NULL, 0, "%s/%s.rr2", sciss_dir, name);
-    new_rr_name = malloc(needed+1);
-    snprintf(new_rr_name, needed+1, "%s/%s.rr2", sciss_dir, name);
+static inline char*  initialize_file_name(char* sciss_dir, const char* name, const char* ext) {
+    size_t needed;
+    needed = snprintf(NULL, 0, "%s/%s%s", sciss_dir, name, ext);
+    char * file_name = malloc(needed+1);
+    snprintf(file_name, needed+1, "%s/%s%s", sciss_dir, name, ext);
+    return file_name;
 }
 
 bool init_plugin(void *self) {
@@ -467,8 +494,10 @@ bool init_plugin(void *self) {
     }
 
     // we will seg fault in savevm if path to scissors files doesnt exist...
-    char *name_copy = strdup(name);
-    char *sciss_dir = dirname(name_copy);
+    char* name_copy = strdup(name);
+    char* rr_base_name = basename(name_copy);
+    char* rr_name = remove_rr2_ext(rr_base_name);
+    char* sciss_dir = dirname(name_copy);
     DIR* dir = opendir(sciss_dir);
     if (dir) {
         /* Directory exists. */
@@ -483,11 +512,17 @@ bool init_plugin(void *self) {
         return false;
     }
 
-    initialize_new_rr_name(sciss_dir, name);
-    initialize_nondetlog_name(sciss_dir, name);
-    initialize_snp_name(sciss_dir, name);
-    initialize_cmdline_file_name(sciss_dir, name);
+    newlog_rr2 = has_rr2_file_extention(name_copy);
+    nondet_name = initialize_file_name(sciss_dir, rr_name, "-rr-nondet.log");
+    snp_name = initialize_file_name(sciss_dir, rr_name, "-rr-snp");
+    cmdline_file_name = initialize_file_name(sciss_dir, rr_name, "-rr.cmd");
+    if (newlog_rr2) {
+        new_rr2_name = initialize_file_name(sciss_dir, rr_name, ".rr2");
+    }
+
     free(name_copy);
+    free(rr_name);
+
     return true;
 }
 

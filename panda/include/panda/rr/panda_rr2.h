@@ -100,4 +100,5 @@ bool has_rr2_file_extention(const char *filename);
 bool is_gzip(const char *filename);
 char* rr2_name(const char* fpath);
 bool is_rr2_file(const char *filename);
+char* remove_rr2_ext(const char* base_name);
 #endif
