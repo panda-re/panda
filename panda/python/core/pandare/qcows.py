@@ -2,25 +2,39 @@
 '''
 Module to simplify PANDA command line usage. Use python3 -m pandare.qcows to 
 fetch files necessary to run various generic VMs and generate command lines to start them.
-Also supports deleting previously-fetched files
+Also supports deleting previously-fetched files.
+
+Most of the interesting logic fot his is contained in qcows_internal.py
 '''
 
-import logging
-from os import path, remove, makedirs
-from subprocess import check_call
-from collections import namedtuple
+from os import path, remove
 from shlex import split as shlex_split
-from sys import exit
+from sys import exit, stderr
 
+from .utils import find_build_dir
 from .panda import Panda
 from os import environ
 from .qcows_internal import Qcows, SUPPORTED_IMAGES
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
 VM_DIR = path.join(path.expanduser("~"), ".panda")
 class Qcows_cli():
+    @staticmethod
+    def _find_build_dir(arch):
+        try:
+            build_dir = find_build_dir(arch, find_executable=True)
+        except RuntimeError as e:
+            # Couldn't find this arch - can we find any?
+            try:
+                build_dir = find_build_dir(None, find_executable=True)
+                print(f"WARNING: You do not appear to have panda-system-{arch}, please build it then try again\n",
+                      file=None if stdout.isatty() else stderr)
+
+            except RuntimeError as e2:
+                print(f"ERROR: Cannot find any version of PANDA on your system, please build and then try again\n",
+                      file=None if stdout.isatty() else stderr)
+                raise e
+        return build_dir
+
     @staticmethod
     def remove_image(target):
         try:
@@ -43,14 +57,18 @@ class Qcows_cli():
 
         for extra_file in image_data.extra_files or []:
             extra_file_path = path.join(VM_DIR, extra_file)
-            if os.path.isfile(extra_file_path):
+            if path.isfile(extra_file_path):
                 remove(extra_file_path)
     @staticmethod
     def cli(target):
         q = Qcows.get_qcow_info(target)
         qcow = Qcows.get_qcow(target)
         arch = q.arch
-        build_dir = Panda._find_build_dir(arch, find_executable=True)
+        # User needs to have the specified arch in order to run the command.
+        # But if they just want to download/delete files and we find another arch
+        # we can fetch/delete the files print a warning about how the generatd command won't work.
+
+        build_dir = Qcows_cli._find_build_dir(arch)
         panda_args = [build_dir + f"/{arch}-softmmu/panda-system-{arch}"]
         biospath = path.realpath(path.join(build_dir, "pc-bios"))
         panda_args.extend(["-L", biospath])
