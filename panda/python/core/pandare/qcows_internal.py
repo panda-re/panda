@@ -4,11 +4,13 @@ Module for fetching generic PANDA images and managing their metadata.
 '''
 
 import logging
+import hashlib
 from os import path, remove, makedirs
-from subprocess import check_call
+from subprocess import Popen, PIPE, CalledProcessError
 from collections import namedtuple
 from shlex import split as shlex_split
-from sys import exit
+from sys import exit, stderr
+from shutil import move
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -254,7 +256,7 @@ class Qcows():
         return r
 
     @staticmethod
-    def get_qcow(name=None, download=True):
+    def get_qcow(name=None, download=True, _is_tty=True):
         '''
         Given a generic name of a qcow in `pandare.qcows.SUPPORTED_IMAGES` or a path to a qcow, return the path. Defaults to i386
 
@@ -300,47 +302,67 @@ class Qcows():
                     break
 
         if needs_download and download:
-            Qcows.download_qcow(image_data, qcow_path)
+            Qcows.download_qcow(image_data, qcow_path, _is_tty=_is_tty)
         elif needs_download:
             raise ValueError("Qcow is not on disk and download option is disabled")
 
         return qcow_path
 
     @staticmethod
-    def download_qcow(image_data, output_path, _is_retry=False):
+    def get_file(url, output_path, sha1hash=None, do_retry=True, _is_tty=True):
+        if _is_tty:
+            print(f"Downloading required file: {url}")
+            cmd = ["wget", '--show-progress', '--quiet', url, "-O", output_path+".tmp"]
+        else:
+            print(f"Please wait for download of required file: {url}", file=stderr)
+            cmd = ["wget", "--quiet", url, "-O", output_path+".tmp"]
+
+        try:
+            with Popen(cmd, stdout=PIPE, bufsize=1, universal_newlines=True) as p:
+                for line in p.stdout:
+                    print(line, end='')
+
+            if p.returncode != 0:
+                raise CalledProcessError(p.returncode, p.args)
+
+            # Check hash if we have one
+            if sha1hash is not None:
+                if _is_tty:
+                    print(f"Validating file hash")
+                sha1 = hashlib.sha1()
+
+                with open(output_path+".tmp", 'rb') as f:
+                    while True:
+                        data = f.read(65536) #64kb chunks
+                        if not data:
+                            break
+                        sha1.update(data)
+                computed_hash = sha1.hexdigest()
+                if computed_hash != sha1hash:
+                    raise ValueError(f"{url} has hash {computed_hash} vs expected hash {sha1hash}")
+                # Hash matches, move .tmp file to actual path
+                move(output_path+".tmp", output_path)
+
+        except Exception as e:
+            logger.info("Download failed, deleting partial file: %s", output_path)
+            remove(output_path+".tmp")
+
+            if do_retry:
+                if _is_tty and do_retry:
+                    print("Hash mismatch - retrying")
+                Qcows.get_file(url, output_path, sha1hash, do_retry=False, _is_tty=_is_tty)
+            else:
+                # Not retrying again, fatal - leave any partial files though
+                raise RuntimeError(f"Unable to download expeted file from {url} even after retrying: {e}") from None
+        logger.debug("Downloaded %s to %s", url, output_path)
+
+    @staticmethod
+    def download_qcow(image_data, output_path, _is_retry=False, _is_tty=True):
         '''
         Download the qcow described in the Image object in image_data
         Store to the output output_path.
         If the Image includes SHA1 hashes, validate the file was downloaded correctly, otherwise retry once
         '''
-
-        def get_file(url, output_path, sha1hash=None, do_retry=True):
-            print(f"Downloading required file: {url}")
-            try:
-                check_call(["wget", "--quiet", url, "-O", output_path])
-                if sha1hash is not None:
-                    import hashlib
-                    sha1 = hashlib.sha1()
-
-                    with open(output_path, 'rb') as f:
-                        while True:
-                            data = f.read(65536) #64kb chunks
-                            if not data:
-                                break
-                            sha1.update(data)
-                    computed_hash = sha1.hexdigest()
-                    if computed_hash != sha1hash:
-                        raise ValueError(f"{url} has hash {computed_hash} vs expected hash {sha1hash}")
-            except Exception as e:
-                logger.info("Download failed, deleting partial file: %s", output_path)
-                remove(output_path)
-
-                if do_retry:
-                    get_file(url, output_path, sha1hash, do_retry=False)
-                else:
-                    # Not retrying again, fatal - leave any partial files though
-                    raise RuntimeError(f"Unable to download expeted file from {url} even after retrying: {e}") from None
-            logger.debug("Downloaded %s to %s", url, output_path)
 
         # Check if we have a hash for the base qcow. Then download and vlidate with that hash
         qcow_base = image_data.url.split("/")[-1] if '/' in image_data.url else image_data.url
@@ -348,7 +370,7 @@ class Qcows():
 
         if image_data.hashes is not None and qcow_base in image_data.hashes:
             base_hash = image_data.hashes[qcow_base]
-        get_file(image_data.url, output_path, base_hash)
+        Qcows.get_file(image_data.url, output_path, base_hash, _is_tty=_is_tty)
 
         # Download all extra files out of the same directory
         url_base = image_data.url[:image_data.url.rfind("/")] + "/"  # Truncate url to last /
@@ -357,7 +379,7 @@ class Qcows():
             extra_hash = None
             if image_data.hashes is not None and extra_file in image_data.hashes:
                 extra_hash = image_data.hashes[extra_file]
-            get_file(url_base + extra_file, extra_file_path, extra_hash)
+            Qcows.get_file(url_base + extra_file, extra_file_path, extra_hash, _is_tty=_is_tty)
 
     @staticmethod
     def qcow_from_arg(idx=1):

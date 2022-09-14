@@ -38,7 +38,7 @@ class Qcows_cli():
     @staticmethod
     def remove_image(target):
         try:
-            qcow = Qcows.get_qcow(target, download=False)
+            qcow = Qcows.get_qcow(target, download=False, _is_tty=stdout.isatty())
         except ValueError:
             # No QCOW, we're good!
             return
@@ -53,23 +53,26 @@ class Qcows_cli():
         if not qc: # Default, get name from url
             qc = image_data.url.split("/")[-1]
         qcow_path = path.join(VM_DIR, qc)
-        remove(qcow_path)
+        if path.isfile(qcow_path):
+            print(f"Deleting {qcow_path}")
+            remove(qcow_path)
 
         for extra_file in image_data.extra_files or []:
             extra_file_path = path.join(VM_DIR, extra_file)
             if path.isfile(extra_file_path):
+                print(f"Deleting {extra_file_path}")
                 remove(extra_file_path)
     @staticmethod
     def cli(target):
         q = Qcows.get_qcow_info(target)
-        qcow = Qcows.get_qcow(target)
+        qcow = Qcows.get_qcow(target, _is_tty=stdout.isatty())
         arch = q.arch
         # User needs to have the specified arch in order to run the command.
         # But if they just want to download/delete files and we find another arch
         # we can fetch/delete the files print a warning about how the generatd command won't work.
 
         build_dir = Qcows_cli._find_build_dir(arch)
-        panda_args = [build_dir + f"/{arch}-softmmu/panda-system-{arch}"]
+        panda_args = [build_dir + f"/panda-system-{arch}"]
         biospath = path.realpath(path.join(build_dir, "pc-bios"))
         panda_args.extend(["-L", biospath])
         panda_args.extend(["-os", q.os])
@@ -96,8 +99,8 @@ class Qcows_cli():
         if "-display none" in ret:
             ret = ret.replace("-display none", "-nographic")
 
-        # Repalce /home/username with ~ when we can
-        if 'HOME' in environ:
+        # Repalce /home/username with ~ when we can (TTYs)
+        if stdout.isatty() and 'HOME' in environ:
             ret = ret.replace(environ['HOME'], '~')
         return ret
 
