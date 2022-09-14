@@ -729,7 +729,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                     sa->ptr = (uint64_t)ptr_val;
                     sa->has_ptr = true;
                 }else{
-                    std::cerr << "(struct pointer error)";
+                    std::cout << "(struct pointer error)";
                 }
             }
 
