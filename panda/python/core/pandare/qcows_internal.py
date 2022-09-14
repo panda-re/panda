@@ -123,7 +123,9 @@ SUPPORTED_IMAGES = {
             default_mem='1g',
             url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mipsel/debian_7.3_mipsel.qcow",
             extra_files=['vmlinux-3.2.0-4-4kc-malta.mipsel',],
-            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR),
+            hashes={'vmlinux-3.2.0-4-4kc-malta': '592e384a4edc16dade52a6cd5c785c637bcbc9ad',
+                    'debian_7.3_mipsel.qcow': 'eeb5de0128a95c5f0d76c4f2161afd1bb320d85b'}),
 
     'mips_buildroot5':  Image(
             arch='mips',
@@ -293,7 +295,7 @@ class Qcows():
         if not needs_download:
             for extra_file in image_data.extra_files or []:
                 extra_file_path = path.join(VM_DIR, extra_file)
-                if not os.path.isfile(extra_file_path):
+                if not path.isfile(extra_file_path):
                     needs_download = True
                     break
 
@@ -313,7 +315,7 @@ class Qcows():
         '''
 
         def get_file(url, output_path, sha1hash=None, do_retry=True):
-            print(f"Downloading required file: {url}\n")
+            print(f"Downloading required file: {url}")
             try:
                 check_call(["wget", "--quiet", url, "-O", output_path])
                 if sha1hash is not None:
@@ -328,7 +330,7 @@ class Qcows():
                             sha1.update(data)
                     computed_hash = sha1.hexdigest()
                     if computed_hash != sha1hash:
-                        logger.warning(f"{url} has {computed_hash} vs expected {sha1hash}")
+                        raise ValueError(f"{url} has hash {computed_hash} vs expected hash {sha1hash}")
             except Exception as e:
                 logger.info("Download failed, deleting partial file: %s", output_path)
                 remove(output_path)
@@ -337,14 +339,14 @@ class Qcows():
                     get_file(url, output_path, sha1hash, do_retry=False)
                 else:
                     # Not retrying again, fatal - leave any partial files though
-                    raise RuntimeError(f"Unable to download expeted file from {url} even after retrying")
+                    raise RuntimeError(f"Unable to download expeted file from {url} even after retrying: {e}") from None
             logger.debug("Downloaded %s to %s", url, output_path)
 
         # Check if we have a hash for the base qcow. Then download and vlidate with that hash
         qcow_base = image_data.url.split("/")[-1] if '/' in image_data.url else image_data.url
         base_hash = None
-        print(image_data)
-        if hasattr(image_data, "hashes") and qcow_base in image_data.hashes:
+
+        if image_data.hashes is not None and qcow_base in image_data.hashes:
             base_hash = image_data.hashes[qcow_base]
         get_file(image_data.url, output_path, base_hash)
 
@@ -353,9 +355,9 @@ class Qcows():
         for extra_file in image_data.extra_files or []:
             extra_file_path = path.join(VM_DIR, extra_file)
             extra_hash = None
-            if hasattr(image_data, "hashes") and extra_file in image_data['hashes']:
+            if image_data.hashes is not None and extra_file in image_data.hashes:
                 extra_hash = image_data.hashes[extra_file]
-            get_file(extra_file_path, url_base + extra_file, extra_hash)
+            get_file(url_base + extra_file, extra_file_path, extra_hash)
 
     @staticmethod
     def qcow_from_arg(idx=1):
@@ -397,5 +399,5 @@ class Qcows():
 
         for extra_file in image_data.extra_files or []:
             extra_file_path = path.join(VM_DIR, extra_file)
-            if os.path.isfile(extra_file_path):
+            if path.isfile(extra_file_path):
                 remove(extra_file_path)
