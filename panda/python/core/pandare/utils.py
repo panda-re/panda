@@ -146,7 +146,10 @@ class plugin_list(dict):
             self._panda.load_plugin(plugin_name)
         return super().__getitem__(plugin_name)
 
-def _find_build_dir(arch_name=None, find_executable=False):
+def _find_build_dir(arch_name, find_executable=False):
+    '''
+    Internal function to return the build directory for the specified architecture
+    '''
     python_package = pjoin(*[dirname(__file__), "data"])
     local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
     arch_dir = f"{arch_name}-softmmu"
@@ -160,7 +163,8 @@ def _find_build_dir(arch_name=None, find_executable=False):
 
     for potential_path in pot_paths:
         if isfile(pjoin(potential_path, file_name)):
-            #print("Loading libpanda from {}".format(potential_path))
+            # potential_path may contain [arch]-softmmu, if so remove it
+            potential_path = potential_path.replace(arch_dir, "")
             return potential_path
 
     searched_paths = "\n".join(["\t"+p for p in  pot_paths])
@@ -171,16 +175,18 @@ def _find_build_dir(arch_name=None, find_executable=False):
 
 def find_build_dir(arch_name=None, find_executable=False):
     '''
-    Find build directory containing:
-        A: (if not find_executable) ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
-        B: (if find_executable) the panda-system-ARCH binary
-    1) Check relative to file (in the case of installed packages)
-    2) Check in../ ../../../build/
-    2) Search path if user is looking for an executable instead of a library
-    3) Raise RuntimeError if we find nothing
+    Find build directory (i.e., ~git/panda/build) containing the binaries we care about. If
+    find_executable is False, we're looking for [arch]-softmmu/libpanda-[arch].so. If
+    find_executable is True, we're looking for [arch]-softmmu/panda-system-[arhc]
 
-    Set find_executable if you want to search for the directory with the
-    panda-system-[arch] binary instead of the libpanda-[arch].so library.
+    We do this by searching paths in the following order:
+        1) Check relative to file (in the case of installed packages)
+        2) Check in../ ../../../build/
+        2) Search path if user is looking for an executable instead of a library
+        3) Raise RuntimeError if we find nothing
+
+    If arch_name is none, we'll search for any supported architecture and return the first
+    one we find.
     '''
     arches = ['i386', 'x86_64', 'arm', 'aarch64', 'ppc', 'mips', 'mipsel', 'mips64']
 
