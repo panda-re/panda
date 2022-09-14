@@ -71,8 +71,8 @@ class Qcows_cli():
         # But if they just want to download/delete files and we find another arch
         # we can fetch/delete the files print a warning about how the generatd command won't work.
 
-        build_dir = Qcows_cli._find_build_dir(arch)
-        panda_args = [path.join(build_dir, f"{arch}-softmmu/panda-system-{arch}")]
+        build_dir = Qcows_cli._find_build_dir(arch) # will set find_executable
+        panda_args = [path.join(build_dir, f"panda-system-{arch}")]
         biospath = path.realpath(path.join(build_dir, "pc-bios"))
         panda_args.extend(["-L", biospath])
         panda_args.extend(["-os", q.os])
