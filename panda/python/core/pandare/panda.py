@@ -36,7 +36,7 @@ from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, pl
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
-from .qcows import Qcows
+from .qcows_internal import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 
