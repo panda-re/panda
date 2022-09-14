@@ -4,6 +4,7 @@ Module for fetching generic PANDA images and managing their metadata.
 '''
 
 import logging
+import random
 import hashlib
 from os import path, remove, makedirs
 from subprocess import Popen, PIPE, CalledProcessError
@@ -17,7 +18,7 @@ logger.setLevel(logging.DEBUG)
 
 VM_DIR = path.join(path.expanduser("~"), ".panda")
 
-class Image(namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args', 'hashes'])):
+class Image(namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'alternate_urls', 'extra_files', 'qcow', 'default_mem', 'extra_args', 'hashes'])):
     '''
     The Image class stores information about a supported PANDA image
 
@@ -183,6 +184,7 @@ SUPPORTED_IMAGES = {
             snapshot="root",
             default_mem='1024',
             url="https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2",
+            alternate_urls=["https://www.dropbox.com/s/4avqfxqemd29i5j/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2?dl=1"],
             extra_args="-display none",
             hashes={"bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2": "556305921c8250537bbbfbb57cb56f9ef07f4d63"}),
 }
@@ -309,7 +311,10 @@ class Qcows():
         return qcow_path
 
     @staticmethod
-    def get_file(url, output_path, sha1hash=None, do_retry=True, _is_tty=True):
+    def get_file(urls, output_path, sha1hash=None, do_retry=True, _is_tty=True):
+        assert len(urls) > 0
+        url = random.choice([x for x in urls if x is not None])
+
         if _is_tty:
             print(f"Downloading required file: {url}")
             cmd = ["wget", '--show-progress', '--quiet', url, "-O", output_path+".tmp"]
@@ -350,7 +355,7 @@ class Qcows():
             if do_retry:
                 if _is_tty and do_retry:
                     print("Hash mismatch - retrying")
-                Qcows.get_file(url, output_path, sha1hash, do_retry=False, _is_tty=_is_tty)
+                Qcows.get_file([url], output_path, sha1hash, do_retry=False, _is_tty=_is_tty)
             else:
                 # Not retrying again, fatal - leave any partial files though
                 raise RuntimeError(f"Unable to download expeted file from {url} even after retrying: {e}") from None
@@ -370,7 +375,8 @@ class Qcows():
 
         if image_data.hashes is not None and qcow_base in image_data.hashes:
             base_hash = image_data.hashes[qcow_base]
-        Qcows.get_file(image_data.url, output_path, base_hash, _is_tty=_is_tty)
+
+        Qcows.get_file([image_data.url] + (image_data.alternate_urls if image_data.alternate_urls is not None else []), output_path, base_hash, _is_tty=_is_tty)
 
         # Download all extra files out of the same directory
         url_base = image_data.url[:image_data.url.rfind("/")] + "/"  # Truncate url to last /
@@ -379,7 +385,7 @@ class Qcows():
             extra_hash = None
             if image_data.hashes is not None and extra_file in image_data.hashes:
                 extra_hash = image_data.hashes[extra_file]
-            Qcows.get_file(url_base + extra_file, extra_file_path, extra_hash, _is_tty=_is_tty)
+            Qcows.get_file([url_base + extra_file], extra_file_path, extra_hash, _is_tty=_is_tty) # TODO: support alternate URL here too? Won't work for some hosting options
 
     @staticmethod
     def qcow_from_arg(idx=1):
