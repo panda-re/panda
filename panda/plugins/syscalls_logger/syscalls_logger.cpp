@@ -1168,8 +1168,10 @@ void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const
     // NOTE: if these syscalls fail, we'll initially record them (on enter) with a retval of 0
     // but we'll then also record them again (on return) with the actual retval.
     // In the non failure case, they never return and are only captured once.
+    // nanosleep/clock_nanosleep are special exceptions: we'll just print those twice, otherwise we often miss it on return
     if(strcmp(call->name, "sys_exit") == 0 || strcmp(call->name, "sys_exit_group") == 0 ||
-        strcmp(call->name, "sys_execve") == 0 || strcmp(call->name, "sys_execveat") == 0) {
+       strcmp(call->name, "sys_execve") == 0 || strcmp(call->name, "sys_execveat") == 0 ||
+       strcmp(call->name, "sys_nanosleep") == 0 || strcmp(call->name, "sys_clock_nanosleep") == 0) {
     handle_syscall(cpu, pc, call, rp, false);
   }
 }
