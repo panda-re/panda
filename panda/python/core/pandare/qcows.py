@@ -4,7 +4,7 @@ Module to simplify PANDA command line usage. Use python3 -m pandare.qcows to
 fetch files necessary to run various generic VMs and generate command lines to start them.
 Also supports deleting previously-fetched files.
 
-Most of the interesting logic fot his is contained in qcows_internal.py
+Most of the interesting logic for this is contained in qcows_internal.py.
 '''
 
 from os import path, remove
@@ -99,7 +99,7 @@ class Qcows_cli():
         if "-display none" in ret:
             ret = ret.replace("-display none", "-nographic")
 
-        # Repalce /home/username with ~ when we can (TTYs)
+        # Replace /home/username with ~ when we can (TTYs)
         if stdout.isatty() and 'HOME' in environ:
             ret = ret.replace(environ['HOME'], '~')
         return ret
