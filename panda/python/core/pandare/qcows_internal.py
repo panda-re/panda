@@ -347,6 +347,10 @@ class Qcows():
                     raise ValueError(f"{url} has hash {computed_hash} vs expected hash {sha1hash}")
                 # Hash matches, move .tmp file to actual path
                 move(output_path+".tmp", output_path)
+            else:
+                # No hash, move .tmp file to actual path
+                move(output_path+".tmp", output_path)
+                
 
         except Exception as e:
             logger.info("Download failed, deleting partial file: %s", output_path)

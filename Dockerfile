@@ -9,7 +9,7 @@ ARG BASE_IMAGE
 
 # Copy dependencies lists into container. Note this
 #  will rarely change so caching should still work well
-COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
+COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/ 
 
 # Base image just needs runtime dependencies
 RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
@@ -80,6 +80,7 @@ RUN  make -C /panda/build install
 # Install pypanda
 RUN cd /panda/panda/python/core && \
     python3 setup.py install
+RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
 
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
