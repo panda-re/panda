@@ -9,7 +9,7 @@ ARG BASE_IMAGE
 
 # Copy dependencies lists into container. Note this
 #  will rarely change so caching should still work well
-COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/ 
+COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
 
 # Base image just needs runtime dependencies
 RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
