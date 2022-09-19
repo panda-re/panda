@@ -1,5 +1,5 @@
 """
-This module simply contains the Panda class
+This module simply contains the Panda class.
 """
 
 from sys import version_info, exit
