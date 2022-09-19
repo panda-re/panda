@@ -1,7 +1,7 @@
 '''
 This module contains architecture-specific code.
 
-When the `pandare.panda` class is initialized it will automatically
+When the `pandare.panda` class is initialized, it will automatically
 initialize a PandaArch class for the specified architecture in the variable
 `panda.arch`.
 
@@ -349,7 +349,7 @@ class ArmArch(PandaArch):
 
     def get_return_address(self, cpu):
         '''
-        looks up where ret will go
+        Looks up where ret will go
         '''
         return self.get_reg(cpu, "LR")
 
@@ -384,7 +384,7 @@ class Aarch64Arch(PandaArch):
     def get_pc(self, cpu):
         '''
         Overloaded function to get aarch64 program counter.
-        Note the PC is not stored in a general purpose reg
+        Note the PC is not stored in a general purpose register.
         '''
         return cpu.env_ptr.pc
 
@@ -419,7 +419,7 @@ class Aarch64Arch(PandaArch):
 
     def get_return_address(self, cpu):
         '''
-        looks up where ret will go
+        Looks up where ret will go
         '''
         return self.get_reg(cpu, "LR")
 
@@ -528,10 +528,10 @@ class MipsArch(PandaArch):
         '''
         Overloaded function so when convention is syscall, user can control
         the A3 register (which indicates syscall success/failure) in addition
-        to syscall return value.
+        to the syscall return value.
 
-        When convention == 'syscall', failure = False means A3 will bet set to 0,
-        otherwise it will be set to 1
+        When convention == 'syscall', failure = False means A3 will bet set to 0.
+        Otherwise, it will be set to 1
 
         '''
         if convention == 'syscall':
