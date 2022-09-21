@@ -74,7 +74,7 @@ fn current_process_name(cpu: &mut CPUState) -> String {
     let task_struct = type_from_name("task_struct").unwrap();
     let comm_offset = task_struct.offset_of("comm") as target_ptr_t;
 
-    let task_addr = cur_task.addr() + current_cpu_offset(cpu);
+    let task_addr = cur_task.raw_value() + current_cpu_offset(cpu);
     let current_task_ptr = read_guest_type::<target_ptr_t>(cpu, task_addr).unwrap();
 
     let mut comm_data = [0; TASK_COMM_LEN];
@@ -90,8 +90,8 @@ fn current_process_name(cpu: &mut CPUState) -> String {
     String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned()
 }
 
-//#[panda::asid_changed]
-//fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-//    println!("found process {}", current_process_name(cpu));
-//    false
-//}
+#[panda::asid_changed]
+fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
+    println!("found process {}", current_process_name(cpu));
+    false
+}

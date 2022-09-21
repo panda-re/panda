@@ -18,6 +18,8 @@ const MAX_OVERLOOK_LEN: usize = 16;
 fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
     let symbol_table = symbol_table();
 
+    //let kaslr_search_time = Instant::now();
+
     let init_task_address = symbol_table.symbol_from_name("init_task").unwrap().address;
     let task_struct = symbol_table.type_from_name("task_struct").unwrap();
     let task_comm_offset = task_struct.fields["comm"].offset;
@@ -26,7 +28,49 @@ fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
 
     let bytes_in_t_ulong = std::mem::size_of::<target_ulong>();
     // 0x80000000 -> 0xffffffff (but 32 and 64 bit)
-    let (start, end) = (1 << (8 * (bytes_in_t_ulong) - 1), target_ulong::MAX);
+    //let (start, end) = (1 << (8 * (bytes_in_t_ulong) - 1), target_ulong::MAX);
+
+    let (start, end) = if bytes_in_t_ulong == 4 {
+        (0x8000_0000 as target_ulong, 0xffff_ffff as target_ulong)
+    } else {
+        (
+            0xffff_8000_0000_0000_u64 as target_ulong,
+            0xffff_ffff_ffff_ffff_u64 as target_ulong,
+        )
+    };
+
+    // TODO: add constants for more architectures
+    #[cfg(feature = "x86_64")]
+    {
+        const PUD_SHIFT: u64 = 30;
+        const PUD_SIZE: u64 = 1 << PUD_SHIFT;
+        const PUD_MASK: u64 = PUD_SIZE - 1;
+
+        const SWAPPER_SEARCH_1: &[u8] = b"swapper\x00\x00\x00\x00\x00\x00\x00\x00";
+        const SWAPPER_SEARCH_2: &[u8] = b"swapper/0\x00\x00\x00\x00\x00\x00";
+
+        const SWAPPER_SEARCH_LEN: usize = 15;
+
+        let offset_from_pud = unshifted_comm_address & PUD_MASK;
+
+        for ptr in (start..=end).step_by(PUD_SIZE as usize) {
+            if virt_to_phys(cpu, ptr).is_some() {
+                if let Ok(res) = virtual_memory_read(cpu, ptr + offset_from_pud, SWAPPER_SEARCH_LEN)
+                {
+                    if res == SWAPPER_SEARCH_1 || res == SWAPPER_SEARCH_2 {
+                        let offset_found = ptr + offset_from_pud;
+                        let kaslr_offset = offset_found - unshifted_comm_address;
+
+                        return kaslr_offset;
+                    }
+                }
+            }
+        }
+    }
+
+    // 0xffff8000000
+    // 0x80..00
+    // 0xff..ff
 
     let mut ptr = start;
 
@@ -76,6 +120,11 @@ fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
                         ptr as target_ulong + m.start() as target_ulong
                     };
                     let kaslr_offset = offset_found - unshifted_comm_address;
+
+                    //dbg!(kaslr_search_time.elapsed());
+                    //eprintln!("kaslr_offset = {:#x?}", kaslr_offset);
+                    //eprintln!("offset_found = {:#x?}", offset_found);
+                    //eprintln!("unshifted_comm_address = {:#x?}", unshifted_comm_address);
 
                     return kaslr_offset;
                 }

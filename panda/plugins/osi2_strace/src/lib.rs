@@ -122,11 +122,21 @@ fn init(_: &mut PluginHandle) -> bool {
 
         let ptr_size = mem::size_of::<target_ptr_t>() as target_ptr_t;
 
+        println!("Finding kaslr offset...");
+        dbg!(osi2::kaslr_offset(cpu));
+
         let sys_call_table = osi2::symbol_addr_from_name("sys_call_table");
         let sys_ni_syscall = osi2::symbol_addr_from_name("sys_ni_syscall");
 
         let mut converted_types = HashMap::new();
         let mut syscall_info = vec![];
+
+        let sys_meta_offset = osi2::symbol_addr_from_name("syscalls_metadata");
+        let sys_meta_ptr_ptr = osi2::kaslr_offset(cpu) + sys_meta_offset;
+
+        eprintln!("sys_meta_offset: {:#x?}", sys_meta_offset);
+        eprintln!("sys_meta_ptr_ptr: {:#x?}", sys_meta_ptr_ptr);
+
         let ptr = SYSCALLS_METADATA.read(cpu).unwrap();
 
         let mut i = 0;
