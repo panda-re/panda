@@ -26,8 +26,8 @@ python3-setuptools
 python3-wheel
 
 # pypanda test dependencies
-gcc-multilib
-libc6-dev-i386
+#gcc-multilib
+#libc6-dev-i386
 nasm
 
 # Qemu build deps

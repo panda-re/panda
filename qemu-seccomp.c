@@ -84,7 +84,7 @@ static const struct QemuSeccompSyscall seccomp_whitelist[] = {
     { SCMP_SYS(sigprocmask), 245 },
     { SCMP_SYS(sched_getparam), 245 },
     { SCMP_SYS(sched_getscheduler), 245 },
-    { SCMP_SYS(fstat), 245 },
+//    { SCMP_SYS(fstat), 245 },
     { SCMP_SYS(clock_getres), 245 },
     { SCMP_SYS(sched_get_priority_min), 245 },
     { SCMP_SYS(sched_get_priority_max), 245 },

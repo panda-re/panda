@@ -4029,7 +4029,8 @@ char* panda_monitor_run(char * cmdline)
     int i=0;
     while (panda_chr->buf == NULL) {
       if (i++ > 10000) {
-        error_vprintf("PANDA monitor got no result after 10,000 iterations\n", NULL);
+        va_list ap = {};
+        error_vprintf("PANDA monitor got no result after 10,000 iterations\n", ap);
         break;
       }
     }
