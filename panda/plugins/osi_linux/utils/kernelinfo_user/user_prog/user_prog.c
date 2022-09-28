@@ -111,5 +111,9 @@ int main() {
     find_tasks_offset();
     wait(&status);    
 
+    //Now send a file struct via dup_fd in fork()
+    fork();
+    sleep(1);
+
     return 0;
 }

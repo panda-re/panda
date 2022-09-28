@@ -43,6 +43,26 @@ class KernelInfo(PyPlugin):
                 size = panda.arch.get_reg(cpu, 'edx')
                 print(f"kmem_cache_create sizeof(task_struct): {size}")
 
+        @panda.hook(self.syms["dup_fd"])
+        def dup_fd(cpu, tb, h):
+            #Only do this once we've processed the task list and not again
+            if "task.tasks_offset" not in self.kinfo or "task.files_offset" in self.kinfo:
+                return
+            
+            files_struct_ptr = panda.arch.get_reg(cpu, 'eax')
+            print("Saw dup_fd after task list a was processed ", end='')
+            print(f"files_struct: {files_struct_ptr:#x}")
+            #We should be back in the parent 
+            offset = 0
+            while offset < self.kinfo["task.size"]:
+                #This assumes our fields of interest are word aligned
+                value = self.read_int(cpu, self.parent_task + offset)
+                if value == files_struct_ptr:
+                    print(f"Found files_struct at {offset}")
+                    self.kinfo["task.files_offset"]=offset
+                    break
+                offset += self.ptr_size
+
         #Could be useful in the future
         #@panda.hook(self.syms["task_stats_exit"])
         def task_stats_exit(cpu, tb, h):
@@ -52,6 +72,7 @@ class KernelInfo(PyPlugin):
         #@panda.hook(self.syms["proc_pid_auxv"])
         #Exported kernel function, so we expect API to be stable
         #Trigger this with a read of /proc/self/syscall
+        #Don't want to rely on stack pointer, etc... for getting task structs
         @panda.hook(self.syms["task_current_syscall"])
         def task_current_syscall(cpu, tb, h):
             #TODO: new convention for args: kernel_function
@@ -63,9 +84,8 @@ class KernelInfo(PyPlugin):
             #self.kinfo["task.per_cpu_offset_0_addr"] = self.read_int(cpu, addr)
 
             if self.parent_pid:
-                read_addr = task_ptr  
                 offset = 0
-                while task_ptr + offset < task_ptr + self.kinfo["task.size"]:
+                while offset < self.kinfo["task.size"]:
                     #This assumes our fields of interest are word aligned
                     value = self.read_int(cpu, task_ptr + offset)
 
@@ -184,13 +204,13 @@ class KernelInfo(PyPlugin):
                 #Fragile parsing:
                 addr, sym_type, name  = line.split()[:3]
                 addr = int(addr,base=16)
-                if "task_current_syscall" in name:
+                if "task_current_syscall" == name:
                     self.syms[name] = addr
-                if "__put_task_struct" in name:
+                if "__put_task_struct" == name:
                     self.syms[name] = addr
-                if "arch_dup_task_struct" in name:
+                if "arch_dup_task_struct" == name:
                     self.syms[name] = addr
-                if "current_task" in name:
+                if "current_task" == name:
                     self.kinfo['task.current_task'] = addr
                 if name == "init_task":
                     #TODO: if this symbol doesn't exit, we'll have to get 
@@ -203,6 +223,8 @@ class KernelInfo(PyPlugin):
                 if name == "kmem_cache_create":
                     self.syms[name]  = addr
                 if name == "task_stats_exit":
+                    self.syms[name]  = addr
+                if name == "dup_fd":
                     self.syms[name]  = addr
                 if name == "taskstats_exit":
                     #Same as above, higher kernel versions
