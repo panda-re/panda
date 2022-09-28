@@ -8050,6 +8050,7 @@ static void gen_cp0 (CPUMIPSState *env, DisasContext *ctx, uint32_t opc, int rt,
     case OPC_MFC0:
         if (rt == 0) {
             /* Treat as NOP. */
+            gen_helper_panda_guest_hypercall(cpu_env);
             return;
         }
         gen_mfc0(ctx, cpu_gpr[rt], rd, ctx->opcode & 0x7);
