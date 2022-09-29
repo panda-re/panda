@@ -2846,6 +2846,7 @@ static void gen_cond_move(DisasContext *ctx, uint32_t opc,
 
     if (rd == 0) {
         /* If no destination, treat it as a NOP. */
+        gen_helper_panda_guest_hypercall(cpu_env);
         return;
     }
 
