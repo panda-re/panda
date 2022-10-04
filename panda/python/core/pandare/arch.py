@@ -324,9 +324,11 @@ class ArmArch(PandaArch):
                                  "syscall": ["R7", "R0", "R1", "R2", "R3", "R4", "R5"], # EABI
                                  }
         self.call_conventions['default'] = self.call_conventions['arm32']
+        self.call_conventions['linux_kernel'] = self.call_conventions['arm32']
 
         self.reg_retval = {"default":    "R0",
-                           "syscall":    "R0"}
+                           "syscall":    "R0",
+                           "linux_kernel":    "R0"}
         self.reg_pc = regnames.index("IP")
 
     def _get_reg_val(self, cpu, reg):
@@ -377,9 +379,11 @@ class Aarch64Arch(PandaArch):
         self.call_conventions = {"arm64":         ["X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"],
                                  "syscall": ["XR", "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"]}
         self.call_conventions['default'] = self.call_conventions['arm64']
+        self.call_conventions['linux_kernel'] = self.call_conventions['arm64']
 
         self.reg_retval = {"default":    "X0",
-                           "syscall":    "X0"}
+                           "syscall":    "X0",
+                           "linux_kernel":    "X0"}
 
     def get_pc(self, cpu):
         '''
@@ -458,9 +462,11 @@ class MipsArch(PandaArch):
         self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"],
                 "syscall": ["V0", "A0", "A1", "A2", "A3", "stack_3", "stack_4", "stack_5", "stack_6"]} # XXX: Note it's not 0-indexed for stack args, I guess the syscall pushes stuff too
         self.call_conventions['default'] = self.call_conventions['mips']
+        self.call_conventions['linux_kernel'] = self.call_conventions['mips']
 
         self.reg_retval =  {"default":    "V0",
-                            "syscall":    'V0'}
+                            "syscall":    'V0',
+                            "linux_kernel":    'V0'}
 
 
         # note names must be stored uppercase for get/set reg to work case-insensitively
@@ -564,6 +570,7 @@ class Mips64Arch(MipsArch):
         self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"], # XXX Unsure?
                                  "syscall": ["V0", "A0", "A1", "A2", "A3", "A4", "A5"]}
         self.call_conventions['default'] = self.call_conventions['mips']
+        self.call_conventions['linux_kernel'] = self.call_conventions['mips']
 
         self.reg_retval =  {"default":    "V0",
                             "syscall":    'V0'}
@@ -585,10 +592,12 @@ class X86Arch(PandaArch):
         # Note we don't set self.call_conventions because stack-based arg get/set is
         # not yet supported
         self.reg_retval = {"default":    "EAX",
-                           "syscall":    "EAX"}
+                           "syscall":    "EAX",
+                           "linux_kernel":    "EAX"}
         
         self.call_conventions = {"cdecl": ["stack_{x}" for x in range(20)], # 20: arbitrary but big
-                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]}
+                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
+                                 "linux_kernel": ["EAX", "EDX", "ECX", "stack_3", "stack_4", "stack_5", "stack_6"]}
         self.call_conventions['default'] = self.call_conventions['cdecl']
 
         self.reg_sp = regnames.index('ESP')
@@ -648,10 +657,12 @@ class X86_64Arch(PandaArch):
                                  'syscall': ['RAX', 'RDI', 'RSI', 'RDX', 'R10', 'R8', 'R9']}
 
         self.call_conventions['default'] = self.call_conventions['sysv']
+        self.call_conventions['linux_kernel'] = self.call_conventions['sysv']
 
         self.reg_sp = regnames.index('RSP')
         self.reg_retval = {'sysv': 'RAX',
-                           'syscall': 'RAX'}
+                           'syscall': 'RAX',
+                           'linux_kernel': 'RAX'}
         self.reg_retval['default'] = self.reg_retval['sysv']
 
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
