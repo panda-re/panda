@@ -66,32 +66,31 @@ fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
 /// Max length of process command (`comm` field in task_struct)
 const TASK_COMM_LEN: usize = 16;
 
-fn current_process_name(cpu: &mut CPUState) -> String {
-    // it's zero at the moment, but we do determine it
-    let _kaslr_offset = kaslr_offset(cpu);
+use panda::plugins::osi2::{osi_static, OsiType};
 
-    let cur_task = symbol_from_name("current_task").unwrap();
-    let task_struct = type_from_name("task_struct").unwrap();
-    let comm_offset = task_struct.offset_of("comm") as target_ptr_t;
+#[derive(OsiType, Debug)]
+#[osi(type_name = "task_struct")]
+struct TaskStruct {
+    comm: [u8; TASK_COMM_LEN],
+}
 
-    let task_addr = cur_task.raw_value() + current_cpu_offset(cpu);
-    let current_task_ptr = read_guest_type::<target_ptr_t>(cpu, task_addr).unwrap();
+osi_static! {
+    #[per_cpu]
+    #[symbol = "current_task"]
+    static CURRENT_TASK: TaskStruct;
+}
 
-    let mut comm_data = [0; TASK_COMM_LEN];
-    let comm_ptr = current_task_ptr + comm_offset;
-    virtual_memory_read_into(cpu, comm_ptr, &mut comm_data).unwrap();
-
-    // Find null terminator, if it exists, with a max length of sizeof(comm)
+#[panda::asid_changed]
+fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
+    let comm_data = CURRENT_TASK.comm(cpu).unwrap();
     let task_comm_len = comm_data
         .iter()
         .position(|&x| x == 0u8)
         .unwrap_or(TASK_COMM_LEN);
 
-    String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned()
-}
+    let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
 
-#[panda::asid_changed]
-fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-    println!("found process {}", current_process_name(cpu));
+    println!("found process {}", proc_name);
+
     false
 }
