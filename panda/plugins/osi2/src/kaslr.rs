@@ -16,6 +16,10 @@ const PAGE_SIZE: target_ulong = 0x1000;
 const MAX_OVERLOOK_LEN: usize = 16;
 
 fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
+    if !panda::in_kernel_mode(cpu) {
+        eprintln!("warning: Determining kaslr offset from user mode");
+    }
+
     let symbol_table = symbol_table();
 
     //let kaslr_search_time = Instant::now();
