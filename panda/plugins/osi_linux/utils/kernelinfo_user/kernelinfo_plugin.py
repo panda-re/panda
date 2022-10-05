@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pandare import PyPlugin
 
+
 #TODO: don't require /proc/kallsyms, offer option to extract from running guest
 #       -we do want to leave the file as an option in case it must be extracted
 #        statically from vmlinu*
@@ -9,7 +10,12 @@ kallsyms="./kallsyms_i386_generic"
 class KernelInfo(PyPlugin):
     def __init__(self, panda):
         self.kinfo = {}
-        self.syms = {}
+        self.syms = {} 
+        #dicts of tuples where we'll add hooks to get structs with fields: 
+        #struct_name: (hook_addr, arg)
+        #this will also us to use different functions for different kernel
+        #versions
+        self.struct_hooks = {}
         self.pids = [] #List of pids we'll use to derive task_struct info
         self.parent_pid = None #Parent of those processes
         self.parent_task = None #Parent of those processes
@@ -28,28 +34,27 @@ class KernelInfo(PyPlugin):
         #FIXME: For now, we're reading from /proc/slabinfo
         #       Can do kmem_cache_create to get sizeof() fields if we want to 
         #       track boot
-        @panda.hook(self.syms["kmem_cache_create"])
+        #@panda.hook(self.syms["kmem_cache_create"])
         def kmem_cache_create(cpu, tb, h):
-            ptr = panda.arch.get_reg(cpu, 'eax')
+            ptr = panda.arch.get_arg(cpu, 0, convention="linux_kernel")
             try:
-                s = self.panda.read_str(cpu, ptr, 256)
+                name = self.panda.read_str(cpu, ptr, 256)
             except ValueError:
-                s = ERROR
-                return
+                name = ERROR
 
-            print(f"kmem_cache_create: {s}, {ptr:#x}")
+            print(f"kmem_cache_create: {name}, {ptr:#x}")
             
-            if "task_struct" in s:
-                size = panda.arch.get_reg(cpu, 'edx')
+            if "task_struct" in name:
+                size = panda.arch.get_arg(cpu, 1, convention="linux_kernel")
                 print(f"kmem_cache_create sizeof(task_struct): {size}")
 
-        @panda.hook(self.syms["dup_fd"])
-        def dup_fd(cpu, tb, h):
+        @panda.hook(self.struct_hooks["files"][0])
+        def files_struct_hook(cpu, tb, h):
             #Only do this once we've processed the task list and not again
             if "task.tasks_offset" not in self.kinfo or "task.files_offset" in self.kinfo:
                 return
             
-            files_struct_ptr = panda.arch.get_reg(cpu, 'eax')
+            files_struct_ptr = panda.arch.get_arg(cpu, self.struct_hooks["files"][1], convention="linux_kernel")
             print("Saw dup_fd after task list a was processed ", end='')
             print(f"files_struct: {files_struct_ptr:#x}")
             #We should be back in the parent 
@@ -62,26 +67,13 @@ class KernelInfo(PyPlugin):
                     self.kinfo["task.files_offset"]=offset
                     break
                 offset += self.ptr_size
-
-        #Could be useful in the future
-        #@panda.hook(self.syms["task_stats_exit"])
-        def task_stats_exit(cpu, tb, h):
-            task_ptr = panda.arch.get_reg(cpu, 'eax')
-            print(f"task_stats_exit: {task_ptr:#x}")
         
-        #@panda.hook(self.syms["proc_pid_auxv"])
         #Exported kernel function, so we expect API to be stable
         #Trigger this with a read of /proc/self/syscall
-        #Don't want to rely on stack pointer, etc... for getting task structs
-        @panda.hook(self.syms["task_current_syscall"])
-        def task_current_syscall(cpu, tb, h):
-            #TODO: new convention for args: kernel_function
-            task_ptr = panda.arch.get_reg(cpu, 'eax')
-            print(f"task_current_syscall: {task_ptr:#x}")
-
-            #Getting task.per_cpu_offset_0_addr
-            #addr = self.kinfo['task.per_cpu_offsets_addr'] 
-            #self.kinfo["task.per_cpu_offset_0_addr"] = self.read_int(cpu, addr)
+        @panda.hook(self.struct_hooks["task"][0])
+        def task_struct(cpu, tb, h):
+            task_ptr = panda.arch.get_arg(cpu, self.struct_hooks["task"][1], convention="linux_kernel")
+            print(f"Got task_struct: {task_ptr:#x}")
 
             if self.parent_pid:
                 offset = 0
@@ -206,15 +198,17 @@ class KernelInfo(PyPlugin):
                 addr = int(addr,base=16)
                 if "task_current_syscall" == name:
                     self.syms[name] = addr
-                if "__put_task_struct" == name:
-                    self.syms[name] = addr
+                    #A task struct is passed as the first arg:
+                    self.struct_hooks["task"] = (addr, 0)
+                if name == "dup_fd":
+                    self.syms[name]  = addr
+                    #files_struct is the first arg to dup_fd
+                    self.struct_hooks["files"] = (addr, 0)
                 if "arch_dup_task_struct" == name:
                     self.syms[name] = addr
                 if "current_task" == name:
                     self.kinfo['task.current_task'] = addr
                 if name == "init_task":
-                    #TODO: if this symbol doesn't exit, we'll have to get 
-                    #      pid 0's address from the list
                     self.kinfo['task.init_addr'] = addr
                 if name == "__per_cpu_offset":
                     self.kinfo['task.per_cpu_offsets_addr'] = addr
@@ -222,15 +216,10 @@ class KernelInfo(PyPlugin):
                     self.syms[name]  = addr
                 if name == "kmem_cache_create":
                     self.syms[name]  = addr
-                if name == "task_stats_exit":
-                    self.syms[name]  = addr
-                if name == "dup_fd":
-                    self.syms[name]  = addr
-                if name == "taskstats_exit":
-                    #Same as above, higher kernel versions
-                    self.syms["task_stats_exit"] = addr
-
-
+                if "__put_task_struct" == name:
+                    self.syms[name] = addr
+                if "get_task_struct" == name:
+                    self.syms[name] = addr
 
         #print("Found symbols: ",self.syms)
     def read_int(self, cpu, read_addr):
@@ -276,6 +265,7 @@ if __name__ == "__main__":
 
     @panda.queue_blocking
     def run_my_cmd():
+        #First, boot to get kmem_cache_create
         panda.revert_sync("root")
         #panda.run_serial_cmd("uname -a",no_timeout=True)
         #panda.run_serial_cmd("cat /proc/self/syscall")
@@ -286,12 +276,3 @@ if __name__ == "__main__":
     panda.pyplugins.load(KernelInfo, args=dict({'kallsyms':kallsyms}))
 
     panda.run()
-    #try:
-    #    panda.run()
-    #except KeyboardInterrupt:
-    #    print("\nStopping for ctrl-c\n")
-
-    #finally:
-    #    print("Cleaning up...")
-
-    #    panda.panda_finish() # Ensure we write pandalog
