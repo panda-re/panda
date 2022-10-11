@@ -1472,7 +1472,7 @@ static int reload_inode(BDRVSheepdogState *s, uint32_t snapid, const char *tag)
         return -EIO;
     }
 
-    inode = g_malloc(SD_INODE_HEADER_SIZE);
+    inode = g_malloc(SD_INODE_SIZE); // Was INODE_HEADER_SIZE but GCC (incorrectly?) thought there would be an OOB read
 
     ret = find_vdi_name(s, s->name, snapid, tag, &vid, false, &local_err);
     if (ret) {

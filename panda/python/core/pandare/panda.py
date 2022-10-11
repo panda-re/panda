@@ -1,5 +1,5 @@
 """
-This module simply contains the Panda class
+This module simply contains the Panda class.
 """
 
 from sys import version_info, exit
@@ -32,11 +32,11 @@ from shlex import quote as shlex_quote, split as shlex_split
 from time import sleep
 from cffi import FFI
 
-from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list, rr2_recording, rr2_contains_member
+from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list, find_build_dir, rr2_recording, rr2_contains_member
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
-from .qcows import Qcows
+from .qcows_internal import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 
@@ -146,7 +146,7 @@ class Panda():
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
 
-        self.build_dir  = self._find_build_dir(self.arch_name)
+        self.build_dir  = find_build_dir(self.arch_name)
         environ["PANDA_DIR"] = self.build_dir
 
         if libpanda_path:
@@ -298,8 +298,6 @@ class Panda():
 
         self._initialized_panda = True
 
-        
-
     def __main_loop_wait_cb(self):
         '''
         __main_loop_wait_cb is called at the start of the main cpu loop in qemu.
@@ -316,32 +314,6 @@ class Panda():
             self.main_loop_wait_fnargs = []
         except KeyboardInterrupt:
             self.end_analysis()
-
-    @staticmethod
-    def _find_build_dir(arch_name):
-        '''
-        Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
-        1) check relative to file (in the case of installed packages)
-        2) Check in../ ../../../build/
-        3) raise RuntimeError
-        '''
-        archs = ['i386', 'x86_64', 'arm', 'ppc']
-        python_package = pjoin(*[dirname(__file__), "data"])
-        local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
-        path_end = "{0}-softmmu/libpanda-{0}.so".format(arch_name)
-
-        pot_paths = [python_package, local_build]
-        for potential_path in pot_paths:
-            if isfile(pjoin(potential_path, path_end)):
-                #print("Loading libpanda from {}".format(potential_path))
-                return potential_path
-
-        searched_paths = "\n".join(["\t"+p for p in  pot_paths])
-        raise RuntimeError(("Couldn't find libpanda-{}.so.\n"
-                            "Did you built PANDA for this architecture?\n"
-                            "Searched paths:\n{}"
-                           ).format(arch_name, searched_paths))
-
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
         '''
@@ -839,7 +811,7 @@ class Panda():
         elif fmt=='str':
             return self.ffi.string(buf, length)
         elif fmt=='ptrlist':
-            # This one is weird. Chunmk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
+            # This one is weird. Chunk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
             # return a list
             bytelen = int(self.bits/8)
             if (length % bytelen != 0):
@@ -863,9 +835,12 @@ class Panda():
             buf (bytestring):  byte string to write into memory
 
         Returns:
-            bool: error
+            None
+
+        Raises:
+            ValueError if the call to panda.physical_memory_write fails (e.g., if you pass a pointer to an invalid memory region)
         '''
-        return self._memory_write(None, addr, buf, physical=True)
+        self._memory_write(None, addr, buf, physical=True)
 
     def virtual_memory_write(self, cpu, addr, buf):
         '''
@@ -877,10 +852,12 @@ class Panda():
             buf (bytestr): byte string to write into memory
 
         Returns:
-            bool: error
+            None
 
+        Raises:
+            ValueError if the call to panda.virtual_memory_write fails (e.g., if you pass a pointer to an unmapped page)
         '''
-        return self._memory_write(cpu, addr, buf, physical=False)
+        self._memory_write(cpu, addr, buf, physical=False)
 
     def _memory_write(self, cpu, addr, buf, physical=False):
         '''
@@ -895,9 +872,12 @@ class Panda():
             self.enable_memcb()
 
         if physical:
-            return self.libpanda.panda_physical_memory_write_external(addr, buf_a, length_a)
+            err = self.libpanda.panda_physical_memory_write_external(addr, buf_a, length_a)
         else:
-            return self.libpanda.panda_virtual_memory_write_external(cpu, addr, buf_a, length_a)
+            err = self.libpanda.panda_virtual_memory_write_external(cpu, addr, buf_a, length_a)
+
+        if err < 0:
+            raise ValueError(f"Memory write failed with err={err}") # TODO: make a PANDA Exn class
 
     def callstack_callers(self, lim, cpu): # XXX move into new directory, 'callstack' ?
         '''
@@ -1181,6 +1161,13 @@ class Panda():
         Flushing the translation block cache is additionally necessary if the plugin makes changes to the way code is translated. For example, by using panda_enable_precise_pc.
         '''
         return self.libpanda.panda_do_flush_tb()
+
+    def break_exec(self):
+        '''
+        If called from a start block exec callback, will cause the emulation to bail *before* executing
+        the rest of the current block.
+        '''
+        return self.libpanda.panda_do_break_exec()
 
     def enable_precise_pc(self):
         '''
@@ -1628,10 +1615,13 @@ class Panda():
         Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
 
             "windows[-_]32[-_]xpsp[23]",
-            "windows[-_]32[-_]7",
             "windows[-_]32[-_]2000",
+            "windows[-_]32[-_]7sp[01]",
+            "windows[-_]64[-_]7sp[01]",
             "linux[-_]32[-_].+",
             "linux[-_]64[-_].+",
+            "freebsd[-_]32[-_].+",
+            "freebsd[-_]64[-_].+",
 
             Args:
                 os_name (str): Name that matches the format for the os flag.
@@ -1643,6 +1633,17 @@ class Panda():
         os_name_new = self.ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)
 
+    def get_os_family(self):
+        '''
+        Get the current OS family name. Valid values are the entries in `OSFamilyEnum`
+
+        Returns:
+            string: one of OS_UNKNOWN, OS_WINDOWS, OS_LINUX, OS_FREEBSD
+        '''
+
+        family_num = self.libpanda.panda_os_familyno
+        family_name = self.ffi.string(self.ffi.cast("PandaOsFamily", family_num))
+        return family_name
 
     def get_mappings(self, cpu):
         '''
@@ -2316,7 +2317,9 @@ class Panda():
     @blocking
     def type_serial_cmd(self, cmd):
         #Can send message into socket without guest running (no self.running.wait())
-        self.serial_console.send(cmd.encode("utf8")) # send, not sendline
+        if isinstance(cmd, str):
+            cmd = cmd.encode('utf8')
+        self.serial_console.send(cmd) # send, not sendline
 
     def finish_serial_cmd(self):
         result = self.serial_console.send_eol()

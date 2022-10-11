@@ -1,5 +1,5 @@
 """
-Second method of interacting with volatility via their CLI options. Less preferred. Highly experimental.
+Second method of interacting with volatility via their CLI options. This is less preferred and highly experimental.
 """
 
 

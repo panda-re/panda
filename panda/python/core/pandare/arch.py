@@ -1,7 +1,7 @@
 '''
 This module contains architecture-specific code.
 
-When the `pandare.panda` class is initialized it will automatically
+When the `pandare.panda` class is initialized, it will automatically
 initialize a PandaArch class for the specified architecture in the variable
 `panda.arch`.
 
@@ -199,8 +199,7 @@ class PandaArch():
         stack_idx = int(argloc.split("stack_")[1])
         stack_base = self.get_reg(cpu, self.reg_sp)
         offset = reg_sz * (stack_idx+1)
-        if self.panda.virtual_memory_write(cpu, stack_base + offset, val):
-            raise ValueError
+        self.panda.virtual_memory_write(cpu, stack_base + offset, val)
 
     def _read_stack(self, cpu, argloc):
         '''
@@ -325,9 +324,11 @@ class ArmArch(PandaArch):
                                  "syscall": ["R7", "R0", "R1", "R2", "R3", "R4", "R5"], # EABI
                                  }
         self.call_conventions['default'] = self.call_conventions['arm32']
+        self.call_conventions['linux_kernel'] = self.call_conventions['arm32']
 
         self.reg_retval = {"default":    "R0",
-                           "syscall":    "R0"}
+                           "syscall":    "R0",
+                           "linux_kernel":    "R0"}
         self.reg_pc = regnames.index("IP")
 
     def _get_reg_val(self, cpu, reg):
@@ -350,7 +351,7 @@ class ArmArch(PandaArch):
 
     def get_return_address(self, cpu):
         '''
-        looks up where ret will go
+        Looks up where ret will go
         '''
         return self.get_reg(cpu, "LR")
 
@@ -378,14 +379,16 @@ class Aarch64Arch(PandaArch):
         self.call_conventions = {"arm64":         ["X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"],
                                  "syscall": ["XR", "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"]}
         self.call_conventions['default'] = self.call_conventions['arm64']
+        self.call_conventions['linux_kernel'] = self.call_conventions['arm64']
 
         self.reg_retval = {"default":    "X0",
-                           "syscall":    "X0"}
+                           "syscall":    "X0",
+                           "linux_kernel":    "X0"}
 
     def get_pc(self, cpu):
         '''
         Overloaded function to get aarch64 program counter.
-        Note the PC is not stored in a general purpose reg
+        Note the PC is not stored in a general purpose register.
         '''
         return cpu.env_ptr.pc
 
@@ -420,7 +423,7 @@ class Aarch64Arch(PandaArch):
 
     def get_return_address(self, cpu):
         '''
-        looks up where ret will go
+        Looks up where ret will go
         '''
         return self.get_reg(cpu, "LR")
 
@@ -459,9 +462,11 @@ class MipsArch(PandaArch):
         self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"],
                 "syscall": ["V0", "A0", "A1", "A2", "A3", "stack_3", "stack_4", "stack_5", "stack_6"]} # XXX: Note it's not 0-indexed for stack args, I guess the syscall pushes stuff too
         self.call_conventions['default'] = self.call_conventions['mips']
+        self.call_conventions['linux_kernel'] = self.call_conventions['mips']
 
         self.reg_retval =  {"default":    "V0",
-                            "syscall":    'V0'}
+                            "syscall":    'V0',
+                            "linux_kernel":    'V0'}
 
 
         # note names must be stored uppercase for get/set reg to work case-insensitively
@@ -529,10 +534,10 @@ class MipsArch(PandaArch):
         '''
         Overloaded function so when convention is syscall, user can control
         the A3 register (which indicates syscall success/failure) in addition
-        to syscall return value.
+        to the syscall return value.
 
-        When convention == 'syscall', failure = False means A3 will bet set to 0,
-        otherwise it will be set to 1
+        When convention == 'syscall', failure = False means A3 will bet set to 0.
+        Otherwise, it will be set to 1
 
         '''
         if convention == 'syscall':
@@ -565,6 +570,7 @@ class Mips64Arch(MipsArch):
         self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"], # XXX Unsure?
                                  "syscall": ["V0", "A0", "A1", "A2", "A3", "A4", "A5"]}
         self.call_conventions['default'] = self.call_conventions['mips']
+        self.call_conventions['linux_kernel'] = self.call_conventions['mips']
 
         self.reg_retval =  {"default":    "V0",
                             "syscall":    'V0'}
@@ -586,10 +592,12 @@ class X86Arch(PandaArch):
         # Note we don't set self.call_conventions because stack-based arg get/set is
         # not yet supported
         self.reg_retval = {"default":    "EAX",
-                           "syscall":    "EAX"}
+                           "syscall":    "EAX",
+                           "linux_kernel":    "EAX"}
         
         self.call_conventions = {"cdecl": ["stack_{x}" for x in range(20)], # 20: arbitrary but big
-                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]}
+                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
+                                 "linux_kernel": ["EAX", "EDX", "ECX", "stack_3", "stack_4", "stack_5", "stack_6"]}
         self.call_conventions['default'] = self.call_conventions['cdecl']
 
         self.reg_sp = regnames.index('ESP')
@@ -649,10 +657,12 @@ class X86_64Arch(PandaArch):
                                  'syscall': ['RAX', 'RDI', 'RSI', 'RDX', 'R10', 'R8', 'R9']}
 
         self.call_conventions['default'] = self.call_conventions['sysv']
+        self.call_conventions['linux_kernel'] = self.call_conventions['sysv']
 
         self.reg_sp = regnames.index('RSP')
         self.reg_retval = {'sysv': 'RAX',
-                           'syscall': 'RAX'}
+                           'syscall': 'RAX',
+                           'linux_kernel': 'RAX'}
         self.reg_retval['default'] = self.reg_retval['sysv']
 
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
@@ -662,6 +672,21 @@ class X86_64Arch(PandaArch):
         Overloaded function to return the x86_64 current program counter
         '''
         return cpu.env_ptr.eip
+
+    def get_retval(self, cpu, convention='default'):
+        '''
+        Overloaded to support FreeBSD syscall ABI
+        In that ABI, if eflags carry bit is set, an error has occured. To standardize
+        pandare.arch returns across architectures/ABIs, we indicate a failure by returnning
+        -ERRNO.
+        '''
+
+        error_flip = False
+        if convention == 'syscall' and self.panda.get_os_family() == 'OS_FREEBSD' and \
+                self.panda.libpanda.cpu_cc_compute_all(cpu.env_ptr, 1) & 1 == 1:
+            error_flip = True
+
+        return super().get_retval(cpu, convention) * (-1 if error_flip else 1)
 
     def set_pc(self, cpu, val):
         '''

@@ -36,7 +36,7 @@ libcap2
 libgbm1
 libglib2.0-0
 libgnutls30
-libnettle7
+libnettle8
 libpixman-1-0
 libvirglrenderer1
 
@@ -51,7 +51,7 @@ libssh-4
 # apt-rdepends qemu-system-arm, seems most of the system-[arch]es have same dependencies
 libaio1
 libasound2
-libbrlapi0.7
+libbrlapi-dev
 libc6
 libcacard0
 libepoxy0
@@ -63,7 +63,6 @@ libgnutls30
 libibverbs1
 libjpeg8
 libncursesw6
-libnettle7
 libnuma1
 libpixman-1-0
 libpmem1

@@ -35,7 +35,7 @@ void HELPER(panda_after_insn_exec)(target_ulong pc) {
     }
 }
 
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) || defined(TARGET_MIPS)
 void HELPER(panda_guest_hypercall)(CPUArchState *cpu_env) {
     panda_callbacks_guest_hypercall(ENV_GET_CPU(cpu_env));
 }

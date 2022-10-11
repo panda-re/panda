@@ -89,7 +89,9 @@ class ProcGraph(PyPlugin):
         for (pid, tid) in sorted(self.procinfo, key=lambda v: self.procinfo[v]['count'], reverse=True):
             details = self.procinfo[(pid, tid)]
             names = ", ".join([x.decode() for x in details['names']])
-            print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {details['last']:<8} {names}")
+
+            end = f"{details['last']:<8}" if details['last'] is not None else "N/A"
+            print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {end} {names}")
 
 
         # Render output: Stage 2: ascii art
@@ -106,7 +108,7 @@ class ProcGraph(PyPlugin):
                 counted = 0
                 on_count = 0
                 off_count = 0
-                import ipdb
+                #import ipdb
                 while (counted < col_size and len(queue)): #or pending is not None:
                     if pending is not None:
                         (on_bool, cnt) = pending
