@@ -453,6 +453,22 @@ bool qemu_plugin_unreg_callback(const char *target_plugin, const char *cb_name,
 bool qemu_plugin_read_guest_virt_mem(uint64_t gva, char* buf, size_t length);
 
 /**
+ * Translates guest virtual addres to a guest physical address.
+ * @gva: Guest virtual address
+ *
+ * Returns: Guest physical address
+ */
+uint64_t qemu_plugin_virt_to_phys(uint64_t addr);
+
+/**
+ * Obtain a host pointer for a guest virtual address
+ * @gva: Guest virtual address
+ *
+ * Returns: Host virtual address
+ */
+void* qemu_plugin_virt_to_host(uint64_t addr, int len);
+
+/**
  * qemu_plugin_tb_get_insn() - retrieve handle for instruction
  * @tb: opaque handle to TB passed to callback
  * @idx: instruction number, 0 indexed
