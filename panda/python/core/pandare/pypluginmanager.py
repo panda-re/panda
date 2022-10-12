@@ -183,8 +183,8 @@ class PyPluginManager:
 
             self.plugins[name] = pluginclass.__new__(pluginclass)
             self.plugins[name].__preinit__(self, args)
-            self.plugins[name].__init__(self.panda)
             self.get_ppp_funcs(self.plugins[name])
+            self.plugins[name].__init__(self.panda)
 
             # Setup webserver if necessary
             if self.flask and hasattr(self.plugins[name], 'webserver_init') and \
