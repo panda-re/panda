@@ -22,6 +22,7 @@ NAMES += hwprofile
 NAMES += cache
 NAMES += drcov
 NAMES += stringsearch
+NAMES += pandummy
 
 SONAMES := $(addsuffix .so,$(addprefix lib,$(NAMES)))
 
