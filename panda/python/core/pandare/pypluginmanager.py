@@ -173,7 +173,7 @@ class PyPluginManager:
 
         for pluginclass in pluginclasses:
             if not isinstance(pluginclass, type) or not issubclass(pluginclass, PyPlugin):
-                raise ValueError(f"pluginclass must be an uninstantiated subclass of PyPlugin")
+                raise ValueError(f"{pluginclass} must be an uninstantiated subclass of PyPlugin")
 
             # If PyPlugin is in scope it should not be treated as a plugin
             if pluginclass is PyPlugin:
@@ -207,8 +207,17 @@ class PyPluginManager:
 
     def load_all(self, plugin_file, args=None, template_dir=None):
         '''
-        Given a path to a python file, load every PyPlugin defind in that file by identifying
-        all classes that subclass PyPlugin and passing them to self.load()
+        Given a path to a python file, load every PyPlugin defined in that file
+        by identifying all classes that subclass PyPlugin and passing them to
+        self.load()
+
+        Args:
+            plugin_file (str): A path specifying a Python file from which PyPlugin classes should be loaded
+            args (dict): Optional. A dictionary of arguments to pass to the PyPlugin
+            template_dir (string): Optional. A directory for template files, passed through to `self.load`.
+
+        Returns:
+            String list of PyPlugin class names loaded from the plugin_file
         '''
         import inspect, importlib
         spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
@@ -219,11 +228,14 @@ class PyPluginManager:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
+        names = []
         for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x)):
-            if not issubclass(cls, PyPlugin):
+            if not issubclass(cls, PyPlugin) or cls == PyPlugin:
                 continue
             cls.__name__ = name
             self.load(cls, args, template_dir)
+            names.append(name)
+        return names
 
     def unload(self, pluginclass, do_del=True):
         if isinstance(pluginclass, str):
