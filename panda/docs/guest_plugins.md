@@ -231,7 +231,7 @@ To build, we go through the standard PANDA build process:
 
 #### Testing Our Guest Plugin
 
-The easiest way to test our plugin will be with a pypanda script. An example script can be found in [`panda/plugins/guest_plugin_example/try_it.py`](/panda/panda/plugins/guest_plugin_example/try_it.py).
+The easiest way to test our plugin will be with a pypanda script. An example script can be found in [`panda/plugins/guest_plugin_example/try_it.py`](/panda/plugins/guest_plugin_example/try_it.py).
 
 ```python
 from pandare import Panda
