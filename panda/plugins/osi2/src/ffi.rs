@@ -143,6 +143,11 @@ pub extern "C" fn is_base_type_signed(ty: &VolatilityBaseType) -> bool {
 pub unsafe extern "C" fn symbol_value_from_name(name: *const c_char) -> target_ptr_t {
     if let Some(sym) = symbol_from_name(name) {
         sym.address as target_ptr_t
+    } else if let Ok(name) = CStr::from_ptr(name).to_str() {
+        panic!(
+            "Invalid symbol name ({:?}), could not retrieve volatility symbol",
+            name
+        )
     } else {
         panic!("Invalid symbol name, could not retrieve volatility symbol")
     }

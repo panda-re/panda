@@ -13,6 +13,7 @@ once_cell = "1.8.0"
 panda-re = { path = "/home/jmcleod/dev/panda-rs/panda-rs", default-features = false }
 regex = "1.5.4"
 volatility_profile = { path = "./volatility_profile" }
+libc = "0.2"
 
 [features]
 default = ["x86_64"]

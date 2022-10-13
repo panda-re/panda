@@ -35,6 +35,16 @@ fn init(_: &mut PluginHandle) -> bool {
     // Ensure symbol table is initialized
     let _ = symbol_table();
 
+    let wait_for_kernel = panda::Callback::new();
+
+    wait_for_kernel.before_block_exec(move |cpu, _| {
+        if panda::in_kernel_mode/*code_linux*/(cpu) {
+            wait_for_kernel.disable();
+
+            println!("kaslr_offset: {}", kaslr_offset(cpu));
+        }
+    });
+
     println!("osi2 symbol table loaded");
 
     true
@@ -82,6 +92,8 @@ osi_static! {
 
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
+    let _kaslr = kaslr_offset(cpu);
+
     let comm_data = CURRENT_TASK.comm(cpu).unwrap();
     let task_comm_len = comm_data
         .iter()

@@ -1,4 +1,4 @@
-use panda::mem::{virt_to_phys, virtual_memory_read};
+use panda::mem::{physical_memory_read, virt_to_phys, virtual_memory_read};
 use panda::prelude::*;
 
 use once_cell::sync::OnceCell;
@@ -15,8 +15,10 @@ pub fn kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
 const PAGE_SIZE: target_ulong = 0x1000;
 const MAX_OVERLOOK_LEN: usize = 16;
 
+static EMPTY_PAGE: &[u8] = &[0xff; 0x1000];
+
 fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
-    if !panda::in_kernel_mode(cpu) {
+    if !panda::in_kernel_code_linux(cpu) {
         eprintln!("warning: Determining kaslr offset from user mode");
     }
 
@@ -70,6 +72,52 @@ fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
                 }
             }
         }
+    }
+
+    #[cfg(feature = "arm")]
+    {
+        //use std::borrow::Cow;
+        //use std::io::Write;
+
+        use std::os::unix::prelude::*;
+
+        let file = std::fs::File::create("mem_dump.bin").unwrap();
+
+        unsafe {
+            let fd = libc::dup(file.as_raw_fd());
+            let file_ptr = libc::fdopen(fd, b"w\0".as_ptr() as _);
+
+            panda::sys::panda_memsavep(file_ptr as _);
+
+            libc::fclose(file_ptr);
+        }
+
+        drop(file);
+
+        //panda::sys::panda_memsavep();
+
+        //println!("Dumping memory to disk...");
+
+        //let mut percent = 0;
+
+        //for page_addr in (0..=0xFFFF_F000).step_by(PAGE_SIZE as usize) {
+        //    let page: Cow<'static, [u8]> =
+        //        if let Ok(mem) = virtual_memory_read(cpu, page_addr, PAGE_SIZE as usize) {
+        //            Cow::Owned(mem)
+        //        } else {
+        //            Cow::Borrowed(EMPTY_PAGE)
+        //        };
+
+        //    file.write_all(&page).unwrap();
+
+        //    let percent_float = ((page_addr as f64) * 100.0) / (0xffff_f000_u32 as f64);
+        //    if percent_float >= (percent as f64) {
+        //        println!("{:.2}% complete", percent_float);
+        //        percent += 1;
+        //    }
+        //}
+
+        //println!("Written to disk");
     }
 
     // 0xffff8000000
