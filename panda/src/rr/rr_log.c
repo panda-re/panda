@@ -63,6 +63,8 @@
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
+extern const char *replay_name;
+
 // record/replay state
 rr_control_t rr_control = {.mode = RR_OFF, .next = RR_NOCHANGE};
 
@@ -1529,6 +1531,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 #endif
 
 #ifdef CONFIG_SOFTMMU
+    replay_name = file_name_full;
     char name_buf[1024];
     // decompose file_name_base into path & file.
     char* rr_path = g_strdup(file_name_full);
