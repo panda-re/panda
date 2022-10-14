@@ -225,6 +225,7 @@ class Panda():
         self.hook_list = []
         self.hook_list2 = {}
         self.mem_hooks = {}
+        self.sr_hooks = []
 
         # Asid stuff
         self.current_asid_name = None
@@ -2979,6 +2980,67 @@ class Panda():
             return wrapper
         return decorator
 
+    def hook_symbol_resolution(self, libraryname, symbol, name=None):
+        '''
+        Decorate a function to setup a hook: when a guest process resolves a symbol
+        the function will be called with args (CPUState, struct hook_symbol_resolve, struct symbol, OsiModule)
+
+        Args:
+            libraryname (string): Name of library containing symbol to be hooked. May be None to match any.
+            symbol (string, int): Name of symbol or offset into library to hook
+            name (string): name of hook, defaults to function name
+
+        Returns:
+            None: Decorated function is called when guest resolves the specified symbol in the specified library.
+        '''
+        #Mostly based on hook_symbol below
+        def decorator(fun):
+            sh = self.ffi.new("struct hook_symbol_resolve*")
+            sh.hook_offset = False
+            if symbol is not None:
+                if isinstance(symbol, int):
+                    sh.offset = symbol
+                    sh.hook_offset = True
+                    symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+                else:
+                    symbolname_ffi = self.ffi.new("char[]",bytes(symbol,"utf-8"))
+            else:
+                symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(sh.name,symbolname_ffi,len(symbolname_ffi))
+
+            if libraryname is not None:
+                libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
+            else:
+                libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(sh.section,libname_ffi,len(libname_ffi))
+
+            #sh.id #not used here
+            sh.enabled = True
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return None
+
+            sr_hook_cb_type = self.ffi.callback("void (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m)")
+            sr_hook_cb_ptr = sr_hook_cb_type(_run_and_catch)
+            sh.cb = sr_hook_cb_ptr
+            hook_ptr = self.plugins['dynamic_symbols'].hook_symbol_resolution(sh)
+            self.sr_hooks.append((sh, sr_hook_cb_ptr, hook_ptr))
+
+            def wrapper(*args, **kw):
+                _run_and_catch(args,kw)
+            return wrapper
+        return decorator
 
     def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="start_block_exec"):
         '''
