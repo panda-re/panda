@@ -17,6 +17,4 @@ void main_loop(void);
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm);
 
-void set_replay_name(char *name);
-
 #endif
