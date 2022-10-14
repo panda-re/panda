@@ -113,6 +113,7 @@ uintptr_t panda_get_current_llvm_module(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
 void panda_memsavep(FILE *f);
+char* panda_get_rr_name(void);
 
 // Struct for holding a parsed key/value pair from
 // a -panda-arg plugin:key=value style argument.

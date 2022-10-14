@@ -996,6 +996,15 @@ int panda_replay_end(void) {
     return RRCTRL_OK;
 }
 
+/**
+ * @brief Return the name of the current PANDA record/replay
+ * 
+ * @return char* 
+ */
+char* panda_get_rr_name(void){
+    return rr_control.name;
+}
+
 // Parse out arguments and return them to caller
 static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool check_only) {
     panda_arg_list *ret = NULL;
