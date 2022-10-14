@@ -7,7 +7,7 @@ callstack_instr
 checkpoint
 collect_code
 correlatetaps
-cosi_klogs
+#cosi_klogs
 coverage
 dynamic_symbols
 edge_coverage
