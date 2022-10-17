@@ -86,7 +86,8 @@ def copy_objs():
         new_guestplugindir = os.path.join(lib_dir, softmmu, "panda/guest_plugins")
         print("\n\n")
         print(guestplugindir, new_guestplugindir)
-        shutil.copytree(guestplugindir,  new_guestplugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
+        if os.path.exists(guestplugindir):
+            shutil.copytree(guestplugindir,  new_guestplugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
 
     # Strip libpandas and plugins to save space (Need <100mb for pypi)
     if pypi_build:
