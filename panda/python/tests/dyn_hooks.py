@@ -9,7 +9,7 @@ if arch in ["arm", "mips", "mipsel"]:
 else:
     program_name = "curl"
 
-command_str = f"{program_name} --no-check-certificate  http://www.ll.mit.edu/sites/default/files/styles/ifde_wysiwyg__floated/public/other/image/2018-04/New_Full_Logo-BLACK-2500-lissajou-only-square.png -O o.png"
+command_str = f"{program_name} http://www.ll.mit.edu/sites/default/files/styles/ifde_wysiwyg__floated/public/other/image/2018-04/New_Full_Logo-BLACK-2500-lissajou-only-square.png -O o.png"
 
 @panda.queue_blocking
 def driver():
@@ -18,8 +18,24 @@ def driver():
     print(panda.run_serial_cmd("ldd $(which grep)"))
     panda.end_analysis()
 
+malloc_resolved = False
+calloc_resolved = False
 malloc_ran = False
 calloc_ran = False
+
+@panda.hook_symbol_resolution(None, "calloc")
+def calloc_resolve(cpu, sh, s, m):
+    print(f"Calloc resolved to 0x{s.address:x}")
+    global calloc_resolved
+    calloc_resolved = True
+    sh.enabled = False # got result. no reason to continue
+
+@panda.hook_symbol_resolution(None, "malloc")
+def malloc_resolve(cpu, sh, s, m):
+    print(f"Malloc resolved to 0x{s.address:x}")
+    global malloc_resolved
+    malloc_resolved = True
+    sh.enabled = False # got result. no reason to continue
 
 @panda.hook_symbol(None, "calloc")
 def calloc(cpu, tb, h):
@@ -37,5 +53,7 @@ def malloc(cpu, tb, h):
 
 panda.run()
 
+assert(malloc_resolved), "Malloc symbol resolution hook failed to trigger"
+assert(calloc_resolved), "Calloc symbol resolution hook failed to trigger"
 assert(malloc_ran), "Malloc hook failed to trigger"
 assert(calloc_ran), "Calloc hook failed to trigger"

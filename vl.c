@@ -3093,10 +3093,6 @@ void main_panda_run(void) {
     panda_in_main_loop = 0;
 }
 
-void set_replay_name(char *name) {
-    replay_name = name;
-}
-
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
  {
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;

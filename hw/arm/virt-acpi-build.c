@@ -448,11 +448,11 @@ build_iort(GArray *table_data, BIOSLinker *linker)
 }
 
 static void
-build_spcr(GArray *table_data, BIOSLinker *linker, VirtMachineState *vms)
+build_spcr(GArray *table_data, BIOSLinker *linker, VirtMachineState *vms, int uart)
 {
     AcpiSerialPortConsoleRedirection *spcr;
-    const MemMapEntry *uart_memmap = &vms->memmap[VIRT_UART];
-    int irq = vms->irqmap[VIRT_UART] + ARM_SPI_BASE;
+    const MemMapEntry *uart_memmap = &vms->memmap[uart];
+    int irq = vms->irqmap[uart] + ARM_SPI_BASE;
 
     spcr = acpi_data_push(table_data, sizeof(*spcr));
 
@@ -711,8 +711,14 @@ build_dsdt(GArray *table_data, BIOSLinker *linker, VirtMachineState *vms)
      */
     scope = aml_scope("\\_SB");
     acpi_dsdt_add_cpus(scope, vms->smp_cpus);
-    acpi_dsdt_add_uart(scope, &memmap[VIRT_UART],
-                       (irqmap[VIRT_UART] + ARM_SPI_BASE));
+    acpi_dsdt_add_uart(scope, &memmap[VIRT_UART0],
+                       (irqmap[VIRT_UART0] + ARM_SPI_BASE));
+    acpi_dsdt_add_uart(scope, &memmap[VIRT_UART1],
+                       (irqmap[VIRT_UART1] + ARM_SPI_BASE));
+    acpi_dsdt_add_uart(scope, &memmap[VIRT_UART2],
+                       (irqmap[VIRT_UART2] + ARM_SPI_BASE));
+    acpi_dsdt_add_uart(scope, &memmap[VIRT_UART3],
+                       (irqmap[VIRT_UART3] + ARM_SPI_BASE));
     acpi_dsdt_add_flash(scope, &memmap[VIRT_FLASH]);
     acpi_dsdt_add_fw_cfg(scope, &memmap[VIRT_FW_CFG]);
     acpi_dsdt_add_virtio(scope, &memmap[VIRT_MMIO],
@@ -776,7 +782,16 @@ void virt_acpi_build(VirtMachineState *vms, AcpiBuildTables *tables)
     build_mcfg(tables_blob, tables->linker, vms);
 
     acpi_add_table(table_offsets, tables_blob);
-    build_spcr(tables_blob, tables->linker, vms);
+    build_spcr(tables_blob, tables->linker, vms, VIRT_UART0);
+
+    acpi_add_table(table_offsets, tables_blob);
+    build_spcr(tables_blob, tables->linker, vms, VIRT_UART1);
+
+    acpi_add_table(table_offsets, tables_blob);
+    build_spcr(tables_blob, tables->linker, vms, VIRT_UART2);
+
+    acpi_add_table(table_offsets, tables_blob);
+    build_spcr(tables_blob, tables->linker, vms, VIRT_UART3);
 
     if (nb_numa_nodes > 0) {
         acpi_add_table(table_offsets, tables_blob);
