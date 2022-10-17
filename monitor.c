@@ -3974,6 +3974,13 @@ void error_vprintf_unless_qmp(const char *fmt, va_list ap)
     }
 }
 
+static void error_printf_internal(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    error_vprintf(fmt, ap);
+    va_end(ap);
+}
+
 static void __attribute__((constructor)) monitor_lock_init(void)
 {
     qemu_mutex_init(&monitor_lock);
@@ -4029,7 +4036,7 @@ char* panda_monitor_run(char * cmdline)
     int i=0;
     while (panda_chr->buf == NULL) {
       if (i++ > 10000) {
-        error_vprintf("PANDA monitor got no result after 10,000 iterations\n", NULL);
+        error_printf_internal("PANDA monitor got no result after 10,000 iterations\n");
         break;
       }
     }
