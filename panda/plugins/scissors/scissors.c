@@ -39,7 +39,6 @@ static char *snp_name;
 static char *cmdline_file_name;
 static char *new_rr2_name;
 
-extern const char *replay_name;
 static bool oldlog_rr2;
 static bool newlog_rr2;
 union {
@@ -119,7 +118,7 @@ static void rr_fseek_set(size_t bytes){
   bytes_read = bytes;
 }
 
-static inline char *rr1_cmdline_file_name(const char* replay_name) {
+static inline char *rr1_cmdline_file_name(char* replay_name) {
     size_t needed;
     char* cmdline_name;
     needed = snprintf(NULL, 0, "%s-rr.cmd", replay_name);
@@ -262,6 +261,7 @@ static inline void save_snp_shot(void) {
 }
 
 static void create_command_file(void) {
+    char *replay_name = strdup(panda_get_rr_name());
     FILE *fp = fopen(cmdline_file_name, "w");
     sassert(fp!=NULL, 5);
 
@@ -285,6 +285,7 @@ static void create_command_file(void) {
         }
         if (old_cmdline_name) free(old_cmdline_name);
     }
+    free(replay_name);
     fclose(fp);
 }
 
