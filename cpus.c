@@ -1447,6 +1447,7 @@ bool qemu_mutex_iothread_locked(void)
 
 void qemu_mutex_lock_iothread(void)
 {
+    g_assert(!qemu_mutex_iothread_locked());
     atomic_inc(&iothread_requesting_mutex);
     /* In the simple case there is no need to bump the VCPU thread out of
      * TCG code execution.
@@ -1468,6 +1469,7 @@ void qemu_mutex_lock_iothread(void)
 
 void qemu_mutex_unlock_iothread(void)
 {
+    g_assert(qemu_mutex_iothread_locked());
     iothread_locked = false;
     qemu_mutex_unlock(&qemu_global_mutex);
 }
