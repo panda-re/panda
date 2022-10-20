@@ -471,9 +471,11 @@ static inline bool cpu_handle_halt(CPUState *cpu)
 #if defined(TARGET_I386) && !defined(CONFIG_USER_ONLY)
         if ((cpu->interrupt_request & CPU_INTERRUPT_POLL)
             && replay_interrupt()) {
+            qemu_mutex_lock_iothread();
             X86CPU *x86_cpu = X86_CPU(cpu);
             apic_poll_irq(x86_cpu->apic_state);
             cpu_reset_interrupt(cpu, CPU_INTERRUPT_POLL);
+            qemu_mutex_unlock_iothread();
         }
 #endif
         if (!cpu_has_work(cpu) && !rr_in_replay()) {
@@ -801,6 +803,9 @@ int cpu_exec(CPUState *cpu)
 #endif /* buggy compiler */
         cpu->can_do_io = 1;
         tb_lock_reset();
+        if (qemu_mutex_iothread_locked()) {
+            qemu_mutex_unlock_iothread();
+        }
     }
 
     /* if an exception is pending, we execute it here */
