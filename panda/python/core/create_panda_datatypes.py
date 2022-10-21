@@ -247,10 +247,11 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     elif arch == "arm":
         define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_32.h")
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm.h")
-
+        define_clean_header(ffi, include_dir + "/arm_helpers.h")
     elif arch == "aarch64": # Could also do arch and bits==64
         define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_64.h")
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm64.h")
+        define_clean_header(ffi, include_dir + "/arm_helpers.h")
     elif arch == "ppc" and int(bits) == 32:
         define_clean_header(ffi, include_dir + "/panda_datatypes_PPC_32.h")
         print('WARNING: no syscalls support for PPC 32')

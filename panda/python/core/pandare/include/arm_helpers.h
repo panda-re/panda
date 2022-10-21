@@ -1,0 +1,1 @@
+uint32_t cpsr_read(CPUARMState *env);
