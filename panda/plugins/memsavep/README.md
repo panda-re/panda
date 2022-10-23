@@ -16,6 +16,8 @@ Arguments
 * `percent`: double, defaults to 200 (do not dump at percent). The percentage of the replay at which we should dump memory.
 * `instrcount`: uint64, defaults to 0 (do not dump at instrcount). The instruction count of the replay at which we should dump memory.
 * `file`: string, defaults to "memsavep.raw". The filename to dump RAM out to.
+* `regfile`: string (optional). The filename of the register file to create.
+* `size`: uint64 (optional). The number of bytes of physical memory to save.
 
 Dependencies
 ------------
