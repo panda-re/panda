@@ -39,6 +39,7 @@ from .asyncthread import AsyncThread
 from .qcows_internal import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
+from .tcp_passthrough import TcpPassthrough, SocketInfo
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -91,6 +92,7 @@ class Panda():
         self.os_type = os
         self.qcow = qcow
         self.plugins = plugin_list(self)
+        self.tcp = TcpPassthrough(self)
         self.expect_prompt = expect_prompt
         self.lambda_cnt = 0
         self.__sighandler = None
@@ -649,6 +651,8 @@ class Panda():
         argstrs_ffi = []
         if isinstance(args, dict):
             for k,v in args.items():
+                if type(v) is bool:
+                    v = "true" if v else "false"
                 this_arg_s = "{}={}".format(k,v)
                 this_arg = self.ffi.new("char[]", bytes(this_arg_s, "utf-8"))
                 argstrs_ffi.append(this_arg)
