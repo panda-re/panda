@@ -12,18 +12,12 @@ dynamic_symbols
 edge_coverage
 filereadmon
 forcedexec
-frida
 gdb
-guest_plugin_example
-guest_plugin_manager
-guest_shell
 hooks
 hooks2
-hyperfuse
 hw_proc_id
 libfi
 lighthouse_coverage
-linjector
 loaded
 loaded_libs
 mem_hooks
@@ -38,7 +32,6 @@ osi_test
 pri
 pri_dwarf
 pri_simple
-tcp_passthrough
 proc_start_linux
 proc_trace
 recctrl

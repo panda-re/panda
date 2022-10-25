@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "array-init"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6945cc5422176fc5e602e590c2878d2c2acd9a4fe20a4baa7c28022521698ec6"
-
-[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -189,24 +183,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "once_cell"
-version = "1.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
-
-[[package]]
 name = "panda-re"
-version = "0.34.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6848dfa0312ec610a889292351238c728a1e2622d9fbff94194475dc0eb29de0"
+checksum = "03153860245f365c1f01452404eddd0a0741beafd88acf6e6afe167d1ac6c874"
 dependencies = [
- "array-init",
  "dirs",
  "glib-sys",
  "inventory",
  "lazy_static",
  "libloading",
- "once_cell",
  "panda-re-macros",
  "panda-re-sys",
  "paste",
@@ -217,22 +203,21 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.21.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29772398be20723c90088ae4380d62e25cefe54c174d9082532b258985e41d04"
+checksum = "f0ebc6c9d873a7285c7a09bfe4c80dc80efa8d3ea28bcb18a1d6a933dd3242be"
 dependencies = [
  "darling",
  "doc-comment",
- "proc-macro2",
  "quote",
  "syn",
 ]
 
 [[package]]
 name = "panda-re-sys"
-version = "0.7.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
+checksum = "9b9fe3ab684d3cf027c816a724de1ea40373b6438dc2240d64bdca0ca99f2e01"
 
 [[package]]
 name = "paste"
