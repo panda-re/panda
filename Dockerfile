@@ -82,6 +82,9 @@ RUN cd /panda/panda/python/core && \
     python3 setup.py install
 RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
 
+# BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
+RUN ls $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/panda_{aarch64_64,arm_32,mips64_64,mips_32,mipsel_32,ppc_32,ppc_64,x86_64_64,i386_32}.py
+
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
