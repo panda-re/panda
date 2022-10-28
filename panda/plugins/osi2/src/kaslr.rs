@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use panda::mem::{virt_to_phys, virtual_memory_read};
 use panda::prelude::*;
 
@@ -17,7 +19,11 @@ const MAX_OVERLOOK_LEN: usize = 16;
 
 fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
     if !panda::in_kernel_mode(cpu) {
-        eprintln!("warning: Determining kaslr offset from user mode");
+        eprintln!("WARNING: Determining kaslr offset from user mode");
+    }
+
+    if !crate::READY_FOR_KASLR_SEARCH.load(Ordering::SeqCst) {
+        eprintln!("WARNING: attempting to determine KASLR offset too early");
     }
 
     let symbol_table = symbol_table();

@@ -1,7 +1,8 @@
 use std::mem::size_of;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use panda::mem::{read_guest_type, virtual_memory_read_into};
-use panda::plugins::osi2::{symbol_from_name, type_from_name};
+use panda::mem::read_guest_type;
+use panda::plugins::syscalls2::Syscalls2Callbacks;
 use panda::prelude::*;
 
 use once_cell::sync::{Lazy, OnceCell};
@@ -28,14 +29,20 @@ fn symbol_table() -> &'static VolatilityJson {
     SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(&ARGS.profile))
 }
 
+static READY_FOR_KASLR_SEARCH: AtomicBool = AtomicBool::new(false);
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    println!("initializing osi2");
-
     // Ensure symbol table is initialized
     let _ = symbol_table();
 
-    println!("osi2 symbol table loaded");
+    let first_syscall = panda::PppCallback::new();
+
+    first_syscall.on_all_sys_enter(move |_, _, _| {
+        READY_FOR_KASLR_SEARCH.store(true, Ordering::SeqCst);
+
+        first_syscall.disable();
+    });
 
     true
 }
@@ -48,10 +55,10 @@ fn exit(_: &mut PluginHandle) {
 fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
     let symbol_table = symbol_table();
 
-    let cpu_offset = symbol_table
-        .symbol_from_name("__per_cpu_offset")
-        .expect("Could not find symbol for __per_cpu_offset in volatility profile")
-        .address as target_ptr_t;
+    let cpu_offset = match symbol_table.symbol_from_name("__per_cpu_offset") {
+        Some(symbol) => symbol.address as target_ptr_t,
+        None => return 0,
+    };
 
     let kaslr_offset = kaslr_offset(cpu);
     let cpu_num = cpu.cpu_index as target_ptr_t;

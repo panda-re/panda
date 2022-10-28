@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "panda-re"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "array-init",
  "dirs",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "darling",
  "doc-comment",
