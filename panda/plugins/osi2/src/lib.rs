@@ -18,7 +18,7 @@ use kaslr::kaslr_offset;
 #[derive(PandaArgs)]
 #[name = "osi2"]
 struct Args {
-    #[arg(required, about = "Path to a volatility 3 symbol table to use")]
+    #[arg(required, about = "Path to a volatility 3 symbol table to use (.xz compressed json)")]
     profile: String,
 }
 
@@ -90,35 +90,35 @@ struct Cred {
 #[derive(OsiType, Debug)]
 #[osi(type_name = "mm")]
 struct Mm {
-    size: target_ptr_t,
+    //size: target_ptr_t,
     pgd: target_ptr_t, // type *unnamed_bunch_of_stuff_3
-    arg_start: target_ptr_t, // type long unsigned int
-    start_brk: target_ptr_t, // type long unsigned int
-    brk: target_ptr_t, // type long unsigned int
-    start_strack: target_ptr_t, // type long unsigned int
+    //arg_start: target_ptr_t, // type long unsigned int
+    //start_brk: target_ptr_t, // type long unsigned int
+    //brk: target_ptr_t, // type long unsigned int
+    //start_stack: target_ptr_t, // type long unsigned int
 }
 
 #[derive(OsiType, Debug)]
 #[osi(type_name = "task_struct")]
 struct TaskStruct {
-    size: target_ptr_t,
+    //size: target_ptr_t,
 
     // Only one of tasks or next_task will exist as a field
     tasks: target_ptr_t, // type list_head
-    next_task: target_ptr_t, // type ??
+    //next_task: target_ptr_t, // type ??
 
-    pid: target_ptr_t, // type int
-    tgid: target_ptr_t, //type int
+    pid: u32, // type int
+    tgid: u32, //type int
     group_leader: target_ptr_t, // type *task_struct
     thread_group: target_ptr_t, // type list_head
 
     // Only one of real_parent or p_opptr will exist as a field
     real_parent: target_ptr_t, // type *task_struct 
-    p_opptr: target_ptr_t, // type ??
+    //p_opptr: target_ptr_t, // type ??
 
     // Only one of parent or p_pptr will exist as a field
     parent: target_ptr_t, // type *task_struct
-    p_pptr: target_ptr_t, // type ??
+    //p_pptr: target_ptr_t, // type ??
 
     mm: target_ptr_t, // type *mm_struct
     stack: target_ptr_t, // type *void
@@ -138,16 +138,99 @@ osi_static! {
 
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
+    println!("\n\nOSI2 INFO START");
+
+    // From osi_linux.cpp: p->asid = taskd->mm->pgd
+    // so presumably we can just follow task_struct->mm->pgd to get that information
+    println!("Reading mmstruct?");
+    let mm_ptr = CURRENT_TASK.mm(cpu).unwrap();
+    println!("Read mm_struct: {:x}", mm_ptr);
+    let mm_raw = Mm::osi_read(cpu, mm_ptr).unwrap();
+
+    //println!("{}", mm_raw.unwrap());
+
+    let mm = mm_raw;
+    let asid = mm.pgd;
+    /*
+    let asid = match mm {
+        Some(res) => res.pgd,
+        None => 0,
+    };
+    */
+    if asid != 0 {
+    println!("asid: {:x}", asid);
+    } else {
+        println!("asid: ERR");
+    }
+
+    let start_time = CURRENT_TASK.start_time(cpu).unwrap();
+    println!("Start time: {:x}", start_time);
+    
     let comm_data = CURRENT_TASK.comm(cpu).unwrap();
-    let p_opptr = CURRENT_TASK.p_opptr(cpu).unwrap();
     let task_comm_len = comm_data
         .iter()
         .position(|&x| x == 0u8)
         .unwrap_or(TASK_COMM_LEN);
 
     let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
+    println!("name: {}", proc_name);
 
-    println!("found process {}", proc_name);
+    // unimplemented in osi_linux as of yet
+    println!("pages: TODO");
+
+    let pid = CURRENT_TASK.pid(cpu).unwrap();
+    println!("pid : {:x}", pid);
+
+    let parent_ptr = CURRENT_TASK.parent(cpu).unwrap();
+    let parent = TaskStruct::osi_read(cpu, parent_ptr).unwrap();
+    let ppid = parent.pid;
+    println!("ppid: {:x}", ppid);
+
+    // from osi_linux.cpp line166, p->taskd is being set to kernel_profile->get_group_leader
+    // so presumably we can just read task_struct->group_leader to get that info?
+    let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
+    println!("taskd: {:x}", taskd);
+
+    println!("OSI2 INFO END\n\n");
+
+    false
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn get_ts_info(cpu: &mut CPUState) -> bool {
+
+    println!("\n\nOSI2 INFO START");
+
+
+    println!("asid: TODO");
+    
+    let start_time = CURRENT_TASK.start_time(cpu).unwrap();
+    println!("Start time: {:x}", start_time);
+    
+    let comm_data = CURRENT_TASK.comm(cpu).unwrap();
+    let task_comm_len = comm_data
+        .iter()
+        .position(|&x| x == 0u8)
+        .unwrap_or(TASK_COMM_LEN);
+
+    let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
+    println!("name: {}", proc_name);
+
+
+    println!("pages: TODO");
+
+    let pid = CURRENT_TASK.pid(cpu).unwrap();
+    println!("pid : {:x}", pid);
+
+    println!("ppid: TODO");
+
+    println!("taskd: TODO");
+
+    println!("OSI2 INFO END\n\n");
+
+    
+    
+    // TODO: ASID, pages, taskd
 
     false
 }

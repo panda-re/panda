@@ -163,6 +163,7 @@ pub unsafe extern "C" fn offset_of_field(
         .ok()
         .expect("Field name is invalid UTF-8, field could not be retrieved");
 
+    //println!("Reading field: {}", name);
     vol_struct.fields[name].offset as target_long
 }
 
