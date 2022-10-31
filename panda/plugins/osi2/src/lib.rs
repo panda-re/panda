@@ -98,14 +98,14 @@ struct Cred {
 }
 
 #[derive(OsiType, Debug)]
-#[osi(type_name = "mm")]
+#[osi(type_name = "mm_struct")]
 struct Mm {
     //size: target_ptr_t,
-    pgd: target_ptr_t, // type *unnamed_bunch_of_stuff_3
-                       //arg_start: target_ptr_t, // type long unsigned int
-                       //start_brk: target_ptr_t, // type long unsigned int
-                       //brk: target_ptr_t, // type long unsigned int
-                       //start_stack: target_ptr_t, // type long unsigned int
+    pgd: u32, // type *unnamed_bunch_of_stuff_3
+              //arg_start: target_ptr_t, // type long unsigned int
+              //start_brk: target_ptr_t, // type long unsigned int
+              //brk: target_ptr_t, // type long unsigned int
+              //start_stack: target_ptr_t, // type long unsigned int
 }
 
 #[derive(OsiType, Debug)]
@@ -152,18 +152,17 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     println!("Reading mmstruct?");
     let mm_ptr = CURRENT_TASK.mm(cpu).unwrap();
     println!("Read mm_struct: {:x}", mm_ptr);
-    let mm_raw = Mm::osi_read(cpu, mm_ptr).unwrap();
+    let mm_raw = Mm::osi_read(cpu, mm_ptr).ok();
 
     //println!("{}", mm_raw.unwrap());
 
     let mm = mm_raw;
-    let asid = mm.pgd;
-    /*
-    let asid = match mm {
+    //let asid = mm.pgd;
+    let asid: u32 = match mm {
         Some(res) => res.pgd,
         None => 0,
     };
-    */
+
     if asid != 0 {
         println!("asid: {:x}", asid);
     } else {
