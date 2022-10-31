@@ -1425,18 +1425,18 @@ int rr2_add_recording_files(char* rr_name, char* rr_path){
         return -2;
     }
 
-    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("    moving snapshot %s to %s/snapshot\n", name_buf, rr2_path);
-    if (!rrfile_add_recording_file(rr_archive, "snapshot", name_buf)) {
-        fprintf(stderr, "Failed to add snapshot file to archive!\n");
-        return -3;
-    }
-
     rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf("    moving cmdline file %s to %s/capture.cmd\n", name_buf, rr2_path);
     if (!rrfile_add_recording_file(rr_archive, "capture.cmd", name_buf)) {
         fprintf(stderr, "Failed to add snapshot file to archive!\n");
         return -4;
+    }
+
+    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("    moving snapshot %s to %s/snapshot\n", name_buf, rr2_path);
+    if (!rrfile_add_recording_file(rr_archive, "snapshot", name_buf)) {
+        fprintf(stderr, "Failed to add snapshot file to archive!\n");
+        return -3;
     }
 
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
@@ -1551,6 +1551,17 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     if (has_rr2_file_extention(rr_name_base)){
         printf("Recording using rr2 format\n");
         rrfile_info_create(&recording_info, rr_path, rr_name);
+
+        // save the cmd line so we dont have to guess mem size and arch later
+        rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+        printf("writing cmdline to file:\t%s\n", name_buf);
+        FILE *fp = fopen(name_buf, "w");
+        int i;
+        for (i=0; i<gargc; i++) {
+            fprintf (fp, "%s ", gargv[i]);
+        }
+        fprintf (fp, "\n");
+        fclose(fp);
     }
 
     int snapshot_ret = -1;
@@ -1579,16 +1590,6 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     // save the time so we can report how long record takes
     time(&rr_start_time);
 
-    // save the cmd line so we dont have to guess mem size and arch later
-    rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("writing cmdline to file:\t%s\n", name_buf);
-    FILE *fp = fopen(name_buf, "w");
-    int i;
-    for (i=0; i<gargc; i++) {
-        fprintf (fp, "%s ", gargv[i]);
-    }
-    fprintf (fp, "\n");
-    fclose(fp);
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));

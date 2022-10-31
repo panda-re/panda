@@ -152,7 +152,6 @@ pwc_log
 
 # Recordings and pandalogs
 *-rr-*
-*rr.cmd
 *.rr2
 *.plog
 

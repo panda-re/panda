@@ -270,20 +270,7 @@ static void create_command_file(void) {
         rrfile_read_cmdline(replay_name, &cmdline_contents);
         fwrite(cmdline_contents, 1, strlen(cmdline_contents), fp);
     } else {
-        char* old_cmdline_name = rr1_cmdline_file_name(replay_name);
-        struct stat buffer;
-        if (stat(old_cmdline_name, &buffer) == 0) {
-            FILE *old_fp = fopen(old_cmdline_name, "r");
-            sassert(old_fp!=NULL, 6);
-            char c;
-            while ((c = fgetc(old_fp)) != EOF) {
-                fputc(c, fp);
-            }
-            fclose(old_fp);
-        } else {
-            fprintf (fp, "created with the scissors plugin\n");
-        }
-        if (old_cmdline_name) free(old_cmdline_name);
+        fprintf (fp, "created with the scissors plugin\n");
     }
     free(replay_name);
     fclose(fp);
@@ -301,11 +288,11 @@ static bool open_old_log(void){
 
 static void write_to_rr2(void) {
     printf("Moving files over to rr2 archive %s\n", new_rr2_name);
-    printf("    moving snapshot to %s/snapshot ...\n", new_rr2_name);
-    sassert(rrfile_add_recording_file(new_rr_archive, "snapshot", snp_name), 7);
-
     printf("    moving cmdline to %s/capture.cmd ...\n", new_rr2_name);
     sassert(rrfile_add_recording_file(new_rr_archive, "capture.cmd", cmdline_file_name), 8);
+
+    printf("    moving snapshot to %s/snapshot ...\n", new_rr2_name);
+    sassert(rrfile_add_recording_file(new_rr_archive, "snapshot", snp_name), 7);
 
     printf("    moving nondetlog entries to %s/nondetlog ...\n", new_rr2_name);
     sassert(rrfile_add_recording_file(new_rr_archive, "nondetlog", nondet_name), 9);
@@ -315,8 +302,8 @@ static void write_to_rr2(void) {
 static void clean_up(void){
     free(nondet_name);
     free(snp_name);
-    free(cmdline_file_name);
     if (newlog_rr2) {
+        free(cmdline_file_name);
         free(new_rr2_name);
     }
     if (oldlog_rr2) {
@@ -334,6 +321,8 @@ static void start_snip(uint64_t count) {
     if (newlog_rr2) {
         new_rr_archive = rrfile_open_write(new_rr2_name);
         sassert(new_rr_archive, 11);
+        printf("Writing cmdline to %s ...\n", cmdline_file_name);
+        create_command_file();
     }
 
     sassert(rr_fread(&orig_last_prog_point, sizeof(RR_prog_point), 1) == 1, 12);
@@ -343,9 +332,6 @@ static void start_snip(uint64_t count) {
     printf("Saving snapshot at instr count %" PRIx64 "...\n", count);
     printf("Writing snapshot to %s ...\n", snp_name);
     save_snp_shot();
-
-    printf("Writing cmdline to %s ...\n", cmdline_file_name);
-    create_command_file();
 
     printf("Beginning cut-and-paste process at prog point: % " PRId64 "\n", (uint64_t) rr_get_guest_instr_count());
     printf("Writing entries to %s ...\n", nondet_name);
@@ -516,8 +502,8 @@ bool init_plugin(void *self) {
     newlog_rr2 = has_rr2_file_extention(name_copy);
     nondet_name = initialize_file_name(sciss_dir, rr_name, "-rr-nondet.log");
     snp_name = initialize_file_name(sciss_dir, rr_name, "-rr-snp");
-    cmdline_file_name = initialize_file_name(sciss_dir, rr_name, "-rr.cmd");
     if (newlog_rr2) {
+        cmdline_file_name = initialize_file_name(sciss_dir, rr_name, "-rr.cmd");
         new_rr2_name = initialize_file_name(sciss_dir, rr_name, ".rr2");
     }
 
