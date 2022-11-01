@@ -129,7 +129,7 @@ void panda_disable_callback_helper(void *plugin, panda_cb_type type, panda_cb* c
 
 //int panda_replay(char *replay_name) -> Now use panda_replay_being(char * replay_name)
 
-int rr_get_guest_instr_count_external(void){
+uint64_t rr_get_guest_instr_count_external(void){
 	return rr_get_guest_instr_count();
 }
 
