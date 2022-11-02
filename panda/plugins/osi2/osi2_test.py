@@ -20,6 +20,9 @@ def driver():
         else:
             name = "ERROR"
         print(f"{current.asid=:x} | {current.create_time=:x} | {name=} | {current.pages=} | {current.pid=:x} | {current.ppid=:x} | {current.taskd=:x}")
+
+        current_thread = panda.plugins['osi'].get_current_thread(cpu)
+        print(f"{current_thread.pid=:x} | {current_thread.tid=:x}")
         return 1
         #panda.plugins['osi2'].get_ts_info(cpu)
         #osi_proc = panda.plugins['osi_linux'].fill_osiproc(cpu, proc, current.taskd)

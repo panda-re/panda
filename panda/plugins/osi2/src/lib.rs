@@ -80,7 +80,7 @@ struct Version {
 // git_t or uid_t which are, in that kernel version, just unsigned ints
 #[derive(OsiType, Debug)]
 #[osi(type_name = "cred")]
-struct Cred {
+struct CredStruct {
     uid: target_ptr_t, // type unsigned int
     gid: target_ptr_t, // type unsigned int
     euid: target_ptr_t, // type unsigned int
@@ -89,13 +89,13 @@ struct Cred {
 
 #[derive(OsiType, Debug)]
 #[osi(type_name = "mm_struct")]
-struct Mm {
+struct MmStruct {
     //size: target_ptr_t,
     pgd: u32, // type *unnamed_bunch_of_stuff_3
-    //arg_start: target_ptr_t, // type long unsigned int
-    //start_brk: target_ptr_t, // type long unsigned int
-    //brk: target_ptr_t, // type long unsigned int
-    //start_stack: target_ptr_t, // type long unsigned int
+    arg_start: target_ptr_t, // type long unsigned int
+    start_brk: target_ptr_t, // type long unsigned int
+    brk: target_ptr_t, // type long unsigned int
+    start_stack: target_ptr_t, // type long unsigned int
 }
 
 #[derive(OsiType, Debug)]
@@ -136,26 +136,85 @@ osi_static! {
     static CURRENT_TASK: TaskStruct;
 }
 
-#[panda::asid_changed]
-fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-    println!("\n\nOSI2 INFO START");
+#[derive(OsiType, Debug)]
+#[osi(type_name = "vm_area_struct")]
+struct VmAreaStruct {
+    vm_mm: target_ptr_t, // type *mm_struct
+    vm_start: target_ptr_t, // type long unsigned int
+    vm_end: target_ptr_t, // type long unsigned int
+    vm_next: target_ptr_t, // type *vm_area_struct
+    vm_file: target_ptr_t, // type *file
+    vm_flags: target_ptr_t, // type long unsigned int
+}
 
+#[derive(OsiType, Debug)]
+#[osi(type_name = "callback_head")]
+struct CallbackHead {
+    func: target_ptr_t, // type *function
+    next: target_ptr_t, // type *callback_head
+}
+
+#[derive(OsiType, Debug)]
+#[osi(type_name = "dentry")]
+struct Dentry {
+    //TODO because it's a lot of bullshit I don't want to think about
+}
+
+#[derive(OsiType, Debug)]
+#[osi(type_name = "vfsmount")]
+struct VfsMount {
+    mnt_flags: i32, // type int
+    mnt_root: target_ptr_t, // type *dentry
+    //TODO: see Dentry
+    //mnt_sb: SuperBlock, // type SuperBlock
+}
+
+#[derive(OsiType, Debug)]
+#[osi(type_name = "path")]
+struct Path {
+    dentry: target_ptr_t, // type *dentry
+    mnt: target_ptr_t, // type *vfsmount
+}
+
+#[derive(OsiType, Debug)]
+#[osi(type_name = "file")]
+struct File {
+    //f_path: Path, // type Path
+    f_path: target_ptr_t, // placeholder for compilation until I can figure out what to do
+    f_pos: target_ptr_t, // type long long int
+}
+
+#[derive(OsiType, Debug)]
+#[osi(type_name = "fdtable")]
+struct Fdtable {
+    close_on_exec: target_ptr_t, // type *long unsigned int
+    fd: target_ptr_t, // type **file
+    full_fds_bits: target_ptr_t, // type *long unsigned int
+    max_fds: u32, // type unsigned int
+    open_fds: target_ptr_t, // type *long unsigned int
+    //rcu: CallbackHead, // type callbackhead
+    rcu: target_ptr_t, // placeholder for compilation until I can figure out what to do
+}
+
+#[derive(OsiType, Debug)]
+#[osi(type_name = "files_struct")]
+struct FilesStruct {
+    fdt: target_ptr_t, // type *fdtable
+    //fdtab: Fdtable, // type fdtable
+}
+
+
+fn print_osiproc_info(cpu: &mut CPUState) -> bool {
     // From osi_linux.cpp: p->asid = taskd->mm->pgd
     // so presumably we can just follow task_struct->mm->pgd to get that information
-    println!("Reading mmstruct?");
+    // relatedly, from osi_linux.cpp, this will error occasionally and that should be
+    // seen as "fine"
     let mm_ptr = CURRENT_TASK.mm(cpu).unwrap();
-    println!("Read mm_struct: {:x}", mm_ptr);
-    let mm_raw = Mm::osi_read(cpu, mm_ptr).ok();
-
-    //println!("{}", mm_raw.unwrap());
-
-    let mm = mm_raw;
-    //let asid = mm.pgd;
+    let mm = MmStruct::osi_read(cpu, mm_ptr).ok();
     let asid:u32 = match mm {
         Some(res) => res.pgd,
         None => 0,
     };
-
     if asid != 0 {
     println!("asid: {:x}", asid);
     } else {
@@ -190,46 +249,46 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
     println!("taskd: {:x}", taskd);
 
-    println!("OSI2 INFO END\n\n");
-
-    false
+    true
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn get_ts_info(cpu: &mut CPUState) -> bool {
+fn print_osithread_info(cpu: &mut CPUState) -> bool {
+    let tid = CURRENT_TASK.pid(cpu).unwrap();
+    println!("tid: {:x}", tid);
+    let pid = CURRENT_TASK.tgid(cpu).unwrap();
+    println!("pid: {:x}", pid);
 
+    true
+}
+
+fn print_files_info(cpu: &mut CPUState) -> bool {
+    let files_ptr = CURRENT_TASK.files(cpu).unwrap();
+    let files = FilesStruct::osi_read(cpu, files_ptr).ok();
+    let fdt = match files {
+        Some(res) => res.fdt,
+        None => 0,
+    };
+    if fdt == 0 {
+        println!("No files found");
+        return false
+    } else {
+        let fdtable = Fdtable::osi_read(cpu, fdt).ok();
+        // Here is where we want to start getting at the relevant info, but that needs to go through 
+        // CallbackHead which I'm still not sure of
+    }
+
+    true
+}
+
+#[panda::asid_changed]
+fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-
-    println!("asid: TODO");
+    print_osiproc_info(cpu);
     
-    let start_time = CURRENT_TASK.start_time(cpu).unwrap();
-    println!("Start time: {:x}", start_time);
-    
-    let comm_data = CURRENT_TASK.comm(cpu).unwrap();
-    let task_comm_len = comm_data
-        .iter()
-        .position(|&x| x == 0u8)
-        .unwrap_or(TASK_COMM_LEN);
-
-    let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
-    println!("name: {}", proc_name);
-
-
-    println!("pages: TODO");
-
-    let pid = CURRENT_TASK.pid(cpu).unwrap();
-    println!("pid : {:x}", pid);
-
-    println!("ppid: TODO");
-
-    println!("taskd: TODO");
+    print_osithread_info(cpu);
 
     println!("OSI2 INFO END\n\n");
 
-    
-    
-    // TODO: ASID, pages, taskd
-
-    false
+    true
 }
