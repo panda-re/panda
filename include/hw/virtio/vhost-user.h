@@ -8,7 +8,7 @@
 #ifndef HW_VIRTIO_VHOST_USER_H
 #define HW_VIRTIO_VHOST_USER_H
 
-#include "chardev/char-fe.h"
+#include "sysemu/char.h"
 
 typedef struct VhostUserState {
     CharBackend *chr;
