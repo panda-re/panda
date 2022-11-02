@@ -1,6 +1,8 @@
 # TODO: rename to cosi
 COSI = 'osi2'
 
+from dataclasses import dataclass
+
 class VolatilitySymbol:
     '''
     A reference to an entry in the volatility symbol table
@@ -35,6 +37,16 @@ class VolatilitySymbol:
 
         return name
 
+@dataclass
+class VolatilityStructField:
+    '''
+    A single field in a volatility struct
+    '''
+
+    name: str
+    offset: int
+    type_name: str
+
 class VolatilityStruct:
     '''
     A reference to a struct in the volatility symbol table
@@ -43,6 +55,33 @@ class VolatilityStruct:
     def __init__(self, panda, raw_ptr):
         self.panda = panda
         self.inner = raw_ptr
+
+    def __getitem__(self, item):
+        if type(item) is int:
+            name = self.get_field_by_index(item)
+            if name:
+                offset = self.offset_of_field(name)
+                type_name = self.type_of_field(name)
+
+                return VolatilityStructField(
+                    name=name,
+                    offset=offset,
+                    type_name=type_name
+                )
+            else:
+                raise IndexError("Index {item} is out of range of the length of the struct fields")
+        elif type(item) is str:
+            name = item
+            offset = self.offset_of_field(name)
+            type_name = self.type_of_field(name)
+
+            return VolatilityStructField(
+                name=name,
+                offset=offset,
+                type_name=type_name
+            )
+        else:
+            raise Exception("Invalid type {type(item)} for indexing VolatilityStruct")
 
     def get_field_by_index(self, index: int) -> str:
         '''
