@@ -30,10 +30,92 @@ class VolatilitySymbol:
         '''
 
         name_ptr = self.panda.plugins[COSI].name_of_symbol(self.inner)
-        name = self.panda.ffi.string(name_ptr)
-        self.panda.plugins[COSI].free_osi2_string(name_ptr)
+        name = self.panda.ffi.string(name_ptr).decode('utf8')
+        self.panda.plugins[COSI].free_osi2_str(name_ptr)
 
         return name
+
+class VolatilityStruct:
+    '''
+    A reference to a struct in the volatility symbol table
+    '''
+
+    def __init__(self, panda, raw_ptr):
+        self.panda = panda
+        self.inner = raw_ptr
+
+    def get_field_by_index(self, index: int) -> str:
+        '''
+        Return the name of the field at a given index, returning `None` past the end
+        of the fields.
+        '''
+
+        field_name = self.panda.plugins[COSI].get_field_by_index(self.inner, index)
+
+        if field_name == self.panda.ffi.NULL:
+            return None
+        else:
+            return self.panda.ffi.string(field_name).decode('utf8')
+
+    def name(self) -> str:
+        '''
+        Get the name of the given struct
+        '''
+
+        name_ptr = self.panda.plugins[COSI].name_of_struct(self.inner)
+        name = self.panda.ffi.string(name_ptr).decode('utf8')
+        self.panda.plugins[COSI].free_osi2_str(name_ptr)
+
+        return name
+
+    def offset_of_field(self, name: str) -> int:
+        '''
+        Get the offset of a given field from the field name
+        '''
+
+        name = name.encode('utf8')
+        name = self.panda.ffi.new("char[]", name)
+        return self.panda.plugins[COSI].offset_of_field(self.inner, name)
+
+    def type_of_field(self, name: str) -> str:
+        '''
+        Get the type of a given field from the field name
+        '''
+
+        name = name.encode('utf8')
+        name = self.panda.ffi.new("char[]", name)
+        type_name = self.panda.plugins[COSI].type_of_field(self.inner, name)
+        type_name = self.panda.ffi.string(type_name).decode('utf8')
+
+        return type_name
+
+    def size(self) -> int:
+        '''
+        Get the total size of the given struct in bytes
+        '''
+
+        return self.panda.plugins[COSI].size_of_struct(self.inner)
+
+    def fields(self):
+        '''
+        Iterate over the fields of the structure, yielding tuples in the form of
+        (offset, type, field_name)
+        '''
+        i = 0
+
+        while True:
+            field = self.get_field_by_index(i)
+
+            if not field:
+                break
+
+            name = field
+            offset = self.offset_of_field(field)
+            type_name = self.type_of_field(field)
+
+            yield (offset, type_name, name)
+
+            i += 1
 
 class VolatilityBaseType:
     '''
@@ -50,8 +132,8 @@ class VolatilityBaseType:
         '''
 
         name_ptr = self.panda.plugins[COSI].name_of_base_type(self.inner)
-        name = self.panda.ffi.string(name_ptr)
-        self.panda.plugins[COSI].free_osi2_string(name_ptr)
+        name = self.panda.ffi.string(name_ptr).decode('utf8')
+        self.panda.plugins[COSI].free_osi2_str(name_ptr)
 
         return name
 
@@ -131,3 +213,14 @@ class Cosi:
         base_type = self.panda.plugins[COSI].base_type_from_name(name)
 
         return VolatilityBaseType(self.panda, base_type)
+
+    def type_from_name(self, name: str) -> VolatilityStruct:
+        '''
+        Get a reference to a given struct from the volatility symbol table
+        '''
+
+        name = name.encode('utf8')
+        name = self.panda.ffi.new("char[]", name)
+        struct = self.panda.plugins[COSI].type_from_name(name)
+
+        return VolatilityStruct(self.panda, struct)
