@@ -35,6 +35,40 @@ class VolatilitySymbol:
 
         return name
 
+class VolatilityBaseType:
+    '''
+    A reference to a base type in the volatility symbol table
+    '''
+
+    def __init__(self, panda, raw_ptr):
+        self.panda = panda
+        self.inner = raw_ptr
+
+    def name(self) -> str:
+        '''
+        Get the name for the given base type
+        '''
+
+        name_ptr = self.panda.plugins[COSI].name_of_base_type(self.inner)
+        name = self.panda.ffi.string(name_ptr)
+        self.panda.plugins[COSI].free_osi2_string(name_ptr)
+
+        return name
+
+    def size(self) -> int:
+        '''
+        Get the size of the given base type in bytes
+        '''
+
+        return self.panda.plugins[COSI].size_of_base_type(self.inner)
+
+    def is_signed(self) -> bool:
+        '''
+        Get whether an integer base type is signed or not
+        '''
+
+        return self.panda.plugins[COSI].is_base_type_signed(self.inner)
+
 class Cosi:
     '''
     Object to interact with the `cosi` PANDA plugin. An instance can be foudn at
@@ -86,3 +120,14 @@ class Cosi:
         symbol = self.panda.plugins[COSI].symbol_from_name(name)
 
         return VolatilitySymbol(self.panda, symbol)
+
+    def base_type_from_name(self, name: str) -> VolatilityBaseType:
+        '''
+        Get a reference to a given base type from the volatility symbol table
+        '''
+
+        name = name.encode('utf8')
+        name = self.panda.ffi.new("char[]", name)
+        base_type = self.panda.plugins[COSI].base_type_from_name(name)
+
+        return VolatilityBaseType(self.panda, base_type)
