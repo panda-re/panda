@@ -1925,7 +1925,6 @@ RAMBlock *qemu_ram_alloc_from_fd(ram_addr_t size, MemoryRegion *mr,
 {
     RAMBlock *new_block;
     Error *local_err = NULL;
-    bool created;
     int64_t file_size;
 
     if (xen_enabled()) {
@@ -1944,18 +1943,12 @@ RAMBlock *qemu_ram_alloc_from_fd(ram_addr_t size, MemoryRegion *mr,
         return NULL;
     }
 
-    fd = file_ram_open(mem_path, memory_region_name(mr), &created, errp);
-    if (fd < 0) {
-        return NULL;
-    }
-
     size = HOST_PAGE_ALIGN(size);
     file_size = get_file_size(fd);
     if (file_size > 0 && file_size < size) {
         error_setg(errp, "backing store %s size 0x%" PRIx64
                    " does not match 'size' option 0x" RAM_ADDR_FMT,
                    mem_path, file_size, size);
-        close(fd);
         return NULL;
     }
 
@@ -1966,10 +1959,6 @@ RAMBlock *qemu_ram_alloc_from_fd(ram_addr_t size, MemoryRegion *mr,
     new_block->flags = share ? RAM_SHARED : 0;
     new_block->host = file_ram_alloc(new_block, size, fd, !file_size, errp);
     if (!new_block->host) {
-        if (created) {
-            unlink(mem_path);
-        }
-        close(fd);
         g_free(new_block);
         return NULL;
     }
