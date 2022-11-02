@@ -315,6 +315,7 @@ libattr=""
 xfs=""
 
 vhost_net="no"
+vhost_user="no"
 vhost_scsi="no"
 vhost_vsock="no"
 kvm="no"
@@ -789,7 +790,9 @@ Linux)
   linux="yes"
   linux_user="yes"
   kvm="yes"
-  vhost_net="no" # Disabled for PANDA
+  vhost_net="yes" # Disabled for PANDA
+  vhost_net="yes"
+  vhost_user="yes"
   vhost_scsi="yes"
   vhost_vsock="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
@@ -1149,6 +1152,12 @@ for opt do
   --disable-vhost-net) vhost_net="no"
   ;;
   --enable-vhost-net) vhost_net="yes"
+  ;;
+  --disable-vhost-user) vhost_user="no"
+  ;;
+  --enable-vhost-user) vhost_user="yes"
+  ;;
+  --disable-vhost-crypto) vhost_crypto="no"
   ;;
   --disable-vhost-scsi) vhost_scsi="no"
   ;;
@@ -5547,6 +5556,7 @@ echo "libcap-ng support $cap_ng"
 echo "vhost-net support $vhost_net"
 echo "vhost-scsi support $vhost_scsi"
 echo "vhost-vsock support $vhost_vsock"
+echo "vhost-user support $vhost_user"
 echo "Trace backends    $trace_backends"
 if have_backend "simple"; then
 echo "Trace output file $trace_file-<pid>"
@@ -5976,6 +5986,9 @@ if test "$vhost_scsi" = "yes" ; then
 fi
 if test "$vhost_net" = "yes" ; then
   echo "CONFIG_VHOST_NET_USED=y" >> $config_host_mak
+fi
+if test "$vhost_user" = "yes" ; then
+  echo "CONFIG_VHOST_USER=y" >> $config_host_mak
 fi
 if test "$vhost_vsock" = "yes" ; then
   echo "CONFIG_VHOST_VSOCK=y" >> $config_host_mak
