@@ -15,6 +15,6 @@ This is much easier than repeatedly pushing to a branch/PR if you have a CI fail
 
 Running with the `-b` flag seems to be required, but then your directory will be owned by `root`:
 
-``
+```
 act -b -j local_build_container; sudo chown -R $USER:$USER . .git
 ```
