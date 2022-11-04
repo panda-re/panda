@@ -389,7 +389,7 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
-        pdty.write("""
+        pdty.write("""from __future__ import print_function
 \"\"\"
 Auto-generated type declaration to provide c-definitions for the cffi interface. It's highly unlikely you actually need this.
 If you simply need a list of callbacks consult the manual in main PANDA.
@@ -594,7 +594,6 @@ def get_cbs(ffi):
             ("mips64",64),
         ]
 
-        from __future__ import print_function
         import multiprocessing as mp
         import traceback
 
