@@ -52,6 +52,8 @@ void panda_setup_signal_handling(void (*f) (int, void*, void *));
 
 void map_memory(char* name, uint64_t size, uint64_t address);
 
+MemoryRegion *get_system_memory(void);
+
 // REDEFINITIONS below here from monitor.h
 
 // Create a monitor for panda
