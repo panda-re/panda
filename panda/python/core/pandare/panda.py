@@ -32,7 +32,7 @@ from shlex import quote as shlex_quote, split as shlex_split
 from time import sleep
 from cffi import FFI
 
-from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list, find_build_dir
+from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list, find_build_dir, rr2_recording, rr2_contains_member
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
@@ -562,7 +562,7 @@ class Panda():
         res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
-    
+
     def recording_exists(self, name):
         '''
         Checks if a recording file exists on disk.
@@ -573,7 +573,7 @@ class Panda():
         Returns:
             boolean: true if file exists, false otherwise
         '''
-        if exists(name + "-rr-snp"):
+        if exists(name + "-rr-snp") or rr2_contains_member(name, "snapshot"):
             return True
 
     def run_replay(self, replaypfx):
@@ -586,7 +586,7 @@ class Panda():
         Returns:
             None
         '''
-        if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
+        if (not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log")) and not rr2_recording(replaypfx):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
 
         self.ending = False

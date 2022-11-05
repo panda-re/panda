@@ -32,6 +32,8 @@
 #include "migration/qemu-file.h"
 #include "trace.h"
 
+#include "panda/include/panda/rr/panda_rr2.h"
+
 #define IO_BUF_SIZE 32768
 #define MAX_IOV_SIZE MIN(IOV_MAX, 64)
 
@@ -55,6 +57,36 @@ struct QEMUFile {
 
     int last_error;
 };
+
+typedef struct QEMUPandaTarFile
+{
+    struct rr_file* rr;
+    QEMUFile *file;
+} QEMUPandaTarFile;
+
+static const QEMUFileOps rrfile_ops = {
+    .get_buffer = rrfile_qemu_getbuffer,
+    .close = rrfile_qemu_close,
+};
+
+static QEMUFile *qemu_rrfile_open(const char *filename, const char* section, const QEMUFileOps *ops)
+{
+    QEMUPandaTarFile* pt = g_malloc0(sizeof(QEMUPandaTarFile));
+    if (!RRFILE_SUCCESS(rrfile_open_read(filename, section, &(pt->rr)))) {
+        abort();
+    }
+
+    pt->file = g_new0(QEMUFile, 1);
+    pt->file->ops = ops;
+    pt->file->opaque = pt->rr;
+    pt->file->pos = rrfile_section_size(pt->rr);
+    return pt->file;
+}
+
+QEMUFile *load_snapshot_rr(const char *filename, const char* section)
+{
+ return qemu_rrfile_open(filename, section, &rrfile_ops);
+}
 
 /*
  * Stop a file from being read/written - not all backing files can do this

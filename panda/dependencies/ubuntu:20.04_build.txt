@@ -88,3 +88,7 @@ curl
 cmake
 ninja-build
 rapidjson-dev
+
+# RR2 install deps
+libarchive-dev
+libssl-dev

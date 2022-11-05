@@ -29,6 +29,7 @@
 #include "exec/cpu-common.h"
 #include "io/channel.h"
 
+QEMUFile *load_snapshot_rr(const char *filename, const char* section);
 
 /* Read a chunk of data from a file at the given position.  The pos argument
  * can be ignored if the file is only be used for streaming.  The number of
