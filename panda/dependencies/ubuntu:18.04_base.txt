@@ -76,4 +76,4 @@ zlib1g
 libxen-4.9
 
 #rr2 depends on libarchive
-libarchive
+libarchive-dev

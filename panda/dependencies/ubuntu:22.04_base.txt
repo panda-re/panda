@@ -80,4 +80,4 @@ libvirglrenderer1
 zlib1g
 
 #rr2 depends on libarchive
-libarchive
+libarchive-dev
