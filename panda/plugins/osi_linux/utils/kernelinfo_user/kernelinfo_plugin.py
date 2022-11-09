@@ -22,6 +22,7 @@ class KernelInfo(PyPlugin):
         self.task_struct_ptrs = []
         self.init = None #the task_struct for init (pid 1), not init_task (pid 0)
         self.child1_task = None
+        self.mm_struct_ptrs = []
         
         self.panda = panda
         self.ptr_size = int(panda.bits/8)
@@ -50,6 +51,16 @@ class KernelInfo(PyPlugin):
             if "task_struct" in name:
                 size = panda.arch.get_arg(cpu, 1, convention="linux_kernel")
                 print(f"kmem_cache_create sizeof(task_struct): {size}")
+
+        @panda.hook(self.struct_hooks["mm"][0])
+        def mm_struct_hook(cpu, tb, h):
+            if "task.mm_offset" in self.kinfo:
+                return
+            mm_struct_ptr = self.panda.arch.get_arg(cpu, self.struct_hooks["mm"][1], convention="linux_kernel")
+            print(f"Got mm_struct: {mm_struct_ptr:#x}")
+            #TODO: could ensure we only look for OUR mm_struct
+            self.mm_struct_ptrs.append(mm_struct_ptr)
+            
 
         @panda.hook(self.struct_hooks["files"][0])
         def files_struct_hook(cpu, tb, h):
@@ -91,6 +102,12 @@ class KernelInfo(PyPlugin):
                         if "user_prog" in comm:
                             self.kinfo["task.comm_offset"] = offset
                         
+                    #Check for mm_offset if we don't have it
+                    if "task.mm_offset" not in self.kinfo:
+                        mm_ptr = self.read_int(cpu, task_ptr + offset)
+
+                        if mm_ptr in self.mm_struct_ptrs:
+                            self.kinfo["task.mm_offset"] = offset
 
                     #
                     #Find pid offset using the user_prog parent process
@@ -172,7 +189,7 @@ class KernelInfo(PyPlugin):
             else:
                 #no parent_pid yet - so we are init (/proc/1)
                 self.init = task_ptr
-                pass #will need to do something here to find init_task
+                pass
             
             #White box testing stuff for i386 generic kernel
             #next_task = self.read_int(cpu, task_ptr+632) 
@@ -237,6 +254,9 @@ class KernelInfo(PyPlugin):
                     self.syms[name] = addr
                 if "get_task_struct" == name:
                     self.syms[name] = addr
+                if "task_mem" == name:
+                    self.syms[name] = addr
+                    self.struct_hooks["mm"] = (addr, 1)
 
         #print("Found symbols: ",self.syms)
     def read_int(self, cpu, read_addr, size=None):

@@ -52,10 +52,15 @@ static inline void get_field(char *tok, const char *field,
     }
 }
 
-//Should be stable across kernel versions
+//These should be stable across kernel versions
 static inline void send_task_struct() {
-
     fp = fopen("/proc/self/syscall", "r");
+    fgets(buf, BUF_LEN, fp);//Don't care about contents, just need to read
+    fclose(fp);
+}
+
+static inline void send_mm_struct() {
+    fp = fopen("/proc/self/status", "r");
     fgets(buf, BUF_LEN, fp);//Don't care about contents, just need to read
     fclose(fp);
 }
@@ -68,6 +73,7 @@ static inline void find_tasks_offset() {
 
     //First, send the parent process pid
     PANDA("parent_pid: %d\n", getpid());
+    send_mm_struct();
     send_task_struct();
 
     pid1 = fork();
