@@ -8,11 +8,12 @@ The `tainted_branch` plugin produces a report in PANDA log or Comma Separated Va
 
 Output in PANDA log format can be done in "summary" or default mode. The PANDA log file name is specified using the "-pandalog" option to PANDA.  Note that all numbers in the PANDA log are in decimal.
 
-The PANDA log format default mode reports the guest address of the block including the tainted branch, the callstack, information on each taint found, and the instruction count of the tainted branch or its block.  Each taint report found reports its Taint Compute Number (i.e. how many computations on the tainted item are involved between when the taint was introduced and the time of the report), the native address of where the taint labels are, the taint labels, and the offset into the buffer in the guest of the item whose taint is being reported on. Note that each taint label set is only reported the first time it is encountered.  The label set address can be used to find the label set for subsequent instances.  Following is a copy of part of a PANDA log.  The section labeled "uniqueLabelSet" is what is omitted from subsequent reports for the same label set.
+The PANDA log format default mode reports the guest address of the tainted branch instruction, the callstack, information on each taint found, and the instruction count of the tainted branch.  Each taint report found reports its Taint Compute Number (i.e. how many computations on the tainted item are involved between when the taint was introduced and the time of the report), the native address of where the taint labels are, the taint labels, and the offset into the buffer in the guest of the item whose taint is being reported on. Note that each taint label set is only reported the first time it is encountered.  The label set address can be used to find the label set for subsequent instances.  Following is a copy of part of a PANDA log.  The section labeled "uniqueLabelSet" is what is omitted from subsequent reports for the same label set.
 
 ```
 {
-  "pc": "4196548",     <===== the guest address of the block containing the tainted branch
+  "pc": "4196548",     <===== the guest address of tainted branch instruction
+  "instr": "21191791"  <===== guest instruction count
   "taintedBranch": {
     "callStack": {
       "addr": [
@@ -24,7 +25,9 @@ The PANDA log format default mode reports the guest address of the block includi
     }, 
     "taintQuery": [
       {
-        "tcn": 1,     <===== Taint Compute Number
+        "ptr": "140192956884936",    <===== address of this label set
+        "tcn": 1,      <===== Taint Compute Number
+        "offset": 0,   <===== offset into buffer in guest of thing whose taint is being queried
         "uniqueLabelSet": {
           "ptr": "140192956884936",     <===== address of this label set
           "label": [
@@ -33,13 +36,10 @@ The PANDA log format default mode reports the guest address of the block includi
             10, 
             11
           ]
-        }, 
-        "ptr": "140192956884936",     <===== address of this label set
-        "offset": 0     <===== offset into buffer in guest of thing whose taint is being queried
+        }
       }
     ]
-  }, 
-  "instr": "21191791"     <===== guest instruction count
+  }
 }
 ```
 
@@ -49,7 +49,7 @@ In either PANDA log mode, the liveness option can be used to include a list of t
 
 The "ignore_helpers" option can be used to omit taint reports that are generated from within LLVM helper functions.  This can be useful if the output will be processed by analysis tools that cannot process helper functions.
 
-Output in CSV format can also be done in "summary" or default mode.  The "summary" output lists the same information as seen in the PANDA log summary output.  The default mode lists for each tainted branch the guest address of the block including the tainted branch, the instruction count, and a space-separated list of labels.  Note that the liveness option cannot be used with CSV output.  It is also not possible to produce PANDA log and CSV output at the same time.
+Output in CSV format can also be done in "summary" or default mode.  The "summary" output lists the same information as seen in the PANDA log summary output.  The default mode lists for each tainted branch the guest address of the tainted branch instruction, the instruction count, and a space-separated list of labels.  Note that the liveness option cannot be used with CSV output.  It is also not possible to produce PANDA log and CSV output at the same time.
 
 Arguments
 ---------

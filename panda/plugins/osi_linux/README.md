@@ -129,7 +129,7 @@ Arguments
 Dependencies
 ------------
 
-`osi_linux` is an introspection provider for the `osi` plugin.
+`osi_linux` is an introspection provider for the `osi` plugin.  It also uses the `hw_proc_id` plugin.
 
 APIs and Callbacks
 ------------------

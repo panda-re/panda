@@ -260,4 +260,4 @@ Example
 
 To run `asidstory` on a Windows XP 32-bit recording with a 180 character wide diagram:
 
-`$PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo -os windows-32-xpsp3 -panda osi -panda winxpx86intro -panda asidstory:width=180`
+`$PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo -os windows-32-xpsp3 -panda asidstory:width=180`
