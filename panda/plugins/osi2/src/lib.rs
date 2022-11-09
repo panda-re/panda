@@ -1,19 +1,25 @@
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use panda::mem::read_guest_type;
-use panda::plugins::syscalls2::Syscalls2Callbacks;
+use panda::mem::{read_guest_type, virtual_memory_read_into};
+use panda::plugins::osi2::{symbol_from_name, type_from_name};
 use panda::prelude::*;
+use panda::GuestType;
+use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
+
+use panda::plugins::osi2::{osi_static, OsiType};
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 
 /// Interface for other plugins to interact with
 mod ffi;
 mod kaslr;
+//mod structs;
 
+//use structs;
 use kaslr::kaslr_offset;
 
 #[derive(PandaArgs)]
@@ -73,10 +79,16 @@ fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
     cpu_offset
 }
 
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// Move the below into its own file one day :')%%%%%%%%%%%%%%%%
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 /// Max length of process command (`comm` field in task_struct)
 const TASK_COMM_LEN: usize = 16;
 
-use panda::plugins::osi2::{osi_static, OsiType};
+//#################################################################
+//#################### Task related structures ####################
+//#################################################################
 
 #[derive(Debug)]
 struct Version {
@@ -142,7 +154,25 @@ osi_static! {
     #[symbol = "current_task"]
     static CURRENT_TASK: TaskStruct;
 }
+#[derive(Debug)]
+struct OsiProc {
+    asid: u32,
+    start_time: target_ptr_t,
+    name: String,
+    pid: u32,
+    ppid: u32,
+    taskd: target_ptr_t,
+}
 
+#[derive(Debug)]
+struct OsiThread {
+    tid: u32,
+    pid: u32,
+}
+
+//#################################################################
+//#################### File related structures ####################
+//#################################################################
 #[derive(OsiType, Debug)]
 #[osi(type_name = "vm_area_struct")]
 struct VmAreaStruct {
@@ -162,9 +192,17 @@ struct CallbackHead {
 }
 
 #[derive(OsiType, Debug)]
+#[osi(type_name = "qstr")]
+struct Qstr {
+    name: target_ptr_t, // type *char
+}
+
+#[derive(OsiType, Debug)]
 #[osi(type_name = "dentry")]
 struct Dentry {
-    //TODO because it's a lot of bullshit I don't want to think about
+    d_parent: target_ptr_t, // type *dentry
+    d_name: target_ptr_t, // type qstr (struct qstr { union { struct {HASH_LEN_DECLARE;}; u64 hash_len; } const unsigned char *name;})
+                          //TODO because it's a lot of bullshit I don't want to think about
 }
 
 #[derive(OsiType, Debug)]
@@ -209,8 +247,20 @@ struct FilesStruct {
     fdt: target_ptr_t, // type *fdtable
                        //fdtab: Fdtable, // type fdtable
 }
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// Move the above into its own file one day :')%%%%%%%%%%%%%%%%
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fn print_osiproc_info(cpu: &mut CPUState) -> bool {
+fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
+    let mut ret = OsiProc {
+        asid: 0,
+        start_time: 0,
+        name: String::from(""),
+        pid: 0,
+        ppid: 0,
+        taskd: 0,
+    };
+
     // From osi_linux.cpp: p->asid = taskd->mm->pgd
     // so presumably we can just follow task_struct->mm->pgd to get that information
     // relatedly, from osi_linux.cpp, this will error occasionally and that should be
@@ -221,14 +271,9 @@ fn print_osiproc_info(cpu: &mut CPUState) -> bool {
         Some(res) => res.pgd,
         None => 0,
     };
-    if asid != 0 {
-        println!("asid: {:x}", asid);
-    } else {
-        println!("asid: ERR");
-    }
 
     let start_time = CURRENT_TASK.start_time(cpu).unwrap();
-    println!("Start time: {:x}", start_time);
+    ret.start_time = start_time;
 
     let comm_data = CURRENT_TASK.comm(cpu).unwrap();
     let task_comm_len = comm_data
@@ -237,37 +282,115 @@ fn print_osiproc_info(cpu: &mut CPUState) -> bool {
         .unwrap_or(TASK_COMM_LEN);
 
     let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
-    println!("name: {}", proc_name);
-
-    // unimplemented in osi_linux as of yet
-    println!("pages: TODO");
+    ret.name = proc_name;
 
     let pid = CURRENT_TASK.pid(cpu).unwrap();
-    println!("pid : {:x}", pid);
+    ret.pid = pid;
 
     let parent_ptr = CURRENT_TASK.parent(cpu).unwrap();
     let parent = TaskStruct::osi_read(cpu, parent_ptr).unwrap();
     let ppid = parent.pid;
-    println!("ppid: {:x}", ppid);
+    ret.ppid = ppid;
 
     // from osi_linux.cpp line166, p->taskd is being set to kernel_profile->get_group_leader
     // so presumably we can just read task_struct->group_leader to get that info?
     let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
-    println!("taskd: {:x}", taskd);
+    ret.taskd = taskd;
 
-    true
+    Some(ret)
 }
 
-fn print_osithread_info(cpu: &mut CPUState) -> bool {
-    let tid = CURRENT_TASK.pid(cpu).unwrap();
-    println!("tid: {:x}", tid);
-    let pid = CURRENT_TASK.tgid(cpu).unwrap();
-    println!("pid: {:x}", pid);
+fn get_osithread_info(cpu: &mut CPUState) -> Option<OsiThread> {
+    let mut ret = OsiThread { tid: 0, pid: 0 };
+    ret.tid = CURRENT_TASK.pid(cpu).unwrap();
+    ret.pid = CURRENT_TASK.tgid(cpu).unwrap();
 
-    true
+    Some(ret)
 }
 
-fn print_files_info(cpu: &mut CPUState) -> bool {
+#[derive(Debug)]
+struct OsiFile {
+    fs_struct: target_ptr_t,
+    name: String,
+    f_pos: target_ptr_t,
+    fd: u32,
+}
+
+#[derive(Debug)]
+struct OsiFiles {
+    files: Vec<OsiFile>,
+}
+
+// remimplement read_dentry_name from osi_linux.h
+fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t) -> String {
+    let mut ret = "".to_owned();
+
+    let mut current_dentry_parent = dentry;
+    let mut current_dentry: target_ptr_t = 0;
+
+    while current_dentry_parent != current_dentry {
+        current_dentry = current_dentry_parent;
+        let mut dentry_struct = Dentry {
+            d_parent: 0,
+            d_name: 0,
+        };
+        match Dentry::osi_read(cpu, current_dentry).ok() {
+            Some(res) => dentry_struct = res,
+            None => break,
+        }
+        current_dentry_parent = dentry_struct.d_parent;
+        let mut name_ptr: target_ptr_t = 0;
+        match Qstr::osi_read(cpu, dentry_struct.d_name).ok() {
+            Some(res) => name_ptr = res.name,
+            None => break,
+        }
+        // reads the pointer which points to the start of the name we want
+        // this maybe works? Who can say
+        let name = unsafe { CStr::from_ptr(name_ptr as *const c_char).to_str().unwrap() };
+        ret = ret.to_owned() + name
+    }
+
+    return ret;
+}
+
+fn get_osi_file_info(
+    cpu: &mut CPUState,
+    file: File,
+    ptr: target_ptr_t,
+    fd: u32,
+) -> Option<OsiFile> {
+    // Want to get the file name here, which means we need file->path (type *dentry)
+    // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
+    // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
+    // to repeat this process
+    let mut ret = OsiFile {
+        fs_struct: ptr,
+        name: "".to_string(),
+        f_pos: 0,
+        fd: fd,
+    };
+    let path = match Path::osi_read(cpu, file.f_path).ok() {
+        Some(res) => res,
+        None => return None,
+    };
+
+    // read file->path->dentry to get a pointer to the first dentry we want to read;
+    let mut name = read_dentry_name(cpu, path.dentry);
+    // next read name stuff from vfsmount too
+    let mnt = VfsMount::osi_read(cpu, path.mnt).unwrap();
+    let name2 = read_dentry_name(cpu, mnt.mnt_root);
+    ret.name = name.to_owned() + &name2;
+
+    ret.f_pos = file.f_pos;
+
+    return Some(ret);
+}
+
+fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
+    let mut ret = OsiFiles {
+        files: Vec::<OsiFile>::new(),
+    };
+
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
     let files = FilesStruct::osi_read(cpu, files_ptr).ok();
     let fdt = match files {
@@ -276,13 +399,90 @@ fn print_files_info(cpu: &mut CPUState) -> bool {
     };
     if fdt == 0 {
         println!("No files found");
-        return false;
+        return None;
     } else {
-        let fdtable = Fdtable::osi_read(cpu, fdt).ok();
-        // Here is where we want to start getting at the relevant info, but that needs to go through
-        // CallbackHead which I'm still not sure of
+        let fdt_check = Fdtable::osi_read(cpu, fdt).ok();
+        let check = match fdt_check {
+            Some(ref res) => 1,
+            None => 0,
+        };
+        if check == 0 {
+            println!("Fdtable could not be read");
+            return None;
+        } else {
+            let fdtable = fdt_check.unwrap();
+            let fd_max = fdtable.max_fds;
+            println!("max fds: {}", fd_max);
+            let mut ptr = fdtable.fd;
+            let mut fds = Vec::<File>::new();
+            for i in 0..fd_max {
+                let idx = (i as usize) * size_of::<target_ptr_t>();
+                ptr = ptr + (idx as u64);
+                match target_ptr_t::read_from_guest(cpu, ptr).ok() {
+                    Some(res) => {
+                        let mut f = File {
+                            f_path: 0,
+                            f_pos: 0,
+                        };
+                        match File::osi_read(cpu, res).ok() {
+                            Some(file_read) => f = file_read,
+                            None => break,
+                        };
+                        let f_info = get_osi_file_info(cpu, f, res, idx as u32);
+                        match f_info {
+                            Some(succ) => ret.files.push(succ),
+                            None => (),
+                        }
+                    }
+                    None => break,
+                }
+            }
+        }
     }
+    Some(ret)
+}
 
+fn print_osiproc_info(cpu: &mut CPUState) -> bool {
+    let proc = match get_osiproc_info(cpu) {
+        Some(res) => {
+            if res.asid != 0 {
+                println!("asid: {:x}", res.asid);
+            } else {
+                println!("asid: Err");
+            }
+            println!("start_time: {:x}", res.start_time);
+            println!("name: {}", res.name);
+            println!("pid, {:x}", res.pid);
+            println!("ppid, {:x}", res.ppid);
+            println!("taskd, {:x}", res.taskd);
+        }
+        None => println!("Could not read current proc"),
+    };
+    true
+}
+
+fn print_osithread_info(cpu: &mut CPUState) -> bool {
+    let thread = match get_osithread_info(cpu) {
+        Some(res) => {
+            println!("tid: {:x}", res.tid);
+            println!("pid: {:x}", res.pid);
+        }
+        None => println!("Could not read current proc"),
+    };
+    true
+}
+
+fn print_osifile_info(cpu: &mut CPUState) -> bool {
+    match get_osifiles_info(cpu) {
+        Some(res) => {
+            for i in res.files {
+                println!("file name: {} | fd: {}", i.name, i.fd);
+                println!("\tfile struct ptr: {:x}", i.fs_struct);
+                println!("\tfile position: {:x}", i.f_pos);
+            }
+        }
+        None => println!("Could not read files from current proc"),
+    }
     true
 }
 
@@ -293,6 +493,8 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     print_osiproc_info(cpu);
 
     print_osithread_info(cpu);
+
+    print_osifile_info(cpu);
 
     println!("OSI2 INFO END\n\n");
 
