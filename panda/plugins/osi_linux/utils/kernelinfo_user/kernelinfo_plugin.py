@@ -23,6 +23,7 @@ class KernelInfo(PyPlugin):
         self.init = None #the task_struct for init (pid 1), not init_task (pid 0)
         self.child1_task = None
         self.mm_struct_ptrs = []
+        self.stack_ptr = None
         
         self.panda = panda
         self.ptr_size = int(panda.bits/8)
@@ -212,31 +213,54 @@ class KernelInfo(PyPlugin):
             #print(f"{task_ptr:#x} ({pid}): next: {next_task:#x} prev: {prev_task:#x}")
 
         #Cheap and dirty way to receive information from the user program
+        #Will replace with hypercalls
         @panda.ppp("syscalls2", "on_sys_write_return")
         def on_write(cpu, pc, fd, buf, count):
             try:
                 s = self.panda.read_str(cpu, buf, count)
             except ValueError:
                 return
+            for l in s.splitlines():
+                if l.startswith("KERNELINFO:"):
+                    #Direct kernelinfo output from userprog, read it in
+                    split = l.split()
+                    self.kinfo[split[1]] = int(split[2])
 
-            if s.startswith("KERNELINFO:"):
-                #Direct kernelinfo output from userprog, read it in
-                split = s.split()
-                self.kinfo[split[1]] = int(split[2])
+                if l.startswith("PANDA:"):
+                    split = l.split()
+                    if split[1] == "pids:":
+                        self.pids.append(int(split[2]))
+                        self.pids.append(int(split[3]))
+                        print(f"User prog created processes: {self.pids}")
 
-            if s.startswith("PANDA:"):
-                split = s.split()
-                #Our user program forks two children, we'll use these to
-                #find properties in the task structs
-                if split[1] == "pids:":
-                    self.pids.append(int(split[2]))
-                    self.pids.append(int(split[3]))
-                    print(f"User prog created processes: {self.pids}")
+                    if split[1] == "parent_pid:":
+                        self.parent_pid = int(split[2])
+                        print(f"Parent pid: {self.parent_pid}")
 
-                if split[1] == "parent_pid:":
-                    self.parent_pid = int(split[2])
-                    print(f"Parent pid: {self.parent_pid}")
-                    
+                    if split[1] == "stack:":
+                        self.stack_ptr = int(split[2],base=16)
+                        print(f"Stack pointer for thread: {self.stack_ptr}")
+
+                    if split[1] == "in_thread_function:":
+                        print("in_thread_function!")
+                        self.do_thread_function(cpu)
+
+    def do_thread_function(self,cpu):
+        #This is after a sys_write in the spawned thread
+        current = self.read_int(cpu, self.kinfo["task.per_cpu_offset_0_addr"] + self.kinfo["task.current_task_addr"])
+        offset = 0
+        print(f"do_thread_function, current: {current:#x}")
+        while offset < self.kinfo["task.size"]:
+            ptr = self.read_int(cpu, current+offset)
+            print(f"{current:#x} + {offset} = {ptr:#x}")
+            if ptr == self.parent_task:
+                print("Found parent task at offset: {offset}\n")
+                self.kinfo["task.group_leader_offset"] = offset
+            if ptr == self.stack_ptr:
+                #Might've moved by the time we got to our function
+                print("Found stack pointer at offset: {offset}\n")
+                self.kinfo["task.stack_offset"] = offset
+            offset+=4
 
     def parse_kallsyms(self, filename):
         with open(filename, 'r') as f:

@@ -1,3 +1,6 @@
+//For clone, might be fragile
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,8 +9,9 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/syscall.h>
+#include <sched.h>
 /*
- * Statically linked, have tested against libc and uClibc
  * Communicates with the KernelInfo PyPlugin to exercise kernel functions and 
  * read /proc/
  *
@@ -91,11 +95,35 @@ static inline void find_tasks_offset() {
     PANDA("pids: %d %d\n", pid1, pid2);
 }
 
+//Use the clone() system call to infer a bunch of information about threads
+//by spawning a thread
+int thread_function (void *arg __attribute__((unused))) {
+    PANDA("in_thread_function: 0\n");
+    return 0;
+}
+
+static inline void find_thread_offsets() {
+    char *stack;
+    int tid;
+
+    const int clone_flags = (CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_THREAD | CLONE_SIGHAND);
+
+    stack = malloc(4096);//leaked
+    PANDA("stack: %p\n", stack);
+    //Can tweak flags and use args to get more fields
+    tid = clone(thread_function, stack+4096, clone_flags, NULL);
+    printf("tid from clone: %d\n", tid);
+    if(tid<0)
+        perror(NULL);
+    sleep(1);//Wait for thread to run
+}
+
 int main() {
     char *line, *tok;
     size_t n;
     ssize_t nread;
     int status;
+    pid_t pid;
 
     /*BEGIN get struct sizes from /proc/slabinfo*/
     fp = fopen("/proc/slabinfo", "r");
@@ -118,8 +146,15 @@ int main() {
     wait(&status);    
 
     //Now send a file struct via dup_fd in fork()
-    fork();
+    pid=fork();
     sleep(1);
+    if(!pid)  {
+        exit(0);
+    }
+    wait(&status);    
+
+    //Get thread offsets via clone()
+    find_thread_offsets();
 
     return 0;
 }
