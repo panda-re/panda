@@ -61,6 +61,20 @@ class KernelInfo(PyPlugin):
             #TODO: could ensure we only look for OUR mm_struct
             self.mm_struct_ptrs.append(mm_struct_ptr)
             
+            #Now find pgd offset FIXME: probably only works on x86
+            asid = self.panda.current_asid(cpu)
+            print(f"asid: {asid:#x}")
+            offset=0
+            while offset < self.kinfo["mm.size"]:
+                #Want 4 bytes even for x86_64 to account for page_offset_base
+                #Newer kernels do have a symbol for that, could be an easy way
+                #to do be kaslr proof with some runtime stuff
+                value = self.read_int(cpu, mm_struct_ptr + offset, 4)
+                if value == asid:
+                    print(f"Found asid at {offset} of mm_struct")
+                    self.kinfo["mm.pgd_offset"] = offset
+                offset+=self.ptr_size
+
 
         @panda.hook(self.struct_hooks["files"][0])
         def files_struct_hook(cpu, tb, h):
