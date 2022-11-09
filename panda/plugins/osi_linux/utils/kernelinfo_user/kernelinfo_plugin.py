@@ -25,8 +25,11 @@ class KernelInfo(PyPlugin):
         
         self.panda = panda
         self.ptr_size = int(panda.bits/8)
+        self.pid_t_size = 4 #even for 64bit
         self.endian = "little" #TODO implement this
         kallsyms_file =  self.get_arg("kallsyms")
+
+        self.kinfo['task.comm_size'] = 16 #TODO get this dynamically too
 
         print("Loading kallsyms from: ", kallsyms_file)
         self.parse_kallsyms(kallsyms_file)
@@ -79,7 +82,15 @@ class KernelInfo(PyPlugin):
                 offset = 0
                 while offset < self.kinfo["task.size"]:
                     #This assumes our fields of interest are word aligned
-                    value = self.read_int(cpu, task_ptr + offset)
+                    value = self.read_int(cpu, task_ptr + offset, self.pid_t_size)
+                    
+                    #Check for comm_offset if we don't have it
+                    if "task.comm_offset" not in self.kinfo:
+                        comm = self.panda.read_str(cpu, task_ptr + offset, \
+                                             self.kinfo['task.comm_size'])
+                        if "user_prog" in comm:
+                            self.kinfo["task.comm_offset"] = offset
+                        
 
                     #
                     #Find pid offset using the user_prog parent process
@@ -89,14 +100,14 @@ class KernelInfo(PyPlugin):
                         #      Hack for now is just to spawn multipe processes
                         if value == self.parent_pid and not self.parent_task:
                             init_pid_p = self.init + offset
-                            init_pid = self.read_int(cpu, init_pid_p)
+                            init_pid = self.read_int(cpu, init_pid_p, self.pid_t_size)
                             if init_pid == 1:
                                 self.parent_task = task_ptr
                                 self.kinfo["task.pid_offset"]=offset
                                 print(f"Found user_prog pid  {value} at {offset}")
                             else:
                                 print(f"Tried {offset} as pid but got init_pid = {init_pid}")
-                                init_pid = self.read_int(cpu, init_pid_p - offset)
+                                init_pid = self.read_int(cpu, init_pid_p - offset,self.pid_t_size)
                                 print(f"reading init_p: {init_pid:#x}")
                         #TODO: can assume tgid comes after pid and will be same 
                         #else:
@@ -105,7 +116,7 @@ class KernelInfo(PyPlugin):
 
                     if not self.parent_task or len(self.pids) != 2:
                         #The child processes don't exist yet
-                        offset += self.ptr_size
+                        offset += self.pid_t_size
                         continue 
 
                     
@@ -114,15 +125,18 @@ class KernelInfo(PyPlugin):
                     #will be the next process
 
                     #At this point, we know the pid offset
-                    pid = self.read_int(cpu, task_ptr+self.kinfo["task.pid_offset"])
+                    pid = self.read_int(cpu, task_ptr+self.kinfo["task.pid_offset"],self.pid_t_size)
 
                     if pid not in self.pids:
-                        offset += self.ptr_size
+                        offset += self.pid_t_size
                         continue
 
                     #
                     #Find parent_offset
                     #
+                    #Here we reread at self.ptr_size, could just truncate pid 
+                    #earlier
+                    value = self.read_int(cpu, task_ptr + offset)
                     if value == self.parent_task:
                         print(f"Found parent of {pid} at {offset}!")
                         if "task.real_parent_offset" not in self.kinfo:
@@ -132,6 +146,9 @@ class KernelInfo(PyPlugin):
                             self.kinfo["task.parent_offset"]=offset
                         #Can verify these with pid offsets if we want 
 
+                    if "task.per_cpu_offset_0_addr" not in self.kinfo:
+                        self.kinfo["task.per_cpu_offset_0_addr"] =\
+                        self.read_int(cpu, self.kinfo["task.per_cpu_offsets_addr"])
                     #
                     #Find tasks, the task list
                     #
@@ -151,7 +168,7 @@ class KernelInfo(PyPlugin):
                             self.process_list(cpu)
 
                     #END OF BIG MEMORY READ LOOP
-                    offset+=self.ptr_size
+                    offset+=self.pid_t_size
             else:
                 #no parent_pid yet - so we are init (/proc/1)
                 self.init = task_ptr
@@ -207,7 +224,7 @@ class KernelInfo(PyPlugin):
                 if "arch_dup_task_struct" == name:
                     self.syms[name] = addr
                 if "current_task" == name:
-                    self.kinfo['task.current_task'] = addr
+                    self.kinfo['task.current_task_addr'] = addr
                 if name == "init_task":
                     self.kinfo['task.init_addr'] = addr
                 if name == "__per_cpu_offset":
@@ -222,8 +239,10 @@ class KernelInfo(PyPlugin):
                     self.syms[name] = addr
 
         #print("Found symbols: ",self.syms)
-    def read_int(self, cpu, read_addr):
-        data = self.panda.virtual_memory_read(cpu, read_addr, self.ptr_size)
+    def read_int(self, cpu, read_addr, size=None):
+        if not size:
+            size = self.ptr_size
+        data = self.panda.virtual_memory_read(cpu, read_addr, size)
         return int.from_bytes(data,byteorder=self.endian)
 
     def next_task(self, cpu, task):
@@ -236,9 +255,14 @@ class KernelInfo(PyPlugin):
 
         print(f"Traversing task list, starting at {task:#x}")
         while task != self.parent_task:
-            pid = self.read_int(cpu, task+self.kinfo["task.pid_offset"]) 
+            pid = self.read_int(cpu, task+self.kinfo["task.pid_offset"], self.pid_t_size) 
             next_task = self.next_task(cpu, task)
-            print(f"  {task:#x} has pid: {pid}, next: {next_task:#x}")
+            name=f"{task:#x}"
+            if "task.comm_offset" in self.kinfo:
+                name = self.panda.read_str(cpu, \
+                        task + self.kinfo['task.comm_offset'], \
+                        self.kinfo['task.comm_size'])
+            print(f"  {name} has pid: {pid}, next: {next_task:#x}")
             #kallsyms does't always have this symbol
             if pid == 0:
                 print(f"    found init_task at: {task:#x}") 
