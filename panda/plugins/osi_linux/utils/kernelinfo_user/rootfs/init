@@ -1,0 +1,12 @@
+#!/bin/sh
+ 
+/busybox mount -t proc none /proc
+/busybox mount -t sysfs none /sys
+/busybox mount -t debugfs none /sys/kernel/debug
+/busybox mount /dev -t devtmpfs dev
+
+/busybox echo -e "\nBoot took $(cut -d' ' -f1 /proc/uptime) seconds\n"
+ 
+/user_prog
+
+exec /busybox sh
