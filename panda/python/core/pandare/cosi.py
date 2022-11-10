@@ -81,7 +81,7 @@ class VolatilityStruct:
                 type_name=type_name
             )
         else:
-            raise Exception("Invalid type {type(item)} for indexing VolatilityStruct")
+            raise Exception(f"Invalid type {type(item)} for indexing VolatilityStruct")
 
     def get_field_by_index(self, index: int) -> str:
         '''
@@ -156,6 +156,14 @@ class VolatilityStruct:
 
             i += 1
 
+    def at(self, ptr):
+        '''
+        Get a CosiGuestPointer of this type
+        '''
+
+        type_name = self.name()
+        return CosiGuestPointer(self.panda, type_name, ptr)
+
 class VolatilityBaseType:
     '''
     A reference to a base type in the volatility symbol table
@@ -190,6 +198,19 @@ class VolatilityBaseType:
 
         return self.panda.plugins[COSI].is_base_type_signed(self.inner)
 
+class CosiKernelSymbols:
+    '''
+    Object to get pointers to kernel data structures. Access via `panda.cosi.kernel`.
+    '''
+
+    def __init__(self, panda):
+        self._panda = panda
+
+    def __getattr__(self, item):
+        symbol = self._panda.cosi.symbol_from_name(item)
+
+        todo()
+
 class Cosi:
     '''
     Object to interact with the `cosi` PANDA plugin. An instance can be foudn at
@@ -198,6 +219,7 @@ class Cosi:
 
     def __init__(self, panda):
         self.panda = panda
+        self.kernel = CosiKernelSymbols(panda)
 
     def symbol_addr_from_name(self, name: str) -> int:
         '''
@@ -251,6 +273,9 @@ class Cosi:
         name = self.panda.ffi.new("char[]", name)
         base_type = self.panda.plugins[COSI].base_type_from_name(name)
 
+        if base_type == self.panda.ffi.NULL:
+            return None
+
         return VolatilityBaseType(self.panda, base_type)
 
     def type_from_name(self, name: str) -> VolatilityStruct:
@@ -262,4 +287,351 @@ class Cosi:
         name = self.panda.ffi.new("char[]", name)
         struct = self.panda.plugins[COSI].type_from_name(name)
 
+        if struct == self.panda.ffi.NULL:
+            return None
+
         return VolatilityStruct(self.panda, struct)
+
+    def per_cpu_offset(self) -> int:
+        '''
+        Gets the offset for per cpu variable pointers
+        '''
+
+        cpu = self.panda.get_cpu()
+        return self.panda.plugins[COSI].current_cpu_offset(cpu)
+
+    def find_per_cpu_address(self, symbol: str) -> int:
+        '''
+        Get the address for a symbol given that it is a per-cpu variable
+        '''
+        panda = self.panda
+
+        symbol_offset = self.symbol_value_from_name(symbol)
+        ptr_to_ptr = self.per_cpu_offset() + symbol_offset
+
+        ptr_size = panda.bits // 8
+
+        ptr = panda.virtual_memory_read(panda.get_cpu(), ptr_to_ptr, ptr_size, fmt='int') & ((1 << panda.bits) - 1)
+
+        return ptr
+
+    def get(self, global_type, symbol, per_cpu=False):
+        if per_cpu:
+            addr = self.find_per_cpu_address(symbol)
+        else:
+            addr = self.symbol_addr_from_name(symbol)
+
+        return self.panda.cosi.type_from_name(global_type).at(addr)
+
+import struct
+
+struct_types = {
+    'float': ('f', 4),
+    'double': ('d', 8),
+    'char': ('c', 1),
+    '_Bool': ('?', 1),
+    'short': ('h', 2),
+    'unsigned short': ('H', 2),
+    'int': ('i', 4),
+    'unsigned int': ('I', 4),
+    'long': ('l', 4),
+    'unsigned long': ('L', 4),
+    'long long': ('q', 8),
+    'unsigned long long': ('Q', 8),
+}
+
+types_from_size = {
+    1: 'b',
+    2: 'h',
+    4: 'i',
+    8: 'q'
+}
+
+class CosiIntrusiveListAccessor:
+    def __init__(self, panda, ptr):
+        self._panda = panda
+        self._ptr = ptr
+
+    def __getattr__(self, name):
+        list_head = getattr(self._ptr, name)
+        if list_head._type_name != 'list_head':
+            raise Exception(f"Field {self._ptr._type_name}.{name} not a list_head*")
+
+        field_offset = self._ptr._type[name].offset
+
+        ptrs = []
+        head = list_head.next.prev
+        current = list_head.next
+        while head._ptr != current._ptr:
+            addr = current._ptr - field_offset
+            ptrs.append(CosiGuestPointer(self._panda, self._ptr._type_name, addr))
+            current = current.next
+
+        return ptrs
+
+class CosiGuestPointer:
+    '''
+    A type representing a pointer for a data structure in the kernel
+    '''
+
+    def __init__(self, panda, type_name, ptr, parent=None):
+        self._panda = panda
+        self._type_name = type_name
+        self._ptr = ptr
+        self._type = panda.cosi.type_from_name(type_name)
+        self._parent = parent
+
+    def __repr__(self):
+        return f'<CosiGuestPointer of type {self._type_name} at {hex(self._ptr)}>'
+
+    def _read_type(self, field_ptr: int, field_type: str, fallback=False):
+        panda = self._panda
+        cpu = panda.get_cpu()
+
+        # pointer
+        if field_type[-1] == '*':
+            pointer = panda.virtual_memory_read(cpu, field_ptr, panda.bits // 8, fmt='int')
+
+            inner_type = field_type[:-1]
+            if inner_type.startswith('struct '):
+                inner_type = inner_type[len('struct '):]
+            return CosiGuestPointer(panda, inner_type, pointer, parent=self)
+        # inline struct
+        elif field_type.startswith('struct '):
+            field_type_inner = field_type[len('struct '):]
+
+            return CosiGuestPointer(panda, field_type_inner, field_ptr, parent=self)
+        # char array
+        elif field_type.startswith('char[') and field_type[-1] == ']':
+            length = int(field_type[len('char['):-1])
+            data = panda.virtual_memory_read(cpu, field_ptr, length)
+
+            try:
+                length = data.index(b'\0')
+                data = data[:length]
+            except ValueError:
+                pass
+
+            return data.decode('utf8')
+
+        # non-char array
+        elif field_type[-1] == ']':
+            return CosiGuestPointer(panda, field_type, field_ptr, parent=self)
+
+        # basic type
+        elif field_type in struct_types:
+            specifier, size = struct_types[field_type]
+
+            val_bytes = panda.virtual_memory_read(cpu, field_ptr, size)
+            return struct.unpack(
+                ('<' if panda.endianness == 'little' else '>') + specifier, val_bytes
+            )[0]
+        # platform-specific base types
+        elif base_type := panda.cosi.base_type_from_name(field_type):
+            size = base_type.size()
+            is_signed = base_type.is_signed()
+
+            specifier = types_from_size[size]
+            if not is_signed:
+                specifier = specifier.upper()
+
+            val_bytes = panda.virtual_memory_read(cpu, field_ptr, size)
+
+            return struct.unpack(
+                ('<' if panda.endianness == 'little' else '>') + specifier, val_bytes
+            )[0]
+
+        elif fallback:
+            inner_type = field_type
+            if inner_type.startswith('struct '):
+                inner_type = inner_type[len('struct '):]
+            return CosiGuestPointer(panda, inner_type, field_ptr, parent=self)
+        else:
+            raise Exception(f"Dereferencing type {field_type} is unsupported")
+
+    def _type_len(self, inner_type):
+        panda = self._panda
+
+        # array of pointer
+        if inner_type[-1] == '*':
+            inner_type_size = panda.bits // 8
+
+        # array of primitive
+        elif inner_type in struct_types:
+            inner_type_size = struct_types[inner_type][1]
+
+        # array of platform-specific base types
+        elif base_type := panda.cosi.base_type_from_name(inner_type):
+            inner_type_size = base_type.size()
+
+        # array of structs
+        elif struct_type := panda.cosi.type_from_name(inner_type):
+            inner_type_size = struct_type.size()
+
+        else:
+            raise ValueError(f'sizeof({inner_type}) cannot be determined')
+
+        return inner_type_size
+
+    def __getattr__(self, name):
+        field = self._type[name]
+        field_ptr = self._ptr + field.offset
+        field_type = field.type_name
+
+        return self._read_type(field_ptr, field_type)
+
+    def __getitem__(self, item):
+        panda = self._panda
+
+        # pointer to array
+        if self._type_name[-1] == ']':
+            inner_type, count = self._type_name[:-1].split('[')
+            length = int(count)
+
+            inner_type_size = self._type_len(inner_type)
+
+            # indexing a single field
+            if type(item) is int:
+                index = item
+                offset = inner_type_size * index
+
+                return self._read_type(self._ptr + offset, inner_type, fallback=True)
+
+            # slicing the array
+            elif type(item) is slice:
+                out = []
+                for i in range(0, length)[item]:
+                    offset = inner_type_size * i
+                    item = self._read_type(self._ptr + offset, inner_type, fallback=True)
+                    out.append(item)
+                return out
+            else:
+                raise ValueError(f'CosiGuestPointer cannot be sliced with type of {type(item)}')
+
+        # indexing pointer
+        elif type(item) is int:
+            index = item
+            inner_type_size = self._type_len(self._type_name)
+            offset = inner_type_size * index
+
+            return self._read_type(self._ptr + offset, self._type_name, fallback=True)
+
+        # slicing pointer
+        elif type(item) is slice:
+            if item.stop is None or item.stop < 0:
+                raise ValueError("Cannot slice a pointer without an end")
+
+            inner_type_size = self._type_len(self._type_name)
+
+            out = []
+            for i in range(item.start or 0, item.stop, item.step or 1):
+                offset = inner_type_size * i
+                item = self._read_type(self._ptr + offset, self._type_name, fallback=True)
+                out.append(item)
+            return out
+
+        # accessing field
+        else:
+            return self.__getattr__(item)
+
+    def __dir__(self):
+        if self._type is None:
+            return ['null_terminated', 'get_raw_ptr', 'cast']
+        else:
+            return [field[2] for field in self._type.fields()]
+
+    def before(self, type_name: str):
+        '''
+        Returns a pointer to the data following the current pointer of type `type_name`
+        '''
+
+        size = self._panda.cosi.type_from_name(type_name).size()
+        print(size)
+        ptr = self._ptr - size
+
+        return CosiGuestPointer(self._panda, type_name, ptr)
+
+    def after(self, type_name: str):
+        '''
+        Returns a pointer to the data following the current pointer of type `type_name`
+        '''
+
+        ptr = self._ptr + self._type.size()
+
+        return CosiGuestPointer(self._panda, type_name, ptr)
+
+    def as_linux_list(self, sibling: str, list_entry_type=None) -> list:
+        '''
+        Takes a list_head* and reads it into a list. If no `list_entry_type` is provided,
+        it is assumed to be equivelant to the parent struct the `list_head*` came from.
+
+        For example, if current_task.children is a `list_head*`, the parent would be
+        `current_task` (of type `task_struct`), so the list would default to being a list of
+        `task_struct` (of which `sibling` should be passed a value of `"sibling"`).
+
+        So if one does `current_task.children.as_linux_list("sibling")` it will return
+        a list of `CosiGuestPointer`s pointing to `task_struct`s.
+        '''
+
+        if type(list_entry_type) is str:
+            list_type_name = list_entry_type
+            list_entry_type = self._panda.cosi.type_from_name(list_entry_type)
+        elif list_entry_type is None:
+            parent = self._parent
+            if parent is None:
+                raise ValueError("The list_head has no parent and `list_entry_type` was not provided")
+            list_entry_type = parent._type
+            list_type_name = parent._type_name
+
+        field_offset = list_entry_type.offset_of_field(sibling)
+
+        ptrs = []
+        head = self.next
+        current = head
+        while head._ptr != current.next._ptr and current._ptr != self._ptr:
+            addr = current._ptr - field_offset
+            ptrs.append(CosiGuestPointer(self._panda, list_type_name, addr))
+            current = current.next
+
+        return ptrs
+
+    def deref(self):
+        return self[0]
+
+    def null_terminated(self) -> str:
+        '''
+        Read a CosiGuestPointer for a `char*` as a null-terminated string
+        '''
+
+        panda = self._panda
+        inner_type = self._type_name
+        cpu = panda.get_cpu()
+
+        if inner_type == 'char' or inner_type == 'unsigned char':
+            return panda.read_str(cpu, self._ptr)
+        else:
+            raise ValueError("Cannot call read_null_terminated on {inner_type}*")
+
+    def get_raw_ptr(self) -> int:
+        '''
+        Get the address in memory this points to
+        '''
+
+        return self._ptr
+
+    def cast(self, cast_to: str):
+        '''
+        Cast to a pointer of another type
+        '''
+
+        return CosiGuestPointer(self._panda, cast_to, self._ptr, parent=self._parent)
+
+    def container_of(self, type_name: str, field_name: str):
+        '''
+        Get a pointer to the struct containing this type
+        '''
+
+        container_type = self._panda.cosi.type_from_name(type_name)
+        offset_in_container = container_type.offset_of_field(field_name)
+
+        return container_type.at(self._ptr - offset_in_container)

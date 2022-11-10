@@ -86,18 +86,3 @@ osi_static! {
     #[symbol = "current_task"]
     static CURRENT_TASK: TaskStruct;
 }
-
-#[panda::asid_changed]
-fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-    let comm_data = CURRENT_TASK.comm(cpu).unwrap();
-    let task_comm_len = comm_data
-        .iter()
-        .position(|&x| x == 0u8)
-        .unwrap_or(TASK_COMM_LEN);
-
-    let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
-
-    println!("found process {}", proc_name);
-
-    false
-}
