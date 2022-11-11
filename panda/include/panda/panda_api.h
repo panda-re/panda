@@ -31,7 +31,7 @@ void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* 
 void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 
-int rr_get_guest_instr_count_external(void);
+uint64_t rr_get_guest_instr_count_external(void);
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
