@@ -231,11 +231,6 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 
-    # For direct access to -d logging flags
-    # unsigned is a lie. but it's the way QEMU treats it.
-    ffi.cdef("extern unsigned int qemu_loglevel;")
-    ffi.cdef("extern FILE* qemu_logfile;")
-
     # PPP Headers
     # Syscalls - load architecture-specific headers
     if arch == "i386":
@@ -269,6 +264,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h") # syscalls are the same?
     else:
         print("PANDA_DATATYPES: Architecture not supported")
+
+    # Define some common QEMU types
+    define_clean_header(ffi, include_dir + "/qemu_helpers.h")
 
     # Define some common panda datatypes
     define_clean_header(ffi, include_dir + "/panda_datatypes.h")
