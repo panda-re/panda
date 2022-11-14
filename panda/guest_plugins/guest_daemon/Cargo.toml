@@ -1,0 +1,11 @@
+[package]
+name = "guest_daemon"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+panda-channels = "0.3"
+memfd = "0.4.0"
+libloading = "0.7"
+daemonize-me = "1"
+libc = "0.2"

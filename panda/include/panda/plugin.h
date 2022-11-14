@@ -159,6 +159,8 @@ char** str_split(char *a_str, const char a_delim);
 extern gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 extern int panda_argc;
 
+
+char *panda_guest_plugin_path(const char *name);
 char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* name);
 char *panda_plugin_path(const char *name);
 char* panda_shared_library_path(const char* name);

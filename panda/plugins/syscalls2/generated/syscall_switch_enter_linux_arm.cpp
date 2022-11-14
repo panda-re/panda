@@ -5376,7 +5376,11 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc, int static_c
 	if (!panda_noreturn) {
 		struct hook h;
 		h.addr = ctx.retaddr;
-		h.asid = ctx.asid;
+		if (ctx.double_return) {
+			h.asid = 0;
+		} else {
+			h.asid = ctx.asid;
+		}
 		//h.cb.start_block_exec = hook_syscall_return;
 		//h.type = PANDA_CB_START_BLOCK_EXEC;
 		h.cb.before_tcg_codegen = hook_syscall_return;
@@ -5385,7 +5389,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc, int static_c
 		h.km = MODE_ANY; //you'd expect this to be user only
 		hooks_add_hook(&h);
 
-		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
+		running_syscalls[std::make_pair(ctx.retaddr, h.asid)] = ctx;
 	}
 #endif
 }

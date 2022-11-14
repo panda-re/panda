@@ -42,6 +42,7 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 		case 2: {
 			if (PPP_CHECK_CB(on_sys_fork_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
+			printf("fork return\n");
 			PPP_RUN_CB(on_sys_fork_return, cpu, pc) ;
 		}; break;
 		// 3 long sys_read ['unsigned int fd', 'char __user *buf', 'size_t count']
