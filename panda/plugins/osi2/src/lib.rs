@@ -5,12 +5,15 @@ use panda::mem::{read_guest_type, virtual_memory_read_into};
 use panda::plugins::osi2::{symbol_from_name, type_from_name};
 use panda::prelude::*;
 use panda::GuestType;
+use panda::GuestType;
 use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
 use panda::plugins::osi2::{osi_static, OsiType};
+
+use panda::plugins::syscalls2::Syscalls2Callbacks;
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 
@@ -154,6 +157,7 @@ osi_static! {
     #[symbol = "current_task"]
     static CURRENT_TASK: TaskStruct;
 }
+
 #[derive(Debug)]
 struct OsiProc {
     asid: u32,
@@ -236,7 +240,7 @@ struct Fdtable {
     close_on_exec: target_ptr_t, // type *long unsigned int
     fd: target_ptr_t,            // type **file
     full_fds_bits: target_ptr_t, // type *long unsigned int
-    max_fds: u32, // type unsigned int
+    max_fds: u32,                // type unsigned int
     open_fds: target_ptr_t, // type *long unsigned int | used as a bit vector, if nth bit is set, fd n is open
 
     //rcu: CallbackHead, // type callbackhead
@@ -247,8 +251,8 @@ struct Fdtable {
 #[osi(type_name = "files_struct")]
 struct FilesStruct {
     fd_array: [target_ptr_t; 64], // type *file[] | default length is defined as BITS_IN_LONG, might need to make this smarter/dependant on the system
-    fdt: target_ptr_t, // type *fdtable
-                       //fdtab: Fdtable, // type fdtable
+    fdt: target_ptr_t,            // type *fdtable
+                                  //fdtab: Fdtable, // type fdtable
 }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // Move the above into its own file one day :')%%%%%%%%%%%%%%%%
@@ -366,9 +370,14 @@ fn get_osi_file_info(
     // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
     // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
     // to repeat this process
-    let mut ret = OsiFile { fs_struct: ptr, name: "".to_string(), f_pos: 0, fd: fd};
+    let mut ret = OsiFile {
+        fs_struct: ptr,
+        name: "".to_string(),
+        f_pos: 0,
+        fd: fd,
+    };
     let path = file.f_path;
-    
+
     // read file->path->dentry to get a pointer to the first dentry we want to read;
     let mut name = read_dentry_name(cpu, path.dentry);
     // next read name stuff from vfsmount too
@@ -394,7 +403,7 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
         Some(res) => {
             println!("Read FileStruct | fdt {:x}", res.fdt);
             res.fd_array
-        },
+        }
         None => return None,
     };
     println!("Did not return none");
@@ -403,8 +412,11 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     let mut idx: u32 = 0;
     for fd in fd_array {
         //println!("Checking idx {} | fd {}", idx, fd);
-        let mut p = Path { dentry: 0, mnt: 0};
-        let mut f = File { f_path: p, f_pos: 0};
+        let mut p = Path { dentry: 0, mnt: 0 };
+        let mut f = File {
+            f_path: p,
+            f_pos: 0,
+        };
         match File::osi_read(cpu, fd).ok() {
             Some(res) => {
                 println!("Outstanding, I could actually read this");
@@ -412,7 +424,6 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
                     Some(f_info) => ret.files.push(f_info),
                     None => (),
                 };
-                
             }
             None => (),
         };
