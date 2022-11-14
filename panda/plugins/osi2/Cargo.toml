@@ -9,11 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 once_cell = "1.8.0"
-<<<<<<< HEAD
-panda-re = { version = "0.40.0", default-features = false }
-=======
 panda-re = { version = "0.43.0", default-features = false }
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
 #panda-re = { path = "/home/jmcleod/dev/panda-rs/panda-rs", default-features = false }
 regex = "1.5.4"
 volatility_profile = { path = "./volatility_profile" }

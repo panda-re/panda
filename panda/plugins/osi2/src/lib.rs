@@ -1,14 +1,9 @@
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-<<<<<<< HEAD
-use panda::mem::read_guest_type;
-use panda::plugins::syscalls2::Syscalls2Callbacks;
-=======
 use panda::GuestType;
 use panda::mem::{read_guest_type, virtual_memory_read_into};
 use panda::plugins::osi2::{symbol_from_name, type_from_name};
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
 use panda::prelude::*;
 use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 
@@ -16,6 +11,8 @@ use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
 use panda::plugins::osi2::{osi_static, OsiType};
+
+use panda::plugins::syscalls2::Syscalls2Callbacks;
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 
@@ -122,49 +119,9 @@ struct MmStruct {
     start_stack: target_ptr_t, // type long unsigned int
 }
 
-#[derive(Debug)]
-struct Version {
-    a: target_ptr_t,
-    b: target_ptr_t,
-    c: target_ptr_t,
-}
-
-// Digging around in kernel source for 3.7 traced these fields' types, kuid_t and kgid_t,
-// through a few definitions and found they were both structs which hold a single value of type
-// git_t or uid_t which are, in that kernel version, just unsigned ints
-#[derive(OsiType, Debug)]
-#[osi(type_name = "cred")]
-struct Cred {
-    uid: target_ptr_t, // type unsigned int
-    gid: target_ptr_t, // type unsigned int
-    euid: target_ptr_t, // type unsigned int
-    egid: target_ptr_t, // type unsigned int
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "mm")]
-struct Mm {
-    size: target_ptr_t,
-    pgd: target_ptr_t, // type *unnamed_bunch_of_stuff_3
-    arg_start: target_ptr_t, // type long unsigned int
-    start_brk: target_ptr_t, // type long unsigned int
-    brk: target_ptr_t, // type long unsigned int
-    start_strack: target_ptr_t, // type long unsigned int
-}
-
 #[derive(OsiType, Debug)]
 #[osi(type_name = "task_struct")]
 struct TaskStruct {
-<<<<<<< HEAD
-    size: target_ptr_t,
-
-    // Only one of tasks or next_task will exist as a field
-    tasks: target_ptr_t, // type list_head
-    next_task: target_ptr_t, // type ??
-
-    pid: target_ptr_t, // type int
-    tgid: target_ptr_t, //type int
-=======
     //size: target_ptr_t,
 
     // Only one of tasks or next_task will exist as a field
@@ -173,25 +130,16 @@ struct TaskStruct {
 
     pid: u32, // type int
     tgid: u32, //type int
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
     group_leader: target_ptr_t, // type *task_struct
     thread_group: target_ptr_t, // type list_head
 
     // Only one of real_parent or p_opptr will exist as a field
     real_parent: target_ptr_t, // type *task_struct 
-<<<<<<< HEAD
-    p_opptr: target_ptr_t, // type ??
-
-    // Only one of parent or p_pptr will exist as a field
-    parent: target_ptr_t, // type *task_struct
-    p_pptr: target_ptr_t, // type ??
-=======
     //p_opptr: target_ptr_t, // type ??
 
     // Only one of parent or p_pptr will exist as a field
     parent: target_ptr_t, // type *task_struct
     //p_pptr: target_ptr_t, // type ??
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
 
     mm: target_ptr_t, // type *mm_struct
     stack: target_ptr_t, // type *void
@@ -208,10 +156,7 @@ osi_static! {
     #[symbol = "current_task"]
     static CURRENT_TASK: TaskStruct;
 }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
+
 #[derive(Debug)]
 struct OsiProc {
     asid: u32,
@@ -221,7 +166,6 @@ struct OsiProc {
     ppid: u32,
     taskd: target_ptr_t,
 }
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
 
 #[derive(Debug)]
 struct OsiThread {
@@ -331,7 +275,6 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
     ret.start_time = start_time;
     
     let comm_data = CURRENT_TASK.comm(cpu).unwrap();
-    let p_opptr = CURRENT_TASK.p_opptr(cpu).unwrap();
     let task_comm_len = comm_data
         .iter()
         .position(|&x| x == 0u8)
@@ -559,9 +502,6 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
     }
     true
 }
-<<<<<<< HEAD
->>>>>>> added missing files
-=======
 
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
@@ -577,4 +517,3 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
 
     true
 }
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
