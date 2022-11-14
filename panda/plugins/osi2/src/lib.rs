@@ -224,9 +224,10 @@ struct Path {
 #[derive(OsiType, Debug)]
 #[osi(type_name = "file")]
 struct File {
-    //f_path: Path, // type Path
-    f_path: target_ptr_t, // placeholder for compilation until I can figure out what to do
-    f_pos: target_ptr_t,  // type long long int
+    #[osi(osi_type)]
+    f_path: Path, // type Path
+    //f_path: target_ptr_t, // placeholder for compilation until I can figure out what to do
+    f_pos: target_ptr_t, // type long long int
 }
 
 #[derive(OsiType, Debug)]
@@ -235,8 +236,9 @@ struct Fdtable {
     close_on_exec: target_ptr_t, // type *long unsigned int
     fd: target_ptr_t,            // type **file
     full_fds_bits: target_ptr_t, // type *long unsigned int
-    max_fds: u32,                // type unsigned int
-    open_fds: target_ptr_t,      // type *long unsigned int
+    max_fds: u32, // type unsigned int
+    open_fds: target_ptr_t, // type *long unsigned int | used as a bit vector, if nth bit is set, fd n is open
+
     //rcu: CallbackHead, // type callbackhead
     rcu: target_ptr_t, // placeholder for compilation until I can figure out what to do
 }
@@ -244,6 +246,7 @@ struct Fdtable {
 #[derive(OsiType, Debug)]
 #[osi(type_name = "files_struct")]
 struct FilesStruct {
+    fd_array: [target_ptr_t; 64], // type *file[] | default length is defined as BITS_IN_LONG, might need to make this smarter/dependant on the system
     fdt: target_ptr_t, // type *fdtable
                        //fdtab: Fdtable, // type fdtable
 }
@@ -336,13 +339,13 @@ fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t) -> String {
         };
         match Dentry::osi_read(cpu, current_dentry).ok() {
             Some(res) => dentry_struct = res,
-            None => break,
+            None => continue,
         }
         current_dentry_parent = dentry_struct.d_parent;
         let mut name_ptr: target_ptr_t = 0;
         match Qstr::osi_read(cpu, dentry_struct.d_name).ok() {
             Some(res) => name_ptr = res.name,
-            None => break,
+            None => continue,
         }
         // reads the pointer which points to the start of the name we want
         // this maybe works? Who can say
@@ -363,17 +366,9 @@ fn get_osi_file_info(
     // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
     // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
     // to repeat this process
-    let mut ret = OsiFile {
-        fs_struct: ptr,
-        name: "".to_string(),
-        f_pos: 0,
-        fd: fd,
-    };
-    let path = match Path::osi_read(cpu, file.f_path).ok() {
-        Some(res) => res,
-        None => return None,
-    };
-
+    let mut ret = OsiFile { fs_struct: ptr, name: "".to_string(), f_pos: 0, fd: fd};
+    let path = file.f_path;
+    
     // read file->path->dentry to get a pointer to the first dentry we want to read;
     let mut name = read_dentry_name(cpu, path.dentry);
     // next read name stuff from vfsmount too
@@ -392,7 +387,40 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     };
 
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
+    println!("Reading FileStruct");
     let files = FilesStruct::osi_read(cpu, files_ptr).ok();
+
+    let fd_array = match files {
+        Some(res) => {
+            println!("Read FileStruct | fdt {:x}", res.fdt);
+            res.fd_array
+        },
+        None => return None,
+    };
+    println!("Did not return none");
+
+    let mut fds = Vec::<File>::new();
+    let mut idx: u32 = 0;
+    for fd in fd_array {
+        //println!("Checking idx {} | fd {}", idx, fd);
+        let mut p = Path { dentry: 0, mnt: 0};
+        let mut f = File { f_path: p, f_pos: 0};
+        match File::osi_read(cpu, fd).ok() {
+            Some(res) => {
+                println!("Outstanding, I could actually read this");
+                match get_osi_file_info(cpu, res, fd, idx) {
+                    Some(f_info) => ret.files.push(f_info),
+                    None => (),
+                };
+                
+            }
+            None => (),
+        };
+        idx = idx + 1;
+    }
+    Some(ret)
+    // The old ways, fit only to be abandoned in light of the glory of the One True Way of Doing Things
+    /*
     let fdt = match files {
         Some(res) => res.fdt,
         None => 0,
@@ -440,6 +468,7 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
         }
     }
     Some(ret)
+    */
 }
 
 fn print_osiproc_info(cpu: &mut CPUState) -> bool {
