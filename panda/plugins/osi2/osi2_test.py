@@ -4,10 +4,6 @@ panda = Panda(generic='x86_64')
 @panda.queue_blocking
 def driver():
     panda.revert_sync('root')
-<<<<<<< HEAD
-    panda.load_plugin("osi2")
-    
-=======
     prof_file = "/home/rdm/cosi/ubuntu_4.15.0-72-generic_64.json.xz"
     
     panda.load_plugin("osi2", args = {"profile": prof_file})
@@ -38,8 +34,7 @@ def driver():
         #panda.plugins['osi2'].get_ts_info(cpu)
         #osi_proc = panda.plugins['osi_linux'].fill_osiproc(cpu, proc, current.taskd)
 
->>>>>>> 8a1d91852bf62bc6f66b228414b005f247092b1e
-    print(panda.run_serial_cmd("python3 -c 'import socket; serv = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM); cli = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM); serv.bind(\"/tmp/test_sock\"); cli.connect(\"/tmp/test_sock\"); x = 10;cli.send(x.to_bytes(4, byteorder=\"little\")); x = serv.recv(32); print(x); cli.close(); serv.close()'"))
+    print(panda.run_serial_cmd("cat /proc/version"))
     #print(panda.run_serial_cmd("python3 scripts/cli_script.py"))
     panda.end_analysis()
 

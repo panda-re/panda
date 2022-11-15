@@ -503,6 +503,7 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+/*
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
@@ -516,4 +517,4 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     println!("OSI2 INFO END\n\n");
 
     true
-}
+}*/
