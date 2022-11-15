@@ -802,7 +802,8 @@ class Panda():
             err = self.libpanda.panda_virtual_memory_read_external(env, addr_u, buf_a, length_a)
 
         if err < 0:
-            raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
+            # TODO: We should support a custom error class instead of a generic ValueError
+            raise ValueError(f"Failed to read guest memory at {addr:x} got err={err}")
 
         r = self.ffi.unpack(buf, length)
         if fmt == 'bytearray':
