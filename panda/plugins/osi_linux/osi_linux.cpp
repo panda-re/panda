@@ -99,18 +99,14 @@ static uint64_t get_file_position(CPUState *env, target_ptr_t file_struct) {
 static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
     target_ptr_t files = get_files(env, task_struct);
     target_ptr_t fds = kernel_profile->get_files_fds(env, files);
-    target_ptr_t fd_file_ptr, fd_file;
-
+    target_ptr_t fd_file = NULL;
     // fds is a flat array with struct file pointers.
-    // Calculate the address of the nth pointer and read it.
-    fd_file_ptr = fds + fd*sizeof(target_ptr_t);
-    if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
-        return (target_ptr_t)NULL;
+    // fds+fd*sizeof(target_ptr_t) is the address of the nth pointer that we need to read
+    auto err = struct_get(env, &fd_file, fds, fd*sizeof(target_ptr_t));
+    if (err != struct_get_ret_t::SUCCESS) {
+      LOG_ERROR("Unable to load file descriptor details");
     }
     fixupendian(fd_file);
-    if (fd_file == (target_ptr_t)NULL) {
-        return (target_ptr_t)NULL;
-    }
     return fd_file;
 }
 
