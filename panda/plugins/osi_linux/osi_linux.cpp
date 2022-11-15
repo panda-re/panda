@@ -76,6 +76,8 @@ static char *get_file_name(CPUState *env, target_ptr_t file_struct) {
     // Read addresses for dentry, vfsmnt structs.
     file_dentry = get_file_dentry(env, file_struct);
     file_mnt = get_file_mnt(env, file_struct);
+   OG_printf("(struct dentry *) file_dentry at " TARGET_FMT_lx "\n", file_dentry);
+   OG_printf("(struct vfsmount *) file_mnt at " TARGET_FMT_lx "\n", file_mnt);
 
     if (unlikely(file_dentry == (target_ptr_t)NULL || file_mnt == (target_ptr_t)NULL)) {
         LOG_INFO("failure resolving file struct " TARGET_PTR_FMT "/" TARGET_PTR_FMT, file_dentry, file_mnt);
@@ -85,6 +87,7 @@ static char *get_file_name(CPUState *env, target_ptr_t file_struct) {
     char *s1, *s2;
     s1 = read_vfsmount_name(env, file_mnt);
     s2 = read_dentry_name(env, file_dentry);
+    OG_printf("S1=%s, S2=%s\n", s1, s2);
     name = g_strconcat(s1, s2, NULL);
     g_free(s1);
     g_free(s2);
@@ -99,9 +102,12 @@ static uint64_t get_file_position(CPUState *env, target_ptr_t file_struct) {
 static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
     target_ptr_t files = get_files(env, task_struct);
     target_ptr_t fds = kernel_profile->get_files_fds(env, files);
-    target_ptr_t fd_file = NULL;
+    target_ptr_t fd_file = 0;
     // fds is a flat array with struct file pointers.
     // fds+fd*sizeof(target_ptr_t) is the address of the nth pointer that we need to read
+    OG_printf("(struct files_struct*) files at " TARGET_FMT_lx \
+           ", (struct file *(*)[32])fds at " TARGET_FMT_lx "\n", files, fds);
+
     auto err = struct_get(env, &fd_file, fds, fd*sizeof(target_ptr_t));
     if (err != struct_get_ret_t::SUCCESS) {
       LOG_ERROR("Unable to load file descriptor details");
@@ -116,6 +122,7 @@ static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct,
 static char *get_fd_name(CPUState *env, target_ptr_t task_struct, int fd) {
     target_ptr_t fd_file = get_file_struct_ptr(env, task_struct, fd);
     if (fd_file == (target_ptr_t)NULL) return NULL;
+    OG_printf("Get FDs[%d] name from " TARGET_FMT_lx "\n", fd, fd_file);
     return get_file_name(env, fd_file);
 }
 

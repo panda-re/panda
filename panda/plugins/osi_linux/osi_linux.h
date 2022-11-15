@@ -395,6 +395,7 @@ static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array
 static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
     char *name = NULL;
 
+    OG_printf("\nread_dentry name for (struct dentry*)0x" TARGET_FMT_lx "\n", dentry);
     // current path component
     char *pcomp = NULL;
     uint32_t pcomp_length = 0;
@@ -414,18 +415,19 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
     while (current_dentry_parent != current_dentry) {
         int og_err1, og_err2;
         current_dentry = current_dentry_parent;
-        //printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
-
-        // read dentry d_parent and d_name
-        memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
-        og_err1 = get_dentry_name(env, current_dentry, d_name);
+        OG_printf("Dentry loop: current_dentry(struct dentry*)0x" TARGET_FMT_lx "\n",  current_dentry);
+        // First calculate the parent that we'll use in the next loop iteration
         og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
-
-        // Note we don't fix endian of dentry name because it's a large(r than 4)
-        // byte buffer. Instead we'll fix it just before use (in guest_addr)
         fixupendian(current_dentry_parent);
 
-        //HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
+
+        // Now process the current dentry to get the d_name
+        // Note we don't `fixendian` on it because it's > 4 bytes, instead
+        // we'll fix it just before use (in guest_addr)
+        memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
+        og_err1 = get_dentry_name(env, current_dentry, d_name);
+
+        //HEXDUMP(d_name, ki.qstr.size, current_dentry + ki.path.d_name_offset);
         if (OG_SUCCESS != og_err1 || OG_SUCCESS != og_err2) {
             break;
         }
@@ -438,9 +440,31 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
             d_dname = (target_ptr_t)NULL;
         }
 
-        // read component
+        // We want to parse a `struct qstr` https://elixir.bootlin.com/linux/latest/source/include/linux/dcache.h#L48
+        // and get the unsigned int `len` field. then, skip past the `len` and `hash` field to read the `char* name` field.
+
+        // Prior to linux kernel 3.5, the len was always the 2nd entry in this structure.
+        // From kernel 3.5 and up, `len` and `hash` are stored using the HASH_LEN_DECLARE macro which will
+        // place `len` first if the guest is big-endian.
+        // See the HASH_LEN_DECLARE macro definiton here: https://elixir.bootlin.com/linux/latest/source/include/linux/dcache.h#L32
+        //
+        // This change was introduced to the linux kernel for version 3.5 in this commit:
+        // https://github.com/torvalds/linux/commit/26fe575028703948880fce4355a210c76bb0536e#diff-b11f554b3424c2d794e935f9d5839994f57fc241249928acd57103e2574eb5ccR42-R48
+        //
+        // For little endian guests, we skip always read `len` at offset 8. For big endian guests we read at offset 0 if kernel >=3.15, else offset 8.
+
+#if defined (TARGET_WORDS_BIGENDIAN)
+        // Big endian, if kernel >= 3.5 then pcomp length is first field so offset=0. Otherwise it will be second so offset=8
+        if (ki.version.a > 3 || (ki.version.a == 3 && ki.version.b > 5)) {
+          pcomp_length = *(uint32_t *)(d_name);
+        } else {
+          pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
+        }
+#else
+        // Little endian: kernel version doesn't matter, len will always be second after an unsigned int
         pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
-        fixupendian(pcomp_length);
+#endif
+        OG_printf("Pcomp length %d\n", pcomp_length);
         if (pcomp_length == (uint32_t)-1) { // Not sure why this happens, but it does
               printf("Warning: OSI_linux Unhandled pcomp value, ignoring\n");
               break;
@@ -456,14 +480,16 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
             }
         }
 
+        // read component
         target_ptr_t guest_addr = *(target_ptr_t *)(d_name + ki.qstr.name_offset);
         fixupendian(guest_addr);
+        OG_printf("Reading name from guest 0x" TARGET_FMT_lx "\n", guest_addr);
         og_err1 = panda_virtual_memory_rw(env, guest_addr, (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
 
     // I think this aims to be a re-implementation of the Linux kernel function
     // __dentry_path but the logic seems pretty different.
-        //printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
-        //printf("3#%s\n", pcomp);
+        OG_printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
+        OG_printf("3#%s\n", pcomp);
         if (-1 == og_err1) {
             break;
         }
@@ -535,20 +561,16 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
     while(current_vfsmount != current_vfsmount_parent) {
         int og_err0, og_err1;
         target_ptr_t current_vfsmount_dentry;
-        //int og_err2;
-        //target_ptr_t root_dentry;
         current_vfsmount = current_vfsmount_parent;
 
         // retrieve vfsmount members
         og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
-        og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
         fixupendian(current_vfsmount_dentry);
-        fixupendian(current_vfsmount_parent);
+        OG_printf("###get_dentry returns %d with (struct vfsmount *)0x" TARGET_PTR_FMT " -> (struct dentry *)0x" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
 
-        //printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
-        //printf("###R:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err2, current_vfsmount, root_dentry);
-        //og_err2 = get_vfsmount_root_dentry(env, current_vfsmount, &root_dentry);
-        //printf("###P:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err1, current_vfsmount, current_vfsmount_parent);
+        og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
+        fixupendian(current_vfsmount_parent);
+        OG_printf("###get_vsfmount_parent returns %d with (struct vfsmount *)0x" TARGET_PTR_FMT " -> (struct vfsmount *)0x" TARGET_PTR_FMT "\n", og_err1, current_vfsmount, current_vfsmount_parent);
 
         // check whether we should break out
         if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
@@ -560,7 +582,7 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 
         // read and copy component
         pcomp = read_dentry_name(env, current_vfsmount_dentry);
-        //printf("###S:%s\n", pcomp);
+        OG_printf("###Read dentry name from (struct dentry *)0x" TARGET_FMT_lx " to get '%s'\n", current_vfsmount_dentry, pcomp);
 
         // this may hapen it seems
         if (pcomp == NULL) {
@@ -590,7 +612,7 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
         g_strfreev(pcomps);
     }
 
-    //printf("###F:%s\n", name);
+    OG_printf("###F:%s\n", name);
     return name;
 }
 
