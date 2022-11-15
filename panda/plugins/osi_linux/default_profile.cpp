@@ -111,7 +111,6 @@ target_ptr_t default_get_file_fds(CPUState *cpu, target_ptr_t files)
         LOG_ERROR("Failed to retrieve file structs (error code: %d)", err);
         return (target_ptr_t)NULL;
     }
-    fixupendian(files_fds);
     return files_fds;
 }
 
