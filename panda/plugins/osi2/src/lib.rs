@@ -270,7 +270,7 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
         Some(res) => res.pgd,
         None => 0,
     };
-
+    println!("asid: {asid:x}");
     let start_time = CURRENT_TASK.start_time(cpu).unwrap();
     ret.start_time = start_time;
     
@@ -281,19 +281,23 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
         .unwrap_or(TASK_COMM_LEN);
 
     let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
+    println!("Name: {proc_name}");
     ret.name = proc_name;
 
     let pid = CURRENT_TASK.pid(cpu).unwrap();
+    println!("Pid: {pid:x}");
     ret.pid = pid;
 
     let parent_ptr = CURRENT_TASK.parent(cpu).unwrap();
     let parent = TaskStruct::osi_read(cpu, parent_ptr).unwrap();
     let ppid = parent.pid;
+    println!("Ppid: {ppid:x}");
     ret.ppid = ppid;
 
     // from osi_linux.cpp line166, p->taskd is being set to kernel_profile->get_group_leader
     // so presumably we can just read task_struct->group_leader to get that info?
     let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
+    println!("Taskd: {taskd:x}");
     ret.taskd = taskd;
 
     Some(ret)
@@ -379,20 +383,32 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
     println!("Reading FileStruct");
     let files = FilesStruct::osi_read(cpu, files_ptr).ok();
-
-    let fd_array = match files {
-        Some(res) => {
-            println!("Read FileStruct | fdt {:x}", res.fdt);
-            res.fd_array
-        },
+    let fdtab = match files {
+        Some(res) => res.fdt,
         None => return None,
     };
-    println!("Did not return none");
+
+    let fdtable = match Fdtable::osi_read(cpu, fdtab).ok() {
+        Some(res) => res,
+        None => return None,
+    };
+
+    let max_fds = fdtable.max_fds as u32;
+    println!("Max fds: {}", max_fds);
+    let open_fds_ptr = fdtable.open_fds;
+    println!("Open fds ptr: {open_fds_ptr:x} | {open_fds_ptr:b}");
+    let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
+    let mut fd = target_ptr_t::read_from_guest(cpu, fdtable.fd).unwrap();
+    //let fd_array = fdtable.fd[..max_fds];
+    println!("Open fds: {open_fds:b}");
 
     let mut fds = Vec::<File>::new();
-    let mut idx: u32 = 0;
-    for fd in fd_array {
-        //println!("Checking idx {} | fd {}", idx, fd);
+    let step = 64;
+    for idx in 0..max_fds {
+        if fd == 0 {
+            break
+        }
+        println!("Checking idx {} | fd {}", idx, fd);
         let mut p = Path { dentry: 0, mnt: 0};
         let mut f = File { f_path: p, f_pos: 0};
         match File::osi_read(cpu, fd).ok() {
@@ -406,57 +422,10 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
             }
             None => (),
         };
-        idx = idx + 1;
+        fd = fd + ((idx*step) as u64);
     }
     Some(ret)
-    // The old ways, fit only to be abandoned in light of the glory of the One True Way of Doing Things
-    /*
-    let fdt = match files {
-        Some(res) => res.fdt,
-        None => 0,
-    };
-    if fdt == 0 {
-        println!("No files found");
-        return None
-    } else {
-        let fdt_check = Fdtable::osi_read(cpu, fdt).ok();
-        let check = match fdt_check {
-            Some(ref res) => 1,
-            None => 0,
-        };
-        if check == 0 {
-            println!("Fdtable could not be read");
-            return None
-        } else {
-            let fdtable = fdt_check.unwrap();
-            let fd_max = fdtable.max_fds;
-            println!("max fds: {}", fd_max);
-            let mut ptr = fdtable.fd;
-            let mut fds = Vec::<File>::new();
-            for i in 0..fd_max {
-                let idx = (i as usize) * size_of::<target_ptr_t>();
-                ptr = ptr + (idx as u64);
-                match target_ptr_t::read_from_guest(cpu, ptr).ok() {
-                    Some(res) => {
-                        let mut f = File{ f_path: 0, f_pos: 0};
-                        match File::osi_read(cpu, res).ok() {
-                            Some(file_read) => f = file_read,
-                            None => break,
-                        };
-                        let f_info = get_osi_file_info(cpu, f, res, idx as u32);
-                        match f_info {
-                            Some(succ) => ret.files.push(succ),
-                            None => (),
-                        }
-                    },
-                    None => break,
-             
-                }
-            }
-        }
-    }
-    Some(ret)
-    */
+    
 }
 
 fn print_osiproc_info(cpu: &mut CPUState) -> bool {
@@ -503,18 +472,19 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-/*
+
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-    print_osiproc_info(cpu);
+    get_osiproc_info(cpu);
+    //print_osiproc_info(cpu);
     
-    print_osithread_info(cpu);
+    //print_osithread_info(cpu);
 
-    print_osifile_info(cpu);
+    //print_osifile_info(cpu);
 
     println!("OSI2 INFO END\n\n");
 
     true
-}*/
+}
