@@ -14,67 +14,52 @@ def run_cmd():
 
     @panda.cb_asid_changed()
     def print_current_process_files(cpu, old, new):
-        # get the address of current_task
-        current_task_addr = panda.cosi.find_per_cpu_address('current_task')
+        cosi_cur = panda.cosi.get('task_struct', 'current_task', per_cpu=True)
+        try:
+            cosi_fdt = cosi_cur.files.fdt
+        except Exception as e:
+            print(f"Goofed: {e}")
+            return 0
+        max_fds = cosi_fdt.max_fds
+        open_fds = cosi_fdt.open_fds.deref()
+        ofd_arr = []
+        bv = open_fds
 
-        # get the type of current_task
-        task_struct = panda.cosi.type_from_name('task_struct')
-
-        files_offset = task_struct['files'].offset
-        files_type_size = 8
-        files_ptr = current_task_addr + files_offset
-        #files = panda.virtual_memory_read(panda.get_cpu(), files_ptr, files_size, fmt='bytes')
-
-        files_struct = panda.cosi.type_from_name('files_struct')
-        fd_array_offset = files_struct['fd_array'].offset
-        #print(dir(files_struct['fd_array']))
-        fd_array_type = panda.cosi.base_type_from_name(files_struct['fd_array'].type_name)
-        fd_array_type_size = 64*8
-        fd_array_ptr = files_ptr + fd_array_offset
-        # read fd_array field of file_struct, has type *file/is an array of file pointers
-        fd_array = panda.virtual_memory_read(cpu, fd_array_ptr, fd_array_type_size, fmt = 'ptrlist')
-
-        # get offset of fdtab inside of files_struct
-        fdtab_offset = files_struct['fdtab'].offset
-        fdtable = panda.cosi.type_from_name('fdtable')
-
-        # get offset of the fd: **file field in fdtable to try and resolve that
-        # ideally this should give us the same information as fd_array above, eventually
-        fd_offset = fdtable['fd'].offset
-        fd_type_size = 8
-        # fd_ptr_ptr has type **file
-        fd_ptr_ptr = files_ptr + fdtab_offset + fd_offset
-        # maybe has type *file?
-        fd_ptr = panda.virtual_memory_read(cpu, fd_ptr_ptr, fd_type_size, fmt='int')
-
-        open_fds_offset = fdtable['open_fds'].offset
-        open_fds_type_size = 8
-        open_fds_ptr = files_ptr + fdtab_offset + open_fds_offset
-        open_fds = panda.virtual_memory_read(cpu, open_fds_ptr, open_fds_type_size, fmt='int')
-
-        fd_list = []
-        bv=open_fds
-        for i in range(0, 64):
+        for i in range(len(f"{open_fds:b}")):
             if bv%2:
-                fd_list.append(i)
-            bv = bv>>1
-
-        for e in range(len(fd_array)):
-            if e in fd_list:
-                if fd_array[e] != 0:
-                    print(f"Got one! idx {e} in {fd_array[e]=:x}")
+                ofd_arr.append(i)
+            bv>>1
+        cosi_fd = []
+        print(type(max_fds))
+        for fd in cosi_fdt.fd[:max_fds]:
+            if fd._ptr == 0:
+                break
+            dname = ""
+            dentry = fd.f_path.dentry
+            while dentry._ptr != dentry.d_parent._ptr:
+                if dname == "":
+                    term = ''
                 else:
-                    print(f"False positive on idx {e}")
-            elif fd_array[e]!= 0:
-                print(f"False negative, {fd_array[e]=:x}")
-        
-        # read the comm field to get the process name/command
-        comm_ptr = current_task_addr + task_struct['comm'].offset
-        comm = panda.read_str(cpu, comm_ptr)
+                    term = '/'
+                dname = dentry.d_name.name.null_terminated() + term + dname
+                dentry = dentry.d_parent
+            mnt_root = ""
+            mnt_pt = fd.f_path.mnt.container_of('mount', 'mnt')
+            mnt_dentry = mnt_pt.mnt_mountpoint
+            #print(f"{mnt_dentry.d_name.name.null_terminated()=}")
+            mname = dname
+            while mnt_dentry._ptr != mnt_dentry.d_parent._ptr:
+                #print(f"Component: {mnt_dentry.d_name.name.null_terminated()}")
+                mname = mnt_dentry.d_name.name.null_terminated() + '/' + mname
+                mnt_dentry = mnt_dentry.d_parent
+            cosi_fd.append(mname)
+            #cosi_fd.append(dname)
+
+        comm = cosi_cur.comm
 
         print(f"Current task: {comm}")
-        print(f"\t{fd_ptr_ptr:x} | {fd_ptr=:x} | {fd_array} | {open_fds=:x} | {fd_list=}")
-
+        print(f"\t{cosi_fd=} | {open_fds=:b} | {ofd_arr}")
+        print("test")
         current = panda.plugins['osi'].get_current_process(cpu)
         if current.name != panda.ffi.NULL:
             name = panda.ffi.string(current.name).decode('utf-8', errors='ignore')
@@ -91,6 +76,7 @@ def run_cmd():
                 if res_name := panda.ffi.string(fname).decode('utf-8', errors='ignore'):
                     if res_name != panda.ffi.NULL:
                         print(f"{i=} | {res_name=}")
+        return 1
 
 
     # run a command
