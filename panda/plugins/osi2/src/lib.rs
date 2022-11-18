@@ -278,7 +278,7 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
         Some(res) => res.pgd,
         None => 0,
     };
-    println!("asid: {asid:x}");
+    //println!("asid: {asid:x}");
     let start_time = CURRENT_TASK.start_time(cpu).unwrap();
     ret.start_time = start_time;
 
@@ -289,23 +289,23 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
         .unwrap_or(TASK_COMM_LEN);
 
     let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
-    println!("Name: {proc_name}");
+    //println!("Name: {proc_name}");
     ret.name = proc_name;
 
     let pid = CURRENT_TASK.pid(cpu).unwrap();
-    println!("Pid: {pid:x}");
+    //println!("Pid: {pid:x}");
     ret.pid = pid;
 
     let parent_ptr = CURRENT_TASK.parent(cpu).unwrap();
     let parent = TaskStruct::osi_read(cpu, parent_ptr).unwrap();
     let ppid = parent.pid;
-    println!("Ppid: {ppid:x}");
+    //println!("Ppid: {ppid:x}");
     ret.ppid = ppid;
 
     // from osi_linux.cpp line166, p->taskd is being set to kernel_profile->get_group_leader
     // so presumably we can just read task_struct->group_leader to get that info?
     let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
-    println!("Taskd: {taskd:x}");
+    //println!("Taskd: {taskd:x}");
     ret.taskd = taskd;
 
     Some(ret)
@@ -334,12 +334,14 @@ struct OsiFiles {
 
 // remimplement read_dentry_name from osi_linux.h
 fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t) -> String {
+    println!("Read dentry name enter");
     let mut ret = "".to_owned();
 
     let mut current_dentry_parent = dentry;
     let mut current_dentry: target_ptr_t = 0;
 
     while current_dentry_parent != current_dentry {
+        println!("Inside while loop");
         current_dentry = current_dentry_parent;
         let mut dentry_struct = Dentry {
             d_parent: 0,
@@ -355,9 +357,11 @@ fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t) -> String {
             Some(res) => name_ptr = res.name,
             None => continue,
         }
+        println!("before getting name: {name_ptr:x}");
         // reads the pointer which points to the start of the name we want
         // this maybe works? Who can say
-        let name = unsafe { CStr::from_ptr(name_ptr as *const c_char).to_str().unwrap() };
+        let name = unsafe { CStr::from_ptr(name_ptr as *const c_char).to_str().ok() };
+
         ret = ret.to_owned() + name
     }
 
@@ -384,8 +388,10 @@ fn get_osi_file_info(
 
     // read file->path->dentry to get a pointer to the first dentry we want to read;
     let mut name = read_dentry_name(cpu, path.dentry);
+
     // next read name stuff from vfsmount too
-    let mnt = VfsMount::osi_read(cpu, path.mnt).unwrap();
+    let mnt = VfsMount::osi_read(cpu, path.mnt).ok()?;
+    println!("After VFSMount read");
     let name2 = read_dentry_name(cpu, mnt.mnt_root);
     ret.name = name.to_owned() + &name2;
 
@@ -401,21 +407,14 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
 
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
     println!("Reading FileStruct");
-    let files = FilesStruct::osi_read(cpu, files_ptr).ok();
-    let fdtab = match files {
-        Some(res) => res.fdt,
-        None => return None,
-    };
+    let files = FilesStruct::osi_read(cpu, files_ptr).ok()?;
+    let fdtab = files.fdt;
 
-    let fdtable = match Fdtable::osi_read(cpu, fdtab).ok() {
-        Some(res) => res,
-        None => return None,
-    };
+    let fdtable = Fdtable::osi_read(cpu, fdtab).ok()?;
 
     let max_fds = fdtable.max_fds as u32;
     println!("Max fds: {}", max_fds);
     let open_fds_ptr = fdtable.open_fds;
-    println!("Open fds ptr: {open_fds_ptr:x} | {open_fds_ptr:b}");
     let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
     let mut fd = target_ptr_t::read_from_guest(cpu, fdtable.fd).unwrap();
     //let fd_array = fdtable.fd[..max_fds];
@@ -427,7 +426,7 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
         if fd == 0 {
             break;
         }
-        println!("Checking idx {} | fd {}", idx, fd);
+        println!("Checking idx {} | fd {:x}", idx, fd);
         let mut p = Path { dentry: 0, mnt: 0 };
         let mut f = File {
             f_path: p,
@@ -435,15 +434,20 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
         };
         match File::osi_read(cpu, fd).ok() {
             Some(res) => {
-                println!("Outstanding, I could actually read this");
+                println!("Inside the file match");
                 match get_osi_file_info(cpu, res, fd, idx) {
-                    Some(f_info) => ret.files.push(f_info),
+                    Some(f_info) => {
+                        println!("inside get osi file info match");
+                        ret.files.push(f_info)
+                    }
                     None => (),
                 };
+                println!("inside file match end")
             }
             None => (),
         };
         fd = fd + ((idx * step) as u64);
+        println!("End of {idx}");
     }
     Some(ret)
 }
@@ -496,12 +500,12 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-    get_osiproc_info(cpu);
-    //print_osiproc_info(cpu);
+    //get_osiproc_info(cpu);
+    print_osiproc_info(cpu);
 
-    //print_osithread_info(cpu);
+    print_osithread_info(cpu);
 
-    //print_osifile_info(cpu);
+    print_osifile_info(cpu);
 
     println!("OSI2 INFO END\n\n");
 

@@ -262,8 +262,6 @@ dependencies = [
 [[package]]
 name = "panda-re"
 version = "0.43.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f78607a1cc487b5c3f5e64c1a2310530513ceeb05d6864202354f13fb6f10260"
 dependencies = [
  "array-init",
  "dirs",
@@ -283,8 +281,6 @@ dependencies = [
 [[package]]
 name = "panda-re-macros"
 version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb868fa4fcfe358f85287ad33ae0488b60d6f2b7ab4cdf11739418f6523ca8f"
 dependencies = [
  "darling",
  "doc-comment",
@@ -296,8 +292,6 @@ dependencies = [
 [[package]]
 name = "panda-re-sys"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
 
 [[package]]
 name = "paste"

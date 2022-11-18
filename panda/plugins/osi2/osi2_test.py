@@ -23,6 +23,7 @@ def driver():
 
         current_thread = panda.plugins['osi'].get_current_thread(cpu)
         print(f"{current_thread.pid=:x} | {current_thread.tid=:x}")
+        
         MAX_FD_LIM = 256
         for i in range(0, MAX_FD_LIM):
             fname = panda.plugins["osi_linux"].osi_linux_fd_to_filename(cpu, current, i)
@@ -30,6 +31,12 @@ def driver():
                 if res_name := panda.ffi.string(fname).decode('utf-8', errors='ignore'):
                     if res_name != panda.ffi.NULL:
                         print(f"{i=} | {res_name=}")
+                    else:
+                        break
+                else:
+                    break
+            else:
+                break
         return 1
         #panda.plugins['osi2'].get_ts_info(cpu)
         #osi_proc = panda.plugins['osi_linux'].fill_osiproc(cpu, proc, current.taskd)
