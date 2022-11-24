@@ -30,10 +30,22 @@ def run_cmd():
                 ofd_arr.append(i)
             bv>>1
         cosi_fd = []
-        print(type(max_fds))
+        print(cosi_fdt.fd)
+        idx = 0
+        fd_ptr = cosi_fdt.fd._ptr
         for fd in cosi_fdt.fd[:max_fds]:
             if fd._ptr == 0:
                 break
+            '''
+            try:
+                fd_read = panda.virtual_memory_read(cpu, fd_ptr, length = 8, fmt='int')
+                print(f"[python] Read {fd_read:x} from {fd_ptr:x}")
+            except Exception as e:
+                print(f"[python err] Couldn't read {fd_ptr:x} | {e}")
+                
+            fd_ptr += 8
+            '''
+            print(f"[python] FD {idx} ptr: {fd._ptr=:x} | {fd.f_path.dentry._ptr:x}")
             dname = ""
             dentry = fd.f_path.dentry
             while dentry._ptr != dentry.d_parent._ptr:
@@ -54,12 +66,13 @@ def run_cmd():
                 mnt_dentry = mnt_dentry.d_parent
             cosi_fd.append(mname)
             #cosi_fd.append(dname)
+            idx += 1
 
         comm = cosi_cur.comm
 
         print(f"Current task: {comm}")
         print(f"\t{cosi_fd=} | {open_fds=:b} | {ofd_arr}")
-        print("test")
+        '''
         current = panda.plugins['osi'].get_current_process(cpu)
         if current.name != panda.ffi.NULL:
             name = panda.ffi.string(current.name).decode('utf-8', errors='ignore')
@@ -76,6 +89,7 @@ def run_cmd():
                 if res_name := panda.ffi.string(fname).decode('utf-8', errors='ignore'):
                     if res_name != panda.ffi.NULL:
                         print(f"{i=} | {res_name=}")
+        '''
         return 1
 
 
