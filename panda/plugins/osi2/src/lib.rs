@@ -194,19 +194,22 @@ struct CallbackHead {
     func: target_ptr_t, // type *function
     next: target_ptr_t, // type *callback_head
 }
+const QSTR_NAME_LEN: usize = 256;
 
 #[derive(OsiType, Debug)]
 #[osi(type_name = "qstr")]
 struct Qstr {
-    name: target_ptr_t, // type *char
+    //name: target_ptr_t, // type *char
+    name: [u8; QSTR_NAME_LEN], // trying it this way for easier reading?
 }
 
 #[derive(OsiType, Debug)]
 #[osi(type_name = "dentry")]
 struct Dentry {
     d_parent: target_ptr_t, // type *dentry
-    d_name: target_ptr_t, // type qstr (struct qstr { union { struct {HASH_LEN_DECLARE;}; u64 hash_len; } const unsigned char *name;})
-                          //TODO because it's a lot of bullshit I don't want to think about
+    //d_name: target_ptr_t, // type qstr (struct qstr { union { struct {HASH_LEN_DECLARE;}; u64 hash_len; } const unsigned char *name;})
+    #[osi(osi_type)]
+    d_name: Qstr,
 }
 
 #[derive(OsiType, Debug)]
@@ -334,35 +337,45 @@ struct OsiFiles {
 
 // remimplement read_dentry_name from osi_linux.h
 fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t) -> String {
-    println!("Read dentry name enter");
     let mut ret = "".to_owned();
 
     let mut current_dentry_parent = dentry;
     let mut current_dentry: target_ptr_t = 0;
 
     while current_dentry_parent != current_dentry {
-        println!("Inside while loop");
         current_dentry = current_dentry_parent;
+        let mut qd_name = Qstr { name: [0; 256] };
         let mut dentry_struct = Dentry {
             d_parent: 0,
-            d_name: 0,
+            d_name: qd_name,
         };
         match Dentry::osi_read(cpu, current_dentry).ok() {
             Some(res) => dentry_struct = res,
             None => continue,
         }
+        //println!("Read d_parent fine: {:x}", dentry_struct.d_parent);
         current_dentry_parent = dentry_struct.d_parent;
-        let mut name_ptr: target_ptr_t = 0;
-        match Qstr::osi_read(cpu, dentry_struct.d_name).ok() {
-            Some(res) => name_ptr = res.name,
-            None => continue,
-        }
-        println!("before getting name: {name_ptr:x}");
+        /*
+        let name_ptr = match Qstr::osi_read(cpu, dentry_struct.d_name).ok() {
+            Some(res) => res.name,
+            None => { println!("fucked up reading qstr"); continue},
+        }; */
+        let name_ptr = dentry_struct.d_name.name;
+        println!("Read qstr fine");
+        let name_len = name_ptr
+            .iter()
+            .position(|&x| x == 0u8)
+            .unwrap_or(QSTR_NAME_LEN);
+
+        let name = String::from_utf8_lossy(&name_ptr[..name_len]).into_owned();
+        println!("Got name: {name} with len {name_len}");
+
+        // PHASED OUT FOR NOW BECAUSE SEGFAULT
         // reads the pointer which points to the start of the name we want
         // this maybe works? Who can say
-        let name = unsafe { CStr::from_ptr(name_ptr as *const c_char).to_str().ok() };
+        //let name_catch = unsafe {CStr::from_ptr(name_ptr as *const c_char).to_str().ok()};
 
-        ret = ret.to_owned() + name
+        ret = ret.to_owned() + &name
     }
 
     return ret;
@@ -378,6 +391,7 @@ fn get_osi_file_info(
     // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
     // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
     // to repeat this process
+    //println!("checking file with fd {fd}");
     let mut ret = OsiFile {
         fs_struct: ptr,
         name: "".to_string(),
@@ -385,13 +399,13 @@ fn get_osi_file_info(
         fd: fd,
     };
     let path = file.f_path;
-
+    //println!("Reading starting with dentry @ {:x}", path.dentry);
     // read file->path->dentry to get a pointer to the first dentry we want to read;
     let mut name = read_dentry_name(cpu, path.dentry);
 
     // next read name stuff from vfsmount too
     let mnt = VfsMount::osi_read(cpu, path.mnt).ok()?;
-    println!("After VFSMount read");
+    println!("\tRead vfsmount ok | dentry name info: {name}");
     let name2 = read_dentry_name(cpu, mnt.mnt_root);
     ret.name = name.to_owned() + &name2;
 
@@ -416,17 +430,31 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     println!("Max fds: {}", max_fds);
     let open_fds_ptr = fdtable.open_fds;
     let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
-    let mut fd = target_ptr_t::read_from_guest(cpu, fdtable.fd).unwrap();
+    let mut fd_ptr = fdtable.fd;
     //let fd_array = fdtable.fd[..max_fds];
     println!("Open fds: {open_fds:b}");
 
     let mut fds = Vec::<File>::new();
-    let step = 64;
+    let step = size_of::<target_ptr_t>() as u64;
     for idx in 0..max_fds {
+        let fd = target_ptr_t::read_from_guest(cpu, fd_ptr).unwrap();
         if fd == 0 {
             break;
         }
-        println!("Checking idx {} | fd {:x}", idx, fd);
+        let bv_check = open_fds >> idx;
+        println!("Getting file info for fd {idx} w/ ptr 0x{fd:x} | fd_arr ptr 0x{fd_ptr:x}");
+        //println!("Checking if ({open_fds:b} >> {idx} = {bv_check:b}) == 0");
+        if bv_check == 0 {
+            break;
+        }
+
+        //println!("\tChecking if {bv_check:b} % 2 == 0");
+        if bv_check % 2 == 0 {
+            //println!("\t\tFAIL");
+            fd_ptr = fd_ptr + step;
+            continue;
+        }
+
         let mut p = Path { dentry: 0, mnt: 0 };
         let mut f = File {
             f_path: p,
@@ -434,20 +462,17 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
         };
         match File::osi_read(cpu, fd).ok() {
             Some(res) => {
-                println!("Inside the file match");
                 match get_osi_file_info(cpu, res, fd, idx) {
-                    Some(f_info) => {
-                        println!("inside get osi file info match");
-                        ret.files.push(f_info)
+                    Some(f_info) => ret.files.push(f_info),
+                    None => {
+                        println!("Failed to read info for fd {idx}");
+                        ()
                     }
-                    None => (),
                 };
-                println!("inside file match end")
             }
             None => (),
         };
-        fd = fd + ((idx * step) as u64);
-        println!("End of {idx}");
+        fd_ptr = fd_ptr + step;
     }
     Some(ret)
 }
@@ -500,13 +525,15 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
+    get_osifiles_info(cpu);
     //get_osiproc_info(cpu);
+    /*
     print_osiproc_info(cpu);
 
     print_osithread_info(cpu);
 
     print_osifile_info(cpu);
-
+    */
     println!("OSI2 INFO END\n\n");
 
     true
