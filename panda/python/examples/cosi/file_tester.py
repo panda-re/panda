@@ -45,7 +45,7 @@ def run_cmd():
                 
             fd_ptr += 8
             '''
-            print(f"[python] FD {idx} ptr: {fd._ptr=:x} | {fd.f_path.dentry._ptr:x}")
+            #print(f"[python] FD {idx} ptr: {fd._ptr=:x} | {fd.f_path.dentry._ptr:x}")
             dname = ""
             dentry = fd.f_path.dentry
             while dentry._ptr != dentry.d_parent._ptr:
@@ -57,10 +57,12 @@ def run_cmd():
                 dentry = dentry.d_parent
             mnt_root = ""
             mnt_pt = fd.f_path.mnt.container_of('mount', 'mnt')
+            #print(f"Mount struct ptr: {mnt_pt._ptr:x}")
             mnt_dentry = mnt_pt.mnt_mountpoint
             #print(f"{mnt_dentry.d_name.name.null_terminated()=}")
             mname = dname
             while mnt_dentry._ptr != mnt_dentry.d_parent._ptr:
+                #print(f"mnt_dentry ptr: {mnt_dentry._ptr:x}")
                 #print(f"Component: {mnt_dentry.d_name.name.null_terminated()}")
                 mname = mnt_dentry.d_name.name.null_terminated() + '/' + mname
                 mnt_dentry = mnt_dentry.d_parent
