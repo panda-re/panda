@@ -29,18 +29,22 @@ def run_cmd():
     # set the volatility symbol table for cosi to use
     panda.load_plugin("osi2", { "profile": "ubuntu:4.15.0-72-generic:64.json.xz" })
 
+    @panda.cb_asid_changed
+    def print_current_process_files(cpu, old, new):
+        current_task = panda.cosi.get('task_struct', 'current_task', per_cpu=True)
+
+        creds = Cred(current_task.cred)
+        print(f"comm = {current_task.comm}")
+        print(f"uid = {creds.uid}")
+        print(f"gid = {creds.gid}")
+        print(f"euid = {creds.euid}")
+        print(f"egid = {creds.egid}")
+        print()
+
+        return 0
+
     # run a command
     panda.run_serial_cmd("cat /proc/version")
-
-    current_task = panda.cosi.get('task_struct', 'current_task', per_cpu=True)
-    creds = Cred(current_task.cred)
-
-    print(f"comm = {current_task.comm}")
-    print(f"uid = {creds.uid}")
-    print(f"gid = {creds.gid}")
-    print(f"euid = {creds.euid}")
-    print(f"egid = {creds.egid}")
-    print()
 
     panda.end_analysis()
 
