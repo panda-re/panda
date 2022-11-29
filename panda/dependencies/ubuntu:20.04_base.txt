@@ -80,5 +80,6 @@ libusbredirparser1
 libvirglrenderer1
 zlib1g
 
-#rr2 depends on libarchive
+#rr2 dependencies
 libarchive-dev
+libssl-dev
