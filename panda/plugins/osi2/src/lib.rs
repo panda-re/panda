@@ -19,12 +19,13 @@ static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 /// Interface for other plugins to interact with
 mod ffi;
 mod kaslr;
-//mod structs;
+mod structs;
 
-//use structs;
 use kaslr::kaslr_offset;
 
 use ffi::offset_of_field;
+
+use structs::*;
 
 #[derive(PandaArgs)]
 #[name = "osi2"]
@@ -80,190 +81,11 @@ fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
     cpu_offset
 }
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-// Move the below into its own file one day :')%%%%%%%%%%%%%%%%
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-/// Max length of process command (`comm` field in task_struct)
-const TASK_COMM_LEN: usize = 16;
-
-//#################################################################
-//#################### Task related structures ####################
-//#################################################################
-
-#[derive(Debug)]
-struct Version {
-    a: target_ptr_t,
-    b: target_ptr_t,
-    c: target_ptr_t,
-}
-
-// Digging around in kernel source for 3.7 traced these fields' types, kuid_t and kgid_t,
-// through a few definitions and found they were both structs which hold a single value of type
-// git_t or uid_t which are, in that kernel version, just unsigned ints
-#[derive(OsiType, Debug)]
-#[osi(type_name = "cred")]
-struct CredStruct {
-    uid: target_ptr_t, // type unsigned int
-    gid: target_ptr_t, // type unsigned int
-    euid: target_ptr_t, // type unsigned int
-    egid: target_ptr_t, // type unsigned int
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "mm_struct")]
-struct MmStruct {
-    pgd: u32, // type *unnamed_bunch_of_stuff_3
-    arg_start: target_ptr_t, // type long unsigned int
-    start_brk: target_ptr_t, // type long unsigned int
-    brk: target_ptr_t, // type long unsigned int
-    start_stack: target_ptr_t, // type long unsigned int
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "task_struct")]
-struct TaskStruct {
-    // Only one of tasks or next_task will exist as a field
-    tasks: target_ptr_t, // type list_head
-    //next_task: target_ptr_t, // type ??
-
-    pid: u32, // type int
-    tgid: u32, //type int
-    group_leader: target_ptr_t, // type *task_struct
-    thread_group: target_ptr_t, // type list_head
-
-    // Only one of real_parent or p_opptr will exist as a field
-    real_parent: target_ptr_t, // type *task_struct 
-    //p_opptr: target_ptr_t, // type ??
-
-    // Only one of parent or p_pptr will exist as a field
-    parent: target_ptr_t, // type *task_struct
-    //p_pptr: target_ptr_t, // type ??
-
-    mm: target_ptr_t, // type *mm_struct
-    stack: target_ptr_t, // type *void
-    real_cred: target_ptr_t, // type *cred
-    cred: target_ptr_t, // type *cred
-    comm: [u8; TASK_COMM_LEN], // type char[]
-    files: target_ptr_t, // type *files_struct
-    start_time: target_ptr_t, // type long long unsigned int
-
-}
-
 osi_static! {
     #[per_cpu]
     #[symbol = "current_task"]
     static CURRENT_TASK: TaskStruct;
 }
-
-#[derive(Debug)]
-struct OsiProc {
-    asid: u32,
-    start_time: target_ptr_t,
-    name: String,
-    pid: u32,
-    ppid: u32,
-    taskd: target_ptr_t,
-}
-
-#[derive(Debug)]
-struct OsiThread {
-    tid: u32,
-    pid: u32,
-}
-
-//#################################################################
-//#################### File related structures ####################
-//#################################################################
-#[derive(OsiType, Debug)]
-#[osi(type_name = "vm_area_struct")]
-struct VmAreaStruct {
-    vm_mm: target_ptr_t, // type *mm_struct
-    vm_start: target_ptr_t, // type long unsigned int
-    vm_end: target_ptr_t, // type long unsigned int
-    vm_next: target_ptr_t, // type *vm_area_struct
-    vm_file: target_ptr_t, // type *file
-    vm_flags: target_ptr_t, // type long unsigned int
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "callback_head")]
-struct CallbackHead {
-    func: target_ptr_t, // type *function
-    next: target_ptr_t, // type *callback_head
-}
-const QSTR_NAME_LEN: usize = 256;
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "qstr")]
-struct Qstr {
-    unnamed_field_0: u64, // type union {struct { HASH_LEN_DECLARE; }; u64 hash_len;}
-    name: target_ptr_t, // type *char
-    //name: [u8; QSTR_NAME_LEN] // trying it this way for easier reading?
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "dentry")]
-struct Dentry {
-    d_parent: target_ptr_t, // type *dentry
-    //d_name: target_ptr_t, // type qstr (struct qstr { union { struct {HASH_LEN_DECLARE;}; u64 hash_len; } const unsigned char *name;})
-    #[osi(osi_type)]
-    d_name: Qstr,
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "mount")]
-struct Mount {
-    mnt_mountpoint: target_ptr_t, // type *dentry
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "vfsmount")]
-struct VfsMount {
-    mnt_flags: i32, // type int
-    mnt_root: target_ptr_t, // type *dentry
-    //TODO: see Dentry
-    //mnt_sb: SuperBlock, // type SuperBlock
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "path")]
-struct Path {
-    dentry: target_ptr_t, // type *dentry
-    mnt: target_ptr_t, // type *vfsmount
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "file")]
-struct File {
-    #[osi(osi_type)]
-    f_path: Path, // type Path
-    f_pos: target_ptr_t, // type long long int
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "fdtable")]
-struct Fdtable {
-    close_on_exec: target_ptr_t, // type *long unsigned int
-    fd: target_ptr_t, // type **file
-    full_fds_bits: target_ptr_t, // type *long unsigned int
-    max_fds: u32, // type unsigned int
-    open_fds: target_ptr_t, // type *long unsigned int | used as a bit vector, if nth bit is set, fd n is open
-
-    // It doesn't seem like we'll need these, but maybe
-    //rcu: CallbackHead, // type callbackhead
-    rcu: target_ptr_t, // placeholder for compilation until I can figure out what to do
-}
-
-#[derive(OsiType, Debug)]
-#[osi(type_name = "files_struct")]
-struct FilesStruct {
-    fd_array: [target_ptr_t; 64], // type *file[] | default length is defined as BITS_IN_LONG, might need to make this smarter/dependant on the system
-    fdt: target_ptr_t, // type *fdtable
-}
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-// Move the above into its own file one day :')%%%%%%%%%%%%%%%%
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
     let mut ret = OsiProc {asid: 0, start_time: 0, name: String::from(""), pid: 0, ppid: 0, taskd: 0,};
@@ -308,25 +130,26 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
 }
 
 fn get_osithread_info(cpu: &mut CPUState) -> Option<OsiThread> {
-    let  mut ret = OsiThread { tid: 0, pid: 0};
+    let  mut ret = OsiThread { tid: 0, pid: 0 };
     ret.tid = CURRENT_TASK.pid(cpu).unwrap();
     ret.pid = CURRENT_TASK.tgid(cpu).unwrap();
 
     Some(ret)
 }
 
-#[derive(Debug)]
-struct OsiFile {
-    fs_struct: target_ptr_t,
-    name: String,
-    f_pos: target_ptr_t,
-    fd: u32,
+pub fn read_string_from_guest(cpu: &mut CPUState, start_ptr: target_ptr_t) -> String {
+    let mut ptr = start_ptr;
+    let mut char_read = 1u8;
+    let step = 1;
+    let mut collect = "".to_owned();
 
-}
+    while char_read != 0u8 {
+        char_read = u8::read_from_guest(cpu, ptr).unwrap();
+        ptr = ptr + 1;
+        collect.push(char_read as char);
+    }
 
-#[derive(Debug)]
-struct OsiFiles {
-    files: Vec<OsiFile>,
+    return collect
 }
 
 // remimplement read_dentry_name from osi_linux.h
@@ -350,19 +173,7 @@ fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t, is_mnt: bool) -> S
 
         let mut name_ptr = dentry_struct.d_name.name;
 
-        let mut name_len = 0;
-        let mut char_read = 1u8;
-        let step = 1;
-        let mut collect = "".to_owned();
-
-        while char_read != 0u8 {
-            char_read = u8::read_from_guest(cpu, name_ptr).unwrap();
-            name_len = name_len + 1;
-            name_ptr = name_ptr + step;
-            collect.push(char_read as char);
-        }
-
-        let name = collect;
+        let name = read_string_from_guest(cpu, name_ptr);
         let mut term = &"/";
 
         if ret == "" || is_mnt {
@@ -423,7 +234,6 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     let open_fds_ptr = fdtable.open_fds;
     let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
     let mut fd_ptr = fdtable.fd;
-    //let fd_array = fdtable.fd[..max_fds];
 
     let mut fds = Vec::<File>::new();
     let step = size_of::<target_ptr_t>() as u64;
@@ -502,13 +312,10 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-    //get_osifiles_info(cpu);
-    //get_osiproc_info(cpu);
     print_osiproc_info(cpu);
     print_osithread_info(cpu);
     print_osifile_info(cpu);
