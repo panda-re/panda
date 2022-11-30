@@ -19,11 +19,10 @@ static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 /// Interface for other plugins to interact with
 mod ffi;
 mod kaslr;
+mod process;
 mod structs;
 
 use kaslr::kaslr_offset;
-
-use ffi::offset_of_field;
 
 use structs::*;
 

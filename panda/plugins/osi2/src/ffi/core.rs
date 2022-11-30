@@ -5,11 +5,15 @@ use volatility_profile::*;
 
 use crate::symbol_table;
 
+/// Get the KASLR offset of the system, calculating and caching it if it has not already
+/// been found. For systems without KASLR this will be 0.
 #[no_mangle]
 pub extern "C" fn kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
     crate::kaslr_offset(cpu)
 }
 
+/// Get a reference to an opaque object for accessing information about a given enum
+/// based on the volatility symbols currently loaded by OSI2
 #[no_mangle]
 pub unsafe extern "C" fn enum_from_name(name: *const c_char) -> Option<&'static VolatilityEnum> {
     let name = CStr::from_ptr(name).to_str().ok()?;
@@ -17,6 +21,8 @@ pub unsafe extern "C" fn enum_from_name(name: *const c_char) -> Option<&'static 
     symbol_table().enum_from_name(name)
 }
 
+/// Get a reference to an opaque object for accessing information about a given base type
+/// from the volatility symbols currently loaded by OSI2
 #[no_mangle]
 pub unsafe extern "C" fn base_type_from_name(
     name: *const c_char,
@@ -26,6 +32,8 @@ pub unsafe extern "C" fn base_type_from_name(
     symbol_table().base_type_from_name(name)
 }
 
+/// Get a reference to an opaque object for accessing information about a given symbol
+/// present in the volatility symbols currently loaded by OSI2
 #[no_mangle]
 pub unsafe extern "C" fn symbol_from_name(
     name: *const c_char,
@@ -35,6 +43,8 @@ pub unsafe extern "C" fn symbol_from_name(
     symbol_table().symbol_from_name(name)
 }
 
+/// Get a reference to an opaque object for accessing information about a given type
+/// present in the volatility symbols currently loaded by OSI2
 #[no_mangle]
 pub unsafe extern "C" fn type_from_name(name: *const c_char) -> Option<&'static VolatilityStruct> {
     let name = CStr::from_ptr(name).to_str().ok()?;
@@ -42,11 +52,14 @@ pub unsafe extern "C" fn type_from_name(name: *const c_char) -> Option<&'static 
     symbol_table().type_from_name(name)
 }
 
+/// Get the address from a given symbol, accounting for KASLR
 #[no_mangle]
 pub extern "C" fn addr_of_symbol(symbol: &VolatilitySymbol) -> target_ptr_t {
     (symbol.address as target_ptr_t) + kaslr_offset(unsafe { &mut *get_cpu() })
 }
 
+/// Get the raw value from a given symbol (unlike `addr_of_symbol` this does not account
+/// for KASLR)
 #[no_mangle]
 pub extern "C" fn value_of_symbol(symbol: &VolatilitySymbol) -> target_ptr_t {
     symbol.address as target_ptr_t
