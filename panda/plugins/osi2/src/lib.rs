@@ -159,7 +159,7 @@ pub fn read_string_from_guest(cpu: &mut CPUState, start_ptr: target_ptr_t) -> St
         collect.push(char_read as char);
     }
 
-    return collect;
+    collect
 }
 
 // remimplement read_dentry_name from osi_linux.h
