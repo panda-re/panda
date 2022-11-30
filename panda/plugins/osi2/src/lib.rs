@@ -5,7 +5,6 @@ use panda::mem::{read_guest_type, virtual_memory_read_into};
 use panda::plugins::osi2::{symbol_from_name, type_from_name};
 use panda::prelude::*;
 use panda::GuestType;
-use panda::GuestType;
 use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 
 use once_cell::sync::{Lazy, OnceCell};
