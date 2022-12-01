@@ -68,7 +68,7 @@ pub struct TaskStruct {
 }
 
 #[derive(Debug)]
-pub struct OsiProc {
+pub struct CosiProc {
     pub asid: u32,
     pub start_time: target_ptr_t,
     pub name: String,
@@ -78,7 +78,7 @@ pub struct OsiProc {
 }
 
 #[derive(Debug)]
-pub struct OsiThread {
+pub struct CosiThread {
     pub tid: u32,
     pub pid: u32,
 }
@@ -173,16 +173,88 @@ pub struct FilesStruct {
     pub fdt: target_ptr_t, // type *fdtable
 }
 
+// Cosi struct for holding and accessing information about a file struct
 #[derive(Debug)]
-pub struct OsiFile {
-    pub fs_struct: target_ptr_t,
+pub struct CosiFile {
+    pub addr: target_ptr_t,
+    pub file_struct: File,
     pub name: String,
-    pub f_pos: target_ptr_t,
     pub fd: u32,
+}
 
+impl CosiFile {
+    fn read_dentry_name(&self, cpu: &mut CPUState, is_mnt: bool) -> Option<String> {
+        let mut ret = "".to_owned();
+        let current_dentry_parent = if is_mnt {
+                                        // next read name stuff from vfsmount too
+                                        let mnt = VfsMount::osi_read(cpu, self.file_struct.f_path.mnt).ok()?;
+                                        let mount_vol = symbol_table().type_from_name("mount").unwrap();
+                                        let off = mount_vol.fields["mnt"].offset as u64;
+                                        let mount_struct = Mount::osi_read(cpu, path.mnt - off).ok()?;
+                                        mount_struct.mnt_mountpoint
+                                    } else {
+                                        self.file_struct.f_path.dentry
+                                    };
+        let mut current_dentry: target_ptr_t = 0xdead00af;
+
+        while current_dentry_parent != current_dentry {
+            current_dentry = current_dentry_parent;
+            /*
+            let mut qd_name = Qstr {
+                unnamed_field_0: 0,
+                name: 0,
+            };
+            let mut dentry_struct = Dentry {
+                d_parent: 0,
+                d_name: qd_name,
+            }; */
+            let dentry_struct = Dentry::osi_read(cpu, current_dentry).ok()?;
+
+            current_dentry_parent = dentry_struct.d_parent;
+            let mut name_ptr = dentry_struct.d_name.name;
+    
+            //let name = read_string_from_guest(cpu, name_ptr);
+            let name = cpu.mem_read_string(name_ptr);
+    
+            if ret == "" || is_mnt {
+                let term = &"";
+            } else {
+                let term = "/";
+            }
+
+            if &name == "/" || current_dentry == current_dentry_parent {
+                ret = name.to_owned() + &ret
+            } else {
+                ret = name.to_owned() + term + &ret
+            }
+        }
+    
+        match ret.as_str() {
+            "/" => Some("".to_owned()),
+            _ => Some(ret),
+        }
+    }
+
+    fn read_name(&self, cpu: &mut CPUState) -> Option<String> {
+        // read file->path->dentry to get a pointer to the first dentry we want to read;
+        let d_name = self.read_dentry_name(cpu, false).ok()?;
+
+        let m_name = self.read_dentry_name(cpu, true).ok()?;
+        Some(m_name + &d_name)
+    }
+}
+
+pub impl CosiFile {
+    pub fn new(cpu: &mut CPUState, addr: target_ptr_t, fd: u32) -> Option<Self> {
+        return Some(CosiFile {
+        addr: addr,
+        file_struct: File::osi_read(cpu, self.addr).ok()?,
+        name: self.read_name(cpu).ok()?,
+        fd: fd,
+    })
 }
 
 #[derive(Debug)]
-pub struct OsiFiles {
-    pub files: Vec<OsiFile>,
+pub struct CosiFiles {
+    pub files: Vec<CosiFile>,
 }

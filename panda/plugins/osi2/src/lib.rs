@@ -90,7 +90,7 @@ osi_static! {
     static CURRENT_TASK: TaskStruct;
 }
 
-fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
+fn get_osiproc_info(cpu: &mut CPUState) -> Option<CosiProc> {
     let mut ret = OsiProc {
         asid: 0,
         start_time: 0,
@@ -139,7 +139,7 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
     Some(ret)
 }
 
-fn get_osithread_info(cpu: &mut CPUState) -> Option<OsiThread> {
+fn get_osithread_info(cpu: &mut CPUState) -> Option<CosiThread> {
     let mut ret = OsiThread { tid: 0, pid: 0 };
     ret.tid = CURRENT_TASK.pid(cpu).unwrap();
     ret.pid = CURRENT_TASK.tgid(cpu).unwrap();
@@ -189,13 +189,14 @@ fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t, is_mnt: bool) -> S
 
         let mut name_ptr = dentry_struct.d_name.name;
 
-        let name = read_string_from_guest(cpu, name_ptr);
-        let mut term = &"/";
+        //let name = read_string_from_guest(cpu, name_ptr);
+        let name = cpu.mem_read_string(name_ptr);
+        let mut term = "/";
 
         if ret == "" || is_mnt {
             term = &"";
         }
-        if &name == "/\0" || current_dentry == current_dentry_parent {
+        if &name == "/" || current_dentry == current_dentry_parent {
             ret = name.to_owned() + &ret
         } else {
             ret = name.to_owned() + term + &ret
@@ -203,17 +204,18 @@ fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t, is_mnt: bool) -> S
     }
 
     match ret.as_str() {
-        "/\0" => "".to_owned(),
+        "/" => "".to_owned(),
         _ => ret,
     }
 }
 
+/*
 fn get_osi_file_info(
     cpu: &mut CPUState,
     file: File,
     ptr: target_ptr_t,
     fd: u32,
-) -> Option<OsiFile> {
+) -> Option<CosiFile> {
     // Want to get the file name here, which means we need file->path (type *dentry)
     // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
     // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
@@ -243,13 +245,13 @@ fn get_osi_file_info(
     ret.f_pos = file.f_pos;
 
     return Some(ret);
-}
+} */
 
-fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
-    let mut ret = OsiFiles {
-        files: Vec::<OsiFile>::new(),
-    };
-
+fn get_osifiles_info(cpu: &mut CPUState) -> Option<CosiFiles> {
+    /*let mut ret = OsiFiles {
+        files: Vec::new(),
+    }; */
+    let file_vec = Vec<CosiFiles>::new();
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
     let files = FilesStruct::osi_read(cpu, files_ptr).ok()?;
     let fdtab = files.fdt;
@@ -261,7 +263,7 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
     let mut fd_ptr = fdtable.fd;
 
-    let mut fds = Vec::<File>::new();
+    //let mut fds = Vec::<File>::new();
     let step = size_of::<target_ptr_t>() as u64;
     for idx in 0..max_fds {
         let fd = target_ptr_t::read_from_guest(cpu, fd_ptr).unwrap();
@@ -277,27 +279,22 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
             fd_ptr = fd_ptr + step;
             continue;
         }
-
+        /*
         let mut p = Path { dentry: 0, mnt: 0 };
         let mut f = File {
             f_path: p,
             f_pos: 0,
-        };
-        match File::osi_read(cpu, fd).ok() {
-            Some(res) => {
-                match get_osi_file_info(cpu, res, fd, idx) {
-                    Some(f_info) => ret.files.push(f_info),
-                    None => {
-                        println!("Failed to read info for fd {idx}");
-                        ()
-                    }
-                };
-            }
-            None => (),
-        };
+        }; */
+            match CosiFile::new(cpu, fd, idx) {
+                Some(f_info) => file_vec.push(f_info),
+                None => {
+                    println!("Failed to read info for fd {idx}");
+                    ()
+                }
+            };
         fd_ptr = fd_ptr + step;
     }
-    Some(ret)
+    Some(CosiFiles { files: file_vec,})
 }
 
 fn print_osiproc_info(cpu: &mut CPUState) -> bool {
