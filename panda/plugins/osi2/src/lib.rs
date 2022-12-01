@@ -91,7 +91,7 @@ osi_static! {
 }
 
 fn get_osiproc_info(cpu: &mut CPUState) -> Option<CosiProc> {
-    let mut ret = OsiProc {
+    let mut ret = CosiProc {
         asid: 0,
         start_time: 0,
         name: String::from(""),
@@ -140,161 +140,16 @@ fn get_osiproc_info(cpu: &mut CPUState) -> Option<CosiProc> {
 }
 
 fn get_osithread_info(cpu: &mut CPUState) -> Option<CosiThread> {
-    let mut ret = OsiThread { tid: 0, pid: 0 };
+    let mut ret = CosiThread { tid: 0, pid: 0 };
     ret.tid = CURRENT_TASK.pid(cpu).unwrap();
     ret.pid = CURRENT_TASK.tgid(cpu).unwrap();
 
     Some(ret)
 }
 
-pub fn read_string_from_guest(cpu: &mut CPUState, start_ptr: target_ptr_t) -> String {
-    let mut ptr = start_ptr;
-    let mut char_read = 1u8;
-    let step = 1;
-    let mut collect = "".to_owned();
-
-    while char_read != 0u8 {
-        char_read = u8::read_from_guest(cpu, ptr).unwrap();
-        ptr = ptr + 1;
-        collect.push(char_read as char);
-    }
-
-    collect
-}
-
-// remimplement read_dentry_name from osi_linux.h
-fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t, is_mnt: bool) -> String {
-    let mut ret = "".to_owned();
-
-    let mut current_dentry_parent = dentry;
-    let mut current_dentry: target_ptr_t = 0xdead00af;
-
-    while current_dentry_parent != current_dentry {
-        current_dentry = current_dentry_parent;
-
-        let mut qd_name = Qstr {
-            unnamed_field_0: 0,
-            name: 0,
-        };
-        let mut dentry_struct = Dentry {
-            d_parent: 0,
-            d_name: qd_name,
-        };
-        match Dentry::osi_read(cpu, current_dentry).ok() {
-            Some(res) => dentry_struct = res,
-            None => continue,
-        }
-
-        current_dentry_parent = dentry_struct.d_parent;
-
-        let mut name_ptr = dentry_struct.d_name.name;
-
-        //let name = read_string_from_guest(cpu, name_ptr);
-        let name = cpu.mem_read_string(name_ptr);
-        let mut term = "/";
-
-        if ret == "" || is_mnt {
-            term = &"";
-        }
-        if &name == "/" || current_dentry == current_dentry_parent {
-            ret = name.to_owned() + &ret
-        } else {
-            ret = name.to_owned() + term + &ret
-        }
-    }
-
-    match ret.as_str() {
-        "/" => "".to_owned(),
-        _ => ret,
-    }
-}
-
-/*
-fn get_osi_file_info(
-    cpu: &mut CPUState,
-    file: File,
-    ptr: target_ptr_t,
-    fd: u32,
-) -> Option<CosiFile> {
-    // Want to get the file name here, which means we need file->path (type *dentry)
-    // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
-    // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
-    // to repeat this process
-
-    let mut ret = OsiFile {
-        fs_struct: ptr,
-        name: "".to_string(),
-        f_pos: 0,
-        fd: fd,
-    };
-    let path = file.f_path;
-
-    // read file->path->dentry to get a pointer to the first dentry we want to read;
-    let mut name = read_dentry_name(cpu, path.dentry, false);
-
-    // next read name stuff from vfsmount too
-    let mnt = VfsMount::osi_read(cpu, path.mnt).ok()?;
-
-    let mount_vol = symbol_table().type_from_name("mount").unwrap();
-    let off = mount_vol.fields["mnt"].offset as u64;
-    let mount_struct = Mount::osi_read(cpu, path.mnt - off).ok()?;
-    let name2 = read_dentry_name(cpu, mount_struct.mnt_mountpoint, true);
-
-    ret.name = name2.to_owned() + &name;
-
-    ret.f_pos = file.f_pos;
-
-    return Some(ret);
-} */
-
-fn get_osifiles_info(cpu: &mut CPUState) -> Option<CosiFiles> {
-    /*let mut ret = OsiFiles {
-        files: Vec::new(),
-    }; */
-    let file_vec = Vec<CosiFiles>::new();
+fn get_current_osifiles_info(cpu: &mut CPUState) -> Option<CosiFiles> {
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
-    let files = FilesStruct::osi_read(cpu, files_ptr).ok()?;
-    let fdtab = files.fdt;
-
-    let fdtable = Fdtable::osi_read(cpu, fdtab).ok()?;
-
-    let max_fds = fdtable.max_fds as u32;
-    let open_fds_ptr = fdtable.open_fds;
-    let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
-    let mut fd_ptr = fdtable.fd;
-
-    //let mut fds = Vec::<File>::new();
-    let step = size_of::<target_ptr_t>() as u64;
-    for idx in 0..max_fds {
-        let fd = target_ptr_t::read_from_guest(cpu, fd_ptr).unwrap();
-        if fd == 0 {
-            break;
-        }
-        let bv_check = open_fds >> idx;
-        if bv_check == 0 {
-            break;
-        }
-
-        if bv_check % 2 == 0 {
-            fd_ptr = fd_ptr + step;
-            continue;
-        }
-        /*
-        let mut p = Path { dentry: 0, mnt: 0 };
-        let mut f = File {
-            f_path: p,
-            f_pos: 0,
-        }; */
-            match CosiFile::new(cpu, fd, idx) {
-                Some(f_info) => file_vec.push(f_info),
-                None => {
-                    println!("Failed to read info for fd {idx}");
-                    ()
-                }
-            };
-        fd_ptr = fd_ptr + step;
-    }
-    Some(CosiFiles { files: file_vec,})
+    Some(CosiFiles::new(cpu, files_ptr)?)
 }
 
 fn print_osiproc_info(cpu: &mut CPUState) -> bool {
@@ -327,8 +182,8 @@ fn print_osithread_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-fn print_osifile_info(cpu: &mut CPUState) -> bool {
-    match get_osifiles_info(cpu) {
+fn print_current_osifile_info(cpu: &mut CPUState) -> bool {
+    match get_current_osifiles_info(cpu) {
         Some(res) => {
             for i in res.files {
                 println!("file name: {} | fd: {}", i.name, i.fd);
