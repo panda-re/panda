@@ -218,36 +218,34 @@ fn get_osi_file_info(
     // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
     // to repeat this process
 
-    let mut ret = OsiFile {
-        fs_struct: ptr,
-        name: "".to_string(),
-        f_pos: 0,
-        fd: fd,
-    };
     let path = file.f_path;
 
     // read file->path->dentry to get a pointer to the first dentry we want to read;
-    let mut name = read_dentry_name(cpu, path.dentry, false);
+    let name = read_dentry_name(cpu, path.dentry, false);
 
     // next read name stuff from vfsmount too
     let mnt = VfsMount::osi_read(cpu, path.mnt).ok()?;
 
     let mount_vol = symbol_table().type_from_name("mount").unwrap();
-    let off = mount_vol.fields["mnt"].offset as u64;
+    let off = mount_vol.fields["mnt"].offset as target_ptr_t;
     let mount_struct = Mount::osi_read(cpu, path.mnt - off).ok()?;
     let name2 = read_dentry_name(cpu, mount_struct.mnt_mountpoint, true);
 
-    ret.name = name2.to_owned() + &name;
+    let name = name2.to_owned() + &name;
 
-    ret.f_pos = file.f_pos;
+    let f_pos = file.f_pos;
 
-    return Some(ret);
+    Some(OsiFile {
+        f_pos,
+        name,
+        fd,
+        fs_struct: ptr,
+    })
+    //return Some(ret);
 }
 
 fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
-    let mut ret = OsiFiles {
-        files: Vec::<OsiFile>::new(),
-    };
+    let mut ret = OsiFiles { files: Vec::new() };
 
     let files_ptr = CURRENT_TASK.files(cpu).unwrap();
     let files = FilesStruct::osi_read(cpu, files_ptr).ok()?;
@@ -261,7 +259,7 @@ fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
     let mut fd_ptr = fdtable.fd;
 
     let mut fds = Vec::<File>::new();
-    let step = size_of::<target_ptr_t>() as u64;
+    let step = size_of::<target_ptr_t>() as target_ptr_t;
     for idx in 0..max_fds {
         let fd = target_ptr_t::read_from_guest(cpu, fd_ptr).unwrap();
         if fd == 0 {
