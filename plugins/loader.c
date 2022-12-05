@@ -231,7 +231,7 @@ static int plugin_load(struct qemu_plugin_desc *desc, const qemu_info_t *info, E
             }
             ctx->name = (const char *)strdup(*(const char **)sym);
             QTAILQ_FOREACH(ctx2, &plugin.ctxs, entry) {
-                if (g_strcmp0(ctx2->name, ctx->name) == 0) {
+                if (strcmp(ctx2->name, ctx->name) == 0) {
                     error_setg(errp, "Could not load plugin %s as the name %s "
                                "is already in use by plugin at %s",
                                desc->path, ctx->name, ctx2->desc->path);
