@@ -17,6 +17,7 @@
 
 #define QEMU_PLUGIN_MIN_VERSION 0
 #define QPP_MINIMUM_VERSION 2
+#define QPP_CALLBACK_MAX 128
 
 /* global state */
 struct qemu_plugin_state {

@@ -319,6 +319,7 @@ bool plugin_add_qpp_cb(struct qemu_plugin_ctx *ctx, const char *name)
     struct qemu_plugin_qpp_cb *new_cb;
     new_cb = g_new0(struct qemu_plugin_qpp_cb, 1);
     new_cb->name = name;
+    new_cb->counter = 0;
     QTAILQ_INSERT_TAIL(&ctx->qpp_cbs, new_cb, entry);
     return true;
 }

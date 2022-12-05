@@ -3,6 +3,10 @@
   qemu_plugin_end_code;
   qemu_plugin_entry_code;
   qemu_plugin_get_hwaddr;
+  qemu_plugin_create_callback;
+  qemu_plugin_run_callback;
+  qemu_plugin_reg_callback;
+  qemu_plugin_unreg_callback;
   qemu_plugin_hwaddr_device_name;
   qemu_plugin_hwaddr_is_io;
   qemu_plugin_hwaddr_phys_addr;
