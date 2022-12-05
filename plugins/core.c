@@ -259,6 +259,18 @@ struct qemu_plugin_qpp_cb *plugin_find_qpp_cb(struct qemu_plugin_ctx *ctx,
     return NULL;
 }
 
+const char *id_to_plugin_name(qemu_plugin_id_t id)
+{
+    const char *plugin = plugin_id_to_ctx_locked(id)->name;
+    if (plugin) {
+        return plugin;
+    } else {
+        warn_report("Unnamed plugin cannot use QPP, not supported in plugin "
+                    "version. Please update plugin.");
+        return NULL;
+    }
+}
+
 struct plugin_for_each_args {
     struct qemu_plugin_ctx *ctx;
     qemu_plugin_vcpu_simple_cb_t cb;

@@ -119,4 +119,6 @@ struct qemu_plugin_qpp_cb *plugin_find_qpp_cb(struct qemu_plugin_ctx *plugin_ctx
 /* loader.c */
 bool plugin_add_qpp_cb(struct qemu_plugin_ctx *ctx, const char *name);
 
+const char *id_to_plugin_name(qemu_plugin_id_t id);
+
 #endif /* PLUGIN_H */
