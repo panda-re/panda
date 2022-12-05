@@ -15,6 +15,7 @@
 #include <qemu-plugin.h>
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "mem";
 
 static uint64_t inline_mem_count;
 static uint64_t cb_mem_count;

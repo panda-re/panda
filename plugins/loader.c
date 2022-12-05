@@ -177,7 +177,7 @@ QEMU_DISABLE_CFI
 static int plugin_load(struct qemu_plugin_desc *desc, const qemu_info_t *info, Error **errp)
 {
     qemu_plugin_install_func_t install;
-    struct qemu_plugin_ctx *ctx;
+    struct qemu_plugin_ctx *ctx, *ctx2;
     gpointer sym;
     int rc;
 
@@ -208,17 +208,62 @@ static int plugin_load(struct qemu_plugin_desc *desc, const qemu_info_t *info, E
                    desc->path, g_module_error());
         goto err_symbol;
     } else {
-        int version = *(int *)sym;
-        if (version < QEMU_PLUGIN_MIN_VERSION) {
+        ctx->version = *(int *)sym;
+        if (ctx->version < QEMU_PLUGIN_MIN_VERSION) {
             error_setg(errp, "Could not load plugin %s: plugin requires API version %d, but "
                        "this QEMU supports only a minimum version of %d",
-                       desc->path, version, QEMU_PLUGIN_MIN_VERSION);
+                       desc->path, ctx->version, QEMU_PLUGIN_MIN_VERSION);
             goto err_symbol;
-        } else if (version > QEMU_PLUGIN_VERSION) {
+        } else if (ctx->version > QEMU_PLUGIN_VERSION) {
             error_setg(errp, "Could not load plugin %s: plugin requires API version %d, but "
                        "this QEMU supports only up to version %d",
-                       desc->path, version, QEMU_PLUGIN_VERSION);
+                       desc->path, ctx->version, QEMU_PLUGIN_VERSION);
             goto err_symbol;
+        } else if (ctx->version < QPP_MINIMUM_VERSION) {
+            /* older plugins will not be available for QPP calls */
+            ctx->name = NULL;
+        } else {
+            if (!g_module_symbol(ctx->handle, "qemu_plugin_name", &sym)) {
+                error_setg(errp, "Could not load plugin %s: plugin does not "
+                           "declare plugin name %s",
+                           desc->path, g_module_error());
+                goto err_symbol;
+            }
+            ctx->name = (const char *)strdup(*(const char **)sym);
+            QTAILQ_FOREACH(ctx2, &plugin.ctxs, entry) {
+                if (g_strcmp0(ctx2->name, ctx->name) == 0) {
+                    error_setg(errp, "Could not load plugin %s as the name %s "
+                               "is already in use by plugin at %s",
+                               desc->path, ctx->name, ctx2->desc->path);
+                    goto err_symbol;
+                }
+            }
+            if (g_module_symbol(ctx->handle, "qemu_plugin_uses", &sym)) {
+                const char **dependencies = &(*(const char **)sym);
+                bool found = false;
+                while (*dependencies) {
+                    found = false;
+                    QTAILQ_FOREACH(ctx2, &plugin.ctxs, entry) {
+                        if (strcmp(ctx2->name, *dependencies) == 0) {
+                            if (ctx2->import_failed) {
+                                error_setg(errp, "Could not load plugin %s, "
+                                "import function from plugin %s failed.", 
+                                ctx->name, ctx2->name);
+                                goto err_symbol;
+                            }
+                            dependencies++;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        error_setg(errp, "Could not load plugin %s as it is "
+                                   "dependent on %s which is not loaded",
+                                   ctx->name, *dependencies);
+                        goto err_symbol;
+                    }
+                }
+            }
         }
     }
 

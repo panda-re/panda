@@ -16,6 +16,7 @@
 #include "qemu/qht.h"
 
 #define QEMU_PLUGIN_MIN_VERSION 0
+#define QPP_MINIMUM_VERSION 2
 
 /* global state */
 struct qemu_plugin_state {
@@ -50,6 +51,8 @@ struct qemu_plugin_state {
 struct qemu_plugin_ctx {
     GModule *handle;
     qemu_plugin_id_t id;
+    const char *name;
+    int version;
     struct qemu_plugin_cb *callbacks[QEMU_PLUGIN_EV_MAX];
     QTAILQ_ENTRY(qemu_plugin_ctx) entry;
     /*
@@ -57,12 +60,15 @@ struct qemu_plugin_ctx {
      * to strdup plugin args.
      */
     struct qemu_plugin_desc *desc;
+    bool import_failed;
     bool installing;
     bool uninstalling;
     bool resetting;
 };
 
 struct qemu_plugin_ctx *plugin_id_to_ctx_locked(qemu_plugin_id_t id);
+
+struct qemu_plugin_ctx *plugin_name_to_ctx_locked(const char* name);
 
 void plugin_register_inline_op(GArray **arr,
                                enum qemu_plugin_mem_rw rw,
