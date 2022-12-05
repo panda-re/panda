@@ -1,6 +1,6 @@
 use std::mem::size_of;
 use panda::prelude::*;
-use panda::plugins::osi2::{osi_static, OsiType};
+use panda::plugins::osi2::{osi_static, OsiType, find_per_cpu_address};
 use panda::GuestType;
 use crate::symbol_table;
 
@@ -85,26 +85,30 @@ pub struct CosiProc {
     pub name: String,
     pub ppid: u32,
     pub mm: MmStruct,
+    pub asid: u32,
+    pub taskd: target_ptr_t,
 }
 
 impl CosiProc {
-    pub fn new(cpu: &CPUState, addr: target_ptr_t) -> Option<CosiProc> {
+    pub fn get_current_process(cpu: &mut CPUState) -> Option<CosiProc> {
+        let curr_task_addr = find_per_cpu_address(cpu, "current_task").ok()?;
+        CosiProc::new(cpu, curr_task_addr)
+    }
+    pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiProc> {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
         let mm_ptr = task.mm;
-        let mm = MmStruct::osi_read(cpu, mm_ptr).ok();
-        let asid: u32 = match mm {
-            Some(res) => res.pgd,
-            None => 0,
-        };
+        let mm = MmStruct::osi_read(cpu, mm_ptr).ok()?;
+        let asid: u32 = mm.pgd;
 
         let comm_data = task.comm;
         let task_comm_len = comm_data
             .iter()
             .position(|&x| x == 0u8)
             .unwrap_or(TASK_COMM_LEN);
-        let name = String::from_utf8_lossy(&comm_data[..task_com_len]).into_owned();
+        let name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
         let parent = TaskStruct::osi_read(cpu, task.parent).unwrap();
         let ppid = parent.pid;
+        let taskd = task.group_leader;
 
         Some( CosiProc {
             addr: addr,
@@ -112,14 +116,28 @@ impl CosiProc {
             name: name,
             ppid: ppid,
             mm: mm,
-
+            asid: asid,
+            taskd: taskd,
         })
+    }
 }
 
 #[derive(Debug)]
 pub struct CosiThread {
     pub tid: u32,
     pub pid: u32,
+    // Maybe in the future want to have more mature thread_struct represenation
+    // but old OSI doesn't use it
+}
+
+impl CosiThread {
+    pub fn get_current_thread(cpu: &mut CPUState) -> Option<CosiThread> {
+        let c_proc = CosiProc::get_current_process(cpu)?;
+        Some( CosiThread {
+            tid: c_proc.task.pid,
+            pid: c_proc.task.tgid,
+        })
+    }
 }
 
 //#################################################################
@@ -289,32 +307,9 @@ pub struct CosiFiles {
 }
 
 impl CosiFiles {
-    fn get_file_from_fd(cpu: &mut CPUState, start_ptr: target_ptr_t, fd: i64) -> Option<CosiFile> {
-        let mut ptr = start_ptr;
-        let step = size_of::<target_ptr_t>() as u64;
-        for idx in 0..max_fds {
-            if idx != -1 && idx != fd {
-                ptr += step;
-                continue
-            }
-            let fd = target_ptr_t::read_from_guest(cpu, ptr).unwrap();
-            if fd == 0 {
-                break;
-            }
-            let bv_check = open_fds >> idx;
-            if bv_check == 0 {
-                break;
-            } else if bv_check % 2 == 0{
-                ptr += step;
-                continue;
-            } else {
-                ptr += step;
-                match CosiFile::new(cpu, fd, idx) {
-                    Some(f_info) => file_vec.push(f_info),
-                    None => (),
-                };
-            }
-        }
+    pub fn get_current_files(cpu: &mut CPUState) -> Option<CosiFiles> {
+        let c_proc = CosiProc::get_current_process(cpu)?;
+        CosiFiles::new(cpu, c_proc.task.files)
     }
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<Self> {
         let mut file_vec = Vec::<CosiFile>::new();

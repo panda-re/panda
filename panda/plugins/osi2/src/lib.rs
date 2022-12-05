@@ -90,79 +90,17 @@ osi_static! {
     static CURRENT_TASK: TaskStruct;
 }
 
-fn get_osiproc_info(cpu: &mut CPUState) -> Option<CosiProc> {
-    let mut ret = CosiProc {
-        asid: 0,
-        start_time: 0,
-        name: String::from(""),
-        pid: 0,
-        ppid: 0,
-        taskd: 0,
-    };
-
-    // From osi_linux.cpp: p->asid = taskd->mm->pgd
-    // so presumably we can just follow task_struct->mm->pgd to get that information
-    // relatedly, from osi_linux.cpp, this will error occasionally and that should be
-    // seen as "fine"
-    let mm_ptr = CURRENT_TASK.mm(cpu).unwrap();
-    let mm = MmStruct::osi_read(cpu, mm_ptr).ok();
-    let asid: u32 = match mm {
-        Some(res) => res.pgd,
-        None => 0,
-    };
-
-    let start_time = CURRENT_TASK.start_time(cpu).unwrap();
-    ret.start_time = start_time;
-
-    let comm_data = CURRENT_TASK.comm(cpu).unwrap();
-    let task_comm_len = comm_data
-        .iter()
-        .position(|&x| x == 0u8)
-        .unwrap_or(TASK_COMM_LEN);
-
-    let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
-    ret.name = proc_name;
-
-    let pid = CURRENT_TASK.pid(cpu).unwrap();
-    ret.pid = pid;
-
-    let parent_ptr = CURRENT_TASK.parent(cpu).unwrap();
-    let parent = TaskStruct::osi_read(cpu, parent_ptr).unwrap();
-    let ppid = parent.pid;
-    ret.ppid = ppid;
-
-    // from osi_linux.cpp line166, p->taskd is being set to kernel_profile->get_group_leader
-    // so presumably we can just read task_struct->group_leader to get that info?
-    let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
-    ret.taskd = taskd;
-
-    Some(ret)
-}
-
-fn get_osithread_info(cpu: &mut CPUState) -> Option<CosiThread> {
-    let mut ret = CosiThread { tid: 0, pid: 0 };
-    ret.tid = CURRENT_TASK.pid(cpu).unwrap();
-    ret.pid = CURRENT_TASK.tgid(cpu).unwrap();
-
-    Some(ret)
-}
-
-fn get_current_osifiles_info(cpu: &mut CPUState) -> Option<CosiFiles> {
-    let files_ptr = CURRENT_TASK.files(cpu).unwrap();
-    Some(CosiFiles::new(cpu, files_ptr)?)
-}
-
-fn print_osiproc_info(cpu: &mut CPUState) -> bool {
-    let proc = match get_osiproc_info(cpu) {
+fn print_cosiproc_info(cpu: &mut CPUState) -> bool {
+    let proc = match CosiProc::get_current_process(cpu) {
         Some(res) => {
             if res.asid != 0 {
                 println!("asid: {:x}", res.asid);
             } else {
                 println!("asid: Err");
             }
-            println!("start_time: {:x}", res.start_time);
+            println!("start_time: {:x}", res.task.start_time);
             println!("name: {}", res.name);
-            println!("pid, {:x}", res.pid);
+            println!("pid, {:x}", res.task.pid);
             println!("ppid, {:x}", res.ppid);
             println!("taskd, {:x}", res.taskd);
         }
@@ -172,7 +110,7 @@ fn print_osiproc_info(cpu: &mut CPUState) -> bool {
 }
 
 fn print_osithread_info(cpu: &mut CPUState) -> bool {
-    let thread = match get_osithread_info(cpu) {
+    let thread = match CosiThread::get_current_thread(cpu) {
         Some(res) => {
             println!("tid: {:x}", res.tid);
             println!("pid: {:x}", res.pid);
@@ -182,8 +120,8 @@ fn print_osithread_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-fn print_current_osifile_info(cpu: &mut CPUState) -> bool {
-    match get_current_osifiles_info(cpu) {
+fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
+    match CosiFiles::get_current_files(cpu) {
         Some(res) => {
             for i in res.files {
                 println!("file name: {} | fd: {}", i.name, i.fd);
@@ -198,9 +136,9 @@ fn print_current_osifile_info(cpu: &mut CPUState) -> bool {
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-    print_osiproc_info(cpu);
+    print_cosiproc_info(cpu);
     print_osithread_info(cpu);
-    print_osifile_info(cpu);
+    print_current_cosifile_info(cpu);
 
     println!("OSI2 INFO END\n\n");
 
