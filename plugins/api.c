@@ -387,6 +387,27 @@ bool qemu_plugin_bool_parse(const char *name, const char *value, bool *ret)
     return name && value && qapi_bool_parse(name, value, ret, NULL);
 }
 
+/*
+ * QPP: inter-plugin function resolution and callbacks
+ */
+
+gpointer qemu_plugin_import_function(const char *target_plugin,
+                                     const char *function) {
+    gpointer function_pointer = NULL;
+    struct qemu_plugin_ctx *ctx = plugin_name_to_ctx_locked(target_plugin);
+    if (ctx == NULL) {
+        error_report("Unable to load plugin %s by name", target_plugin);
+    } else if (g_module_symbol(ctx->handle, function,
+               (gpointer *)&function_pointer)) {
+        return function_pointer;
+    } else {
+      error_report("function: %s not found in plugin: %s", function,
+                   target_plugin);
+    }
+    abort();
+    return NULL;
+}
+
 bool qemu_plugin_create_callback(qemu_plugin_id_t id, const char *cb_name)
 {
     struct qemu_plugin_ctx *ctx = plugin_id_to_ctx_locked(id);
