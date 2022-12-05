@@ -47,6 +47,14 @@ struct qemu_plugin_state {
     struct qht dyn_cb_arr_ht;
 };
 
+typedef void (*cb_func_t) (gpointer evdata, gpointer udata);
+
+struct qemu_plugin_qpp_cb {
+    const char *name;
+    cb_func_t registered_cb_funcs[QEMU_PLUGIN_EV_MAX];
+    int counter;
+    QTAILQ_ENTRY(qemu_plugin_qpp_cb) entry;
+};
 
 struct qemu_plugin_ctx {
     GModule *handle;
@@ -54,6 +62,7 @@ struct qemu_plugin_ctx {
     const char *name;
     int version;
     struct qemu_plugin_cb *callbacks[QEMU_PLUGIN_EV_MAX];
+    QTAILQ_HEAD(, qemu_plugin_qpp_cb) qpp_cbs;
     QTAILQ_ENTRY(qemu_plugin_ctx) entry;
     /*
      * keep a reference to @desc until uninstall, so that plugins do not have
@@ -102,5 +111,11 @@ void plugin_register_vcpu_mem_cb(GArray **arr,
                                  void *udata);
 
 void exec_inline_op(struct qemu_plugin_dyn_cb *cb);
+
+struct qemu_plugin_qpp_cb *plugin_find_qpp_cb(struct qemu_plugin_ctx *plugin_ctx,
+                                              const char *cb_name);
+
+/* loader.c */
+bool plugin_add_qpp_cb(struct qemu_plugin_ctx *ctx, const char *name);
 
 #endif /* PLUGIN_H */

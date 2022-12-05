@@ -284,6 +284,7 @@ static int plugin_load(struct qemu_plugin_desc *desc, const qemu_info_t *info, E
             break;
         }
     }
+    QTAILQ_INIT(&ctx->qpp_cbs);
     QTAILQ_INSERT_TAIL(&plugin.ctxs, ctx, entry);
     ctx->installing = true;
     rc = install(ctx->id, info, desc->argc, desc->argv);
@@ -308,6 +309,18 @@ static int plugin_load(struct qemu_plugin_desc *desc, const qemu_info_t *info, E
  err_dlopen:
     qemu_vfree(ctx);
     return 1;
+}
+
+bool plugin_add_qpp_cb(struct qemu_plugin_ctx *ctx, const char *name)
+{
+    if (!ctx->installing) {
+        return false;
+    }
+    struct qemu_plugin_qpp_cb *new_cb;
+    new_cb = g_new0(struct qemu_plugin_qpp_cb, 1);
+    new_cb->name = name;
+    QTAILQ_INSERT_TAIL(&ctx->qpp_cbs, new_cb, entry);
+    return true;
 }
 
 /* call after having removed @desc from the list */

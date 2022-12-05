@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <gmodule.h>
 
 /*
  * For best performance, build the plugin with -fvisibility=hidden so that
@@ -37,6 +38,15 @@
  * typedef qemu_plugin_id_t - Unique plugin ID
  */
 typedef uint64_t qemu_plugin_id_t;
+
+/**
+ * typedef cb_func_t - callback function pointer type
+ * @evdata: plugin callback defined event data
+ * @udata: plugin defined user data
+ *
+ * No return value.
+ */
+typedef void (*cb_func_t) (gpointer evdata, gpointer udata);
 
 /*
  * Versioning plugins:
