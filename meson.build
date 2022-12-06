@@ -3846,8 +3846,8 @@ foreach target : target_dirs
                link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
                link_args: link_args,
                win_subsystem: exe['win_subsystem'])
-    
-    lib = shared_library('panda_'+target, exe['sources'],
+    if target.endswith('-softmmu')
+      lib = shared_library('panda_'+target, exe['sources'],
                install: true,
                c_args: c_args,
                dependencies: arch_deps + deps + exe['dependencies'],
@@ -3856,6 +3856,7 @@ foreach target : target_dirs
                link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
                link_args: link_args,
                )
+    endif
 
     if targetos == 'darwin'
       icon = 'pc-bios/qemu.rsrc'
