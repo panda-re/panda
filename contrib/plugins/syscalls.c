@@ -11,8 +11,10 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "syscalls";
+static qemu_plugin_id_t self_id;
 
-QPP_CREATE_CB(on_all_sys_enter);
+//QPP_CREATE_CB(on_all_sys_enter);
 is_syscall_t is_syscall_fn = NULL;
 get_callno_t get_callno_fn = NULL;
 
@@ -155,11 +157,17 @@ static void syscall_64(unsigned int cpu_index, void *udata) {
     return;
   }
   uint64_t pc = qemu_plugin_get_pc();
- QPP_RUN_CB(on_all_sys_enter, pc, callno);
+  //QPP_RUN_CB(on_all_sys_enter, pc, callno);
+
+  uint64_t evdata[2];
+  evdata[0] = pc;
+  evdata[1] = callno;
+  qemu_plugin_run_callback(self_id, "on_all_sys_enter", (gpointer)evdata, NULL);
 }
 
 //int first = 0;
 static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb) {
+  self_id = id;
   // Handle to first insns
   size_t n = qemu_plugin_tb_n_insns(tb);
   struct qemu_plugin_insn *insn = qemu_plugin_tb_get_insn(tb, n-1);
@@ -178,6 +186,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
     qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
 
     //big_endian = qemu_plugin_mem_is_big_endian(info);
+    qemu_plugin_create_callback(id, "on_all_sys_enter");
 
     for (int i = 0; i < ARRAY_SIZE(syscall_selectors); i++) {
         SyscallDetectorSelector *entry = &syscall_selectors[i];

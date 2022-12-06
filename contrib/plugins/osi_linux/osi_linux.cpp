@@ -9,31 +9,36 @@
 #include <unordered_set>
 #include <plugin-qpp.h>
 
-// Other plugins
-#include "../syscalls.h"
-#include "../osi.h"
-
 // Internal headers
 #include "osi_types.h"
 #include "osi_linux.h"
 #include "osi_linux_int_fns.h"
 #include "default_profile.h"
 
+// Other plugins
 extern "C" {
 #include <qemu-plugin.h>
+QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "osi_linux";
 }
+#include "../syscalls.h"
+#include "../osi.h"
 
 
-void on_first_syscall(uint64_t pc, uint64_t callno);
+
+
+void on_first_syscall(gpointer evdata, gpointer udata);
 
 // Using these
-void on_get_process(const OsiProcHandle *, OsiProc **);
-void on_get_process_handles(GArray **out);
-void on_get_current_process_handle(OsiProcHandle **out_p);
-void on_get_processes(GArray **out);
-void on_get_current_process(OsiProc **out_p);
-void on_get_mappings(OsiProc *p, GArray **out);
-void on_get_current_thread(OsiThread *t);
+void on_get_process(gpointer evdata, gpointer udata);
+void on_get_current_process_handle(gpointer evdata, gpointer udata);
+void on_get_current_process(gpointer evdata, gpointer udata);
+
+// Not yet using these
+//void on_get_process_handles(GArray **out);
+//void on_get_processes(GArray **out);
+//void on_get_mappings(OsiProc *p, GArray **out);
+//void on_get_current_thread(OsiThread *t);
 
 void init_per_cpu_offsets();
 struct kernelinfo ki;
@@ -226,7 +231,9 @@ void fill_osithread(OsiThread *t,
  * @brief When necessary, after the first syscall ensure we can read current task
  */
 
-void on_first_syscall(uint64_t pc, uint64_t callno) {
+void on_first_syscall(gpointer evdata, gpointer udata) {
+    //uint64_t pc = ((uint64_t*)evdata)[0];
+    //uint64_t callno = ((uint64_t*)evdata)[1];
     // Make sure we can now read current. Note this isn't like all the other on_...
     // functions that are registered as OSI callbacks
     /*
@@ -237,9 +244,9 @@ void on_first_syscall(uint64_t pc, uint64_t callno) {
     */
     assert(can_read_current() && "Couldn't find current task struct at first syscall");
     if (!osi_initialized)
-      LOG_INFO(CURRENT_PLUGIN " initialization complete.");
+      LOG_INFO("osi_linux: initialization complete.");
     osi_initialized=true;
-    QPP_REMOVE_CB("syscalls", on_all_sys_enter, on_first_syscall);
+    qemu_plugin_unreg_callback("syscalls", "on_all_sys_enter", on_first_syscall);
 }
 
 
@@ -278,8 +285,8 @@ bool osi_guest_is_ready(void** ret) {
         // Try to load current, if it works, return true
         if (can_read_current()) {
             // Disable on_first_syscall PPP callback because we're all set
-            QPP_REMOVE_CB("syscalls", on_all_sys_enter, on_first_syscall);
-            LOG_INFO(CURRENT_PLUGIN " initialization complete.\n");
+            qemu_plugin_unreg_callback("syscalls", "on_all_sys_enter", on_first_syscall);
+            LOG_INFO("osi_linux: initialization complete.\n");
             osi_initialized=true;
             return true;
         }
@@ -287,9 +294,9 @@ bool osi_guest_is_ready(void** ret) {
         // We can't read the current task right now. This isn't a surprise,
         // it could be happening because we're in boot.
         // Wait until on_first_syscall runs, everything should work then
-        LOG_INFO(CURRENT_PLUGIN " cannot find current task struct. Deferring OSI initialization until first syscall.\n");
+        LOG_INFO("osi_linux: cannot find current task struct. Deferring OSI initialization until first syscall.\n");
 
-        QPP_REG_CB("syscalls", on_all_sys_enter, on_first_syscall);
+        qemu_plugin_reg_callback("syscalls", "on_all_sys_enter", on_first_syscall);
     }
     // Not yet initialized, just set the caller's result buffer to NULL
     ret = NULL;
@@ -304,26 +311,31 @@ bool osi_guest_is_ready(void** ret) {
  * @brief PPP callback to retrieve process list from the running OS.
  *
  */
+/*
 void on_get_processes(GArray **out) {
     if (!osi_guest_is_ready((void**)out)) return;
     // instantiate and call function from get_process_info template
     get_process_info<>(out, fill_osiproc, free_osiproc_contents);
 }
+*/
 
 /**
  * @brief PPP callback to retrieve process handles from the running OS.
  */
+/*
 void on_get_process_handles(GArray **out) {
     if (!osi_guest_is_ready((void**)out)) return;
 
     // instantiate and call function from get_process_info template
     get_process_info<>(out, fill_osiprochandle, free_osiprochandle_contents);
 }
+*/
 
 /**
  * @brief PPP callback to retrieve info about the currently running process.
  */
-void on_get_current_process(OsiProc **out) {
+void on_get_current_process(gpointer evdata, gpointer udata) {
+    OsiProc **out = (OsiProc**)evdata;
     if (!osi_guest_is_ready((void**)out)) return;
 
     static target_ptr_t last_ts = 0x0;
@@ -372,7 +384,8 @@ void on_get_current_process(OsiProc **out) {
 /**
  * @brief PPP callback to the handle of the currently running process.
  */
-void on_get_current_process_handle(OsiProcHandle **out) {
+void on_get_current_process_handle(gpointer evdata, gpointer udata) {
+    OsiProcHandle **out = (OsiProcHandle**)evdata;
     if (!osi_guest_is_ready((void**)out)) return;
 
     OsiProcHandle *p = NULL;
@@ -389,7 +402,10 @@ void on_get_current_process_handle(OsiProcHandle **out) {
  * @brief PPP callback to retrieve info about a running process using its
  * handle.
  */
-void on_get_process(const OsiProcHandle *h, OsiProc **out) {
+void on_get_process(gpointer evdata, gpointer udata) {
+    struct get_process_data *data = (struct get_process_data*)(evdata);
+    const OsiProcHandle *h = data->h;
+    OsiProc **out = data->p;
     if (!osi_guest_is_ready((void**)out)) return;
 
     OsiProc *p = NULL;
@@ -409,6 +425,7 @@ void on_get_process(const OsiProcHandle *h, OsiProc **out) {
  *
  * @todo Remove duplicates from results.
  */
+/*
 void on_get_mappings(OsiProc *p, GArray **out) {
     if (!osi_guest_is_ready((void**)out)) return;
 
@@ -441,12 +458,14 @@ error0:
     *out = NULL;
     return;
 }
+*/
 
 
 
 /**
  * @brief PPP callback to retrieve current thread.
  */
+/*
 void on_get_current_thread(OsiThread **out) {
     static target_ptr_t last_ts = 0x0;
     static target_pid_t cached_tid = 0;
@@ -470,6 +489,7 @@ void on_get_current_thread(OsiThread **out) {
 
     *out = t;
 }
+*/
 
 /**
  * @brief PPP callback to retrieve the process pid from a handle.
@@ -565,7 +585,7 @@ unsigned long long  osi_linux_fd_to_pos(OsiProc *p, int fd) {
 /* ******************************************************************
  Testing functions
 ****************************************************************** */
-#if defined(OSI_LINUX_TEST)
+#if 0
 /**
  * @brief Tests the osi_linux functionality by directly calling the
  * respective introspection functions. For testing the functions via
@@ -671,7 +691,7 @@ void restore_after_snapshot(qemu_plugin_id_t id, unsigned int cpu_index) {
     // it runs at the first syscall (and asserts if it fails)
     osi_initialized=false;
     first_osi_check = true;
-    QPP_REG_CB("syscalls", on_all_sys_enter, on_first_syscall);
+    qemu_plugin_reg_callback("syscalls", "on_all_sys_enter", on_first_syscall);
 }
 
 
@@ -720,8 +740,6 @@ static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
     }
 }
 #endif
-
-extern "C" QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
 
 /**
  * @brief Initializes plugin.
@@ -774,9 +792,9 @@ extern "C" QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
     }
 
     // OSI only supports these two for now:
-    QPP_REG_CB("osi", on_get_process, on_get_process);
-    QPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
-    QPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+    qemu_plugin_reg_callback("osi", "on_get_process", on_get_process);
+    qemu_plugin_reg_callback("osi", "on_get_current_process_handle", on_get_current_process_handle);
+    qemu_plugin_reg_callback("osi", "on_get_current_process", on_get_current_process);
 
     /*
     QPP_REG_CB("osi", on_get_processes, on_get_processes);

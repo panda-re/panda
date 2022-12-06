@@ -2,6 +2,7 @@
 #include <qemu-plugin.h>
 #include <plugin-qpp.h>
 #include "syscalls.h"
+#include <assert.h>
 #include "sc_file_log.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -46,7 +47,7 @@ uint64_t get_arm(int arg_no, bool *error) {
 
 uint64_t get_other (int arg_no, bool*error) {
     *error = true;
-    fprintf(stderr, "Architecture unsupported by " CURRENT_PLUGIN "\n");
+    fprintf(stderr, "Architecture unsupported by sc_file_log.\n");
     assert(0);
     return 0;
 }
@@ -86,8 +87,8 @@ void log_syscall(uint64_t pc, uint64_t callno)
     uint64_t str_ptr = get_syscall_arg(0, &error);
 
     if (!error) {
-      g_autoptr(GString) report = g_string_new(CURRENT_PLUGIN ": ");
       if (qemu_plugin_read_guest_virt_mem(str_ptr, str_val, 100)) {
+        g_autoptr(GString) report = g_string_new("sc_file_log: ");
         g_string_append_printf(report, "Syscall %ld: %s\n", callno, str_val);
         qemu_plugin_outs(report->str);
       }
@@ -110,6 +111,6 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
       }
   }
 
-  QPP_REG_CB("syscalls", on_all_sys_enter, log_syscall)
+  qemu_plugin_reg_callback("syscalls", "on_all_sys_enter", log_syscall);
   return 0;
 }
