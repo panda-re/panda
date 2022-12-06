@@ -169,7 +169,7 @@ class Panda():
 
         # Setup argv for panda
         self.panda_args = [self.panda]
-        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm/mips, so 'pc-bios' is a misleading name
+        biospath = realpath(pjoin(self.build_dir, "qemu-bundle/usr/local/share/qemu")) # XXX: necessary for network drivers for arm/mips, so 'pc-bios' is a misleading name
         self.panda_args.append("-L")
         self.panda_args.append(biospath)
 
