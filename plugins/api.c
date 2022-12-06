@@ -261,9 +261,7 @@ int64_t qemu_plugin_get_reg64(unsigned int reg_idx, bool* error) {
 }
 
 inline uint64_t qemu_plugin_virt_to_phys(uint64_t addr) {
-#ifdef CONFIG_USER_ONLY
-  return false;
-#endif
+#ifdef CONFIG_SOFTMMU
     CPUState *cpu = current_cpu;
     target_ulong page;
     hwaddr phys_addr;
@@ -275,21 +273,23 @@ inline uint64_t qemu_plugin_virt_to_phys(uint64_t addr) {
     }
     phys_addr += (addr & ~TARGET_PAGE_MASK);
     return phys_addr;
+#else
+    return -1;
+#endif
 }
 
 int qemu_plugin_read_guest_virt_mem(uint64_t gva, void* buf, size_t length) {
-#ifdef CONFIG_USER_ONLY
-  return -1;
-#endif
+#ifdef CONFIG_SOFTMMU
     return cpu_memory_rw_debug(current_cpu, gva, buf, length, 0);
+#else
+    return -1;
+#endif
 }
 
 
 void *qemu_plugin_virt_to_host(uint64_t addr, int len)
 {
-#ifdef CONFIG_USER_ONLY
-  return;
-#endif
+#ifdef CONFIG_SOFTMMU
     uint64_t phys = qemu_plugin_virt_to_phys(addr);
     hwaddr addr1;
     hwaddr l = (hwaddr)len;
@@ -301,6 +301,9 @@ void *qemu_plugin_virt_to_host(uint64_t addr, int len)
     }
 
     return qemu_map_ram_ptr(mr->ram_block, addr1);
+#else
+    return NULL;
+#endif
 }
 
 /*
