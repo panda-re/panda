@@ -126,6 +126,8 @@ semiconsole: CFLAGS+=-I$(SRC_PATH)/tests/tcg/$(TARGET_NAME)
 run-semiconsole: semiconsole
 	$(call skip-test, $<, "MANUAL ONLY")
 
+run-plugin-qpp-semiconsole:
+	$(call skip-test, $<, "MANUAL ONLY")
 run-plugin-semiconsole-with-%:
 	$(call skip-test, $<, "MANUAL ONLY")
 

@@ -147,6 +147,9 @@ RUN_TESTS=$(patsubst %,run-%, $(TESTS))
 ifeq ($(CONFIG_PLUGIN),y)
 PLUGIN_SRC=$(SRC_PATH)/tests/plugin
 PLUGIN_LIB=../../plugin
+
+PLUGIN_LIB_QPP=../../plugin_qpp
+
 VPATH+=$(PLUGIN_LIB)
 PLUGINS=$(patsubst %.c, lib%.so, $(notdir $(wildcard $(PLUGIN_SRC)/*.c)))
 
@@ -161,6 +164,11 @@ $(foreach p,$(PLUGINS), \
 	$(foreach t,$(MULTIARCH_TESTS),\
 		$(eval run-plugin-$(t)-with-$(p): $t $p) \
 		$(eval RUN_TESTS+=run-plugin-$(t)-with-$(p))))
+
+$(foreach t,$(MULTIARCH_TESTS),\
+	$(eval run-plugin-qpp-$(t): $t) \
+	$(eval RUN_TESTS+=run-plugin-qpp-$(t)))
+
 endif # MULTIARCH_TESTS
 endif # CONFIG_PLUGIN
 
@@ -177,17 +185,38 @@ ifeq ($(filter %-softmmu, $(TARGET)),)
 run-%: %
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<)
 
+run-plugin-qpp-%:
+	$(call run-test, $@, \
+	  $(QEMU) \
+			-plugin $(PLUGIN_LIB_QPP)/libqpp_srv.so \
+			-plugin $(PLUGIN_LIB_QPP)/libqpp_client.so \
+			$(call extract-plugin,$@) \
+			-d plugin -D $*.pout \
+		$(QEMU_OPTS) $<)
+
 run-plugin-%:
 	$(call run-test, $@, $(QEMU) $(QEMU_OPTS) \
 		-plugin $(PLUGIN_LIB)/$(call extract-plugin,$@)$(PLUGIN_ARGS) \
 		-d plugin -D $*.pout \
 		 $(call strip-plugin,$<))
+
 else
+
 run-%: %
 	$(call run-test, $<, \
 	  $(QEMU) -monitor none -display none \
 		  -chardev file$(COMMA)path=$<.out$(COMMA)id=output \
 		  $(QEMU_OPTS) $<)
+
+run-plugin-qpp-%:
+	$(call run-test, $@, \
+	  $(QEMU) -monitor none -display none \
+		-chardev file$(COMMA)path=$@.out$(COMMA)id=output \
+			-plugin $(PLUGIN_LIB_QPP)/libqpp_srv.so \
+			-plugin $(PLUGIN_LIB_QPP)/libqpp_client.so \
+			$(call extract-plugin,$@) \
+				-d plugin -D $*.pout \
+		$(QEMU_OPTS) $<)
 
 run-plugin-%:
 	$(call run-test, $@, \

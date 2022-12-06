@@ -57,6 +57,11 @@ semiconsole-arm: semihosting.c
 run-semiconsole-arm: semiconsole-arm
 	$(call skip-test, $<, "MANUAL ONLY")
 
+run-plugin-qpp-semiconsole-arm:
+	$(call skip-test, $<, "MANUAL ONLY")
+run-plugin-semiconsole-arm-with-%:
+	$(call skip-test, $<, "MANUAL ONLY")
+
 endif
 
 ARM_TESTS += commpage

@@ -81,6 +81,7 @@ if 'CONFIG_TCG' in config_all
 endif
 
 subdir('plugin')
+subdir('plugin_qpp')
 subdir('unit')
 subdir('qapi-schema')
 subdir('qtest')
