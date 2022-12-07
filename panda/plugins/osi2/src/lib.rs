@@ -91,7 +91,7 @@ osi_static! {
 }
 
 fn print_cosiproc_info(cpu: &mut CPUState) -> bool {
-    let proc = match CosiProc::get_current_process(cpu) {
+    match CosiProc::get_current_process(cpu) {
         Some(res) => {
             if res.asid != 0 {
                 println!("asid: {:x}", res.asid);
@@ -110,7 +110,7 @@ fn print_cosiproc_info(cpu: &mut CPUState) -> bool {
 }
 
 fn print_osithread_info(cpu: &mut CPUState) -> bool {
-    let thread = match CosiThread::get_current_thread(cpu) {
+    match CosiThread::get_current_thread(cpu) {
         Some(res) => {
             println!("tid: {:x}", res.tid);
             println!("pid: {:x}", res.pid);
