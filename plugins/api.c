@@ -570,6 +570,7 @@ bool qemu_plugin_run_callback(qemu_plugin_id_t id, const char *cb_name,
         return false;
     }
 
+    // Run all functions in list with args evdata and udata
     for (int i = 0; i < cb->counter; i++) {
         cb_func_t qpp_cb_func = cb->registered_cb_funcs[i];
         qpp_cb_func(evdata, udata);
@@ -594,14 +595,13 @@ bool qemu_plugin_reg_callback(const char *target_plugin, const char *cb_name,
                      cb_name, target_plugin);
         return false;
     }
-
     if (cb->counter == QEMU_PLUGIN_EV_MAX) {
         error_report("The maximum number of allowed callbacks are already "
-                     "registered for callback %s in plugin %s",
+                     "registered for callback %s in plugin %s\n",
                      cb_name, target_plugin);
         return false;
     }
-
+    // append function pointer to list of functions
     cb->registered_cb_funcs[cb->counter] = function_pointer;
     cb->counter++;
     return true;
@@ -624,6 +624,7 @@ bool qemu_plugin_unreg_callback(const char *target_plugin, const char *cb_name,
         return false;
     }
 
+    // remove function pointer from list of functions and shift all others accordingly
     for (int i = 0; i < cb->counter; i++) {
         if (cb->registered_cb_funcs[i] == function_pointer) {
             for (int j = i + 1; j < cb->counter; j++) {
