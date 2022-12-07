@@ -121,6 +121,11 @@ impl CosiProc {
             taskd: taskd,
         })
     }
+
+    pub fn get_mappings(&self, cpu: &mut CPUState) -> Option<CosiMappings> {
+        let taskd = CosiProc::new(cpu, self.taskd)?;
+        Some(CosiMappings::new(cpu, taskd.mm.mmap)?)
+    }
 }
 
 #[derive(Debug)]
@@ -351,10 +356,11 @@ pub struct VmAreaStruct {
     pub vm_flags: target_ptr_t, // type long unsigned int
 }
 
-struct CosiModule {
+pub struct CosiModule {
     pub modd: target_ptr_t, // vma_addr
     pub base: target_ptr_t, // vma_start
     pub size: target_ptr_t, // vma_end - vma_start
+    pub vma: VmAreaStruct, // underlying structure
     pub file: String, // read_dentry result
     pub name: String, // strstr(file, "/") if file backed, else something like [stack] or [heap]
 }
@@ -386,12 +392,37 @@ impl CosiModule {
             modd: addr,
             base: base,
             size: size,
+            vma: vma,
             file: file,
             name: name,
         })
     }
 }
 
-struct CosiMappings {
+pub struct CosiMappings {
     pub modules: Vec<CosiModule>,
+}
+
+impl CosiMappings {
+    pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiMappings> {
+        let mut modules = Vec::<CosiModule>::new();
+        let vma_first = addr;
+        let mut vma_current = vma_first;
+
+        loop {
+            let cur_mod = match CosiModule::new(cpu, vma_current) {
+                Some(md) => md,
+                None => break,
+            };
+            vma_current = cur_mod.vma.vm_next;
+            modules.push(cur_mod);
+            if vma_current == 0 || vma_current == vma_first {
+                break;
+            }
+
+        };
+
+        Some(CosiMappings { modules: modules })
+
+    }
 }
