@@ -394,6 +394,15 @@ int64_t qemu_plugin_get_reg64(unsigned int reg_idx, bool* error);
  *
  * Returns: NULL on failure, function pointer on success
  */
+int qemu_plugin_load_plugin(char *path, int argc, char **argv);
+
+/**
+ * qemu_plugin_import_function() - return pointer to a function in another plugin
+ * @plugin: plugin name
+ * @function: function name
+ *
+ * Returns: NULL on failure, function pointer on success
+ */
 gpointer qemu_plugin_import_function(const char *plugin, const char *function);
 
 /**

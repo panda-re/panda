@@ -324,6 +324,22 @@ bool plugin_add_qpp_cb(struct qemu_plugin_ctx *ctx, const char *name)
     return true;
 }
 
+int on_demand_load(char *path, int argc, char **argv, struct qemu_info_t *info) {
+    Error **errp = NULL;
+    int err;
+    struct qemu_plugin_desc *desc;
+    desc = g_new0(struct qemu_plugin_desc, 1);
+    desc->path = path;
+    desc->argv = argv;
+    desc->argc = argc;
+
+    err = plugin_load(desc, info, errp);
+    if (err) {
+        return err;
+    }
+    return 0;
+}
+
 /* call after having removed @desc from the list */
 static void plugin_desc_free(struct qemu_plugin_desc *desc)
 {

@@ -486,6 +486,29 @@ bool qemu_plugin_bool_parse(const char *name, const char *value, bool *ret)
     return name && value && qapi_bool_parse(name, value, ret, NULL);
 }
 
+
+/**
+ * Externally accessible plugin load function
+ */
+
+int qemu_plugin_load_plugin(char *path, int argc, char **argv) {
+    g_autofree qemu_info_t *info = g_new0(qemu_info_t, 1);
+
+    info->target_name = TARGET_NAME;
+    info->version.min = QEMU_PLUGIN_MIN_VERSION;
+    info->version.cur = QEMU_PLUGIN_VERSION;
+#ifndef CONFIG_USER_ONLY
+    MachineState *ms = MACHINE(qdev_get_machine());
+    info->system_emulation = true;
+    info->system.smp_vcpus = ms->smp.cpus;
+    info->system.max_vcpus = ms->smp.max_cpus;
+#else
+    info->system_emulation = false;
+#endif
+
+    return on_demand_load(path, argc, argv, info);
+}
+
 /*
  * QPP: inter-plugin function resolution and callbacks
  */

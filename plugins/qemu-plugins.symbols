@@ -6,6 +6,7 @@
   qemu_plugin_get_reg32;
   qemu_plugin_get_reg64;
   qemu_plugin_get_pc;
+  qemu_plugin_load_plugin;
   qemu_plugin_import_function;
   qemu_plugin_create_callback;
   qemu_plugin_run_callback;

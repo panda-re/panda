@@ -127,4 +127,6 @@ struct qemu_plugin_qpp_cb *plugin_find_qpp_cb(struct qemu_plugin_ctx *plugin_ctx
 /* loader.c */
 void plugin_add_qpp_cb(struct qemu_plugin_ctx *ctx, const char *name);
 
+int on_demand_load(char *path, int argc, char **argv, struct qemu_info_t *info);
+
 #endif /* PLUGIN_H */
