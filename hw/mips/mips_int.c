@@ -64,17 +64,24 @@ static void cpu_mips_irq_request(void *opaque, int irq, int level)
         rr_replay_skipped_calls();
     }
 
-
     if (env->CP0_Cause & CP0Ca_IP_mask) {
-        if (rr_in_record() && !in_timer_expire){
-            rr_store_cpu_interrupt_hard();
-            cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+        if (rr_in_record()) {
+            if (!in_timer_expire) {
+                rr_store_cpu_interrupt_hard();
+                cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+            }
         }
-        if (rr_in_replay()){
-            if (!in_timer_expire){
-                rr_skipped_callsite_location = RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER;
+        else {
+            if (rr_in_replay()){
+                if (!in_timer_expire){
+                    rr_skipped_callsite_location = RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER;
                 rr_replay_skipped_calls();
-            }else{
+                }else{
+                    cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+                }
+            }
+            else {
+                // not in record *or replay
                 cpu_interrupt(cs, CPU_INTERRUPT_HARD);
             }
         }
