@@ -132,6 +132,21 @@ fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
+    match CosiProc::get_current_process(cpu) {
+        Some(res) => match res.get_mappings(cpu) {
+            Some(mapping) => {
+                for mdl in mapping.modules.iter() {
+                    println!("modd: {:x} | base: {:x} | size: {:x} | file: {} | name: {}", mdl.modd, mdl.base, mdl.size, mdl.file, mdl.name)
+                }
+            },
+            None => println!("Could not read memory mapping"),
+        },
+        None => println!("Could not read current process"),
+    }
+    true
+}
+
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
@@ -139,6 +154,7 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     print_cosiproc_info(cpu);
     print_osithread_info(cpu);
     print_current_cosifile_info(cpu);
+    print_current_cosimappings_info(cpu);
 
     println!("OSI2 INFO END\n\n");
 
