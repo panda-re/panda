@@ -166,6 +166,7 @@ setup(name='pandare',
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           'data/pc-bios/**/*',                # Keymaps
+          'qcows.json'                        # Generic Images
           ]},
       install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf=='+pc_version],
       python_requires='>=3.6',
