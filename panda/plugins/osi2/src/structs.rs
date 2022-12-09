@@ -11,6 +11,13 @@ pub const TASK_COMM_LEN: usize = 16;
 //#################### Task related structures ####################
 //#################################################################
 
+#[derive(OsiType, Debug, Clone)]
+#[osi(type_name = "list_head")]
+pub struct ListHead {
+    pub next: target_ptr_t,
+    pub prev: target_ptr_t,
+}
+
 #[derive(Debug)]
 pub struct Version {
     pub a: target_ptr_t,
@@ -30,7 +37,7 @@ pub struct CredStruct {
     pub egid: target_ptr_t, // type unsigned int
 }
 
-#[derive(OsiType, Debug)]
+#[derive(OsiType, Debug, Clone)]
 #[osi(type_name = "mm_struct")]
 pub struct MmStruct {
     pub pgd: u32, // type *unnamed_bunch_of_stuff_3
@@ -41,11 +48,12 @@ pub struct MmStruct {
     pub mmap: target_ptr_t, // type *vm_area_struct
 }
 
-#[derive(OsiType, Debug)]
+#[derive(OsiType, Debug, Clone)]
 #[osi(type_name = "task_struct")]
 pub struct TaskStruct {
     // Only one of tasks or next_task will exist as a field
-    pub tasks: target_ptr_t, // type list_head
+    #[osi(osi_type)]
+    pub tasks: ListHead, // type list_head
     //next_task: target_ptr_t, // type ??
 
     pub pid: u32, // type int
@@ -71,7 +79,7 @@ pub struct TaskStruct {
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CosiProc {
     /*
     pub asid: u32,
@@ -91,14 +99,20 @@ pub struct CosiProc {
 }
 
 impl CosiProc {
+    pub fn get_init_process(cpu: &mut CPUState) -> Option<CosiProc> {
+        let init_task_addr = find_per_cpu_address(cpu, "init_task").ok()?;
+        CosiProc::new(cpu, init_task_addr)
+    }
     pub fn get_current_process(cpu: &mut CPUState) -> Option<CosiProc> {
         let curr_task_addr = find_per_cpu_address(cpu, "current_task").ok()?;
         CosiProc::new(cpu, curr_task_addr)
     }
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiProc> {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
+        println!("\t[struct] Read task struct w/pid: {} | and mm: {:x}", task.pid, task.mm);
         let mm_ptr = task.mm;
         let mm = MmStruct::osi_read(cpu, mm_ptr).ok()?;
+        println!("\t[struct] Read mm struct w/ptr: {:x}", mm_ptr);
         let asid: u32 = mm.pgd;
 
         let comm_data = task.comm;
@@ -302,6 +316,10 @@ pub struct CosiFiles {
 }
 
 impl CosiFiles {
+    pub fn file_from_fd<'a>(&'a self, fd: u32) -> Option<&'a CosiFile> {
+        let ret = self.files.iter().find(|x| x.fd == fd)?;
+        Some(&ret)
+    }
     pub fn get_current_files(cpu: &mut CPUState) -> Option<CosiFiles> {
         let c_proc = CosiProc::get_current_process(cpu)?;
         CosiFiles::new(cpu, c_proc.task.files)

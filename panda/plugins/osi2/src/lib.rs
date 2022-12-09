@@ -90,7 +90,44 @@ osi_static! {
     static CURRENT_TASK: TaskStruct;
 }
 
-fn print_cosiproc_info(cpu: &mut CPUState) -> bool {
+// Currently walks the process list based on task_struct->tasks,
+// but some systems might instead have task_struct->next_task field
+// Possibly we don't need to do all the work of locating the 
+fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
+    let mut ret = Vec::<CosiProc>::new();
+    let mut ts_current  = match CosiProc::get_init_process(cpu) {
+        Some(res) => {println!("[lib] Got an init"); res},
+        None => {
+            match CosiProc::get_current_process(cpu) {
+                Some(res) => {
+                    println!("[lib] Got current process: {:x}", res.addr);
+                    let tmp = CosiProc::new(cpu, res.taskd)?;
+                    println!("[lib] Got CosiProc from taskd {:x}", tmp.addr);
+                    let next_ptr = tmp.task.tasks.next;
+                    println!("[lib]Got next ptr: {:x}", next_ptr);
+                    CosiProc::new(cpu, next_ptr)?
+                },
+                None => return None,
+            }
+        },
+    };
+    println!("[lib] Got ts_current");
+    let first_addr = ts_current.addr;
+
+    loop {
+        println!("[lib] Loopin'");
+        ret.push(ts_current.clone());
+        ts_current = CosiProc::new(cpu, ts_current.task.tasks.next)?;
+        if ts_current.addr == 0 || ts_current.addr == first_addr {
+            break;
+        }
+    }
+
+    Some(ret)
+
+}
+
+fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
     match CosiProc::get_current_process(cpu) {
         Some(res) => {
             if res.asid != 0 {
@@ -109,7 +146,7 @@ fn print_cosiproc_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-fn print_osithread_info(cpu: &mut CPUState) -> bool {
+fn print_current_cosithread_info(cpu: &mut CPUState) -> bool {
     match CosiThread::get_current_thread(cpu) {
         Some(res) => {
             println!("tid: {:x}", res.tid);
@@ -123,6 +160,11 @@ fn print_osithread_info(cpu: &mut CPUState) -> bool {
 fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
     match CosiFiles::get_current_files(cpu) {
         Some(res) => {
+            match res.file_from_fd(1) {
+                Some(fd1) => println!("fd 1 name: {}", fd1.name),
+                None => (),
+            };
+            
             for i in res.files {
                 println!("file name: {} | fd: {}", i.name, i.fd);
             }
@@ -147,14 +189,28 @@ fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+fn print_process_list(cpu: &mut CPUState) -> bool {
+    match get_process_list(cpu) {
+        Some(res) => {
+            for i in res.iter() {
+                println!("name: {} | pid: {}", i.name, i.task.pid);
+            };
+        },
+        None => println!("No process list found"),
+    };
+
+    true
+}
+
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-    print_cosiproc_info(cpu);
-    print_osithread_info(cpu);
-    print_current_cosifile_info(cpu);
-    print_current_cosimappings_info(cpu);
+    //print_current_cosiproc_info(cpu);
+    //print_current_cosithread_info(cpu);
+    //print_current_cosifile_info(cpu);
+    //print_current_cosimappings_info(cpu);
+    print_process_list(cpu);
 
     println!("OSI2 INFO END\n\n");
 

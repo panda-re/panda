@@ -71,7 +71,6 @@ def driver():
     #@panda.ppp("osi", "on_asid_change")
     @panda.cb_asid_changed()
     def on_task_change(cpu, old, new):
-
         print(f"\nOSI CLASSIC INFO START")
         current = panda.plugins['osi'].get_current_process(cpu)
         if args.proc:
