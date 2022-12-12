@@ -18,6 +18,18 @@ pub struct ListHead {
     pub prev: target_ptr_t,
 }
 
+impl ListHead { 
+    pub fn get_owning_struct_ptr(&self, ty: &str, next: bool) -> Option<target_ptr_t> {
+        let owning_sym = symbol_table().type_from_name(ty)?;
+        let off = owning_sym.fields["tasks"].offset as target_ptr_t;
+        if next {
+            Some(self.next - off)
+        } else {
+            Some(self.prev - off)
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Version {
     pub a: target_ptr_t,
@@ -79,6 +91,16 @@ pub struct TaskStruct {
 
 }
 
+impl TaskStruct {
+    pub fn get_next_task(&self) -> Option<target_ptr_t> {
+        self.tasks.get_owning_struct_ptr("task_struct", true)
+    }
+
+    pub fn get_prev_task(&self) -> Option<target_ptr_t> {
+        self.tasks.get_owning_struct_ptr("task_struct", false)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CosiProc {
     /*
@@ -99,6 +121,12 @@ pub struct CosiProc {
 }
 
 impl CosiProc {
+    pub fn get_next_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
+        CosiProc::new(cpu, self.task.get_next_task()?)
+    }
+    pub fn get_prev_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
+        CosiProc::new(cpu, self.task.get_prev_task()?)
+    }
     pub fn get_init_process(cpu: &mut CPUState) -> Option<CosiProc> {
         let init_task_addr = find_per_cpu_address(cpu, "init_task").ok()?;
         CosiProc::new(cpu, init_task_addr)
@@ -109,10 +137,10 @@ impl CosiProc {
     }
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiProc> {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
-        println!("\t[struct] Read task struct w/pid: {} | and mm: {:x}", task.pid, task.mm);
+        //println!("\t[struct] Read task struct w/pid: {} | and mm: {:x}", task.pid, task.mm);
         let mm_ptr = task.mm;
         let mm = MmStruct::osi_read(cpu, mm_ptr).ok()?;
-        println!("\t[struct] Read mm struct w/ptr: {:x}", mm_ptr);
+        //println!("\t[struct] Read mm struct w/ptr: {:x}", mm_ptr);
         let asid: u32 = mm.pgd;
 
         let comm_data = task.comm;

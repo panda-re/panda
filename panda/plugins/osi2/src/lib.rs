@@ -96,28 +96,34 @@ osi_static! {
 fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
     let mut ts_current  = match CosiProc::get_init_process(cpu) {
-        Some(res) => {println!("[lib] Got an init"); res},
+        Some(res) => {/*println!("[lib] Got an init");*/ res},
         None => {
             match CosiProc::get_current_process(cpu) {
                 Some(res) => {
-                    println!("[lib] Got current process: {:x}", res.addr);
+                    //println!("[lib] Got current process: {:x}", res.addr);
                     let tmp = CosiProc::new(cpu, res.taskd)?;
+                    /*
                     println!("[lib] Got CosiProc from taskd {:x}", tmp.addr);
-                    let next_ptr = tmp.task.tasks.next;
+                    let next_ptr = tmp.task.tasks.get_owning_struct_ptr("task_struct", true)?;
                     println!("[lib]Got next ptr: {:x}", next_ptr);
-                    CosiProc::new(cpu, next_ptr)?
+                    CosiProc::new(cpu, next_ptr)? */
+                    tmp.get_next_process(cpu)?
                 },
                 None => return None,
             }
         },
     };
-    println!("[lib] Got ts_current");
+    //println!("[lib] Got ts_current");
     let first_addr = ts_current.addr;
 
     loop {
-        println!("[lib] Loopin'");
+        //println!("[lib] Loopin'");
         ret.push(ts_current.clone());
-        ts_current = CosiProc::new(cpu, ts_current.task.tasks.next)?;
+        ts_current = match ts_current.get_next_process(cpu) {
+            Some(next) => next,
+            None => break,
+        };
+        //ts_current = CosiProc::new(cpu, ts_current.task.tasks.get_owning_struct_ptr("task_struct", true))?;
         if ts_current.addr == 0 || ts_current.addr == first_addr {
             break;
         }
