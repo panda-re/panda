@@ -19,9 +19,9 @@ pub struct ListHead {
 }
 
 impl ListHead { 
-    pub fn get_owning_struct_ptr(&self, ty: &str, next: bool) -> Option<target_ptr_t> {
+    pub fn get_owning_struct_ptr(&self, ty: &str, field: &str, next: bool) -> Option<target_ptr_t> {
         let owning_sym = symbol_table().type_from_name(ty)?;
-        let off = owning_sym.fields["tasks"].offset as target_ptr_t;
+        let off = owning_sym.fields[field].offset as target_ptr_t;
         if next {
             Some(self.next - off)
         } else {
@@ -93,11 +93,11 @@ pub struct TaskStruct {
 
 impl TaskStruct {
     pub fn get_next_task(&self) -> Option<target_ptr_t> {
-        self.tasks.get_owning_struct_ptr("task_struct", true)
+        self.tasks.get_owning_struct_ptr("task_struct", "tasks", true)
     }
 
     pub fn get_prev_task(&self) -> Option<target_ptr_t> {
-        self.tasks.get_owning_struct_ptr("task_struct", false)
+        self.tasks.get_owning_struct_ptr("task_struct", "tasks", false)
     }
 }
 

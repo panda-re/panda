@@ -95,10 +95,10 @@ osi_static! {
 // Possibly we don't need to do all the work of locating the 
 fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
-    let mut ts_current  = match CosiProc::get_init_process(cpu) {
+    let mut ts_current  = match CosiProc::get_current_process(cpu) {
         Some(res) => {/*println!("[lib] Got an init");*/ res},
         None => {
-            match CosiProc::get_current_process(cpu) {
+            match CosiProc::get_init_process(cpu) {
                 Some(res) => {
                     //println!("[lib] Got current process: {:x}", res.addr);
                     let tmp = CosiProc::new(cpu, res.taskd)?;

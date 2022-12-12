@@ -11,16 +11,17 @@ parser.add_argument('-t', '--thread', action='store_true', help="Check view of t
 parser.add_argument('-f', '--file',  action='store_true', help="Check view of files")
 parser.add_argument('-m', '--module',  action='store_true', help="Check view of modules")
 parser.add_argument('-s', '--symbols', default="default", help="Path to the Vol3 symbol table you want to use. Should be a .json.xz file. Default helps only Ryan.")
+parser.add_argument('-l', '--list', action='store_true', help="Check view of process list")
 
 args = parser.parse_args()
 
 def get_proc_info(cpu, current):
-    print(f"{current=} | {dir(current)}")
+    #print(f"{current=} | {dir(current)}")
     if current.name != panda.ffi.NULL:
         name = panda.ffi.string(current.name).decode('utf-8', errors='ignore')
     else:
         name = "ERROR"
-    print(f"{current.asid=:x} | {current.create_time=:x} | {name=} | {current.pages=} | {current.pid=:x} | {current.ppid=:x} | {current.taskd=:x}")
+    print(f"{current.asid=:x} | {current.create_time=:x} | {name=} | {current.pages=} | {current.pid=} | {current.ppid=} | {current.taskd=:x}")
 
 def get_thread_info(cpu):
     current_thread = panda.plugins['osi'].get_current_thread(cpu)
@@ -53,6 +54,12 @@ def get_module_info(cpu, current):
             name = "[unknown]"
         print(f"{mapping.modd=:x} | {mapping.base=:x} | {mapping.size=:x} | {file=} | {name=}")
 
+def get_processlist_info(cpu):
+    ps = panda.get_processes(cpu)
+
+    for p in ps:
+        get_proc_info(cpu, p)
+
 
 
 panda = Panda(generic='x86_64')
@@ -81,6 +88,8 @@ def driver():
             get_file_info(cpu, current)
         if args.module:
             get_module_info(cpu, current)
+        if args.list:
+            get_processlist_info(cpu)
         print(f"OSI CLASSIC INFO END\n")
         return 1
 
