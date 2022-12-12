@@ -1343,7 +1343,7 @@ enum LoadVMExitCodes {
     LOADVM_QUIT     =  1,
 };
 
-static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis);
+static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis, int is_replay);
 
 /* ------ incoming postcopy messages ------ */
 /* 'advise' arrives before any transfers just to tell us that a postcopy
@@ -1514,7 +1514,7 @@ static void *postcopy_ram_listen_thread(void *opaque)
      * in qemu_file, and thus we must be blocking now.
      */
     qemu_file_set_blocking(f, true);
-    load_res = qemu_loadvm_state_main(f, mis);
+    load_res = qemu_loadvm_state_main(f, mis, 0);
     /* And non-blocking again so we don't block in any cleanup */
     qemu_file_set_blocking(f, false);
 
@@ -1705,7 +1705,7 @@ static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis)
 
     QEMUFile *packf = qemu_fopen_channel_input(QIO_CHANNEL(bioc));
 
-    ret = qemu_loadvm_state_main(packf, mis);
+    ret = qemu_loadvm_state_main(packf, mis, 0);
     trace_loadvm_handle_cmd_packaged_main(ret);
     qemu_fclose(packf);
     object_unref(OBJECT(bioc));
@@ -1839,7 +1839,7 @@ void loadvm_free_handlers(MigrationIncomingState *mis)
 }
 
 static int
-qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
+qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis, int is_replay)
 {
     uint32_t instance_id, version_id, section_id;
     SaveStateEntry *se;
@@ -1862,6 +1862,10 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
+        if (is_replay != 0) { //if we're in a replay and don't care about peripheral state
+            return 0;
+        }
+
         error_report("Unknown savevm section or instance '%s' %d",
                      idstr, instance_id);
         return -EINVAL;
@@ -1934,7 +1938,7 @@ qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis)
     return 0;
 }
 
-static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis)
+static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis, int is_replay)
 {
     uint8_t section_type;
     int ret = 0;
@@ -1945,7 +1949,7 @@ static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis)
         switch (section_type) {
         case QEMU_VM_SECTION_START:
         case QEMU_VM_SECTION_FULL:
-            ret = qemu_loadvm_section_start_full(f, mis);
+            ret = qemu_loadvm_section_start_full(f, mis, is_replay);
             if (ret < 0) {
                 goto out;
             }
@@ -1978,7 +1982,7 @@ out:
     return ret;
 }
 
-int qemu_loadvm_state(QEMUFile *f)
+int qemu_loadvm_state(QEMUFile *f, int is_replay)
 {
     MigrationIncomingState *mis = migration_incoming_get_current();
     Error *local_err = NULL;
@@ -2018,7 +2022,7 @@ int qemu_loadvm_state(QEMUFile *f)
         }
     }
 
-    ret = qemu_loadvm_state_main(f, mis);
+    ret = qemu_loadvm_state_main(f, mis, is_replay);
     qemu_event_set(&mis->main_thread_load_event);
 
     trace_qemu_loadvm_state_post_main(ret);
@@ -2242,7 +2246,7 @@ void qmp_xen_load_devices_state(const char *filename, Error **errp)
     qio_channel_set_name(QIO_CHANNEL(ioc), "migration-xen-load-state");
     f = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
 
-    ret = qemu_loadvm_state(f);
+    ret = qemu_loadvm_state(f, 0);
     qemu_fclose(f);
     if (ret < 0) {
         error_setg(errp, QERR_IO_ERROR);
@@ -2250,7 +2254,7 @@ void qmp_xen_load_devices_state(const char *filename, Error **errp)
     migration_incoming_state_destroy();
 }
 
-int load_vmstate(const char *name)
+int load_vmstate(const char *name, int is_replay)
 {
     BlockDriverState *bs, *bs_vm_state;
     QEMUSnapshotInfo sn;
@@ -2311,7 +2315,7 @@ int load_vmstate(const char *name)
     mis->from_src_file = f;
 
     aio_context_acquire(aio_context);
-    ret = qemu_loadvm_state(f);
+    ret = qemu_loadvm_state(f, is_replay);
     qemu_fclose(f);
     aio_context_release(aio_context);
 

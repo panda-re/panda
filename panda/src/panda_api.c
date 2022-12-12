@@ -63,7 +63,7 @@ void panda_start_pandalog(const char * name) {
 }
 
 int panda_revert(char *snapshot_name) {
-    int ret = load_vmstate(snapshot_name);
+    int ret = load_vmstate(snapshot_name, 0);
 //    printf ("Got back load_vmstate ret=%d\n", ret);
     return ret;
 }

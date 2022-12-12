@@ -78,7 +78,7 @@ void qemu_remove_machine_init_done_notifier(Notifier *notify);
 void hmp_savevm(Monitor *mon, const QDict *qdict);
 void monitor_or_stdout_printf(Monitor *mon, const char *fmt, ...);
 int save_vmstate(Monitor *mon, const char *name);
-int load_vmstate(const char *name);
+int load_vmstate(const char *name, int is_replay);
 void hmp_delvm(Monitor *mon, const QDict *qdict);
 void hmp_info_snapshots(Monitor *mon, const QDict *qdict);
 int delvm_name(char *name);
@@ -131,7 +131,7 @@ void qemu_savevm_send_postcopy_ram_discard(QEMUFile *f, const char *name,
                                            uint64_t *start_list,
                                            uint64_t *length_list);
 
-int qemu_loadvm_state(QEMUFile *f);
+int qemu_loadvm_state(QEMUFile *f, int is_replay);
 int qemu_savevm_state(QEMUFile *f, Error **errp);
 
 extern int autostart;

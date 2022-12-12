@@ -188,7 +188,7 @@ void panda_restore(void *opaque) {
     MigrationIncomingState* mis = migration_incoming_get_current();
     mis->from_src_file = file;
 
-    int snapshot_ret = qemu_loadvm_state(file);
+    int snapshot_ret = qemu_loadvm_state(file, 0);
     assert(snapshot_ret >= 0);
 
     migration_incoming_state_destroy();

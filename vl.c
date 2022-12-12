@@ -5038,7 +5038,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     } else if (loadvm) {
         if (replay_name) {
           fprintf(stderr, "Ignoring request to loadvm since we're in replay mode\n");
-        } else if (load_vmstate(loadvm) < 0) {
+        } else if (load_vmstate(loadvm, 0) < 0) {
             autostart = 0;
         }
     }

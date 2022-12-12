@@ -1573,7 +1573,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     // load VM snapshot if needed
     if (rr_control.snapshot != NULL) {
         printf("loading snapshot:\t%s\n", rr_control.snapshot);
-        snapshot_ret = load_vmstate(rr_control.snapshot);
+        snapshot_ret = load_vmstate(rr_control.snapshot, 0);
     }
 
     // write PANDA memory snapshot
@@ -1670,7 +1670,7 @@ int load_snapshot_state(QEMUFile* snp){
     qemu_system_reset(VMRESET_SILENT);
     MigrationIncomingState* mis = migration_incoming_get_current();
     mis->from_src_file = snp;
-    snapshot_ret = qemu_loadvm_state(snp);
+    snapshot_ret = qemu_loadvm_state(snp, 1);
     qemu_fclose(snp);
     migration_incoming_state_destroy();
 
