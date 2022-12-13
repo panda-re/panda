@@ -89,225 +89,61 @@ osi_static! {
     static CURRENT_TASK: TaskStruct;
 }
 
-fn get_osiproc_info(cpu: &mut CPUState) -> Option<OsiProc> {
-    let mut ret = OsiProc {
-        asid: 0,
-        start_time: 0,
-        name: String::from(""),
-        pid: 0,
-        ppid: 0,
-        taskd: 0,
-    };
-
-    // From osi_linux.cpp: p->asid = taskd->mm->pgd
-    // so presumably we can just follow task_struct->mm->pgd to get that information
-    // relatedly, from osi_linux.cpp, this will error occasionally and that should be
-    // seen as "fine"
-    let mm_ptr = CURRENT_TASK.mm(cpu).unwrap();
-    let mm = MmStruct::osi_read(cpu, mm_ptr).ok();
-    let asid: u32 = match mm {
-        Some(res) => res.pgd,
-        None => 0,
-    };
-
-    let start_time = CURRENT_TASK.start_time(cpu).unwrap();
-    ret.start_time = start_time;
-
-    let comm_data = CURRENT_TASK.comm(cpu).unwrap();
-    let task_comm_len = comm_data
-        .iter()
-        .position(|&x| x == 0u8)
-        .unwrap_or(TASK_COMM_LEN);
-
-    let proc_name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
-    ret.name = proc_name;
-
-    let pid = CURRENT_TASK.pid(cpu).unwrap();
-    ret.pid = pid;
-
-    let parent_ptr = CURRENT_TASK.parent(cpu).unwrap();
-    let parent = TaskStruct::osi_read(cpu, parent_ptr).unwrap();
-    let ppid = parent.pid;
-    ret.ppid = ppid;
-
-    // from osi_linux.cpp line166, p->taskd is being set to kernel_profile->get_group_leader
-    // so presumably we can just read task_struct->group_leader to get that info?
-    let taskd = CURRENT_TASK.group_leader(cpu).unwrap();
-    ret.taskd = taskd;
-
-    Some(ret)
-}
-
-fn get_osithread_info(cpu: &mut CPUState) -> Option<OsiThread> {
-    let mut ret = OsiThread { tid: 0, pid: 0 };
-    ret.tid = CURRENT_TASK.pid(cpu).unwrap();
-    ret.pid = CURRENT_TASK.tgid(cpu).unwrap();
-
-    Some(ret)
-}
-
-pub fn read_string_from_guest(cpu: &mut CPUState, start_ptr: target_ptr_t) -> String {
-    let mut ptr = start_ptr;
-    let mut char_read = 1u8;
-    let step = 1;
-    let mut collect = "".to_owned();
-
-    while char_read != 0u8 {
-        char_read = u8::read_from_guest(cpu, ptr).unwrap();
-        ptr = ptr + 1;
-        collect.push(char_read as char);
-    }
-
-    collect
-}
-
-// remimplement read_dentry_name from osi_linux.h
-fn read_dentry_name(cpu: &mut CPUState, dentry: target_ptr_t, is_mnt: bool) -> String {
-    let mut ret = "".to_owned();
-
-    let mut current_dentry_parent = dentry;
-    let mut current_dentry: target_ptr_t = 0xdead00af;
-
-    while current_dentry_parent != current_dentry {
-        current_dentry = current_dentry_parent;
-
-        let mut qd_name = Qstr {
-            unnamed_field_0: 0,
-            name: 0,
-        };
-        let mut dentry_struct = Dentry {
-            d_parent: 0,
-            d_name: qd_name,
-        };
-        match Dentry::osi_read(cpu, current_dentry).ok() {
-            Some(res) => dentry_struct = res,
-            None => continue,
-        }
-
-        current_dentry_parent = dentry_struct.d_parent;
-
-        let mut name_ptr = dentry_struct.d_name.name;
-
-        let name = read_string_from_guest(cpu, name_ptr);
-        let mut term = &"/";
-
-        if ret == "" || is_mnt {
-            term = &"";
-        }
-        if &name == "/\0" || current_dentry == current_dentry_parent {
-            ret = name.to_owned() + &ret
-        } else {
-            ret = name.to_owned() + term + &ret
-        }
-    }
-
-    match ret.as_str() {
-        "/\0" => "".to_owned(),
-        _ => ret,
-    }
-}
-
-fn get_osi_file_info(
-    cpu: &mut CPUState,
-    file: File,
-    ptr: target_ptr_t,
-    fd: u32,
-) -> Option<OsiFile> {
-    // Want to get the file name here, which means we need file->path (type *dentry)
-    // and then follow path->mnt->mnt_root (type *dentry) as well as path->dentry (type *dentry)
-    // Then, for each dentry we read, we need to read dentry->name (type qstr) to get the name, as well as dentry->d_parent (type *dentry)
-    // to repeat this process
-
-    let path = file.f_path;
-
-    // read file->path->dentry to get a pointer to the first dentry we want to read;
-    let name = read_dentry_name(cpu, path.dentry, false);
-
-    // next read name stuff from vfsmount too
-    let mnt = VfsMount::osi_read(cpu, path.mnt).ok()?;
-
-    let mount_vol = symbol_table().type_from_name("mount").unwrap();
-    let off = mount_vol.fields["mnt"].offset as target_ptr_t;
-    let mount_struct = Mount::osi_read(cpu, path.mnt - off).ok()?;
-    let name2 = read_dentry_name(cpu, mount_struct.mnt_mountpoint, true);
-
-    let name = name2.to_owned() + &name;
-
-    let f_pos = file.f_pos;
-
-    Some(OsiFile {
-        f_pos,
-        name,
-        fd,
-        fs_struct: ptr,
-    })
-    //return Some(ret);
-}
-
-fn get_osifiles_info(cpu: &mut CPUState) -> Option<OsiFiles> {
-    let mut ret = OsiFiles { files: Vec::new() };
-
-    let files_ptr = CURRENT_TASK.files(cpu).unwrap();
-    let files = FilesStruct::osi_read(cpu, files_ptr).ok()?;
-    let fdtab = files.fdt;
-
-    let fdtable = Fdtable::osi_read(cpu, fdtab).ok()?;
-
-    let max_fds = fdtable.max_fds as u32;
-    let open_fds_ptr = fdtable.open_fds;
-    let open_fds = u32::read_from_guest(cpu, open_fds_ptr).unwrap();
-    let mut fd_ptr = fdtable.fd;
-
-    let mut fds = Vec::<File>::new();
-    let step = size_of::<target_ptr_t>() as target_ptr_t;
-    for idx in 0..max_fds {
-        let fd = target_ptr_t::read_from_guest(cpu, fd_ptr).unwrap();
-        if fd == 0 {
-            break;
-        }
-        let bv_check = open_fds >> idx;
-        if bv_check == 0 {
-            break;
-        }
-
-        if bv_check % 2 == 0 {
-            fd_ptr = fd_ptr + step;
-            continue;
-        }
-
-        let mut p = Path { dentry: 0, mnt: 0 };
-        let mut f = File {
-            f_path: p,
-            f_pos: 0,
-        };
-        match File::osi_read(cpu, fd).ok() {
-            Some(res) => {
-                match get_osi_file_info(cpu, res, fd, idx) {
-                    Some(f_info) => ret.files.push(f_info),
-                    None => {
-                        println!("Failed to read info for fd {idx}");
-                        ()
-                    }
-                };
+// Currently walks the process list based on task_struct->tasks,
+// but some systems might instead have task_struct->next_task field
+// Possibly we don't need to do all the work of locating the 
+fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
+    let mut ret = Vec::<CosiProc>::new();
+    let mut ts_current  = match CosiProc::get_current_process(cpu) {
+        Some(res) => {/*println!("[lib] Got an init");*/ res},
+        None => {
+            match CosiProc::get_init_process(cpu) {
+                Some(res) => {
+                    //println!("[lib] Got current process: {:x}", res.addr);
+                    let tmp = CosiProc::new(cpu, res.taskd)?;
+                    /*
+                    println!("[lib] Got CosiProc from taskd {:x}", tmp.addr);
+                    let next_ptr = tmp.task.tasks.get_owning_struct_ptr("task_struct", true)?;
+                    println!("[lib]Got next ptr: {:x}", next_ptr);
+                    CosiProc::new(cpu, next_ptr)? */
+                    tmp.get_next_process(cpu)?
+                },
+                None => return None,
             }
-            None => (),
+        },
+    };
+    //println!("[lib] Got ts_current");
+    let first_addr = ts_current.addr;
+
+    loop {
+        //println!("[lib] Loopin'");
+        ret.push(ts_current.clone());
+        ts_current = match ts_current.get_next_process(cpu) {
+            Some(next) => next,
+            None => break,
         };
-        fd_ptr = fd_ptr + step;
+
+        //ts_current = CosiProc::new(cpu, ts_current.task.tasks.get_owning_struct_ptr("task_struct", true))?;
+        if ts_current.addr == 0 || ts_current.addr == first_addr {
+            break;
+        }
     }
+
     Some(ret)
+
 }
 
-fn print_osiproc_info(cpu: &mut CPUState) -> bool {
-    let proc = match get_osiproc_info(cpu) {
+fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
+    match CosiProc::get_current_process(cpu) {
         Some(res) => {
             if res.asid != 0 {
                 println!("asid: {:x}", res.asid);
             } else {
                 println!("asid: Err");
             }
-            println!("start_time: {:x}", res.start_time);
+            println!("start_time: {:x}", res.task.start_time);
             println!("name: {}", res.name);
-            println!("pid, {:x}", res.pid);
+            println!("pid, {:x}", res.task.pid);
             println!("ppid, {:x}", res.ppid);
             println!("taskd, {:x}", res.taskd);
         }
@@ -316,8 +152,8 @@ fn print_osiproc_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-fn print_osithread_info(cpu: &mut CPUState) -> bool {
-    let thread = match get_osithread_info(cpu) {
+fn print_current_cosithread_info(cpu: &mut CPUState) -> bool {
+    match CosiThread::get_current_thread(cpu) {
         Some(res) => {
             println!("tid: {:x}", res.tid);
             println!("pid: {:x}", res.pid);
@@ -327,9 +163,14 @@ fn print_osithread_info(cpu: &mut CPUState) -> bool {
     true
 }
 
-fn print_osifile_info(cpu: &mut CPUState) -> bool {
-    match get_osifiles_info(cpu) {
+fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
+    match CosiFiles::get_current_files(cpu) {
         Some(res) => {
+            match res.file_from_fd(1) {
+                Some(fd1) => println!("fd 1 name: {}", fd1.name),
+                None => (),
+            };
+            
             for i in res.files {
                 println!("file name: {} | fd: {}", i.name, i.fd);
             }
@@ -339,13 +180,43 @@ fn print_osifile_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
+    match CosiProc::get_current_process(cpu) {
+        Some(res) => match res.get_mappings(cpu) {
+            Some(mapping) => {
+                for mdl in mapping.modules.iter() {
+                    println!("modd: {:x} | base: {:x} | size: {:x} | file: {} | name: {}", mdl.modd, mdl.base, mdl.size, mdl.file, mdl.name)
+                }
+            },
+            None => println!("Could not read memory mapping"),
+        },
+        None => println!("Could not read current process"),
+    }
+    true
+}
+
+fn print_process_list(cpu: &mut CPUState) -> bool {
+    match get_process_list(cpu) {
+        Some(res) => {
+            for i in res.iter() {
+                println!("name: {} | pid: {}", i.name, i.task.pid);
+            };
+        },
+        None => println!("No process list found"),
+    };
+
+    true
+}
+
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     println!("\n\nOSI2 INFO START");
 
-    print_osiproc_info(cpu);
-    print_osithread_info(cpu);
-    print_osifile_info(cpu);
+    //print_current_cosiproc_info(cpu);
+    //print_current_cosithread_info(cpu);
+    //print_current_cosifile_info(cpu);
+    //print_current_cosimappings_info(cpu);
+    print_process_list(cpu);
 
     println!("OSI2 INFO END\n\n");
 
