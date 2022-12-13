@@ -19,11 +19,10 @@ static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 /// Interface for other plugins to interact with
 mod ffi;
 mod kaslr;
+mod process;
 mod structs;
 
 use kaslr::kaslr_offset;
-
-use ffi::offset_of_field;
 
 use structs::*;
 
@@ -123,6 +122,7 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
             Some(next) => next,
             None => break,
         };
+
         //ts_current = CosiProc::new(cpu, ts_current.task.tasks.get_owning_struct_ptr("task_struct", true))?;
         if ts_current.addr == 0 || ts_current.addr == first_addr {
             break;

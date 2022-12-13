@@ -43,8 +43,8 @@ pub struct Version {
 #[derive(OsiType, Debug)]
 #[osi(type_name = "cred")]
 pub struct CredStruct {
-    pub uid: target_ptr_t, // type unsigned int
-    pub gid: target_ptr_t, // type unsigned int
+    pub uid: target_ptr_t,  // type unsigned int
+    pub gid: target_ptr_t,  // type unsigned int
     pub euid: target_ptr_t, // type unsigned int
     pub egid: target_ptr_t, // type unsigned int
 }
@@ -52,10 +52,10 @@ pub struct CredStruct {
 #[derive(OsiType, Debug, Clone)]
 #[osi(type_name = "mm_struct")]
 pub struct MmStruct {
-    pub pgd: u32, // type *unnamed_bunch_of_stuff_3
-    pub arg_start: target_ptr_t, // type long unsigned int
-    pub start_brk: target_ptr_t, // type long unsigned int
-    pub brk: target_ptr_t, // type long unsigned int
+    pub pgd: u32,                  // type *unnamed_bunch_of_stuff_3
+    pub arg_start: target_ptr_t,   // type long unsigned int
+    pub start_brk: target_ptr_t,   // type long unsigned int
+    pub brk: target_ptr_t,         // type long unsigned int
     pub start_stack: target_ptr_t, // type long unsigned int
     pub mmap: target_ptr_t, // type *vm_area_struct
 }
@@ -67,28 +67,25 @@ pub struct TaskStruct {
     #[osi(osi_type)]
     pub tasks: ListHead, // type list_head
     //next_task: target_ptr_t, // type ??
-
-    pub pid: u32, // type int
-    pub tgid: u32, //type int
+    pub pid: u32,                   // type int
+    pub tgid: u32,                  //type int
     pub group_leader: target_ptr_t, // type *task_struct
     pub thread_group: target_ptr_t, // type list_head
 
     // Only one of real_parent or p_opptr will exist as a field
-    pub real_parent: target_ptr_t, // type *task_struct 
+    pub real_parent: target_ptr_t, // type *task_struct
     //p_opptr: target_ptr_t, // type ??
 
     // Only one of parent or p_pptr will exist as a field
     pub parent: target_ptr_t, // type *task_struct
     //p_pptr: target_ptr_t, // type ??
-
-    pub mm: target_ptr_t, // type *mm_struct
-    pub stack: target_ptr_t, // type *void
-    pub real_cred: target_ptr_t, // type *cred
-    pub cred: target_ptr_t, // type *cred
+    pub mm: target_ptr_t,          // type *mm_struct
+    pub stack: target_ptr_t,       // type *void
+    pub real_cred: target_ptr_t,   // type *cred
+    pub cred: target_ptr_t,        // type *cred
     pub comm: [u8; TASK_COMM_LEN], // type char[]
-    pub files: target_ptr_t, // type *files_struct
-    pub start_time: target_ptr_t, // type long long unsigned int
-
+    pub files: target_ptr_t,       // type *files_struct
+    pub start_time: target_ptr_t,  // type long long unsigned int
 }
 
 impl TaskStruct {
@@ -203,8 +200,8 @@ pub struct CallbackHead {
 #[osi(type_name = "qstr")]
 pub struct Qstr {
     pub unnamed_field_0: u64, // type union {struct { HASH_LEN_DECLARE; }; u64 hash_len;}
-    pub name: target_ptr_t, // type *char
-    //name: [u8; QSTR_NAME_LEN] // trying it this way for easier reading?
+    pub name: target_ptr_t,   // type *char
+                              //name: [u8; QSTR_NAME_LEN] // trying it this way for easier reading?
 }
 
 #[derive(OsiType, Debug)]
@@ -233,7 +230,7 @@ pub struct VfsMount {
 #[osi(type_name = "path")]
 pub struct Path {
     pub dentry: target_ptr_t, // type *dentry
-    pub mnt: target_ptr_t, // type *vfsmount
+    pub mnt: target_ptr_t,    // type *vfsmount
 }
 
 #[derive(OsiType, Debug)]
@@ -297,9 +294,9 @@ impl File {
 #[osi(type_name = "fdtable")]
 pub struct Fdtable {
     pub close_on_exec: target_ptr_t, // type *long unsigned int
-    pub fd: target_ptr_t, // type **file
+    pub fd: target_ptr_t,            // type **file
     pub full_fds_bits: target_ptr_t, // type *long unsigned int
-    pub max_fds: u32, // type unsigned int
+    pub max_fds: u32,                // type unsigned int
     pub open_fds: target_ptr_t, // type *long unsigned int | used as a bit vector, if nth bit is set, fd n is open
 
     // It doesn't seem like we'll need these, but maybe
@@ -330,10 +327,10 @@ impl CosiFile {
         let file = File::osi_read(cpu, addr).ok()?;
         let name = file.read_name(cpu)?;
         return Some(CosiFile {
-        addr: addr,
-        file_struct: file,
-        name: name,
-        fd: fd,
+            addr: addr,
+            file_struct: file,
+            name: name,
+            fd: fd,
         })
     }
 }
