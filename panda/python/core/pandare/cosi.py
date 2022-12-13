@@ -1,5 +1,5 @@
 # TODO: rename to cosi
-COSI = 'osi2'
+COSI = 'cosi'
 
 from dataclasses import dataclass
 
@@ -33,7 +33,7 @@ class VolatilitySymbol:
 
         name_ptr = self.panda.plugins[COSI].name_of_symbol(self.inner)
         name = self.panda.ffi.string(name_ptr).decode('utf8')
-        self.panda.plugins[COSI].free_osi2_str(name_ptr)
+        self.panda.plugins[COSI].free_cosi_str(name_ptr)
 
         return name
 
@@ -103,7 +103,7 @@ class VolatilityStruct:
 
         name_ptr = self.panda.plugins[COSI].name_of_struct(self.inner)
         name = self.panda.ffi.string(name_ptr).decode('utf8')
-        self.panda.plugins[COSI].free_osi2_str(name_ptr)
+        self.panda.plugins[COSI].free_cosi_str(name_ptr)
 
         return name
 
@@ -180,7 +180,7 @@ class VolatilityBaseType:
 
         name_ptr = self.panda.plugins[COSI].name_of_base_type(self.inner)
         name = self.panda.ffi.string(name_ptr).decode('utf8')
-        self.panda.plugins[COSI].free_osi2_str(name_ptr)
+        self.panda.plugins[COSI].free_cosi_str(name_ptr)
 
         return name
 

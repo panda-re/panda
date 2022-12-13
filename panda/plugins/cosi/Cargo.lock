@@ -42,6 +42,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cosi"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
+ "panda-re",
+ "regex",
+ "volatility_profile",
+]
+
+[[package]]
 name = "crc"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -247,20 +257,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
 
 [[package]]
-name = "osi2"
-version = "0.1.0"
-dependencies = [
- "once_cell",
- "panda-re",
- "regex",
- "volatility_profile",
-]
-
-[[package]]
 name = "panda-re"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80f190bd260c8316976d0e5a5518fd5828d8493de8e8016e95ccf9bd360fde25"
+checksum = "da4bf7aa66e85e49f060db7aab97db55133175891310e2c34bb546e7c81d62dc"
 dependencies = [
  "array-init",
  "dirs",
@@ -279,9 +279,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23c3230b5db4feabbb64db86085e3caaf2fcd311a27770820d64c1e52b173126"
+checksum = "bf116dc032f75801734e3b82a22c1a11aba0c92b481aee571ee1da46c04cff6a"
 dependencies = [
  "darling",
  "doc-comment",

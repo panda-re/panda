@@ -7,6 +7,8 @@ callstack_instr
 checkpoint
 collect_code
 correlatetaps
+cosi
+cosi_strace
 coverage
 dynamic_symbols
 edge_coverage
@@ -26,8 +28,6 @@ mmio_trace
 net
 network
 osi
-osi2
-osi2_strace
 osi_linux
 osi_test
 pri

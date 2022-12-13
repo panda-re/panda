@@ -2,7 +2,7 @@ use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use panda::mem::{read_guest_type, virtual_memory_read_into};
-use panda::plugins::osi2::{symbol_from_name, type_from_name};
+use panda::plugins::cosi::{symbol_from_name, type_from_name};
 use panda::prelude::*;
 use panda::GuestType;
 use std::{ffi::CStr, ffi::CString, os::raw::c_char};
@@ -10,7 +10,7 @@ use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
-use panda::plugins::osi2::{osi_static, OsiType};
+use panda::plugins::cosi::{osi_static, OsiType};
 
 use panda::plugins::syscalls2::Syscalls2Callbacks;
 
@@ -27,7 +27,7 @@ use kaslr::kaslr_offset;
 use structs::*;
 
 #[derive(PandaArgs)]
-#[name = "osi2"]
+#[name = "cosi"]
 struct Args {
     #[arg(
         required,

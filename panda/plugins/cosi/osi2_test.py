@@ -71,7 +71,7 @@ def driver():
     else:
         prof_file = args.symbols
     
-    panda.load_plugin("osi2", args = {"profile": prof_file})
+    panda.load_plugin("cosi", args = {"profile": prof_file})
     panda.load_plugin("osi")
     panda.load_plugin("osi_linux")
     

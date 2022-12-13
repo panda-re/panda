@@ -144,5 +144,5 @@ fn determine_kaslr_offset(cpu: &mut CPUState) -> target_ptr_t {
         ptr += PAGE_SIZE;
     }
 
-    panic!("osi2 failed kaslr offset search")
+    panic!("cosi failed kaslr offset search")
 }

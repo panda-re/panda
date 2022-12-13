@@ -24,13 +24,13 @@ target_ptr_t value_of_symbol(const VolatilitySymbol *symbol);
 
 /**
  * Gets the name of the symbol as a C-compatible string, or null if the symbol cannot
- * be found. Must be freed via `free_osi2_str`.
+ * be found. Must be freed via `free_cosi_str`.
  */
 char *name_of_symbol(const VolatilitySymbol *symbol);
 
 /**
  * Gets the name of the struct as a C-compatible string, or null if the symbol cannot
- * be found. Must be freed via `free_osi2_str`.
+ * be found. Must be freed via `free_cosi_str`.
  */
 char *name_of_struct(const VolatilityStruct *ty);
 
@@ -41,13 +41,13 @@ char *get_field_by_index(const VolatilityStruct *ty, uintptr_t index);
 
 /**
  * Gets the name of the enum as a C-compatible string, or null if the symbol cannot
- * be found. Must be freed via `free_osi2_str`.
+ * be found. Must be freed via `free_cosi_str`.
  */
 char *name_of_enum(const VolatilityEnum *ty);
 
 /**
  * Gets the name of the base type as a C-compatible string, or null if the symbol cannot
- * be found. Must be freed via `free_osi2_str`.
+ * be found. Must be freed via `free_cosi_str`.
  */
 char *name_of_base_type(const VolatilityBaseType *ty);
 
@@ -70,6 +70,6 @@ target_ulong size_of_struct(const VolatilityStruct *vol_struct);
 
 target_ulong current_cpu_offset(CPUState *cpu);
 
-void free_osi2_str(char *string);
+void free_cosi_str(char *string);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!

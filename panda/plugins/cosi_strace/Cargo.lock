@@ -61,6 +61,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosi_strace"
+version = "0.1.0"
+dependencies = [
+ "chumsky",
+ "log",
+ "once_cell",
+ "panda-re",
+]
+
+[[package]]
 name = "crunchy"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -250,20 +260,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
 
 [[package]]
-name = "osi2_strace"
-version = "0.1.0"
-dependencies = [
- "chumsky",
- "log",
- "once_cell",
- "panda-re",
-]
-
-[[package]]
 name = "panda-re"
-version = "0.39.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fff0b4e7d6cf0b1e01dd1c29dc558115a080218c9428f7cc10848afb0f662d5"
+checksum = "da4bf7aa66e85e49f060db7aab97db55133175891310e2c34bb546e7c81d62dc"
 dependencies = [
  "array-init",
  "dirs",
@@ -282,9 +282,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.21.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29772398be20723c90088ae4380d62e25cefe54c174d9082532b258985e41d04"
+checksum = "bf116dc032f75801734e3b82a22c1a11aba0c92b481aee571ee1da46c04cff6a"
 dependencies = [
  "darling",
  "doc-comment",

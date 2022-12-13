@@ -1,6 +1,6 @@
 use std::mem::size_of;
 use panda::prelude::*;
-use panda::plugins::osi2::{ OsiType, find_per_cpu_address};
+use panda::plugins::cosi::{ OsiType, find_per_cpu_address};
 use panda::GuestType;
 use crate::symbol_table;
 

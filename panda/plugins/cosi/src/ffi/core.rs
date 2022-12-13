@@ -66,7 +66,7 @@ pub extern "C" fn value_of_symbol(symbol: &VolatilitySymbol) -> target_ptr_t {
 }
 
 /// Gets the name of the symbol as a C-compatible string, or null if the symbol cannot
-/// be found. Must be freed via `free_osi2_str`.
+/// be found. Must be freed via `free_cosi_str`.
 #[no_mangle]
 pub extern "C" fn name_of_symbol(symbol: &VolatilitySymbol) -> *mut c_char {
     let name = symbol_table()
@@ -82,7 +82,7 @@ pub extern "C" fn name_of_symbol(symbol: &VolatilitySymbol) -> *mut c_char {
 }
 
 /// Gets the name of the struct as a C-compatible string, or null if the symbol cannot
-/// be found. Must be freed via `free_osi2_str`.
+/// be found. Must be freed via `free_cosi_str`.
 #[no_mangle]
 pub extern "C" fn name_of_struct(ty: &VolatilityStruct) -> *mut c_char {
     let name = symbol_table()
@@ -110,7 +110,7 @@ pub extern "C" fn get_field_by_index(ty: &VolatilityStruct, index: usize) -> *mu
 }
 
 /// Gets the name of the enum as a C-compatible string, or null if the symbol cannot
-/// be found. Must be freed via `free_osi2_str`.
+/// be found. Must be freed via `free_cosi_str`.
 #[no_mangle]
 pub extern "C" fn name_of_enum(ty: &VolatilityEnum) -> *mut c_char {
     let name = symbol_table()
@@ -126,7 +126,7 @@ pub extern "C" fn name_of_enum(ty: &VolatilityEnum) -> *mut c_char {
 }
 
 /// Gets the name of the base type as a C-compatible string, or null if the symbol cannot
-/// be found. Must be freed via `free_osi2_str`.
+/// be found. Must be freed via `free_cosi_str`.
 #[no_mangle]
 pub extern "C" fn name_of_base_type(ty: &VolatilityBaseType) -> *mut c_char {
     let name = symbol_table()
@@ -214,7 +214,7 @@ pub extern "C" fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn free_osi2_str(string: *mut c_char) {
+pub unsafe extern "C" fn free_cosi_str(string: *mut c_char) {
     if !string.is_null() {
         drop(CString::from_raw(string));
     }

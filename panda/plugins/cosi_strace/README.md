@@ -1,8 +1,8 @@
 # OSI2 strace
 
-A plugin for using osi2 to provide strace-like functionality or to pull information about the system's syscalls.
+A plugin for using cosi to provide strace-like functionality or to pull information about the system's syscalls.
 
-**Note:** at time of writing osi2 has issues on 64-bit architectures regarding KASLR detection, osi2_strace will not function unless osi2 is working.
+**Note:** at time of writing cosi has issues on 64-bit architectures regarding KASLR detection, cosi_strace will not function unless cosi is working.
 
 ### Args
 
@@ -14,7 +14,7 @@ A plugin for using osi2 to provide strace-like functionality or to pull informat
 from pandare import Panda
 
 panda = Panda(generic="i386")
-panda.load_plugin("osi2_strace")
+panda.load_plugin("cosi_strace")
 
 @panda.queue_blocking
 def run_cmd():
@@ -57,12 +57,12 @@ sys_close(fd=0x3) = 0
 
 ### Syscall Prototype Dumping
 
-osi2_strace features the ability to dump syscall prototypes to a file, useful for
+cosi_strace features the ability to dump syscall prototypes to a file, useful for
 generating syscall lists for strace. Enabling this functionality disables outputting
 a syscall trace.
 
 ```py
-panda.load_plugin("osi2_strace", { "dump_prototypes": "prototypes.txt" })
+panda.load_plugin("cosi_strace", { "dump_prototypes": "prototypes.txt" })
 ```
 
 #### Output Sample

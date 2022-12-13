@@ -1,15 +1,15 @@
 use crate::c_type_parser::Type;
 use panda::abi::StorageLocation;
-use panda::plugins::osi2::{self, OsiType};
+use panda::plugins::cosi::{self, OsiType};
 use panda::prelude::*;
 use std::io::Write;
 
 #[derive(Clone)]
 pub(crate) enum OsiArgType {
-    Struct(&'static osi2::VolatilityStruct),
-    Enum(&'static osi2::VolatilityEnum),
-    Base(&'static osi2::VolatilityBaseType),
-    UnsignedBase(&'static osi2::VolatilityBaseType),
+    Struct(&'static cosi::VolatilityStruct),
+    Enum(&'static cosi::VolatilityEnum),
+    Base(&'static cosi::VolatilityBaseType),
+    UnsignedBase(&'static cosi::VolatilityBaseType),
     Const(Box<OsiArgType>),
     Ptr(Box<OsiArgType>),
     FixedWidth(IntType),
@@ -327,11 +327,11 @@ fn int(x: IntType) -> Option<OsiArgType> {
 
 fn find_missing_type(name: &str) -> Option<OsiArgType> {
     match name {
-        "unsigned" => osi2::base_type_from_name("int").map(OsiArgType::UnsignedBase),
-        "size_t" => osi2::base_type_from_name("sizetype").map(OsiArgType::UnsignedBase),
+        "unsigned" => cosi::base_type_from_name("int").map(OsiArgType::UnsignedBase),
+        "size_t" => cosi::base_type_from_name("sizetype").map(OsiArgType::UnsignedBase),
 
-        "long" => osi2::base_type_from_name("long int").map(OsiArgType::Base),
-        "ssize_t" => osi2::base_type_from_name("sizetype").map(OsiArgType::Base),
+        "long" => cosi::base_type_from_name("long int").map(OsiArgType::Base),
+        "ssize_t" => cosi::base_type_from_name("sizetype").map(OsiArgType::Base),
 
         "__u64" | "u64" => int(IntType::U64),
         "__u32" | "u32" => int(IntType::U32),
@@ -363,24 +363,24 @@ fn to_osi_arg_type(c_type: Type) -> OsiArgType {
             inner => OsiArgType::Ptr(Box::new(to_osi_arg_type(inner))),
         },
 
-        Type::Unsigned(name) => osi2::base_type_from_name(&name)
+        Type::Unsigned(name) => cosi::base_type_from_name(&name)
             .map(OsiArgType::UnsignedBase)
             .or_else(|| {
-                osi2::base_type_from_name(&format!("[unsigned] {}", name))
+                cosi::base_type_from_name(&format!("[unsigned] {}", name))
                     .map(OsiArgType::UnsignedBase)
             })
             .or_else(|| find_missing_type(&name).map(OsiArgType::make_unsigned))
             .unwrap_or(OsiArgType::Fallback),
 
-        Type::Ident(name) if name == "unsigned" => osi2::base_type_from_name("int")
+        Type::Ident(name) if name == "unsigned" => cosi::base_type_from_name("int")
             .map(OsiArgType::UnsignedBase)
             .unwrap_or(OsiArgType::Fallback),
 
         Type::Ident(ref name) | Type::Struct(ref name) | Type::Union(ref name) => {
-            osi2::type_from_name(&name)
+            cosi::type_from_name(&name)
                 .map(OsiArgType::Struct)
-                .or_else(|| osi2::enum_from_name(&name).map(OsiArgType::Enum))
-                .or_else(|| osi2::base_type_from_name(&name).map(OsiArgType::Base))
+                .or_else(|| cosi::enum_from_name(&name).map(OsiArgType::Enum))
+                .or_else(|| cosi::base_type_from_name(&name).map(OsiArgType::Base))
                 .or_else(|| find_missing_type(&name))
                 .unwrap_or(OsiArgType::Fallback)
         }

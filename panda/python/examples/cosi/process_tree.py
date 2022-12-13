@@ -24,7 +24,7 @@ def run_cmd():
     panda.revert_sync("root")
 
     # set the volatility symbol table for cosi to use
-    panda.load_plugin("osi2", { "profile": "ubuntu:4.15.0-72-generic:64.json.xz" })
+    panda.load_plugin("cosi", { "profile": "ubuntu:4.15.0-72-generic:64.json.xz" })
 
     # run a command
     panda.run_serial_cmd("cat /proc/version")

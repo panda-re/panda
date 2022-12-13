@@ -1,7 +1,7 @@
 use once_cell::sync::{Lazy, OnceCell};
 
 use panda::{
-    plugins::osi2::{self, OsiType},
+    plugins::cosi::{self, OsiType},
     prelude::*,
 };
 
@@ -51,7 +51,7 @@ struct SyscallInfo {
     fn_addr: Option<target_ptr_t>,
 }
 
-osi2::osi_static! {
+cosi::osi_static! {
     #[symbol = "syscalls_metadata"]
     static SYSCALLS_METADATA: target_ptr_t;
 }
@@ -59,7 +59,7 @@ osi2::osi_static! {
 static SYSCALL_INFO: OnceCell<Vec<Option<SyscallInfo>>> = OnceCell::new();
 
 #[derive(PandaArgs)]
-#[name = "osi2_strace"]
+#[name = "cosi_strace"]
 struct Args {
     #[arg(default = "[no]")]
     dump_prototypes: String,
@@ -87,15 +87,15 @@ static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 #[cfg(feature = "ppc")]
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    panic!("osi2_strace not supported from this architecture")
+    panic!("cosi_strace not supported from this architecture")
 }
 
 #[cfg(not(feature = "ppc"))]
 #[panda::init]
 #[allow(unused_must_use)]
 fn init(_: &mut PluginHandle) -> bool {
-    println!("Initializing osi2_strace");
-    osi2::OSI2.ensure_init();
+    println!("Initializing cosi_strace");
+    cosi::OSI2.ensure_init();
     Lazy::force(&ARGS);
 
     let first_bb = panda::Callback::new();
@@ -123,16 +123,16 @@ fn init(_: &mut PluginHandle) -> bool {
         let ptr_size = mem::size_of::<target_ptr_t>() as target_ptr_t;
 
         println!("Finding kaslr offset...");
-        dbg!(osi2::kaslr_offset(cpu));
+        dbg!(cosi::kaslr_offset(cpu));
 
-        let sys_call_table = osi2::symbol_addr_from_name("sys_call_table");
-        let sys_ni_syscall = osi2::symbol_addr_from_name("sys_ni_syscall");
+        let sys_call_table = cosi::symbol_addr_from_name("sys_call_table");
+        let sys_ni_syscall = cosi::symbol_addr_from_name("sys_ni_syscall");
 
         let mut converted_types = HashMap::new();
         let mut syscall_info = vec![];
 
-        let sys_meta_offset = osi2::symbol_addr_from_name("syscalls_metadata");
-        let sys_meta_ptr_ptr = osi2::kaslr_offset(cpu) + sys_meta_offset;
+        let sys_meta_offset = cosi::symbol_addr_from_name("syscalls_metadata");
+        let sys_meta_ptr_ptr = cosi::kaslr_offset(cpu) + sys_meta_offset;
 
         eprintln!("sys_meta_offset: {:#x?}", sys_meta_offset);
         eprintln!("sys_meta_ptr_ptr: {:#x?}", sys_meta_ptr_ptr);
