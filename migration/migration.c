@@ -401,7 +401,7 @@ static void process_incoming_migration_co(void *opaque)
     postcopy_state_set(POSTCOPY_INCOMING_NONE);
     migrate_set_state(&mis->state, MIGRATION_STATUS_NONE,
                       MIGRATION_STATUS_ACTIVE);
-    ret = qemu_loadvm_state(f, 0);
+    ret = qemu_loadvm_state(f);
 
     ps = postcopy_state_get();
     trace_process_incoming_migration_co_end(ret, ps);

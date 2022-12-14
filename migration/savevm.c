@@ -56,6 +56,8 @@
 #include "io/channel-file.h"
 #include "panda/callbacks/cb-support.h"
 
+#include "migration/savevm.h"
+
 #ifndef ETH_P_RARP
 #define ETH_P_RARP 0x8035
 #endif
@@ -1343,7 +1345,7 @@ enum LoadVMExitCodes {
     LOADVM_QUIT     =  1,
 };
 
-static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis, int is_replay);
+static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis);
 
 /* ------ incoming postcopy messages ------ */
 /* 'advise' arrives before any transfers just to tell us that a postcopy
@@ -1514,7 +1516,7 @@ static void *postcopy_ram_listen_thread(void *opaque)
      * in qemu_file, and thus we must be blocking now.
      */
     qemu_file_set_blocking(f, true);
-    load_res = qemu_loadvm_state_main(f, mis, 0);
+    load_res = qemu_loadvm_state_main(f, mis);
     /* And non-blocking again so we don't block in any cleanup */
     qemu_file_set_blocking(f, false);
 
@@ -1705,7 +1707,7 @@ static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis)
 
     QEMUFile *packf = qemu_fopen_channel_input(QIO_CHANNEL(bioc));
 
-    ret = qemu_loadvm_state_main(packf, mis, 0);
+    ret = qemu_loadvm_state_main(packf, mis);
     trace_loadvm_handle_cmd_packaged_main(ret);
     qemu_fclose(packf);
     object_unref(OBJECT(bioc));
@@ -1839,7 +1841,7 @@ void loadvm_free_handlers(MigrationIncomingState *mis)
 }
 
 static int
-qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis, int is_replay)
+qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
 {
     uint32_t instance_id, version_id, section_id;
     SaveStateEntry *se;
@@ -1862,7 +1864,7 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis, int is_
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
-        if (is_replay != 0) { //if we're in a replay and don't care about peripheral state
+        if (PANDA_IS_IN_REPLAY) { //if we're in a replay and don't care about peripheral state
             return 0;
         }
 
@@ -1938,7 +1940,7 @@ qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis)
     return 0;
 }
 
-static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis, int is_replay)
+static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis)
 {
     uint8_t section_type;
     int ret = 0;
@@ -1949,7 +1951,7 @@ static int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis, int 
         switch (section_type) {
         case QEMU_VM_SECTION_START:
         case QEMU_VM_SECTION_FULL:
-            ret = qemu_loadvm_section_start_full(f, mis, is_replay);
+            ret = qemu_loadvm_section_start_full(f, mis);
             if (ret < 0) {
                 goto out;
             }
@@ -1982,7 +1984,7 @@ out:
     return ret;
 }
 
-int qemu_loadvm_state(QEMUFile *f, int is_replay)
+int qemu_loadvm_state(QEMUFile *f)
 {
     MigrationIncomingState *mis = migration_incoming_get_current();
     Error *local_err = NULL;
@@ -2022,7 +2024,7 @@ int qemu_loadvm_state(QEMUFile *f, int is_replay)
         }
     }
 
-    ret = qemu_loadvm_state_main(f, mis, is_replay);
+    ret = qemu_loadvm_state_main(f, mis);
     qemu_event_set(&mis->main_thread_load_event);
 
     trace_qemu_loadvm_state_post_main(ret);
@@ -2246,7 +2248,7 @@ void qmp_xen_load_devices_state(const char *filename, Error **errp)
     qio_channel_set_name(QIO_CHANNEL(ioc), "migration-xen-load-state");
     f = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
 
-    ret = qemu_loadvm_state(f, 0);
+    ret = qemu_loadvm_state(f);
     qemu_fclose(f);
     if (ret < 0) {
         error_setg(errp, QERR_IO_ERROR);
@@ -2254,7 +2256,7 @@ void qmp_xen_load_devices_state(const char *filename, Error **errp)
     migration_incoming_state_destroy();
 }
 
-int load_vmstate(const char *name, int is_replay)
+int load_vmstate(const char *name)
 {
     BlockDriverState *bs, *bs_vm_state;
     QEMUSnapshotInfo sn;
@@ -2315,7 +2317,7 @@ int load_vmstate(const char *name, int is_replay)
     mis->from_src_file = f;
 
     aio_context_acquire(aio_context);
-    ret = qemu_loadvm_state(f, is_replay);
+    ret = qemu_loadvm_state(f);
     qemu_fclose(f);
     aio_context_release(aio_context);
 

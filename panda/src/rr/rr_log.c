@@ -57,6 +57,7 @@
 #include "panda/callbacks/cb-support.h"
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
+#include "migration/savevm.h"
 
 //#define RR_DEBUG
 
@@ -88,6 +89,8 @@ RR_log* rr_nondet_log = NULL;
 struct rr_file_info*  recording_info = NULL;
 
 bool rr_replay_complete = false;
+
+int PANDA_IS_IN_REPLAY = 0;
 
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \
@@ -1573,7 +1576,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     // load VM snapshot if needed
     if (rr_control.snapshot != NULL) {
         printf("loading snapshot:\t%s\n", rr_control.snapshot);
-        snapshot_ret = load_vmstate(rr_control.snapshot, 0);
+        snapshot_ret = load_vmstate(rr_control.snapshot);
     }
 
     // write PANDA memory snapshot
@@ -1627,10 +1630,10 @@ void rr_do_end_record(void)
 
     time_t rr_end_time;
     time(&rr_end_time);
-    if (!panda_get_library_mode())  {
+    //if (!panda_get_library_mode())  {
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
-    }
+    //}
     
     // Write the nondetlog to the archive
     printf("Finalizing the recording\n");
@@ -1670,7 +1673,7 @@ int load_snapshot_state(QEMUFile* snp){
     qemu_system_reset(VMRESET_SILENT);
     MigrationIncomingState* mis = migration_incoming_get_current();
     mis->from_src_file = snp;
-    snapshot_ret = qemu_loadvm_state(snp, 1);
+    snapshot_ret = qemu_loadvm_state(snp);
     qemu_fclose(snp);
     migration_incoming_state_destroy();
 
@@ -1740,6 +1743,8 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
     
+    PANDA_IS_IN_REPLAY = 1;
+
     if (rr2_replay){
         char* rr2_filename = rr2_name(file_name_full);
         snapshot_ret = rr2_load_snapshot(name_buf, sizeof(name_buf), rr2_filename);
@@ -1800,7 +1805,7 @@ void rr_do_end_replay(int is_error)
         printf("ERROR: replay failed!\n");
     }
 
-    if(!panda_get_library_mode()) {
+    //if(!panda_get_library_mode()) {
       time_t rr_end_time;
       time(&rr_end_time);
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
@@ -1815,10 +1820,10 @@ void rr_do_end_replay(int is_error)
           rr_size_of_log_entries[i] = 0;
       }
       printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
-#ifdef RR_DEBUG
+//#ifdef RR_DEBUG
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
-#endif
-    }
+//#endif
+    //}
     rr_max_num_queue_entries = 0;
 
     // mz some more sanity checks - the queue should contain only the RR_LAST

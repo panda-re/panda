@@ -69,7 +69,7 @@ void replay_vmstate_init(void)
                 exit(1);
             }
         } else if (replay_mode == REPLAY_MODE_PLAY) {
-            if (load_vmstate(replay_snapshot, 1) != 0) {
+            if (load_vmstate(replay_snapshot) != 0) {
                 error_report("Could not load snapshot for icount replay");
                 exit(1);
             }
