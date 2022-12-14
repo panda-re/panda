@@ -1,89 +1,49 @@
-# Rust Skeleton
+# cosi
 
-This is a basic example of how to build a PANDA plugin with Rust.
+COSI (**C**omplete **O**perating **S**ystem **I**ntrospection, /ˈkōzē/ (like "cozy")) is a system for leveraging [Volatility] symbol tables in order to parse kernel data structures.
 
-## Building
+It has two main components. The first of which is the core, which provides an API for ASLR offset search, symbol lookup, and type layout information. Also provided is a set of APIs for getting information about OS resources such as processes, files, kernel modules, and more.
 
-To check if the plugin will build:
+[Volatility]: https://github.com/volatilityfoundation/volatility
 
-```
-cargo check
-```
+## Core API
 
-To actually build the plugin:
+(For more information about a function see [`cosi.h`](./cosi.h))
 
-```
-cargo build --release
-```
-
-(remove `--release` if you want to build in debug mode)
-
-The resulting plugin will be located in `target/release/librust_skeleton.so`.
-
-## Structure
-
-```
-├── Cargo.toml
-├── Makefile
-├── README.md
-└── src
-   └── lib.rs
-```
-
-* Cargo.toml - The core plugin info. This informs `cargo` how to actually go about building the plugin. It includes the name, dependencies, and features of plugins.
-* Makefile - Instructions for how the PANDA build system will build the plugin.
-* lib.rs - The main source file of your plugin. Additional source files can be referenced from here.
-
-## Cargo.toml
-
-The dependencies section:
-
-```toml
-[dependencies]
-panda-re = { version = "0.5", default-features = false }
+```c
+target_ptr_t kaslr_offset(CPUState *cpu);
+const VolatilityEnum *enum_from_name(const char *name);
+const VolatilityBaseType *base_type_from_name(const char *name);
+const VolatilitySymbol *symbol_from_name(const char *name);
+const VolatilityStruct *type_from_name(const char *name);
+target_ptr_t addr_of_symbol(const VolatilitySymbol *symbol);
+target_ptr_t value_of_symbol(const VolatilitySymbol *symbol);
+char *name_of_symbol(const VolatilitySymbol *symbol);
+char *name_of_struct(const VolatilityStruct *ty);
+char *get_field_by_index(const VolatilityStruct *ty, uintptr_t index);
+char *name_of_enum(const VolatilityEnum *ty);
+char *name_of_base_type(const VolatilityBaseType *ty);
+target_ptr_t size_of_base_type(const VolatilityBaseType *ty);
+bool is_base_type_signed(const VolatilityBaseType *ty);
+target_ptr_t symbol_value_from_name(const char *name);
+target_ptr_t symbol_addr_from_name(const char *name);
+target_long offset_of_field(const VolatilityStruct *vol_struct, const char *name);
+char *type_of_field(const VolatilityStruct *vol_struct, const char *name);
+target_ulong size_of_struct(const VolatilityStruct *vol_struct);
+target_ulong current_cpu_offset(CPUState *cpu);
+void free_cosi_str(char *string);
 ```
 
-To add a new dependency, add a new line in the form `name = "version"`.
+## OS Resource APIs
 
-For example to add [`libc`](https://docs.rs/libc), simply add the following line:
+(For more information about a function see [`cosi.h`](./cosi.h))
 
-```toml
-libc = "0.2"
-```
-
-## Targetting Multiple Architectures
-
-In PANDA, a plugin is recompiled once per target architecture (that is to say, the architecture of the guest). To enable this behavior in Rust plugins, we use ["features"](https://doc.rust-lang.org/cargo/reference/features.html) in order to specify which architecture we are building for.
-
-This is controlled by this section of Cargo.toml:
-
-```toml
-[features]
-default = ["x86_64"]
-
-x86_64 = ["panda-re/x86_64"]
-i386 = ["panda-re/i386"]
-arm = ["panda-re/arm"]
-ppc = ["panda-re/ppc"]
-mips = ["panda-re/mips"]
-mipsel = ["panda-re/mipsel"]
-```
-
-by default `x86_64` is the only feature enabled (which is why we don't need to specify any features to build), this is primarily so that IDE support (rust-analyzer for VSCode/vim/etc, IntelliJ/CLion integration) works out of the box, as IDEs typically do type checking with the default feature set.
-
-To build for, say, `arm` you can use the following command:
-
-```
-cargo build --release --no-default-features --features=arm
-```
-
-And if you wish to prevent certain code from compiling on certain platforms you can use the following:
-
-```rust
-#[cfg(not(feature = "arm"))]
-fn breaks_arm() {
-    // ...
-}
+```c
+struct CosiProc *get_current_process(CPUState *cpu);
+void free_process(struct CosiProc *proc);
+char *cosi_proc_name(const struct CosiProc *proc);
+struct CosiThread *get_current_thread(CPUState *cpu);
+void free_thread(struct CosiThread *thread);
 ```
 
 ## Cosi Usage/Structure
@@ -92,11 +52,3 @@ src/structs.rs contains two types of structure definitions. The first type are m
 
 src/lib.rs now contains definitions for `print_current_cosi*_info` defined for each cosi struct, which just print sort-of pretty formatted information about the current process, as well as a callback which triggers on asid change and dumps information to stdout using those functions.
 
-
-## Other Resources
-
-* [panda-rs documentation](https://docs.rs/panda-re) 
-* [panda-rs announcement blog post](https://panda.re/blog/panda-rs)
-* [panda-sys documentation](https://docs.rs/panda-re-sys)
-* [The Rust Programming Language](https://doc.rust-lang.org/book/)
-* [Some example Rust plugins](https://github.com/panda-re/panda-rs-plugins/)
