@@ -1,8 +1,6 @@
-# OSI2 strace
+# cosi strace
 
 A plugin for using cosi to provide strace-like functionality or to pull information about the system's syscalls.
-
-**Note:** at time of writing cosi has issues on 64-bit architectures regarding KASLR detection, cosi_strace will not function unless cosi is working.
 
 ### Args
 

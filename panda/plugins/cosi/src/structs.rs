@@ -261,7 +261,7 @@ impl File {
             // next read name stuff from vfsmount too
             VfsMount::osi_read(cpu, self.f_path.mnt).ok()?;
             let mount_vol = symbol_table().type_from_name("mount").unwrap();
-            let off = mount_vol.fields["mnt"].offset as u64;
+            let off = mount_vol.fields["mnt"].offset as target_ptr_t;
             let mount_struct = Mount::osi_read(cpu, self.f_path.mnt - off).ok()?;
             mount_struct.mnt_mountpoint
         } else {
@@ -369,7 +369,7 @@ impl CosiFiles {
         let open_fds = u32::read_from_guest(cpu, files.fdtab.open_fds).unwrap();
         let mut fd_ptr = files.fdtab.fd;
 
-        let step = size_of::<target_ptr_t>() as u64;
+        let step = size_of::<target_ptr_t>() as target_ptr_t;
         for idx in 0..max_fds {
             let fd = target_ptr_t::read_from_guest(cpu, fd_ptr).unwrap();
             if fd == 0 {
