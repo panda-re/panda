@@ -1800,6 +1800,8 @@ void rr_do_end_replay(int is_error)
     // log is empty - we're done
     // dump cpu state at exit as a sanity check.
 
+    PANDA_IS_IN_REPLAY = 0;
+
     replay_progress();
     if (is_error) {
         printf("ERROR: replay failed!\n");

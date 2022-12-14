@@ -85,6 +85,58 @@ static struct mig_cmd_args {
     [MIG_CMD_MAX]              = { .len = -1, .name = "MAX" },
 };
 
+//important for x86
+//const char* important[] = {
+//"ram",
+//"timer",
+//"slirp",
+//"cpu_common",
+//"cpu",
+//""
+//};
+
+//important for x64
+const char* important[] = {
+"ram",
+"timer",
+"slirp",
+"cpu_common",
+"cpu",
+""
+};
+
+
+const char* unimportant[] = {
+"kvm-tpr-opt",
+"apic",
+"fw_cfg",
+"PCIBUS",
+"0000:00:00.0/I440FX",
+"0000:00:01.0/PIIX3",
+"i8259",
+"i8259",
+"ioapic",
+"0000:00:02.0/vga",
+"hpet",
+"mc146818rtc",
+"i8254",
+"pcspk",
+"serial",
+"parallel_isa",
+"dma",
+"ps2kbd",
+"ps2mouse",
+"pckbd",
+"port92",
+"dma",
+"fdc",
+"0000:00:01.1/ide",
+"0000:00:01.2/uhci",
+""
+};
+
+int idstr_is_important(char* idstr);
+
 static int announce_self_create(uint8_t *buf,
                                 uint8_t *mac_addr)
 {
@@ -1840,6 +1892,20 @@ void loadvm_free_handlers(MigrationIncomingState *mis)
     }
 }
 
+int idstr_is_important(char* idstr) {
+
+    int i = 0;
+    while (strlen(important[i]) > 0) {
+        if (strcmp(idstr, important[i]) == 0) {
+            return 1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
 static int
 qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
 {
@@ -1861,10 +1927,16 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
 
     trace_qemu_loadvm_state_section_startfull(section_id, idstr,
             instance_id, version_id);
+
+    //this could break stuff
+    if (!idstr_is_important(idstr) && PANDA_IS_IN_REPLAY) {
+        return 0;
+    }
+    
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
-        if (PANDA_IS_IN_REPLAY) { //if we're in a replay and don't care about peripheral state
+        if (PANDA_IS_IN_REPLAY && !idstr_is_important(idstr)) { //if we're in a replay and don't care about peripheral state
             return 0;
         }
 
