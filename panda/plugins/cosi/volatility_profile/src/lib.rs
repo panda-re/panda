@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
 use std::{
     collections::{BTreeMap, HashMap},
     fmt,
@@ -105,13 +104,13 @@ impl VolatilityType {
                 format!("{}[{}]", subtype.to_string(), count)
             }
             VolatilityType::Pointer { subtype } => format!("{}*", subtype.to_string()),
-            VolatilityType::Struct { name } => todo!(),
-            VolatilityType::Enum { name } => todo!(),
-            VolatilityType::Union { name } => todo!(),
+            VolatilityType::Struct { name: _ } => todo!(),
+            VolatilityType::Enum { name: _ } => todo!(),
+            VolatilityType::Union { name: _ } => todo!(),
             VolatilityType::Bitfield {
-                bit_position,
-                bit_length,
-                base_type,
+                bit_position: _,
+                bit_length: _,
+                base_type: _,
             } => todo!(),
             VolatilityType::Function => todo!(),
         }

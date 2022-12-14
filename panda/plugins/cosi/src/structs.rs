@@ -97,6 +97,7 @@ impl TaskStruct {
             .get_owning_struct_ptr("task_struct", "tasks", true)
     }
 
+    #[allow(dead_code)]
     pub fn get_prev_task(&self) -> Option<target_ptr_t> {
         self.tasks
             .get_owning_struct_ptr("task_struct", "tasks", false)
@@ -127,17 +128,22 @@ impl CosiProc {
     pub fn get_next_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
         CosiProc::new(cpu, self.task.get_next_task()?)
     }
+
+    #[allow(dead_code)]
     pub fn get_prev_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
         CosiProc::new(cpu, self.task.get_prev_task()?)
     }
+
     pub fn get_init_process(cpu: &mut CPUState) -> Option<CosiProc> {
         let init_task_addr = find_per_cpu_address(cpu, "init_task").ok()?;
         CosiProc::new(cpu, init_task_addr)
     }
+
     pub fn get_current_process(cpu: &mut CPUState) -> Option<CosiProc> {
         let curr_task_addr = find_per_cpu_address(cpu, "current_task").ok()?;
         CosiProc::new(cpu, curr_task_addr)
     }
+
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiProc> {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
         //println!("\t[struct] Read task struct w/pid: {} | and mm: {:x}", task.pid, task.mm);
@@ -157,19 +163,19 @@ impl CosiProc {
         let taskd = task.group_leader;
 
         Some(CosiProc {
-            addr: addr,
-            task: task,
-            name: name,
-            ppid: ppid,
-            mm: mm,
-            asid: asid,
-            taskd: taskd,
+            addr,
+            task,
+            name,
+            ppid,
+            mm,
+            asid,
+            taskd,
         })
     }
 
     pub fn get_mappings(&self, cpu: &mut CPUState) -> Option<CosiMappings> {
         let taskd = CosiProc::new(cpu, self.taskd)?;
-        Some(CosiMappings::new(cpu, taskd.mm.mmap)?)
+        CosiMappings::new(cpu, taskd.mm.mmap)
     }
 }
 
@@ -270,7 +276,7 @@ impl File {
             let name_ptr = dentry_struct.d_name.name;
             let name = cpu.mem_read_string(name_ptr);
 
-            let term = if ret == "" || is_mnt { &"" } else { "/" };
+            let term = if ret.is_empty() || is_mnt { "" } else { "/" };
 
             if &name == "/" || current_dentry == current_dentry_parent {
                 ret = name.to_owned() + &ret
@@ -329,12 +335,12 @@ impl CosiFile {
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t, fd: u32) -> Option<Self> {
         let file = File::osi_read(cpu, addr).ok()?;
         let name = file.read_name(cpu)?;
-        return Some(CosiFile {
-            addr: addr,
+        Some(CosiFile {
+            addr,
             file_struct: file,
-            name: name,
-            fd: fd,
-        });
+            name,
+            fd,
+        })
     }
 }
 
@@ -344,14 +350,16 @@ pub struct CosiFiles {
 }
 
 impl CosiFiles {
-    pub fn file_from_fd<'a>(&'a self, fd: u32) -> Option<&'a CosiFile> {
+    pub fn file_from_fd(&self, fd: u32) -> Option<&CosiFile> {
         let ret = self.files.iter().find(|x| x.fd == fd)?;
-        Some(&ret)
+        Some(ret)
     }
+
     pub fn get_current_files(cpu: &mut CPUState) -> Option<CosiFiles> {
         let c_proc = CosiProc::get_current_process(cpu)?;
         CosiFiles::new(cpu, c_proc.task.files)
     }
+
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<Self> {
         let mut file_vec = Vec::<CosiFile>::new();
         let files = FilesStruct::osi_read(cpu, addr).ok()?;
@@ -372,13 +380,14 @@ impl CosiFiles {
                 break;
             } else if bv_check % 2 == 0 {
                 fd_ptr += step;
+
                 continue;
             } else {
                 fd_ptr += step;
-                match CosiFile::new(cpu, fd, idx) {
-                    Some(f_info) => file_vec.push(f_info),
-                    None => (),
-                };
+
+                if let Some(f_info) = CosiFile::new(cpu, fd, idx) {
+                    file_vec.push(f_info);
+                }
             }
         }
         Some(CosiFiles { files: file_vec })
@@ -417,7 +426,7 @@ impl CosiModule {
         let (file, name) = match File::osi_read(cpu, vma.vm_file).ok() {
             Some(res) => {
                 let fname = res.read_name(cpu)?;
-                let n_ret = fname.split("/").last()?.clone();
+                let n_ret = fname.split('/').last()?;
                 (fname.clone(), n_ret.to_owned())
             }
             None => {
@@ -434,11 +443,11 @@ impl CosiModule {
         };
         Some(CosiModule {
             modd: addr,
-            base: base,
-            size: size,
-            vma: vma,
-            file: file,
-            name: name,
+            base,
+            size,
+            vma,
+            file,
+            name,
         })
     }
 }
@@ -449,15 +458,11 @@ pub struct CosiMappings {
 
 impl CosiMappings {
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiMappings> {
-        let mut modules = Vec::<CosiModule>::new();
+        let mut modules = Vec::new();
         let vma_first = addr;
         let mut vma_current = vma_first;
 
-        loop {
-            let cur_mod = match CosiModule::new(cpu, vma_current) {
-                Some(md) => md,
-                None => break,
-            };
+        while let Some(cur_mod) = CosiModule::new(cpu, vma_current) {
             vma_current = cur_mod.vma.vm_next;
             modules.push(cur_mod);
             if vma_current == 0 || vma_current == vma_first {
@@ -465,6 +470,6 @@ impl CosiMappings {
             }
         }
 
-        Some(CosiMappings { modules: modules })
+        Some(CosiMappings { modules })
     }
 }

@@ -72,11 +72,10 @@ pub extern "C" fn name_of_symbol(symbol: &VolatilitySymbol) -> *mut c_char {
     let name = symbol_table()
         .symbols
         .iter()
-        .find_map(|(key, val)| (val == symbol).then(move || key));
+        .find_map(|(key, val)| (val == symbol).then_some(key));
 
     name.cloned()
-        .map(|name| CString::new(name).ok())
-        .flatten()
+        .and_then(|name| CString::new(name).ok())
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
 }
@@ -88,11 +87,10 @@ pub extern "C" fn name_of_struct(ty: &VolatilityStruct) -> *mut c_char {
     let name = symbol_table()
         .user_types
         .iter()
-        .find_map(|(key, val)| (val == ty).then(move || key));
+        .find_map(|(key, val)| (val == ty).then_some(key));
 
     name.cloned()
-        .map(|name| CString::new(name).ok())
-        .flatten()
+        .and_then(|name| CString::new(name).ok())
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
 }
@@ -103,8 +101,7 @@ pub extern "C" fn get_field_by_index(ty: &VolatilityStruct, index: usize) -> *mu
     ty.fields
         .keys()
         .nth(index)
-        .map(|name| CString::new(name.clone()).ok())
-        .flatten()
+        .and_then(|name| CString::new(name.clone()).ok())
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
 }
@@ -116,11 +113,10 @@ pub extern "C" fn name_of_enum(ty: &VolatilityEnum) -> *mut c_char {
     let name = symbol_table()
         .enums
         .iter()
-        .find_map(|(key, val)| (val == ty).then(move || key));
+        .find_map(|(key, val)| (val == ty).then_some(key));
 
     name.cloned()
-        .map(|name| CString::new(name).ok())
-        .flatten()
+        .and_then(|name| CString::new(name).ok())
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
 }
@@ -132,11 +128,10 @@ pub extern "C" fn name_of_base_type(ty: &VolatilityBaseType) -> *mut c_char {
     let name = symbol_table()
         .base_types
         .iter()
-        .find_map(|(key, val)| (val == ty).then(move || key));
+        .find_map(|(key, val)| (val == ty).then_some(key));
 
     name.cloned()
-        .map(|name| CString::new(name).ok())
-        .flatten()
+        .and_then(|name| CString::new(name).ok())
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
 }
@@ -173,7 +168,6 @@ pub unsafe extern "C" fn offset_of_field(
 ) -> target_long {
     let name = CStr::from_ptr(name)
         .to_str()
-        .ok()
         .expect("Field name is invalid UTF-8, field could not be retrieved");
 
     //println!("Reading field: {}", name);
@@ -187,18 +181,15 @@ pub unsafe extern "C" fn type_of_field(
 ) -> *mut c_char {
     let name = CStr::from_ptr(name)
         .to_str()
-        .ok()
         .expect("Field name is invalid UTF-8, field could not be retrieved");
 
     vol_struct
         .fields
         .get(name)
-        .map(|field| field.type_val.as_ref())
-        .flatten()
+        .and_then(|field| field.type_val.as_ref())
         .map(ToString::to_string)
         .map(CString::new)
-        .map(Result::ok)
-        .flatten()
+        .and_then(Result::ok)
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
 }

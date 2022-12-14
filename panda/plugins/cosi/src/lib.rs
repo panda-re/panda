@@ -1,16 +1,14 @@
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use panda::mem::{read_guest_type, virtual_memory_read_into};
-use panda::plugins::cosi::{symbol_from_name, type_from_name};
+use panda::mem::read_guest_type;
+
 use panda::prelude::*;
-use panda::GuestType;
-use std::{ffi::CStr, ffi::CString, os::raw::c_char};
 
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
-use panda::plugins::cosi::{osi_static, OsiType};
+use panda::plugins::cosi::osi_static;
 
 use panda::plugins::syscalls2::Syscalls2Callbacks;
 
@@ -36,7 +34,7 @@ struct Args {
     profile: String,
 }
 
-const ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
+static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 
 fn symbol_table() -> &'static VolatilityJson {
     SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(&ARGS.profile))
@@ -91,11 +89,14 @@ osi_static! {
 
 // Currently walks the process list based on task_struct->tasks,
 // but some systems might instead have task_struct->next_task field
-// Possibly we don't need to do all the work of locating the 
-fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
+// Possibly we don't need to do all the work of locating the
+fn get_process_list(cpu: &mut CPUState) -> Option<Vec<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
-    let mut ts_current  = match CosiProc::get_current_process(cpu) {
-        Some(res) => {/*println!("[lib] Got an init");*/ res},
+    let mut ts_current = match CosiProc::get_current_process(cpu) {
+        Some(res) => {
+            /*println!("[lib] Got an init");*/
+            res
+        }
         None => {
             match CosiProc::get_init_process(cpu) {
                 Some(res) => {
@@ -107,10 +108,10 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
                     println!("[lib]Got next ptr: {:x}", next_ptr);
                     CosiProc::new(cpu, next_ptr)? */
                     tmp.get_next_process(cpu)?
-                },
+                }
                 None => return None,
             }
-        },
+        }
     };
     //println!("[lib] Got ts_current");
     let first_addr = ts_current.addr;
@@ -130,9 +131,9 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     }
 
     Some(ret)
-
 }
 
+#[allow(dead_code)]
 fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
     match CosiProc::get_current_process(cpu) {
         Some(res) => {
@@ -152,6 +153,7 @@ fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+#[allow(dead_code)]
 fn print_current_cosithread_info(cpu: &mut CPUState) -> bool {
     match CosiThread::get_current_thread(cpu) {
         Some(res) => {
@@ -163,14 +165,14 @@ fn print_current_cosithread_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+#[allow(dead_code)]
 fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
     match CosiFiles::get_current_files(cpu) {
         Some(res) => {
-            match res.file_from_fd(1) {
-                Some(fd1) => println!("fd 1 name: {}", fd1.name),
-                None => (),
-            };
-            
+            if let Some(fd1) = res.file_from_fd(1) {
+                println!("fd 1 name: {}", fd1.name);
+            }
+
             for i in res.files {
                 println!("file name: {} | fd: {}", i.name, i.fd);
             }
@@ -180,14 +182,18 @@ fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+#[allow(dead_code)]
 fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
     match CosiProc::get_current_process(cpu) {
         Some(res) => match res.get_mappings(cpu) {
             Some(mapping) => {
                 for mdl in mapping.modules.iter() {
-                    println!("modd: {:x} | base: {:x} | size: {:x} | file: {} | name: {}", mdl.modd, mdl.base, mdl.size, mdl.file, mdl.name)
+                    println!(
+                        "modd: {:x} | base: {:x} | size: {:x} | file: {} | name: {}",
+                        mdl.modd, mdl.base, mdl.size, mdl.file, mdl.name
+                    )
                 }
-            },
+            }
             None => println!("Could not read memory mapping"),
         },
         None => println!("Could not read current process"),
@@ -200,8 +206,8 @@ fn print_process_list(cpu: &mut CPUState) -> bool {
         Some(res) => {
             for i in res.iter() {
                 println!("name: {} | pid: {}", i.name, i.task.pid);
-            };
-        },
+            }
+        }
         None => println!("No process list found"),
     };
 
