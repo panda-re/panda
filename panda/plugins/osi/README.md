@@ -10,7 +10,7 @@ Expressed graphically, this arrangement looks like:
     +-------------------+  +-------------------+
     |        osi        |  |        osi        |
     +-------------------+  +-------------------+
-    |     osi_linux     |  |    win7x86intro   |
+    |     osi_linux     |  |  wintrospection   |
     +-------------------+  +-------------------+
 
 The key is that you can swap out the bottom layer to support a new operating system without needing to modify your plugin.
