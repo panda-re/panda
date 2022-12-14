@@ -1,0 +1,2 @@
+#!/bin/bash
+cbindgen -o cosi.h

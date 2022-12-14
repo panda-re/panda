@@ -1,8 +1,8 @@
-use std::mem::size_of;
-use panda::prelude::*;
-use panda::plugins::cosi::{ OsiType, find_per_cpu_address};
-use panda::GuestType;
 use crate::symbol_table;
+use panda::plugins::cosi::{find_per_cpu_address, OsiType};
+use panda::prelude::*;
+use panda::GuestType;
+use std::mem::size_of;
 
 /// Max length of process command (`comm` field in task_struct)
 pub const TASK_COMM_LEN: usize = 16;
@@ -11,6 +11,7 @@ pub const TASK_COMM_LEN: usize = 16;
 //#################### Task related structures ####################
 //#################################################################
 
+#[repr(C)]
 #[derive(OsiType, Debug, Clone)]
 #[osi(type_name = "list_head")]
 pub struct ListHead {
@@ -18,7 +19,7 @@ pub struct ListHead {
     pub prev: target_ptr_t,
 }
 
-impl ListHead { 
+impl ListHead {
     pub fn get_owning_struct_ptr(&self, ty: &str, field: &str, next: bool) -> Option<target_ptr_t> {
         let owning_sym = symbol_table().type_from_name(ty)?;
         let off = owning_sym.fields[field].offset as target_ptr_t;
@@ -49,6 +50,7 @@ pub struct CredStruct {
     pub egid: target_ptr_t, // type unsigned int
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug, Clone)]
 #[osi(type_name = "mm_struct")]
 pub struct MmStruct {
@@ -57,9 +59,10 @@ pub struct MmStruct {
     pub start_brk: target_ptr_t,   // type long unsigned int
     pub brk: target_ptr_t,         // type long unsigned int
     pub start_stack: target_ptr_t, // type long unsigned int
-    pub mmap: target_ptr_t, // type *vm_area_struct
+    pub mmap: target_ptr_t,        // type *vm_area_struct
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug, Clone)]
 #[osi(type_name = "task_struct")]
 pub struct TaskStruct {
@@ -90,14 +93,17 @@ pub struct TaskStruct {
 
 impl TaskStruct {
     pub fn get_next_task(&self) -> Option<target_ptr_t> {
-        self.tasks.get_owning_struct_ptr("task_struct", "tasks", true)
+        self.tasks
+            .get_owning_struct_ptr("task_struct", "tasks", true)
     }
 
     pub fn get_prev_task(&self) -> Option<target_ptr_t> {
-        self.tasks.get_owning_struct_ptr("task_struct", "tasks", false)
+        self.tasks
+            .get_owning_struct_ptr("task_struct", "tasks", false)
     }
 }
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct CosiProc {
     /*
@@ -150,7 +156,7 @@ impl CosiProc {
         let ppid = parent.pid;
         let taskd = task.group_leader;
 
-        Some( CosiProc {
+        Some(CosiProc {
             addr: addr,
             task: task,
             name: name,
@@ -167,6 +173,7 @@ impl CosiProc {
     }
 }
 
+#[repr(C)]
 #[derive(Debug)]
 pub struct CosiThread {
     pub tid: u32,
@@ -178,7 +185,7 @@ pub struct CosiThread {
 impl CosiThread {
     pub fn get_current_thread(cpu: &mut CPUState) -> Option<CosiThread> {
         let c_proc = CosiProc::get_current_process(cpu)?;
-        Some( CosiThread {
+        Some(CosiThread {
             tid: c_proc.task.pid,
             pid: c_proc.task.tgid,
         })
@@ -222,7 +229,7 @@ pub struct Mount {
 #[derive(OsiType, Debug)]
 #[osi(type_name = "vfsmount")]
 pub struct VfsMount {
-    pub mnt_flags: i32, // type int
+    pub mnt_flags: i32,         // type int
     pub mnt_root: target_ptr_t, // type *dentry
 }
 
@@ -245,15 +252,15 @@ impl File {
     fn read_dentry_name(&self, cpu: &mut CPUState, is_mnt: bool) -> Option<String> {
         let mut ret = "".to_owned();
         let mut current_dentry_parent = if is_mnt {
-                                        // next read name stuff from vfsmount too
-                                        VfsMount::osi_read(cpu, self.f_path.mnt).ok()?;
-                                        let mount_vol = symbol_table().type_from_name("mount").unwrap();
-                                        let off = mount_vol.fields["mnt"].offset as u64;
-                                        let mount_struct = Mount::osi_read(cpu, self.f_path.mnt - off).ok()?;
-                                        mount_struct.mnt_mountpoint
-                                    } else {
-                                        self.f_path.dentry
-                                    };
+            // next read name stuff from vfsmount too
+            VfsMount::osi_read(cpu, self.f_path.mnt).ok()?;
+            let mount_vol = symbol_table().type_from_name("mount").unwrap();
+            let off = mount_vol.fields["mnt"].offset as u64;
+            let mount_struct = Mount::osi_read(cpu, self.f_path.mnt - off).ok()?;
+            mount_struct.mnt_mountpoint
+        } else {
+            self.f_path.dentry
+        };
         let mut current_dentry: target_ptr_t = 0xdead00af;
 
         while current_dentry_parent != current_dentry {
@@ -262,12 +269,8 @@ impl File {
             current_dentry_parent = dentry_struct.d_parent;
             let name_ptr = dentry_struct.d_name.name;
             let name = cpu.mem_read_string(name_ptr);
-    
-            let term = if ret == "" || is_mnt {
-                &""
-            } else {
-                "/"
-            };
+
+            let term = if ret == "" || is_mnt { &"" } else { "/" };
 
             if &name == "/" || current_dentry == current_dentry_parent {
                 ret = name.to_owned() + &ret
@@ -275,7 +278,7 @@ impl File {
                 ret = name.to_owned() + term + &ret
             }
         }
-    
+
         match ret.as_str() {
             "/" => Some("".to_owned()),
             _ => Some(ret),
@@ -308,7 +311,7 @@ pub struct Fdtable {
 #[osi(type_name = "files_struct")]
 pub struct FilesStruct {
     pub fd_array: [target_ptr_t; 64], // type *file[] | default length is defined as BITS_IN_LONG, might need to make this smarter/dependant on the system
-    pub fdt: target_ptr_t, // type *fdtable
+    pub fdt: target_ptr_t,            // type *fdtable
     #[osi(osi_type)]
     pub fdtab: Fdtable,
 }
@@ -331,7 +334,7 @@ impl CosiFile {
             file_struct: file,
             name: name,
             fd: fd,
-        })
+        });
     }
 }
 
@@ -367,7 +370,7 @@ impl CosiFiles {
             let bv_check = open_fds >> idx;
             if bv_check == 0 {
                 break;
-            } else if bv_check % 2 == 0{
+            } else if bv_check % 2 == 0 {
                 fd_ptr += step;
                 continue;
             } else {
@@ -378,9 +381,7 @@ impl CosiFiles {
                 };
             }
         }
-        Some( CosiFiles {
-            files: file_vec,
-        })
+        Some(CosiFiles { files: file_vec })
     }
 }
 
@@ -391,11 +392,11 @@ impl CosiFiles {
 #[derive(OsiType, Debug)]
 #[osi(type_name = "vm_area_struct")]
 pub struct VmAreaStruct {
-    pub vm_mm: target_ptr_t, // type *mm_struct
+    pub vm_mm: target_ptr_t,    // type *mm_struct
     pub vm_start: target_ptr_t, // type long unsigned int
-    pub vm_end: target_ptr_t, // type long unsigned int
-    pub vm_next: target_ptr_t, // type *vm_area_struct
-    pub vm_file: target_ptr_t, // type *file
+    pub vm_end: target_ptr_t,   // type long unsigned int
+    pub vm_next: target_ptr_t,  // type *vm_area_struct
+    pub vm_file: target_ptr_t,  // type *file
     pub vm_flags: target_ptr_t, // type long unsigned int
 }
 
@@ -403,8 +404,8 @@ pub struct CosiModule {
     pub modd: target_ptr_t, // vma_addr
     pub base: target_ptr_t, // vma_start
     pub size: target_ptr_t, // vma_end - vma_start
-    pub vma: VmAreaStruct, // underlying structure
-    pub file: String, // read_dentry result
+    pub vma: VmAreaStruct,  // underlying structure
+    pub file: String,       // read_dentry result
     pub name: String, // strstr(file, "/") if file backed, else something like [stack] or [heap]
 }
 
@@ -413,12 +414,12 @@ impl CosiModule {
         let vma = VmAreaStruct::osi_read(cpu, addr).ok()?;
         let base = vma.vm_start;
         let size = vma.vm_end - base;
-        let (file, name) =  match File::osi_read(cpu, vma.vm_file).ok() {
+        let (file, name) = match File::osi_read(cpu, vma.vm_file).ok() {
             Some(res) => {
                 let fname = res.read_name(cpu)?;
                 let n_ret = fname.split("/").last()?.clone();
                 (fname.clone(), n_ret.to_owned())
-            },
+            }
             None => {
                 let mm = MmStruct::osi_read(cpu, vma.vm_mm).ok()?;
                 let n_ret = if vma.vm_start <= mm.start_brk && vma.vm_end >= mm.brk {
@@ -429,9 +430,9 @@ impl CosiModule {
                     "[???]"
                 };
                 ("".to_owned(), n_ret.to_owned())
-            },
+            }
         };
-        Some( CosiModule {
+        Some(CosiModule {
             modd: addr,
             base: base,
             size: size,
@@ -462,10 +463,8 @@ impl CosiMappings {
             if vma_current == 0 || vma_current == vma_first {
                 break;
             }
-
-        };
+        }
 
         Some(CosiMappings { modules: modules })
-
     }
 }
