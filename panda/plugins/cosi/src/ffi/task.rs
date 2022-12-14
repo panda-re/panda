@@ -1,7 +1,7 @@
 //use crate::{get_osiproc_info, get_osithread_info, CosiProc, OsiThread};
-use crate::{CosiProc, CosiThread};
+use crate::{structs::CosiFiles, CosiProc, CosiThread};
 
-use panda::prelude::*;
+use panda::{prelude::*, sys::get_cpu};
 use std::{ffi::CString, os::raw::c_char};
 
 /// Gets a reference to the current process which can be freed with `free_process`
@@ -24,6 +24,14 @@ pub extern "C" fn cosi_proc_name(proc: &CosiProc) -> *mut c_char {
         .ok()
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())
+}
+
+/// Gets the files accessible to the given process
+///
+/// Must be freed via `free_cosi_files`
+#[no_mangle]
+pub extern "C" fn cosi_proc_files(proc: &CosiProc) -> Option<Box<CosiFiles>> {
+    CosiFiles::new(unsafe { &mut *get_cpu() }, proc.task.files).map(Box::new)
 }
 
 /// Get the current thread, must be freed using `free_thread`

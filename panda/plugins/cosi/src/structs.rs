@@ -202,6 +202,7 @@ impl CosiThread {
 //#################### File related structures ####################
 //#################################################################
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "callback_head")]
 pub struct CallbackHead {
@@ -209,6 +210,7 @@ pub struct CallbackHead {
     pub next: target_ptr_t, // type *callback_head
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "qstr")]
 pub struct Qstr {
@@ -217,6 +219,7 @@ pub struct Qstr {
                               //name: [u8; QSTR_NAME_LEN] // trying it this way for easier reading?
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "dentry")]
 pub struct Dentry {
@@ -226,12 +229,14 @@ pub struct Dentry {
     pub d_name: Qstr,
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "mount")]
 pub struct Mount {
     pub mnt_mountpoint: target_ptr_t, // type *dentry
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "vfsmount")]
 pub struct VfsMount {
@@ -239,6 +244,7 @@ pub struct VfsMount {
     pub mnt_root: target_ptr_t, // type *dentry
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "path")]
 pub struct Path {
@@ -246,6 +252,7 @@ pub struct Path {
     pub mnt: target_ptr_t,    // type *vfsmount
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "file")]
 pub struct File {
@@ -299,6 +306,7 @@ impl File {
     }
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "fdtable")]
 pub struct Fdtable {
@@ -313,6 +321,7 @@ pub struct Fdtable {
     pub rcu: target_ptr_t, // placeholder for compilation until I can figure out what to do
 }
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "files_struct")]
 pub struct FilesStruct {
@@ -323,6 +332,7 @@ pub struct FilesStruct {
 }
 
 // Cosi struct for holding and accessing information about a file struct
+#[repr(C)]
 #[derive(Debug)]
 pub struct CosiFile {
     pub addr: target_ptr_t,
@@ -344,6 +354,7 @@ impl CosiFile {
     }
 }
 
+#[repr(C)]
 #[derive(Debug)]
 pub struct CosiFiles {
     pub files: Vec<CosiFile>,
@@ -390,6 +401,7 @@ impl CosiFiles {
                 }
             }
         }
+
         Some(CosiFiles { files: file_vec })
     }
 }
@@ -398,6 +410,7 @@ impl CosiFiles {
 //################### Module related structures ###################
 //#################################################################
 
+#[repr(C)]
 #[derive(OsiType, Debug)]
 #[osi(type_name = "vm_area_struct")]
 pub struct VmAreaStruct {
@@ -409,6 +422,7 @@ pub struct VmAreaStruct {
     pub vm_flags: target_ptr_t, // type long unsigned int
 }
 
+#[repr(C)]
 pub struct CosiModule {
     pub modd: target_ptr_t, // vma_addr
     pub base: target_ptr_t, // vma_start
@@ -452,6 +466,7 @@ impl CosiModule {
     }
 }
 
+#[repr(C)]
 pub struct CosiMappings {
     pub modules: Vec<CosiModule>,
 }

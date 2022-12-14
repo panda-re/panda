@@ -142,11 +142,13 @@ pub extern "C" fn size_of_base_type(ty: &VolatilityBaseType) -> target_ptr_t {
     ty.size as target_ptr_t
 }
 
+/// Check if an integral base type is signed
 #[no_mangle]
 pub extern "C" fn is_base_type_signed(ty: &VolatilityBaseType) -> bool {
     ty.signed
 }
 
+/// Get the raw value of a symbol, not accounting for aslr
 #[no_mangle]
 pub unsafe extern "C" fn symbol_value_from_name(name: *const c_char) -> target_ptr_t {
     if let Some(sym) = symbol_from_name(name) {
@@ -156,11 +158,13 @@ pub unsafe extern "C" fn symbol_value_from_name(name: *const c_char) -> target_p
     }
 }
 
+/// Given a symbol name, get the address of the symbol accounting for kaslr
 #[no_mangle]
 pub unsafe extern "C" fn symbol_addr_from_name(name: *const c_char) -> target_ptr_t {
     symbol_value_from_name(name) + kaslr_offset(&mut *get_cpu())
 }
 
+/// Get the offset of a given field within a struct in bytes
 #[no_mangle]
 pub unsafe extern "C" fn offset_of_field(
     vol_struct: &VolatilityStruct,
@@ -174,6 +178,9 @@ pub unsafe extern "C" fn offset_of_field(
     vol_struct.fields[name].offset as target_long
 }
 
+/// Get the name of a given field as a string
+///
+/// Must be freed using `free_cosi_str`
 #[no_mangle]
 pub unsafe extern "C" fn type_of_field(
     vol_struct: &VolatilityStruct,
@@ -194,16 +201,19 @@ pub unsafe extern "C" fn type_of_field(
         .unwrap_or(std::ptr::null_mut())
 }
 
+/// Get the size in bytes of a specific struct type
 #[no_mangle]
 pub unsafe extern "C" fn size_of_struct(vol_struct: &VolatilityStruct) -> target_ulong {
     vol_struct.size as target_ulong
 }
 
+/// Get the CPU offset for the currently executing CPU
 #[no_mangle]
 pub extern "C" fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
     crate::current_cpu_offset(cpu)
 }
 
+/// Free a string allocated by cosi
 #[no_mangle]
 pub unsafe extern "C" fn free_cosi_str(string: *mut c_char) {
     if !string.is_null() {
