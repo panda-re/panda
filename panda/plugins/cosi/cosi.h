@@ -156,7 +156,7 @@ void free_cosi_str(char *string);
 /**
  * Gets a reference to the current process which can be freed with `free_process`
  */
-struct CosiProc *get_current_process(CPUState *cpu);
+struct CosiProc *get_current_cosiprocess(CPUState *cpu);
 
 /**
  * Free an allocated reference to a process
@@ -172,7 +172,7 @@ char *cosi_proc_name(const struct CosiProc *proc);
 /**
  * Get the current thread, must be freed using `free_thread`
  */
-struct CosiThread *get_current_thread(CPUState *cpu);
+struct CosiThread *get_current_cosithread(CPUState *cpu);
 
 /**
  * Free an allocated reference to a thread

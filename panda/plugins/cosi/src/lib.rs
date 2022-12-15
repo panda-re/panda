@@ -95,7 +95,7 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     let mut ts_current  = match CosiProc::get_init_process(cpu) {
         Some(res) =>  res,
         None => {
-            match CosiProc::get_current_process(cpu) {
+            match CosiProc::get_current_cosiprocess(cpu) {
                 Some(res) => {
                     let tmp = CosiProc::new(cpu, res.taskd)?;
                     tmp.get_next_process(cpu)?
@@ -117,9 +117,30 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     }
     Some(ret)
 }
+
+fn get_process_children(cpu: &mut CPUState, proc: CosiProc) -> Option<Vec::<CosiProc>> {
+    let mut ret = Vec::<CosiProc>::new();
+    // doing get_next_child yielded an addr that was proc.addr + 0x10
+    // sibling.offset = children.offset + 0x10....
+    // maybe this is correct somehow?
+    let mut ts_current = proc.get_next_sibling(cpu)?;
+    let first_addr =  ts_current.addr;
+    println!("First addr: {first_addr:x} | proc_addr: {:x}", proc.addr);
+    loop { 
+        ret.push(ts_current.clone());
+        ts_current = match ts_current.get_next_sibling(cpu) {
+            Some(next) => next,
+            None => {println!("Goofed it"); break},
+        };
+        if ts_current.addr == 0 || ts_current.addr == first_addr {
+            break;
+        }
+    }
+    Some(ret)
+}
 #[allow(dead_code)]
 fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_process(cpu) {
+    match CosiProc::get_current_cosiprocess(cpu) {
         Some(res) => {
             if res.asid != 0 {
                 println!("asid: {:x}", res.asid);
@@ -139,7 +160,7 @@ fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
 
 #[allow(dead_code)]
 fn print_current_cosithread_info(cpu: &mut CPUState) -> bool {
-    match CosiThread::get_current_thread(cpu) {
+    match CosiThread::get_current_cosithread(cpu) {
         Some(res) => {
             println!("tid: {:x}", res.tid);
             println!("pid: {:x}", res.pid);
@@ -168,7 +189,7 @@ fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
 
 #[allow(dead_code)]
 fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_process(cpu) {
+    match CosiProc::get_current_cosiprocess(cpu) {
         Some(res) => match res.get_mappings(cpu) {
             Some(mapping) => {
                 for mdl in mapping.modules.iter() {
@@ -199,7 +220,7 @@ fn print_process_list(cpu: &mut CPUState) -> bool {
 }
 
 fn print_children(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_process(cpu) {
+    match CosiProc::get_current_cosiprocess(cpu) {
         Some(curr) => {
             println!("[current] name: {} | pid: {} | ppid: {} | addr: {:x}", curr.name, curr.task.pid, curr.ppid, curr.addr);
             let proc = CosiProc::new(cpu, curr.task.parent).unwrap();

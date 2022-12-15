@@ -109,7 +109,7 @@ impl TaskStruct {
 
     pub fn get_next_child(&self) -> Option<target_ptr_t> {
         self.children
-            .get_owning_struct_ptr("task_struct", "children", true)
+            .get_owning_struct_ptr("task_struct", "children", false)
     }
     pub fn get_next_sibling(&self) -> Option<target_ptr_t> {
         self.sibling
@@ -165,7 +165,7 @@ impl CosiProc {
         CosiProc::new(cpu, init_task_addr)
     }
 
-    pub fn get_current_process(cpu: &mut CPUState) -> Option<CosiProc> {
+    pub fn get_current_cosiprocess(cpu: &mut CPUState) -> Option<CosiProc> {
         let curr_task_addr = find_per_cpu_address(cpu, "current_task").ok()?;
         CosiProc::new(cpu, curr_task_addr)
     }
@@ -215,8 +215,8 @@ pub struct CosiThread {
 }
 
 impl CosiThread {
-    pub fn get_current_thread(cpu: &mut CPUState) -> Option<CosiThread> {
-        let c_proc = CosiProc::get_current_process(cpu)?;
+    pub fn get_current_cosithread(cpu: &mut CPUState) -> Option<CosiThread> {
+        let c_proc = CosiProc::get_current_cosiprocess(cpu)?;
         Some(CosiThread {
             tid: c_proc.task.pid,
             pid: c_proc.task.tgid,
@@ -393,7 +393,7 @@ impl CosiFiles {
     }
 
     pub fn get_current_files(cpu: &mut CPUState) -> Option<CosiFiles> {
-        let c_proc = CosiProc::get_current_process(cpu)?;
+        let c_proc = CosiProc::get_current_cosiprocess(cpu)?;
         CosiFiles::new(cpu, c_proc.task.files)
     }
 
