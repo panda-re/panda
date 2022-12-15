@@ -40,7 +40,7 @@ pub extern "C" fn free_cosi_files(files: Option<Box<CosiFiles>>) {
 /// Must be freed using `free_cosi_str`
 #[no_mangle]
 pub extern "C" fn cosi_file_name(file: &CosiFile) -> *mut c_char {
-    CString::new(file.name.clone())
+    CString::new((*file.name).clone())
         .ok()
         .map(CString::into_raw)
         .unwrap_or_else(std::ptr::null_mut)

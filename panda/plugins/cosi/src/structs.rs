@@ -130,7 +130,7 @@ pub struct CosiProc {
      */
     pub addr: target_ptr_t,
     pub task: TaskStruct,
-    pub name: String,
+    pub name: Box<String>,
     pub ppid: u32,
     pub mm: MmStruct,
     pub asid: u32,
@@ -156,7 +156,7 @@ impl CosiProc {
             None => {
                 println!("Could not get sibling");
                 None
-            },
+            }
         }
     }
 
@@ -183,7 +183,7 @@ impl CosiProc {
             .iter()
             .position(|&x| x == 0u8)
             .unwrap_or(TASK_COMM_LEN);
-        let name = String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned();
+        let name = Box::new(String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned());
         let parent = TaskStruct::osi_read(cpu, task.parent).unwrap();
         let ppid = parent.pid;
         let taskd = task.group_leader;
@@ -363,14 +363,14 @@ pub struct FilesStruct {
 pub struct CosiFile {
     pub addr: target_ptr_t,
     pub file_struct: File,
-    pub name: String,
+    pub name: Box<String>,
     pub fd: u32,
 }
 
 impl CosiFile {
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t, fd: u32) -> Option<Self> {
         let file = File::osi_read(cpu, addr).ok()?;
-        let name = file.read_name(cpu)?;
+        let name = Box::new(file.read_name(cpu)?);
         Some(CosiFile {
             addr,
             file_struct: file,
@@ -380,7 +380,6 @@ impl CosiFile {
     }
 }
 
-#[repr(C)]
 #[derive(Debug)]
 pub struct CosiFiles {
     pub files: Vec<CosiFile>,

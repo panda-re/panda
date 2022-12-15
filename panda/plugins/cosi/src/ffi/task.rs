@@ -20,7 +20,7 @@ pub extern "C" fn free_process(proc: Option<Box<CosiProc>>) {
 /// the `free_cosi_str` function.
 #[no_mangle]
 pub extern "C" fn cosi_proc_name(proc: &CosiProc) -> *mut c_char {
-    CString::new(proc.name.clone())
+    CString::new((*proc.name).clone())
         .ok()
         .map(CString::into_raw)
         .unwrap_or(std::ptr::null_mut())

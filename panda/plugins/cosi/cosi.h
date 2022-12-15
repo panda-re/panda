@@ -14,6 +14,8 @@ typedef struct {} VolatilityStruct;
  */
 #define TASK_COMM_LEN 16
 
+typedef struct CosiFiles CosiFiles;
+
 typedef struct String String;
 
 typedef struct ListHead {
@@ -36,6 +38,8 @@ typedef struct TaskStruct {
   uint8_t comm[TASK_COMM_LEN];
   target_ptr_t files;
   target_ptr_t start_time;
+  struct ListHead children;
+  struct ListHead sibling;
 } TaskStruct;
 
 typedef struct MmStruct {
@@ -50,7 +54,7 @@ typedef struct MmStruct {
 typedef struct CosiProc {
   target_ptr_t addr;
   struct TaskStruct task;
-  struct String name;
+  struct String *name;
   uint32_t ppid;
   struct MmStruct mm;
   uint32_t asid;
@@ -61,6 +65,23 @@ typedef struct CosiThread {
   uint32_t tid;
   uint32_t pid;
 } CosiThread;
+
+typedef struct Path {
+  target_ptr_t dentry;
+  target_ptr_t mnt;
+} Path;
+
+typedef struct File {
+  struct Path f_path;
+  target_ptr_t f_pos;
+} File;
+
+typedef struct CosiFile {
+  target_ptr_t addr;
+  struct File file_struct;
+  struct String *name;
+  uint32_t fd;
+} CosiFile;
 
 /**
  * Get the KASLR offset of the system, calculating and caching it if it has not already
@@ -137,20 +158,46 @@ char *name_of_base_type(const VolatilityBaseType *ty);
  */
 target_ptr_t size_of_base_type(const VolatilityBaseType *ty);
 
+/**
+ * Check if an integral base type is signed
+ */
 bool is_base_type_signed(const VolatilityBaseType *ty);
 
+/**
+ * Get the raw value of a symbol, not accounting for aslr
+ */
 target_ptr_t symbol_value_from_name(const char *name);
 
+/**
+ * Given a symbol name, get the address of the symbol accounting for kaslr
+ */
 target_ptr_t symbol_addr_from_name(const char *name);
 
+/**
+ * Get the offset of a given field within a struct in bytes
+ */
 target_long offset_of_field(const VolatilityStruct *vol_struct, const char *name);
 
+/**
+ * Get the name of a given field as a string
+ *
+ * Must be freed using `free_cosi_str`
+ */
 char *type_of_field(const VolatilityStruct *vol_struct, const char *name);
 
+/**
+ * Get the size in bytes of a specific struct type
+ */
 target_ulong size_of_struct(const VolatilityStruct *vol_struct);
 
+/**
+ * Get the CPU offset for the currently executing CPU
+ */
 target_ulong current_cpu_offset(CPUState *cpu);
 
+/**
+ * Free a string allocated by cosi
+ */
 void free_cosi_str(char *string);
 
 /**
@@ -170,6 +217,13 @@ void free_process(struct CosiProc *proc);
 char *cosi_proc_name(const struct CosiProc *proc);
 
 /**
+ * Gets the files accessible to the given process
+ *
+ * Must be freed via `free_cosi_files`
+ */
+struct CosiFiles *cosi_proc_files(const struct CosiProc *proc);
+
+/**
  * Get the current thread, must be freed using `free_thread`
  */
 struct CosiThread *get_current_cosithread(CPUState *cpu);
@@ -178,5 +232,39 @@ struct CosiThread *get_current_cosithread(CPUState *cpu);
  * Free an allocated reference to a thread
  */
 void free_thread(struct CosiThread *thread);
+
+/**
+ * Get the information for files available to the current process.
+ *
+ * Must be freed using `free_cosi_files`.
+ */
+struct CosiFiles *get_current_files(CPUState *cpu);
+
+/**
+ * Get the number of files in a given CosiFiles
+ */
+uintptr_t cosi_files_len(const struct CosiFiles *files);
+
+/**
+ * From a given CosiFiles get a specific file by index if it exists
+ */
+const struct CosiFile *cosi_files_get(const struct CosiFiles *files, uintptr_t index);
+
+/**
+ * Get a reference to a file from the file descriptor if it exists
+ */
+const struct CosiFile *cosi_files_file_from_fd(const struct CosiFiles *files, uint32_t fd);
+
+/**
+ * frees a CosiFiles struct
+ */
+void free_cosi_files(struct CosiFiles *files);
+
+/**
+ * Get the name of a given CosiFile
+ *
+ * Must be freed using `free_cosi_str`
+ */
+char *cosi_file_name(const struct CosiFile *file);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
