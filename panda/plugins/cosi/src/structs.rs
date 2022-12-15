@@ -89,6 +89,10 @@ pub struct TaskStruct {
     pub comm: [u8; TASK_COMM_LEN], // type char[]
     pub files: target_ptr_t,       // type *files_struct
     pub start_time: target_ptr_t,  // type long long unsigned int
+    #[osi(osi_type)]
+    pub children: ListHead, // type list_head
+    #[osi(osi_type)]
+    pub sibling: ListHead, // type list_head
 }
 
 impl TaskStruct {
@@ -101,6 +105,15 @@ impl TaskStruct {
     pub fn get_prev_task(&self) -> Option<target_ptr_t> {
         self.tasks
             .get_owning_struct_ptr("task_struct", "tasks", false)
+    }
+
+    pub fn get_next_child(&self) -> Option<target_ptr_t> {
+        self.children
+            .get_owning_struct_ptr("task_struct", "children", true)
+    }
+    pub fn get_next_sibling(&self) -> Option<target_ptr_t> {
+        self.sibling
+            .get_owning_struct_ptr("task_struct", "sibling", true)
     }
 }
 
@@ -132,6 +145,19 @@ impl CosiProc {
     #[allow(dead_code)]
     pub fn get_prev_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
         CosiProc::new(cpu, self.task.get_prev_task()?)
+    }
+
+    pub fn get_next_child(&self, cpu: &mut CPUState) -> Option<CosiProc> {
+        CosiProc::new(cpu, self.task.get_next_child()?)
+    }
+    pub fn get_next_sibling(&self, cpu: &mut CPUState) -> Option<CosiProc> {
+        match CosiProc::new(cpu, self.task.get_next_sibling()?) {
+            Some(res) => Some(res),
+            None => {
+                println!("Could not get sibling");
+                None
+            },
+        }
     }
 
     pub fn get_init_process(cpu: &mut CPUState) -> Option<CosiProc> {

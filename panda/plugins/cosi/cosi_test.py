@@ -56,9 +56,17 @@ def get_module_info(cpu, current):
 
 def get_processlist_info(cpu):
     ps = panda.get_processes(cpu)
-
+    first = True
     for p in ps:
-        get_proc_info(cpu, p)
+        #get_proc_info(cpu, p)
+        if first:
+            print("Init proc")
+            first = False
+        if p.name != panda.ffi.NULL:
+            name = panda.ffi.string(p.name).decode('utf-8', errors='ignore')
+        else:
+            name = "ERROR"
+        print(f"proc_name: {name} | pid: {p.pid} | ppid: {p.ppid}")
 
 
 
