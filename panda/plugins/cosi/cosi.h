@@ -203,7 +203,7 @@ void free_cosi_str(char *string);
 /**
  * Gets a reference to the current process which can be freed with `free_process`
  */
-struct CosiProc *get_current_cosiprocess(CPUState *cpu);
+struct CosiProc *get_current_cosiproc(CPUState *cpu);
 
 /**
  * Free an allocated reference to a process

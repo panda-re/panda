@@ -84,7 +84,7 @@ def driver():
     panda.load_plugin("osi_linux")
     
     #@panda.ppp("osi", "on_asid_change")
-    @panda.cb_asid_changed()
+    #@panda.cb_asid_changed()
     def on_task_change(cpu, old, new):
         print(f"\nOSI CLASSIC INFO START")
         current = panda.plugins['osi'].get_current_process(cpu)
@@ -101,7 +101,7 @@ def driver():
         print(f"OSI CLASSIC INFO END\n")
         return 1
 
-    print(panda.run_serial_cmd("cat /proc/version"))
+    print(panda.run_serial_cmd("cat /proc/version | grep 'test'"))
     panda.end_analysis()
 
 panda.run()

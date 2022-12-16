@@ -6,8 +6,8 @@ use std::{ffi::CString, os::raw::c_char};
 
 /// Gets a reference to the current process which can be freed with `free_process`
 #[no_mangle]
-pub extern "C" fn get_current_cosiprocess(cpu: &mut CPUState) -> Option<Box<CosiProc>> {
-    CosiProc::get_current_cosiprocess(cpu).map(Box::new)
+pub extern "C" fn get_current_cosiproc(cpu: &mut CPUState) -> Option<Box<CosiProc>> {
+    CosiProc::get_current_cosiproc(cpu).map(Box::new)
 }
 
 /// Free an allocated reference to a process

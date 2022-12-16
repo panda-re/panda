@@ -96,6 +96,7 @@ pub struct TaskStruct {
 }
 
 impl TaskStruct {
+    #[allow(dead_code)]
     pub fn get_next_task(&self) -> Option<target_ptr_t> {
         self.tasks
             .get_owning_struct_ptr("task_struct", "tasks", true)
@@ -107,10 +108,13 @@ impl TaskStruct {
             .get_owning_struct_ptr("task_struct", "tasks", false)
     }
 
+    #[allow(dead_code)]
     pub fn get_next_child(&self) -> Option<target_ptr_t> {
         self.children
-            .get_owning_struct_ptr("task_struct", "children", false)
+            .get_owning_struct_ptr("task_struct", "sibling", false)
     }
+
+    #[allow(dead_code)]
     pub fn get_next_sibling(&self) -> Option<target_ptr_t> {
         self.sibling
             .get_owning_struct_ptr("task_struct", "sibling", true)
@@ -119,63 +123,83 @@ impl TaskStruct {
 
 #[repr(C)]
 #[derive(Debug, Clone)]
+/// # Structure
+/// `CosiProc` bundles up useful data and metadata about `task_struct`s.
+///     `addr`  is a pointer to the underlying task_struct
+///     `task`  is the task_struct we read from the memory
+///     `name`  is the name of the process
+///     `ppid`  is the pid of the parent task_struct
+///     `mm`    is the mm_struct pointed to by task.mm, read from memory
+///     `asid`  is the asid of the process
+///     `taskd` is task.group_leader
+/// 
+///  # Functions
+/// `get_next_process` walks task.tasks to find the next process in the process list and returns it as a CosiProc
+/// `get_prev_process` walks task.tasks backwards to find the previous process in the process list and returns it as a CosiProc
+/// `get_next_child` returns a CosiProc representaion of the process reffered to by task.children.next
+/// `get_next_sibling` returns a CosiProc representation of the process reffered to by task.sibling.next
+/// `get_init_cosiproc` returns a CosiProc representation of the process pointed to by the init_task symbol
+/// `get_current_cosiproc` returns a CosiProc representation of the current process
+/// `new` returns a CosiProc representation of a task_struct, given a pointer to that task_struct
+/// `get_mappings` returns a CosiMappings representation of modules loaded in process represented by the CosiProc calling this function
 pub struct CosiProc {
-    /*
-    pub asid: u32,
-    pub start_time: target_ptr_t,
-    pub name: String,
-    pub pid: u32,
-    pub ppid: u32,
-    pub taskd: target_ptr_t,
-     */
+    /// `addr` is a pointer to the underlying task_struct
     pub addr: target_ptr_t,
+    /// `task` is the task_struct we read from the memory
     pub task: TaskStruct,
+    /// `name` is the name of the process
     pub name: Box<String>,
+    /// `ppid` is the pid of the parent task_struct
     pub ppid: u32,
+    /// `mm` is the mm_struct pointed to by task.mm, read from memory
     pub mm: MmStruct,
+    /// `asid`  is the asid of the process
     pub asid: u32,
+    /// `taskd` is task.group_leader
     pub taskd: target_ptr_t,
 }
 
 impl CosiProc {
+    /// `get_next_process` walks task.tasks to find the next process in the process list and returns it as a CosiProc
+    #[allow(dead_code)]
     pub fn get_next_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
         CosiProc::new(cpu, self.task.get_next_task()?)
     }
 
+    /// `get_prev_process` walks task.tasks backwards to find the previous process in the process list and returns it as a CosiProc
     #[allow(dead_code)]
     pub fn get_prev_process(&self, cpu: &mut CPUState) -> Option<CosiProc> {
         CosiProc::new(cpu, self.task.get_prev_task()?)
     }
 
+    /// `get_next_child` returns a CosiProc representaion of the process reffered to by task.children.next
     pub fn get_next_child(&self, cpu: &mut CPUState) -> Option<CosiProc> {
         CosiProc::new(cpu, self.task.get_next_child()?)
     }
+
+    /// `get_next_sibling` returns a CosiProc representation of the process reffered to by task.sibling.next
     pub fn get_next_sibling(&self, cpu: &mut CPUState) -> Option<CosiProc> {
-        match CosiProc::new(cpu, self.task.get_next_sibling()?) {
-            Some(res) => Some(res),
-            None => {
-                println!("Could not get sibling");
-                None
-            }
-        }
+        CosiProc::new(cpu, self.task.get_next_sibling()?)
     }
 
-    pub fn get_init_process(cpu: &mut CPUState) -> Option<CosiProc> {
+    /// `get_init_cosiproc` returns a CosiProc representation of the process pointed to by the init_task symbol
+    #[allow(dead_code)]
+    pub fn get_init_cosiproc(cpu: &mut CPUState) -> Option<CosiProc> {
         let init_task_addr = find_per_cpu_address(cpu, "init_task").ok()?;
         CosiProc::new(cpu, init_task_addr)
     }
 
-    pub fn get_current_cosiprocess(cpu: &mut CPUState) -> Option<CosiProc> {
+    /// `get_current_cosiproc` returns a CosiProc representation of the current process
+    pub fn get_current_cosiproc(cpu: &mut CPUState) -> Option<CosiProc> {
         let curr_task_addr = find_per_cpu_address(cpu, "current_task").ok()?;
         CosiProc::new(cpu, curr_task_addr)
     }
 
+    /// `new` returns a CosiProc representation of a task_struct, given a pointer to that task_struct
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiProc> {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
-        //println!("\t[struct] Read task struct w/pid: {} | and mm: {:x}", task.pid, task.mm);
         let mm_ptr = task.mm;
         let mm = MmStruct::osi_read(cpu, mm_ptr).ok()?;
-        //println!("\t[struct] Read mm struct w/ptr: {:x}", mm_ptr);
         let asid: u32 = mm.pgd;
 
         let comm_data = task.comm;
@@ -199,6 +223,7 @@ impl CosiProc {
         })
     }
 
+    /// `get_mappings` returns a CosiMappings representation of modules loaded in process represented by the CosiProc calling this function
     pub fn get_mappings(&self, cpu: &mut CPUState) -> Option<CosiMappings> {
         let taskd = CosiProc::new(cpu, self.taskd)?;
         CosiMappings::new(cpu, taskd.mm.mmap)
@@ -207,16 +232,25 @@ impl CosiProc {
 
 #[repr(C)]
 #[derive(Debug)]
+/// # Structure
+/// `CosiThread` bundles up useful information about `thread_struct`s
+///     `tid` is the pid of the owning process
+///     `pid` is the thread group id of the owning process
+/// # Functions
+/// `get_current_cosithread` returns a CosiThread representation of the current process
 pub struct CosiThread {
+    /// `tid` is the pid of the owning process
     pub tid: u32,
+    /// `pid` is the thread group id of the owning process
     pub pid: u32,
     // Maybe in the future want to have more mature thread_struct represenation
     // but old OSI doesn't use it
 }
 
 impl CosiThread {
+    /// `get_current_cosithread` returns a CosiThread representation of the current process
     pub fn get_current_cosithread(cpu: &mut CPUState) -> Option<CosiThread> {
-        let c_proc = CosiProc::get_current_cosiprocess(cpu)?;
+        let c_proc = CosiProc::get_current_cosiproc(cpu)?;
         Some(CosiThread {
             tid: c_proc.task.pid,
             pid: c_proc.task.tgid,
@@ -360,14 +394,27 @@ pub struct FilesStruct {
 // Cosi struct for holding and accessing information about a file struct
 #[repr(C)]
 #[derive(Debug)]
+/// # Structure
+/// `CosiFile` bundles useful data and metadata about `file`s
+///     `addr` is a pointer to the underlying  `file` structure
+///     `file_struct` is the underlying `file` read from memory
+///     `name` is the name of the file on disk associated with the `file`
+///     `fd` is the file descriptor associated with this `file` in the `files_struct` that keeps track of it
+/// # Functions
+/// `new` returns a `CosiFile` representing the `file` pointed to by a given pointer
 pub struct CosiFile {
+    /// `addr` is a pointer to the underlying  `file` structure
     pub addr: target_ptr_t,
+    /// `file_struct` is the underlying `file` read from memory
     pub file_struct: File,
+    /// `name` is the name of the file on disk associated with the `file`
     pub name: Box<String>,
+    /// `fd` is the file descriptor associated with this `file` in the `files_struct` that keeps track of it
     pub fd: u32,
 }
 
 impl CosiFile {
+    /// `new` returns a `CosiFile` representing the `file` pointed to by a given pointer
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t, fd: u32) -> Option<Self> {
         let file = File::osi_read(cpu, addr).ok()?;
         let name = Box::new(file.read_name(cpu)?);
@@ -381,26 +428,35 @@ impl CosiFile {
 }
 
 #[derive(Debug)]
+/// # Structure
+/// `CosiFiles` holds a `Vec` of `CosiFile`s representing all open files for some process
+///     `files` is a `Vec` of `CosiFile`s representing the open files of a process
+/// # Functions
+/// `get_file_from_fd` returns the `CosiFile` with the given file descriptor from `files`
+/// `get_current_cosifiles` returns a `CosiFiles` representing all open `file`s of the current process
+/// `new` returns a `CosiFiles` representing all open `file`s associated with a `files_struct` at a given pointer
 pub struct CosiFiles {
+    /// `files` is a `Vec` of `CosiFile`s representing the open files of a process
     pub files: Vec<CosiFile>,
 }
 
 impl CosiFiles {
+    /// `get_file_from_fd` returns the `CosiFile` with the given file descriptor from `files`
     pub fn file_from_fd(&self, fd: u32) -> Option<&CosiFile> {
         let ret = self.files.iter().find(|x| x.fd == fd)?;
         Some(ret)
     }
 
+    /// `get_current_cosifiles` returns a `CosiFiles` representing all open `file`s of the current process
     pub fn get_current_files(cpu: &mut CPUState) -> Option<CosiFiles> {
-        let c_proc = CosiProc::get_current_cosiprocess(cpu)?;
+        let c_proc = CosiProc::get_current_cosiproc(cpu)?;
         CosiFiles::new(cpu, c_proc.task.files)
     }
 
+    /// `new` returns a `CosiFiles` representing all open `file`s associated with a `files_struct` at a given pointer
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<Self> {
         let mut file_vec = Vec::<CosiFile>::new();
         let files = FilesStruct::osi_read(cpu, addr).ok()?;
-        //let fdtab = files.fdt;
-        //let fdtable = Fdtable::osi_read(cpu, fdtab).ok()?;
         let max_fds = files.fdtab.max_fds;
         let open_fds = u32::read_from_guest(cpu, files.fdtab.open_fds).unwrap();
         let mut fd_ptr = files.fdtab.fd;
@@ -426,7 +482,6 @@ impl CosiFiles {
                 }
             }
         }
-
         Some(CosiFiles { files: file_vec })
     }
 }
@@ -448,16 +503,33 @@ pub struct VmAreaStruct {
 }
 
 #[repr(C)]
+/// # Structure
+/// `CosiModule` bundles data and metadata associated with a `vm_area_struct`
+///     `modd` is a pointer to the underlying `vm_area_struct`
+///     `base` is `vm_area_struct.vm_start`
+///     `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start` 
+///     `vma` is the underlying `vm_area_struct` read from memory
+///     `file` is the path to the file backing the memory region
+///     `name` is the name of the file backing the memory region
+/// # Functions
+/// `new` returns a `CosiModule` representing the `vm_area_struct` at the given address
 pub struct CosiModule {
+    /// `modd` is a pointer to the underlying `vm_area_struct`
     pub modd: target_ptr_t, // vma_addr
+    /// `base` is `vm_area_struct.vm_start`
     pub base: target_ptr_t, // vma_start
+    /// `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start` 
     pub size: target_ptr_t, // vma_end - vma_start
+    /// `vma` is the underlying `vm_area_struct` read from memory
     pub vma: VmAreaStruct,  // underlying structure
+    /// `file` is the path to the file backing the memory region
     pub file: String,       // read_dentry result
+    /// `name` is the name of the file backing the memory region
     pub name: String, // strstr(file, "/") if file backed, else something like [stack] or [heap]
 }
 
 impl CosiModule {
+    /// `new` returns a `CosiModule` representing the `vm_area_struct` at the given address
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiModule> {
         let vma = VmAreaStruct::osi_read(cpu, addr).ok()?;
         let base = vma.vm_start;
@@ -492,11 +564,18 @@ impl CosiModule {
 }
 
 #[repr(C)]
+/// # Structure
+/// `CosiMappings` holds a `Vec` of `CosiModule`s representing all mapped memory regions for a process
+///     `modules` is a `Vec` of `CosiModule`s which each represent a mapped memory region for a process
+/// # Functions
+/// `new` returns a `CosiMappings` containing `CosiModule`s for all modules discoverable by traversing the `vm_next` linked list of a `vm_area_struct` at the given address
 pub struct CosiMappings {
+    /// `modules` is a `Vec` of `CosiModule`s which each represent a mapped memory region for a process
     pub modules: Vec<CosiModule>,
 }
 
 impl CosiMappings {
+    /// `new` returns a `CosiMappings` containing `CosiModule`s for all modules discoverable by traversing the `vm_next` linked list of a `vm_area_struct` at the given address
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiMappings> {
         let mut modules = Vec::new();
         let vma_first = addr;

@@ -8,7 +8,7 @@ use panda::prelude::*;
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
-use panda::plugins::cosi::osi_static;
+//use panda::plugins::cosi::osi_static;
 
 use panda::plugins::syscalls2::Syscalls2Callbacks;
 
@@ -81,21 +81,23 @@ fn current_cpu_offset(cpu: &mut CPUState) -> target_ulong {
     cpu_offset
 }
 
+/*
 osi_static! {
     #[per_cpu]
     #[symbol = "current_task"]
     static CURRENT_TASK: TaskStruct;
-}
+} */
 
 // Currently walks the process list based on task_struct->tasks,
 // but some systems might instead have task_struct->next_task field
 // Possibly we don't need to do all the work of locating the
+/// `get_process_list` returns a `Vec` of `CosiProc`s representing all processes currently running on the system, starting from `init`
 fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
-    let mut ts_current  = match CosiProc::get_init_process(cpu) {
+    let mut ts_current  = match CosiProc::get_init_cosiproc(cpu) {
         Some(res) =>  res,
         None => {
-            match CosiProc::get_current_cosiprocess(cpu) {
+            match CosiProc::get_current_cosiproc(cpu) {
                 Some(res) => {
                     let tmp = CosiProc::new(cpu, res.taskd)?;
                     tmp.get_next_process(cpu)?
@@ -118,12 +120,10 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
     Some(ret)
 }
 
+/// `get_process_children` returns a `Vec` of `CosiProcs` representing all the children of the process represented by a given `CosiProc`
 fn get_process_children(cpu: &mut CPUState, proc: CosiProc) -> Option<Vec::<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
-    // doing get_next_child yielded an addr that was proc.addr + 0x10
-    // sibling.offset = children.offset + 0x10....
-    // maybe this is correct somehow?
-    let mut ts_current = proc.get_next_sibling(cpu)?;
+    let mut ts_current = proc.get_next_child(cpu)?;
     let first_addr =  ts_current.addr;
     println!("First addr: {first_addr:x} | proc_addr: {:x}", proc.addr);
     loop { 
@@ -140,7 +140,7 @@ fn get_process_children(cpu: &mut CPUState, proc: CosiProc) -> Option<Vec::<Cosi
 }
 #[allow(dead_code)]
 fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_cosiprocess(cpu) {
+    match CosiProc::get_current_cosiproc(cpu) {
         Some(res) => {
             if res.asid != 0 {
                 println!("asid: {:x}", res.asid);
@@ -189,7 +189,7 @@ fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
 
 #[allow(dead_code)]
 fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_cosiprocess(cpu) {
+    match CosiProc::get_current_cosiproc(cpu) {
         Some(res) => match res.get_mappings(cpu) {
             Some(mapping) => {
                 for mdl in mapping.modules.iter() {
@@ -206,6 +206,7 @@ fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
     true
 }
 
+#[allow(dead_code)]
 fn print_process_list(cpu: &mut CPUState) -> bool {
     match get_process_list(cpu) {
         Some(res) => {
@@ -220,18 +221,17 @@ fn print_process_list(cpu: &mut CPUState) -> bool {
 }
 
 fn print_children(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_cosiprocess(cpu) {
-        Some(curr) => {
-            println!("[current] name: {} | pid: {} | ppid: {} | addr: {:x}", curr.name, curr.task.pid, curr.ppid, curr.addr);
-            let proc = CosiProc::new(cpu, curr.task.parent).unwrap();
-            println!("[parent] name: {} | pid: {} | ppid: {} | addr: {:x}", proc.name, proc.task.pid, proc.ppid, proc.addr);
+    match CosiProc::get_current_cosiproc(cpu) {
+        Some(proc) => {
+            println!("[current] name: {} | pid: {} | ppid: {} | addr: {:x}", proc.name, proc.task.pid, proc.ppid, proc.addr);
             match get_process_children(cpu, proc) {
                 Some(children) => {
                     for c in children.iter() {
                         println!("\t [child] name: {} | pid: {} | ppid: {}", c.name, c.task.pid, c.ppid);
-                    }
+                    };
+                    std::process::exit(0);
                 },
-                None => println!("You are coming down with me, hand in unlovable hand"),
+                None => println!("No Children (2003)"),
             }
         },
         None => println!("Could not get current process"),
@@ -241,7 +241,7 @@ fn print_children(cpu: &mut CPUState) -> bool {
 
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-    println!("\n\nOSI2 INFO START");
+    //println!("\n\nOSI2 INFO START");
 
     //print_current_cosiproc_info(cpu);
     //print_current_cosithread_info(cpu);
@@ -250,7 +250,7 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     //print_process_list(cpu);
     print_children(cpu);
 
-    println!("OSI2 INFO END\n\n");
+    //println!("OSI2 INFO END\n\n");
 
     true
 }
