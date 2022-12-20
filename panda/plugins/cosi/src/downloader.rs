@@ -9,6 +9,7 @@ pub fn download_symbol_table(file: &str, kernel: &str) -> bool {
     let mut buf = Vec::new();
     let mut easy = Easy::new();
     let url = "https://panda.re/volatility3_profiles/".to_owned() + kernel + ".json.xz";
+	println!("Grabbing file from: {}", url);
     easy.url(&url).unwrap();
     easy
     .transfer()
@@ -26,6 +27,7 @@ pub fn download_symbol_table(file: &str, kernel: &str) -> bool {
                 f.write(b"\n");
                 println!("OK");
             } else {
+				println!("Read 0x{:x} bytes into buffer", buf.len());
                 println!("FAIL: could not read {} from server", kernel);
             }
         },

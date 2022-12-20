@@ -240,10 +240,19 @@ fn print_children(cpu: &mut CPUState) -> bool {
     };
     true
 }
+static mut first_callback: bool = true;
 
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     //println!("\n\nOSI2 INFO START");
+    if unsafe {first_callback} {
+        println!("Downloading!");
+        download_symbol_table("look_at_me", "ubuntu:3.4.0-4-goldfish:32");
+        unsafe {
+        first_callback = false;
+        }
+        println!("Downloaded...");
+    }
 
     //print_current_cosiproc_info(cpu);
     //print_current_cosithread_info(cpu);
