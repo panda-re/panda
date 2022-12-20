@@ -132,7 +132,7 @@ impl TaskStruct {
 ///     `mm`    is the mm_struct pointed to by task.mm, read from memory
 ///     `asid`  is the asid of the process
 ///     `taskd` is task.group_leader
-/// 
+///
 ///  # Functions
 /// `get_next_process` walks task.tasks to find the next process in the process list and returns it as a CosiProc
 /// `get_prev_process` walks task.tasks backwards to find the previous process in the process list and returns it as a CosiProc
@@ -507,7 +507,7 @@ pub struct VmAreaStruct {
 /// `CosiModule` bundles data and metadata associated with a `vm_area_struct`
 ///     `modd` is a pointer to the underlying `vm_area_struct`
 ///     `base` is `vm_area_struct.vm_start`
-///     `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start` 
+///     `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start`
 ///     `vma` is the underlying `vm_area_struct` read from memory
 ///     `file` is the path to the file backing the memory region
 ///     `name` is the name of the file backing the memory region
@@ -518,12 +518,12 @@ pub struct CosiModule {
     pub modd: target_ptr_t, // vma_addr
     /// `base` is `vm_area_struct.vm_start`
     pub base: target_ptr_t, // vma_start
-    /// `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start` 
+    /// `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start`
     pub size: target_ptr_t, // vma_end - vma_start
     /// `vma` is the underlying `vm_area_struct` read from memory
-    pub vma: VmAreaStruct,  // underlying structure
+    pub vma: VmAreaStruct, // underlying structure
     /// `file` is the path to the file backing the memory region
-    pub file: String,       // read_dentry result
+    pub file: String, // read_dentry result
     /// `name` is the name of the file backing the memory region
     pub name: String, // strstr(file, "/") if file backed, else something like [stack] or [heap]
 }

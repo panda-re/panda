@@ -14,17 +14,17 @@ use panda::plugins::syscalls2::Syscalls2Callbacks;
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
 
+mod downloader;
 /// Interface for other plugins to interact with
 mod ffi;
 mod kaslr;
 mod process;
 mod structs;
-mod downloader;
 
 use kaslr::kaslr_offset;
 
-use structs::*;
 use downloader::*;
+use structs::*;
 
 #[derive(PandaArgs)]
 #[name = "cosi"]
@@ -39,7 +39,32 @@ struct Args {
 static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 
 fn symbol_table() -> &'static VolatilityJson {
-    SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(&ARGS.profile))
+    let filename = &ARGS.profile;
+    let mut home = std::env::home_dir().unwrap();
+    // This part is hacky and bad, but PathBuf::push() was choking on something
+    // (probably the many '.'s in the symbol table name), whereas this seems to work
+    // so it's like this until I'm back from break :)
+    let path_name = home.to_str().unwrap().to_owned() + "/.panda/" + filename + ".json.xz";
+    let path = std::path::PathBuf::from(path_name);
+
+    let st = match std::fs::File::open(&path).ok() {
+        Some(res) => res,
+        None => {
+            println!("Given symbol table not found, attempting to download...");
+            match download_symbol_table(
+                path.to_str().unwrap(),
+                path.file_name().as_ref().unwrap().to_str().unwrap(),
+            ) {
+                true => println!("Downloaded!"),
+                false => {
+                    println!("Download failed, exiting");
+                    std::process::exit(1)
+                }
+            };
+            std::fs::File::open(path).unwrap()
+        }
+    };
+    SYMBOL_TABLE.get_or_init(|| VolatilityJson::from_compressed_file(st))
 }
 
 static READY_FOR_KASLR_SEARCH: AtomicBool = AtomicBool::new(false);
@@ -94,18 +119,16 @@ osi_static! {
 // but some systems might instead have task_struct->next_task field
 // Possibly we don't need to do all the work of locating the
 /// `get_process_list` returns a `Vec` of `CosiProc`s representing all processes currently running on the system, starting from `init`
-fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
+fn get_process_list(cpu: &mut CPUState) -> Option<Vec<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
-    let mut ts_current  = match CosiProc::get_init_cosiproc(cpu) {
-        Some(res) =>  res,
-        None => {
-            match CosiProc::get_current_cosiproc(cpu) {
-                Some(res) => {
-                    let tmp = CosiProc::new(cpu, res.taskd)?;
-                    tmp.get_next_process(cpu)?
-                },
-                None => return None,
+    let mut ts_current = match CosiProc::get_init_cosiproc(cpu) {
+        Some(res) => res,
+        None => match CosiProc::get_current_cosiproc(cpu) {
+            Some(res) => {
+                let tmp = CosiProc::new(cpu, res.taskd)?;
+                tmp.get_next_process(cpu)?
             }
+            None => return None,
         },
     };
     let first_addr = ts_current.addr;
@@ -123,16 +146,19 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec::<CosiProc>> {
 }
 
 /// `get_process_children` returns a `Vec` of `CosiProcs` representing all the children of the process represented by a given `CosiProc`
-fn get_process_children(cpu: &mut CPUState, proc: CosiProc) -> Option<Vec::<CosiProc>> {
+fn get_process_children(cpu: &mut CPUState, proc: CosiProc) -> Option<Vec<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
     let mut ts_current = proc.get_next_child(cpu)?;
-    let first_addr =  ts_current.addr;
+    let first_addr = ts_current.addr;
     println!("First addr: {first_addr:x} | proc_addr: {:x}", proc.addr);
-    loop { 
+    loop {
         ret.push(ts_current.clone());
         ts_current = match ts_current.get_next_sibling(cpu) {
             Some(next) => next,
-            None => {println!("Goofed it"); break},
+            None => {
+                println!("Goofed it");
+                break;
+            }
         };
         if ts_current.addr == 0 || ts_current.addr == first_addr {
             break;
@@ -225,33 +251,46 @@ fn print_process_list(cpu: &mut CPUState) -> bool {
 fn print_children(cpu: &mut CPUState) -> bool {
     match CosiProc::get_current_cosiproc(cpu) {
         Some(proc) => {
-            println!("[current] name: {} | pid: {} | ppid: {} | addr: {:x}", proc.name, proc.task.pid, proc.ppid, proc.addr);
+            println!(
+                "[current] name: {} | pid: {} | ppid: {} | addr: {:x}",
+                proc.name, proc.task.pid, proc.ppid, proc.addr
+            );
             match get_process_children(cpu, proc) {
                 Some(children) => {
                     for c in children.iter() {
-                        println!("\t [child] name: {} | pid: {} | ppid: {}", c.name, c.task.pid, c.ppid);
-                    };
+                        println!(
+                            "\t [child] name: {} | pid: {} | ppid: {}",
+                            c.name, c.task.pid, c.ppid
+                        );
+                    }
                     std::process::exit(0);
-                },
+                }
                 None => println!("No Children (2003)"),
             }
-        },
+        }
         None => println!("Could not get current process"),
     };
     true
 }
-static mut first_callback: bool = true;
+static mut download: bool = false;
 
 #[panda::asid_changed]
 fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
     //println!("\n\nOSI2 INFO START");
-    if unsafe {first_callback} {
-        println!("Downloading!");
-        download_symbol_table("look_at_me", "ubuntu:3.4.0-4-goldfish:32");
-        unsafe {
-        first_callback = false;
+
+    // Manually testing the downloader functionality
+    if unsafe { download } {
+        println!("Downloading...");
+        match download_symbol_table("look_at_me", "ubuntu:3.4.0-4-goldfish:32") {
+            true => println!("Downloaded!"),
+            false => {
+                println!("Download failed, exiting");
+                std::process::exit(1)
+            }
         }
-        println!("Downloaded...");
+        unsafe {
+            download = false;
+        }
     }
 
     //print_current_cosiproc_info(cpu);

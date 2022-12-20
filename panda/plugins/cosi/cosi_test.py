@@ -75,7 +75,7 @@ panda = Panda(generic='x86_64')
 def driver():
     panda.revert_sync('root')
     if args.symbols == "default":
-        prof_file = "/home/rdm/cosi/ubuntu_4.15.0-72-generic_64.json.xz"
+        prof_file = "ubuntu_4.15.0-72-generic_64"
     else:
         prof_file = args.symbols
     
