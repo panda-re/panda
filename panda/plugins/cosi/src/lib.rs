@@ -19,10 +19,12 @@ mod ffi;
 mod kaslr;
 mod process;
 mod structs;
+mod downloader;
 
 use kaslr::kaslr_offset;
 
 use structs::*;
+use downloader::*;
 
 #[derive(PandaArgs)]
 #[name = "cosi"]
