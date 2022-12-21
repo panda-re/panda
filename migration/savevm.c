@@ -85,21 +85,9 @@ static struct mig_cmd_args {
     [MIG_CMD_MAX]              = { .len = -1, .name = "MAX" },
 };
 
-//important for x86
-//const char* important[] = {
-//"ram",
-//"timer",
-//"slirp",
-//"cpu_common",
-//"cpu",
-//""
-//};
-
-//important for x64
-const char* important[] = {
+//important for x86 and x64
+const char* important_idstrs[] = {
 "ram",
-"timer",
-"slirp",
 "cpu_common",
 "cpu",
 ""
@@ -107,6 +95,8 @@ const char* important[] = {
 
 
 const char* unimportant[] = {
+"timer",
+"slirp",
 "kvm-tpr-opt",
 "apic",
 "fw_cfg",
@@ -1207,6 +1197,10 @@ void qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only)
     json_start_array(vmdesc, "devices");
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
 
+        if (PANDA_IS_IN_RECORD && !idstr_is_important(se->idstr)) {
+            continue;
+        }
+
         if ((!se->ops || !se->ops->save_state) && !se->vmsd) {
             continue;
         }
@@ -1895,8 +1889,8 @@ void loadvm_free_handlers(MigrationIncomingState *mis)
 int idstr_is_important(char* idstr) {
 
     int i = 0;
-    while (strlen(important[i]) > 0) {
-        if (strcmp(idstr, important[i]) == 0) {
+    while (strlen(important_idstrs[i]) > 0) {
+        if (strcmp(idstr, important_idstrs[i]) == 0) {
             return 1;
         }
 
