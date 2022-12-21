@@ -169,8 +169,10 @@ pub struct VolatilityJson {
 }
 
 impl VolatilityJson {
-    pub fn from_compressed_file(filename: impl AsRef<Path>) -> VolatilityJson {
-        let mut f = BufReader::new(File::open(filename).unwrap());
+    //pub fn from_compressed_file(filename: impl AsRef<Path>) -> VolatilityJson {
+    pub fn from_compressed_file(filename: std::fs::File) -> VolatilityJson {
+        //let mut f = BufReader::new(File::open(filename).unwrap());
+        let mut f = BufReader::new(filename);
         let mut decomp = Vec::new();
         lzma_rs::xz_decompress(&mut f, &mut decomp).unwrap();
         let s = String::from_utf8_lossy(&decomp);
