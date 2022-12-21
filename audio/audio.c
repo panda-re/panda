@@ -1720,7 +1720,7 @@ static int audio_driver_init (AudioState *s, struct audio_driver *drv)
         return 0;
     }
     else {
-        dolog ("Could not init `%s' audio driver\n", drv->name);
+        //dolog ("Could not init `%s' audio driver\n", drv->name);
         return -1;
     }
 }
