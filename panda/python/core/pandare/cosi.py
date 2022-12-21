@@ -323,6 +323,140 @@ class Cosi:
 
         return self.panda.cosi.type_from_name(global_type).at(addr)
 
+    # ============= Task API ============= 
+
+    def current_process(self):
+        '''
+        Get info about the current process
+        '''
+
+        proc = self.panda.plugins[COSI].get_current_cosiproc(self.panda.get_cpu())
+
+        return CosiProcess(self.panda, proc)
+
+    def current_thread(self):
+        '''
+        Get info about the current thread
+        '''
+
+        thread = self.panda.plugins[COSI].get_current_cosithread(self.panda.get_cpu())
+        return CosiThread(self.panda, thread)
+
+    def current_files(self):
+        '''
+        Get information about the files open in the current process
+        '''
+
+        files = self.panda.plugins[COSI].get_current_files(self.panda.get_cpu())
+        return CosiFiles(self.panda, files)
+
+class CosiFiles:
+    def __init__(self, panda, files):
+        self.inner = files
+        self.panda = panda
+
+    def __del__(self):
+        self.panda.plugins[COSI].free_cosi_files(self.inner)
+        self.inner = None
+
+    def __len__(self) -> int:
+        return self.panda.plugins[COSI].cosi_files_len(self.inner)
+
+    def __getitem__(self, key: int):
+        if not type(key) is int:
+            raise TypeError("CosiFiles must be indexed with an integer")
+
+        file_ptr = self.panda.plugins[COSI].cosi_files_get(self.inner, key)
+
+        if file_ptr == self.panda.ffi.NULL:
+            raise IndexError("Integer {} out of bounds of ")
+
+        return CosiFile(self.panda, file_ptr)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
+    def get_from_fd(self, fd: int):
+        '''
+        Gets a CosiFile from this set of files based on the file descriptor.
+
+        Returns None if the fd could not be found.
+        '''
+
+        file_ptr = self.panda.plugins['COSI'].cosi_files_file_from_fd(self.inner, fd)
+
+        if file_ptr == self.panda.ffi.NULL:
+            return None
+        else:
+            return CosiFile(self.panda, file_ptr)
+
+class CosiFile:
+    def __init__(self, panda, file_ptr):
+        self.inner = file_ptr
+        self.panda = panda
+
+    def get_name(self) -> str:
+        cstr_name = self.panda.plugins[COSI].cosi_file_name(self.inner)
+        name = self.panda.ffi.string(cstr_name)
+        self.panda.plugins[COSI].free_cosi_str(cstr_name)
+        return name.decode('utf8')
+
+    def __getattr__(self, key):
+        if key == "name":
+            return self.get_name()
+
+        attr = getattr(self.inner, key, None)
+        if not attr is None:
+            return attr
+
+        return getattr(self.inner.file_struct, key)
+
+class CosiThread:
+    def __init__(self, panda, thread):
+        self.inner = thread
+        self.panda = panda
+
+    def __del__(self):
+        self.panda.plugins[COSI].free_thread(self.inner)
+        self.inner = None
+
+    def __getattr__(self, key):
+        return getattr(self.inner, key)
+
+class CosiProcess:
+    def __init__(self, panda, proc):
+        self.panda = panda
+        self.inner = proc
+
+    def __del__(self):
+        self.panda.plugins[COSI].free_process(self.inner)
+        self.inner = None
+
+    def get_name(self):
+        cstr_name = self.panda.plugins[COSI].cosi_proc_name(self.inner)
+        name = self.panda.ffi.string(cstr_name)
+        self.panda.plugins[COSI].free_cosi_str(cstr_name)
+        return name.decode('utf8')
+
+    def __getattr__(self, key):
+        if key == "name":
+            return self.get_name()
+
+        attr = getattr(self.inner, key, None)
+        if not attr is None:
+            return attr
+
+        return getattr(self.inner.task, key)
+
+    def open_files(self):
+        '''
+        Returns information about all the files open in this process
+        '''
+
+        files = self.panda.plugins[COSI].cosi_proc_files(self.inner)
+        return CosiFiles(self.panda, files)
+
 import struct
 
 struct_types = {
