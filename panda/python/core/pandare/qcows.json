@@ -55,7 +55,7 @@
         ],
         "qcow": "arm_wheezy.qcow",
         "default_mem": "128M",
-        "extra_args": "-display none -M versatilepb -append \"root=/dev/sda1\" -kernel /home/jmcleod/.panda/vmlinuz-3.2.0-4-versatile -initrd /home/jmcleod/.panda/initrd.img-3.2.0-4-versatile",
+        "extra_args": "-display none -M versatilepb -append \"root=/dev/sda1\" -kernel ~/.panda/vmlinuz-3.2.0-4-versatile -initrd ~/.panda/initrd.img-3.2.0-4-versatile",
         "hashes": null
     },
     "aarch64_focal": {
@@ -71,7 +71,7 @@
         ],
         "qcow": null,
         "default_mem": "1G",
-        "extra_args": "-nographic -machine virt -cpu cortex-a57 -drive file=/home/jmcleod/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
+        "extra_args": "-nographic -machine virt -cpu cortex-a57 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
         "hashes": null
     },
     "mips64": {
@@ -88,7 +88,7 @@
         ],
         "qcow": null,
         "default_mem": "2g",
-        "extra_args": "-M malta -cpu MIPS64R2-generic -append \"root=/dev/vda console=ttyS0 mem=2048m net.ifnames=0 nokaslr\" -netdev user,id=user.0 -device virtio-net,netdev=user.0 -device usb-kbd -device usb-tablet -kernel /home/jmcleod/.panda/vmlinux-4.14.0-3-5kc-malta.mips.buster -initrd /home/jmcleod/.panda/initrd.img-4.14.0-3-5kc-malta.mips.buster -nographic",
+        "extra_args": "-M malta -cpu MIPS64R2-generic -append \"root=/dev/vda console=ttyS0 mem=2048m net.ifnames=0 nokaslr\" -netdev user,id=user.0 -device virtio-net,netdev=user.0 -device usb-kbd -device usb-tablet -kernel ~/.panda/vmlinux-4.14.0-3-5kc-malta.mips.buster -initrd ~/.panda/initrd.img-4.14.0-3-5kc-malta.mips.buster -nographic",
         "hashes": null
     },
     "mips_wheezy": {
@@ -104,7 +104,7 @@
         ],
         "qcow": null,
         "default_mem": "1g",
-        "extra_args": "-M malta -kernel /home/jmcleod/.panda/vmlinux-3.2.0-4-4kc-malta -append \"root=/dev/sda1\" -nographic",
+        "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta -append \"root=/dev/sda1\" -nographic",
         "hashes": null
     },
     "mipsel_wheezy": {
@@ -120,7 +120,7 @@
         ],
         "qcow": null,
         "default_mem": "1g",
-        "extra_args": "-M malta -kernel /home/jmcleod/.panda/vmlinux-3.2.0-4-4kc-malta.mipsel -append \"root=/dev/sda1\" -nographic",
+        "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta.mipsel -append \"root=/dev/sda1\" -nographic",
         "hashes": {
             "vmlinux-3.2.0-4-4kc-malta": "592e384a4edc16dade52a6cd5c785c637bcbc9ad",
             "debian_7.3_mipsel.qcow": "eeb5de0128a95c5f0d76c4f2161afd1bb320d85b"
@@ -139,7 +139,7 @@
         ],
         "qcow": null,
         "default_mem": "1g",
-        "extra_args": "-M malta -kernel /home/jmcleod/.panda/mips32_vmlinux-5.10.7-4kc-malta -net nic,model=pcnet -net user -append \"root=/dev/hda\" -nographic",
+        "extra_args": "-M malta -kernel ~/.panda/mips32_vmlinux-5.10.7-4kc-malta -net nic,model=pcnet -net user -append \"root=/dev/hda\" -nographic",
         "hashes": null
     },
     "mipsel_buildroot5": {
@@ -155,7 +155,7 @@
         ],
         "qcow": null,
         "default_mem": "1g",
-        "extra_args": "-M malta -kernel /home/jmcleod/.panda/mipsel32_vmlinux-5.10.7-4kc-malta-el -net nic,model=pcnet -net user -append \"root=/dev/hda\" -nographic",
+        "extra_args": "-M malta -kernel ~/.panda/mipsel32_vmlinux-5.10.7-4kc-malta-el -net nic,model=pcnet -net user -append \"root=/dev/hda\" -nographic",
         "hashes": null
     },
     "i386_ubuntu_1604": {
@@ -250,7 +250,7 @@
         ],
         "qcow": "arm_wheezy.qcow",
         "default_mem": "128M",
-        "extra_args": "-display none -M versatilepb -append \"root=/dev/sda1\" -kernel /home/jmcleod/.panda/vmlinuz-3.2.0-4-versatile -initrd /home/jmcleod/.panda/initrd.img-3.2.0-4-versatile",
+        "extra_args": "-display none -M versatilepb -append \"root=/dev/sda1\" -kernel ~/.panda/vmlinuz-3.2.0-4-versatile -initrd ~/.panda/initrd.img-3.2.0-4-versatile",
         "hashes": null
     },
     "aarch64": {
@@ -266,7 +266,7 @@
         ],
         "qcow": null,
         "default_mem": "1G",
-        "extra_args": "-nographic -machine virt -cpu cortex-a57 -drive file=/home/jmcleod/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
+        "extra_args": "-nographic -machine virt -cpu cortex-a57 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
         "hashes": null
     },
     "mips": {
@@ -282,7 +282,7 @@
         ],
         "qcow": null,
         "default_mem": "1g",
-        "extra_args": "-M malta -kernel /home/jmcleod/.panda/vmlinux-3.2.0-4-4kc-malta -append \"root=/dev/sda1\" -nographic",
+        "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta -append \"root=/dev/sda1\" -nographic",
         "hashes": null
     },
     "mipsel": {
@@ -298,7 +298,7 @@
         ],
         "qcow": null,
         "default_mem": "1g",
-        "extra_args": "-M malta -kernel /home/jmcleod/.panda/vmlinux-3.2.0-4-4kc-malta.mipsel -append \"root=/dev/sda1\" -nographic",
+        "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta.mipsel -append \"root=/dev/sda1\" -nographic",
         "hashes": {
             "vmlinux-3.2.0-4-4kc-malta": "592e384a4edc16dade52a6cd5c785c637bcbc9ad",
             "debian_7.3_mipsel.qcow": "eeb5de0128a95c5f0d76c4f2161afd1bb320d85b"
