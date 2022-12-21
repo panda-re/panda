@@ -90,8 +90,8 @@ struct rr_file_info*  recording_info = NULL;
 
 bool rr_replay_complete = false;
 
-int PANDA_IS_IN_REPLAY = 0;
-int PANDA_IS_IN_RECORD = 0;
+int panda_is_in_replay = 0;
+int panda_is_in_record = 0;
 
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \
@@ -1588,7 +1588,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
 
-    PANDA_IS_IN_RECORD = 1;
+    panda_is_in_record = 1;
 
     snapshot_ret = qemu_savevm_state(snp, &err);
     qemu_fclose(snp);
@@ -1650,7 +1650,7 @@ void rr_do_end_record(void)
 
     printf("...complete!\n");
 
-    PANDA_IS_IN_RECORD = 0;
+    panda_is_in_record = 0;
 
     // log_all_cpu_states();
 
@@ -1749,7 +1749,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
     
-    PANDA_IS_IN_REPLAY = 1;
+    panda_is_in_replay = 1;
 
     if (rr2_replay){
         char* rr2_filename = rr2_name(file_name_full);
@@ -1806,7 +1806,7 @@ void rr_do_end_replay(int is_error)
     // log is empty - we're done
     // dump cpu state at exit as a sanity check.
 
-    PANDA_IS_IN_REPLAY = 0;
+    panda_is_in_replay = 0;
 
     replay_progress();
     if (is_error) {

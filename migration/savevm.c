@@ -85,47 +85,29 @@ static struct mig_cmd_args {
     [MIG_CMD_MAX]              = { .len = -1, .name = "MAX" },
 };
 
-//important for x86 and x64
 const char* important_idstrs[] = {
 "ram",
 "cpu",
-""
-};
-
-
-const char* unimportant[] = {
-"cpu_common",
-"timer",
-"slirp",
-"kvm-tpr-opt",
-"apic",
-"fw_cfg",
-"PCIBUS",
-"0000:00:00.0/I440FX",
-"0000:00:01.0/PIIX3",
-"i8259",
-"i8259",
-"ioapic",
-"0000:00:02.0/vga",
-"hpet",
-"mc146818rtc",
-"i8254",
-"pcspk",
-"serial",
-"parallel_isa",
-"dma",
-"ps2kbd",
-"ps2mouse",
-"pckbd",
-"port92",
-"dma",
-"fdc",
-"0000:00:01.1/ide",
-"0000:00:01.2/uhci",
-""
+NULL
 };
 
 int idstr_is_important(char* idstr);
+
+
+int idstr_is_important(char* idstr) {
+
+    int i = 0;
+    while (important_idstrs[i]) {
+        if (strcmp(idstr, important_idstrs[i]) == 0) {
+            return 1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
 
 static int announce_self_create(uint8_t *buf,
                                 uint8_t *mac_addr)
@@ -1197,7 +1179,7 @@ void qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only)
     json_start_array(vmdesc, "devices");
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
 
-        if (PANDA_IS_IN_RECORD && !idstr_is_important(se->idstr)) {
+        if (panda_is_in_record && !idstr_is_important(se->idstr)) {
             continue;
         }
 
@@ -1886,19 +1868,6 @@ void loadvm_free_handlers(MigrationIncomingState *mis)
     }
 }
 
-int idstr_is_important(char* idstr) {
-
-    int i = 0;
-    while (strlen(important_idstrs[i]) > 0) {
-        if (strcmp(idstr, important_idstrs[i]) == 0) {
-            return 1;
-        }
-
-        i++;
-    }
-
-    return 0;
-}
 
 static int
 qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
@@ -1922,15 +1891,14 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
     trace_qemu_loadvm_state_section_startfull(section_id, idstr,
             instance_id, version_id);
 
-    //this could break stuff
-    if (!idstr_is_important(idstr) && PANDA_IS_IN_REPLAY) {
+    if (!idstr_is_important(idstr) && panda_is_in_replay) {
         return 0;
     }
     
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
-        if (PANDA_IS_IN_REPLAY && !idstr_is_important(idstr)) { //if we're in a replay and don't care about peripheral state
+        if (panda_is_in_replay && !idstr_is_important(idstr)) { 
             return 0;
         }
 
