@@ -88,13 +88,13 @@ static struct mig_cmd_args {
 //important for x86 and x64
 const char* important_idstrs[] = {
 "ram",
-"cpu_common",
 "cpu",
 ""
 };
 
 
 const char* unimportant[] = {
+"cpu_common",
 "timer",
 "slirp",
 "kvm-tpr-opt",
