@@ -1891,7 +1891,7 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
     trace_qemu_loadvm_state_section_startfull(section_id, idstr,
             instance_id, version_id);
 
-    if (!idstr_is_important(idstr) && panda_is_in_replay) {
+    if (panda_is_in_replay && !idstr_is_important(idstr)) {
         return 0;
     }
     
