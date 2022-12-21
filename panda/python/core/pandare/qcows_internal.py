@@ -70,6 +70,15 @@ You may also specify an exact arch/OS combination from the following exist:
     mips64
 """ # TODO: autogenerate values here
 
+home_dir = path.expanduser('~')
+for image in SUPPORTED_IMAGES:
+    SUPPORTED_IMAGES[image] = (
+        SUPPORTED_IMAGES[image]
+            ._replace(
+                extra_args=SUPPORTED_IMAGES[image].extra_args.replace('~', home_dir)
+            )
+    )
+
 class Qcows():
     '''
     Helper library for managing qcows on your filesystem.
