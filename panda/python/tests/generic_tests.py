@@ -47,7 +47,7 @@ def driver(): # Drive all tests
     for gen_name, success in results.items():
         print(gen_name, "Pass" if success else "FAIL")
 
-def runner(generic_name):
+def runner(generic_name, test1=True, test2=True):
     '''
     Try to run a single generic image
     First run via CLI - load root snapshot, run a command and quit - check command output
@@ -58,59 +58,77 @@ def runner(generic_name):
     qcow_path = Qcows.get_qcow(generic_name)
 
     # Check 1 - can we load with CLI
-    assert(os.path.isfile(qcow_path)), f"Can't find qcow for {generic_name}"
-    # Start panda with a 10s timeout and background it
-    # then sleep 1s, connect to the serial port via telnet, run a command and capture output
-    # then shutdown panda via monitor and check if output matches expected value
-    cmd = f"timeout 10s    panda-system-{data.arch} -loadvm {data.snapshot} -m {data.default_mem}  {qcow_path} \
-            {data.extra_args} -serial telnet:localhost:4321,server,nowait \
-            -monitor unix:/tmp/panda.monitor,server,nowait & \
-            sleep 2; RES=$(echo 'whoami' | nc localhost 4321) && (echo 'q' | nc -q1 -U /tmp/panda.monitor  || true) && echo \"RESULT: $RES\" | grep -q 'root'"
-    print(cmd)
-    p = subprocess.run(cmd, shell=True)
-    if p.returncode != 0:
-        raise RuntimeError("Failed to run CLI panda")
-    print("\tCLI: PASS")
+    if test1:
+        assert(os.path.isfile(qcow_path)), f"Can't find qcow for {generic_name}"
+        # Start panda with a 10s timeout and background it
+        # then sleep 1s, connect to the serial port via telnet, run a command and capture output
+        # then shutdown panda via monitor and check if output matches expected value
+        cmd = f"timeout 10s    panda-system-{data.arch} -loadvm {data.snapshot} -m {data.default_mem}  {qcow_path} \
+                {data.extra_args} -serial telnet:localhost:4321,server,nowait \
+                -monitor unix:/tmp/panda.monitor,server,nowait & \
+                sleep 2; RES=$(echo 'whoami' | nc localhost 4321) && (echo 'q' | nc -q1 -U /tmp/panda.monitor  || true) && echo \"RESULT: $RES\" | grep -q 'root'"
+        print(cmd)
+        p = subprocess.run(cmd, shell=True)
+        if p.returncode != 0:
+            raise RuntimeError("Failed to run CLI panda")
+        print("\tCLI: PASS")
 
     # Check 2 - load with python and test OSI profile if arch in osi_supported
-    panda = Panda(generic=generic_name)
-    assert(os.path.isdir(panda.build_dir)), f"Missing build dir {panda.build_dir}"
-    osi_supported = ['i386', 'x86_64', 'arm']
+    if test2:
+        panda = Panda(generic=generic_name)
+        assert(os.path.isdir(panda.build_dir)), f"Missing build dir {panda.build_dir}"
+        osi_supported = ['i386', 'x86_64', 'arm', 'mips', 'mipsel']
 
-    if panda.arch in osi_supported:
-        print(f"{panda.arch} supports OSI - loading")
-        panda.load_plugin("osi")
-        panda.load_plugin("osi_linux")
+        if panda.arch_name in osi_supported:
+            print(f"{panda.arch_name} supports OSI - loading")
+            panda.load_plugin("osi")
+            panda.load_plugin("osi_linux")
 
-    seen = set()
-    @panda.cb_asid_changed # Grab proc names at each asid change - AFTER we're at root (can't do OSI during boot, but asid will chage)
-    def new_asid(cpu, oldasid, newasid):
-        global reverted
-        print("ASID", reverted, panda.arch)
-        if reverted and panda.arch in osi_supported: # If osi unsupported, bail
-            proc = panda.plugins['osi'].get_current_process(cpu) 
-            name = panda.ffi.string(proc.name)
-            if name not in seen:
-                seen.add(name)
-        return 0
+        seen = set()
+        map_names = set()
+        @panda.cb_asid_changed # Grab proc names at each asid change - AFTER we're at root (can't do OSI during boot, but asid will chage)
+        def new_asid(cpu, oldasid, newasid):
+            global reverted
+            #print("ASID", reverted, panda.arch)
+            if reverted and panda.arch_name in osi_supported: # If osi unsupported, bail
+                proc = panda.plugins['osi'].get_current_process(cpu)
+                name = panda.ffi.string(proc.name)
+                if name not in seen:
+                    maps = panda.get_mappings(cpu)
+                    for map_info in maps:
+                        if map_info.file != panda.ffi.NULL:
+                            map_names.add(panda.ffi.string(map_info.file))
+                    seen.add(name)
+            return 0
 
-    @panda.queue_blocking
-    def start():
-        panda.revert_sync("root")
-        global reverted
-        reverted = True
+        task_change_ctr = 0
+        @panda.ppp("osi", "on_task_change")
+        def taskchange(cpu):
+            nonlocal task_change_ctr
+            task_change_ctr += 1
 
-        r = panda.run_serial_cmd("grep --color=no root /etc/passwd")
-        assert("root:x" in r), "Failed to run grep command"
-        panda.end_analysis()
+        @panda.queue_blocking
+        def start():
+            panda.revert_sync("root")
+            global reverted
+            reverted = True
 
-    panda.run()
+            r = panda.run_serial_cmd("grep --color=no root /etc/passwd")
+            assert("root:x" in r), "Failed to run grep command"
+            panda.end_analysis()
 
-    if panda.arch in osi_supported:
-        assert(len(seen)), "Didn't observe any processes"
-        assert(b'grep' in seen), "Didn't see grep process run"
+        panda.run()
 
-    print("\tPython: PASS" + (" (no OSI)" if panda.arch not in osi_supported else ""))
+        if panda.arch_name in osi_supported:
+            assert(len(seen)), "Didn't observe any processes"
+            assert(b'grep' in seen), "Didn't see grep process run"
+
+            assert(len(map_names)), "Didn't see any memory mappings"
+            assert(b'/bin/bash' in map_names), "Didn't see /bin/bash memory mapping" + str(map_names)
+
+            assert(task_change_ctr > 5), "Expected more task changes when using task_switch_hook"
+
+        print("\tPython: PASS" + (" (no OSI)" if panda.arch_name not in osi_supported else ""))
 
 
 if __name__ == '__main__':
