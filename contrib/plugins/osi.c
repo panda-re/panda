@@ -14,6 +14,10 @@ QEMU_PLUGIN_EXPORT OsiProc *get_current_process(void) {
     return p;
 }
 
+QEMU_PLUGIN_EXPORT void notify_task_change(unsigned int cpu_index, void* udata) {
+    qemu_plugin_run_callback(self_id, "on_task_change", &cpu_index, NULL);
+}
+
 QEMU_PLUGIN_EXPORT OsiProc *get_process(const OsiProcHandle *h) {
     OsiProc *p = NULL; // output
     struct get_process_data* evdata = (struct get_process_data*)malloc(sizeof(struct get_process_data));
@@ -37,5 +41,6 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
     qemu_plugin_create_callback(id, "on_get_current_process");
     qemu_plugin_create_callback(id, "on_get_process");
     qemu_plugin_create_callback(id, "on_get_current_process_handle");
+    qemu_plugin_create_callback(id, "on_task_change");
     return 0;
 }

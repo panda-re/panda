@@ -20,12 +20,9 @@ extern "C" {
 #include <qemu-plugin.h>
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
 QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "osi_linux";
+#include "../osi.h"
 }
 #include "../syscalls.h"
-#include "../osi.h"
-
-
-
 
 void on_first_syscall(gpointer evdata, gpointer udata);
 
@@ -728,18 +725,23 @@ static void exec_check(CPUState *cpu)
         tasks_in_execve.erase(ts);
     }
 }
-static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
-{
-    TCGOp *op = find_first_guest_insn();
-    assert(NULL != op);
-    insert_call(&op, exec_check);
-
-    if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {
-        // Instrument the task switch address.
-        insert_call(&op, notify_task_change);
-    }
-}
 #endif
+
+void do_notify_task_change(unsigned int cpu_index, void* udata) {
+    notify_task_change_qpp(cpu_index, udata);
+}
+
+static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
+{
+  //Formerly "Before_tcg_codegen"
+  uint64_t pc = qemu_plugin_tb_vaddr(tb);
+  if (0x0 != ki.task.switch_task_hook_addr && pc == ki.task.switch_task_hook_addr) {
+    // Instrument the task switch address.
+    qemu_plugin_register_vcpu_tb_exec_cb(tb, do_notify_task_change,
+                                         QEMU_PLUGIN_CB_NO_REGS,
+                                         NULL);
+  }
+}
 
 /**
  * @brief Initializes plugin.
@@ -750,6 +752,7 @@ extern "C" QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
         // Register hooks in the kernel to provide task switch notifications.
         //assert(init_osi_api());
         //pcb.before_tcg_codegen = before_tcg_codegen_callback;
+        qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
         //panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
 #if defined(OSI_LINUX_TEST)
         //panda_cb pcb = { .asid_changed = osi_linux_test };
