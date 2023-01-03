@@ -109,7 +109,7 @@
     },
     "mipsel_wheezy": {
         "arch": "mipsel",
-        "os": "linux-32-debian:3.2.0-4-4kc-malta",
+        "os": "linux-32-debian:3.2.0-4-4kc-malta-el",
         "prompt": "root@debian-mipsel:.*# ",
         "cdrom": "ide1-cd0",
         "snapshot": "root",
@@ -287,7 +287,7 @@
     },
     "mipsel": {
         "arch": "mipsel",
-        "os": "linux-32-debian:3.2.0-4-4kc-malta",
+        "os": "linux-32-debian:3.2.0-4-4kc-malta-el",
         "prompt": "root@debian-mipsel:.*# ",
         "cdrom": "ide1-cd0",
         "snapshot": "root",
