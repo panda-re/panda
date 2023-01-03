@@ -39,6 +39,7 @@ class Image(namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'u
 Image.__new__.__defaults__ = (None,) * len(Image._fields)
 
 json_path = path.join(*[path.dirname(__file__), "qcows.json"])
+
 with open(json_path, 'r') as f:
     images = json.load(f)
 
@@ -94,7 +95,7 @@ class Qcows():
 
         Args:
             name (str): String idenfifying a qcow supported
-                
+
         Returns:
             Image: Instance of the Image class for a qcow
         '''
@@ -121,7 +122,7 @@ class Qcows():
         Args:
             name (str): generic name or path to qcow
             download (bool, default True): should the qcow be downloaded if necessary
-                
+
         Returns:
             string: Path to qcow
 
@@ -206,7 +207,7 @@ class Qcows():
             else:
                 # No hash, move .tmp file to actual path
                 move(output_path+".tmp", output_path)
-                
+
 
         except Exception as e:
             logger.info("Download failed, deleting partial file: %s", output_path)
@@ -254,7 +255,7 @@ class Qcows():
 
         Args:
             idx (int): an index into argv
-                
+
         Returns:
             string: Path to qcow
         '''
