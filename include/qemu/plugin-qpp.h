@@ -38,7 +38,7 @@
  * that imported it.
  */
 
-#define QPP_FUN_PROTOTYPE(plugin_name, fn_ret, fn, args)                      \
+#define QPP_FUN_PROTOTYPE(plugin_name, fn_ret, fn, args...)                   \
   fn_ret fn(args);                                                            \
   typedef fn_ret(*PLUGIN_CONCAT(fn, _t))(args);                               \
   fn##_t fn##_qpp;                                                            \
