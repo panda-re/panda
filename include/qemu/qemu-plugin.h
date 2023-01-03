@@ -172,6 +172,7 @@ void qemu_plugin_uninstall(qemu_plugin_id_t id, qemu_plugin_simple_cb_t cb);
  */
 void qemu_plugin_reset(qemu_plugin_id_t id, qemu_plugin_simple_cb_t cb);
 
+
 /**
  * qemu_plugin_register_vcpu_init_cb() - register a vCPU initialization callback
  * @id: plugin ID
@@ -253,6 +254,21 @@ enum qemu_plugin_mem_rw {
     QEMU_PLUGIN_MEM_W,
     QEMU_PLUGIN_MEM_RW,
 };
+
+/**
+ * qemu_plugin_register_tlb_flush_cb() - register a vCPU callback on tlb flush
+ * change
+ * @id: plugin ID
+ * @cb: callback
+ * @userdata: user data for callback
+ *
+ * The @cb function is called every time a vCPU flushes the tlb
+ *
+ */
+void qemu_plugin_register_vcpu_tlb_flush_cb(qemu_plugin_id_t id,
+                                            qemu_plugin_vcpu_udata_cb_t cb,
+                                            void *userdata);
+
 
 /**
  * typedef qemu_plugin_vcpu_tb_trans_cb_t - translation callback

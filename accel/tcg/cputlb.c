@@ -390,6 +390,7 @@ void tlb_flush_by_mmuidx(CPUState *cpu, uint16_t idxmap)
 
 void tlb_flush(CPUState *cpu)
 {
+    qemu_plugin_vcpu_tlb_flush_cb(cpu);
     tlb_flush_by_mmuidx(cpu, ALL_MMUIDX_BITS);
 }
 

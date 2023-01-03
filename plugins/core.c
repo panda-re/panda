@@ -102,6 +102,7 @@ static void plugin_vcpu_cb__simple(CPUState *cpu, enum qemu_plugin_event ev)
     case QEMU_PLUGIN_EV_VCPU_INIT:
     case QEMU_PLUGIN_EV_VCPU_EXIT:
     case QEMU_PLUGIN_EV_VCPU_IDLE:
+    case QEMU_PLUGIN_EV_VCPU_TLB_FLUSH:
     case QEMU_PLUGIN_EV_LOADVM:
     case QEMU_PLUGIN_EV_VCPU_RESUME:
         /* iterate safely; plugins might uninstall themselves at any time */
@@ -224,6 +225,11 @@ void qemu_plugin_vcpu_init_hook(CPUState *cpu)
 
     plugin_vcpu_cb__simple(cpu, QEMU_PLUGIN_EV_VCPU_INIT);
 }
+
+void qemu_plugin_vcpu_tlb_flush_cb(CPUState *cpu) {
+    plugin_vcpu_cb__simple(cpu, QEMU_PLUGIN_EV_VCPU_TLB_FLUSH);
+}
+
 
 void qemu_plugin_vcpu_exit_hook(CPUState *cpu)
 {

@@ -80,6 +80,13 @@ void qemu_plugin_register_vcpu_init_cb(qemu_plugin_id_t id,
     plugin_register_cb(id, QEMU_PLUGIN_EV_VCPU_INIT, cb);
 }
 
+void qemu_plugin_register_vcpu_tlb_flush_cb(qemu_plugin_id_t id,
+                                         qemu_plugin_vcpu_udata_cb_t cb,
+                                         void *udata)
+{
+    plugin_register_cb(id, QEMU_PLUGIN_EV_VCPU_TLB_FLUSH, cb);
+}
+
 void qemu_plugin_register_vcpu_exit_cb(qemu_plugin_id_t id,
                                        qemu_plugin_vcpu_simple_cb_t cb)
 {
