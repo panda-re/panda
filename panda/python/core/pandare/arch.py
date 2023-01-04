@@ -595,7 +595,7 @@ class X86Arch(PandaArch):
                            "syscall":    "EAX",
                            "linux_kernel":    "EAX"}
         
-        self.call_conventions = {"cdecl": ["stack_{x}" for x in range(20)], # 20: arbitrary but big
+        self.call_conventions = {"cdecl": [f"stack_{x}" for x in range(20)], # 20: arbitrary but big
                                  "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
                                  "linux_kernel": ["EAX", "EDX", "ECX", "stack_3", "stack_4", "stack_5", "stack_6"]}
         self.call_conventions['default'] = self.call_conventions['cdecl']
