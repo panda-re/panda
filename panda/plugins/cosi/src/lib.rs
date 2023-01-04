@@ -30,7 +30,6 @@ use structs::*;
 #[name = "cosi"]
 struct Args {
     #[arg(
-        required,
         about = "Path to a volatility 3 symbol table to use (.xz compressed json)"
     )]
     profile: String,
@@ -39,7 +38,11 @@ struct Args {
 static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 
 fn symbol_table() -> &'static VolatilityJson {
-    let filename = &ARGS.profile;
+    let name = get_symtab_name();
+    let filename = match &ARGS.profile.is_empty() {
+        true => &name,
+        false => &ARGS.profile,
+    };
     let mut home = std::env::home_dir().unwrap();
     // This part is hacky and bad, but PathBuf::push() was choking on something
     // (probably the many '.'s in the symbol table name), whereas this seems to work

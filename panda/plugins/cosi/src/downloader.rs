@@ -1,8 +1,17 @@
 //use std::io::{stdout, Write, BufReader};
+use panda::os::name;
 use std::fs::File;
 use std::io::Write;
 //use std::env;
 use curl::easy::Easy;
+
+pub fn get_symtab_name() -> String {
+    let os_name = name().unwrap();
+    let n: Vec<&str> = os_name.split(":").collect();
+    let s1: Vec<&str> = n[0].split("-").collect();
+    let s2: Vec<&str> = n[1].split("-").collect();
+    s1[2].to_owned() + ":" + s2[0] + "-" + s2[1] + "-" + s2[2] + ":" + s1[1]
+}
 
 pub fn download_symbol_table(file: &str, kernel: &str) -> bool {
     let mut f = File::create(file).expect("Could not create file");

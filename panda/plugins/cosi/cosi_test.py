@@ -75,11 +75,12 @@ panda = Panda(generic='x86_64')
 def driver():
     panda.revert_sync('root')
     if args.symbols == "default":
-        prof_file = "ubuntu_4.15.0-72-generic_64"
+        prof_file = "ubuntu:4.15.0-72-generic:64"
     else:
         prof_file = args.symbols
     
     panda.load_plugin("cosi", args = {"profile": prof_file})
+    #panda.load_plugin("cosi")
     panda.load_plugin("osi")
     panda.load_plugin("osi_linux")
     
