@@ -105,10 +105,10 @@ As you can see, the fields for this structure are "size," "fields," and "kind." 
 ### Source Files
 
 #### structs.rs
-[`src/structs.rs`](./src/structs.rs) contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread, for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
+[structs.rs](./src/structs.rs) contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread, for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
 
 #### lib.rs
-[src/lib.rs](./src/lib.rs) contains definitions for:
+[lib.rs](./src/lib.rs) contains definitions for:
 
  `print_current_cosi*_info` defined for each cosi struct, which print sort-of pretty formatted information about the current process.
  
@@ -121,5 +121,21 @@ As you can see, the fields for this structure are "size," "fields," and "kind." 
 as well as several functions which allow the plugin to work.
 
 #### downloader.rs
-[src/downloader.rs](./src/downloader.rs) contains the logic for automatic detection and download of the symbol table for the kernel being used.
+[downloader.rs](./src/downloader.rs) contains the logic for automatic detection and download of the symbol table for the kernel being used.
 
+### Usage
+
+#### PyPanda
+COSI is loaded like any other panda plugin:
+
+`panda.load_plugin("cosi")`
+
+and can be provided the optional argument `profile`, the file name of the compressed json (`.json.xz`) symbol table to use, which must be in your `~/.panda` directory:
+
+`panda.load_plugin("cosi", args = {"profile": "your_file_here"})`
+
+After you load cosi, you can call the functions explosed in cosi.h. For example, to get the current process you might do:
+
+`cosu_current = panda.plugins['cosi'].get_current_cosiproc(cpu)`
+
+For an example of how to use COSI in a python script, see [example.py](./examples/example.py)

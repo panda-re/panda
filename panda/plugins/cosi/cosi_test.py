@@ -69,6 +69,7 @@ def get_processlist_info(cpu):
         print(f"proc_name: {name} | pid: {p.pid} | ppid: {p.ppid}")
 
 
+first = True
 
 panda = Panda(generic='x86_64')
 @panda.queue_blocking
@@ -83,12 +84,18 @@ def driver():
     #panda.load_plugin("cosi")
     panda.load_plugin("osi")
     panda.load_plugin("osi_linux")
-    
+
     #@panda.ppp("osi", "on_asid_change")
-    #@panda.cb_asid_changed()
+    @panda.cb_asid_changed()
     def on_task_change(cpu, old, new):
         print(f"\nOSI CLASSIC INFO START")
         current = panda.plugins['osi'].get_current_process(cpu)
+        global first
+        if not first:
+            cosi_current = panda.plugins['cosi'].get_current_cosiproc(cpu)
+            print(f"It's-a me, cosi: {cosi_current.name}")
+        else:
+            first = False
         if args.proc:
             get_proc_info(cpu, current)
         if args.thread:
