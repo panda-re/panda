@@ -66,7 +66,7 @@ to move the resulting compressed file to where COSI will find it. Feel free to d
 #### Symbol Table Format
 Symbol Tables, in this context, are `.json` files containing kernel symbol and structure information. For example, here is the (abridged) listing for `task_struct` from the `ubuntu_4.15.0-72-generic_64` symbol table (all but the first and last fields ommited for readability)
 
-```
+```json
 "task_struct": {
     "size": 9088,
     "fields": {
@@ -99,7 +99,22 @@ As you can see, the fields for this structure are "size," "fields," and "kind." 
 
 ### Source Files
 
-src/structs.rs contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread, for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
+#### structs.rs
+[`src/structs.rs`](./src/structs.rs) contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread, for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
 
-src/lib.rs now contains definitions for `print_current_cosi*_info` defined for each cosi struct, which just print sort-of pretty formatted information about the current process, as well as a callback which triggers on asid change and dumps information to stdout using those functions.
+#### lib.rs
+[src/lib.rs](./src/lib.rs) contains definitions for:
+
+ `print_current_cosi*_info` defined for each cosi struct, which print sort-of pretty formatted information about the current process.
+ 
+ `asid_changed`, a callback which triggers on asid change and dumps information to stdout using the `print_*` functions.
+
+ `get_process_list` which walks the process list and returns a `Vec` of all processes running on the system.
+
+ `get_process_children` which returns a `Vec` of children of a given process
+
+as well as several functions which allow the plugin to work.
+
+#### downloader.rs
+[src/downloader.rs](./src/downloader.rs) contains the logic for automatic detection and download of the symbol table for the kernel being used.
 
