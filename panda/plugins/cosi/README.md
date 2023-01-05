@@ -48,7 +48,55 @@ void free_thread(struct CosiThread *thread);
 
 ## Cosi Usage/Structure
 
-src/structs.rs contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
+### Symbol Tables
+#### Providing Symbol Tables
+COSI needs a symbol table in order to function. These symbol tables provide layouts and offsets for kernel data structures and symbols, and will vary from kernel to kernel. If you do not provide a path to a symbol table you've already generated and placed in your `~/.panda` directory, COSI will try to automatically grab the OS string from the kernel, and then check if a symbol table with the corresponding name exists on your system. If not, it then attemps to download that symbol table from our [corpus]. If we do not have a symbol table for the kernel you're attempting to use, you may have to [generate] it yourself. Once you do this, yielding say `new_symtab.json`, you will need to run 
+
+`xz new_symtab.json` 
+
+to compress the file, and then
+
+`mv new_symtab.json.xz ~/.panda`
+
+to move the resulting compressed file to where COSI will find it. Feel free to discard the original `.json` file. 
+
+[corpus]: https://panda.re/volatility3_profiles/
+[generate]: https://github.com/volatilityfoundation/volatility3#symbol-tables
+
+#### Symbol Table Format
+Symbol Tables, in this context, are `.json` files containing kernel symbol and structure information. For example, here is the (abridged) listing for `task_struct` from the `ubuntu_4.15.0-72-generic_64` symbol table (all but the first and last fields ommited for readability)
+
+```
+"task_struct": {
+    "size": 9088,
+    "fields": {
+      "acct_rss_mem1": {
+        "type": {
+          "kind": "base",
+          "name": "long long unsigned int"
+        },
+        "offset": 3024
+      },
+      ...
+      [snip]
+      ...
+      "wakee_flips": {
+        "type": {
+          "kind": "base",
+          "name": "unsigned int"
+        },
+        "offset": 64
+      }
+    },
+    "kind": "struct"
+  },
+```
+
+As you can see, the fields for this structure are "size," "fields," and "kind." These fields may vary from structure to structure, but this should give you a rough idea of the format of the (very large) symbol tables. If you are very set on exploring these tables more, or need to view them for debugging purposes, the command line tool [jless] might prove useful, or if that somewhat too manual, the python script [`jdcoder.py`] (./jdcoder.py) provided here may help as well.
+
+  [jless]: https://github.com/PaulJuliusMartinez/jless
+
+src/structs.rs contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread, for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
 
 src/lib.rs now contains definitions for `print_current_cosi*_info` defined for each cosi struct, which just print sort-of pretty formatted information about the current process, as well as a callback which triggers on asid change and dumps information to stdout using those functions.
 
