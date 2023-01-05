@@ -7,8 +7,7 @@ It has two main components. The first of which is the core, which provides an AP
 [Volatility]: https://github.com/volatilityfoundation/volatility
 
 ## Core API
-
-(For more information about a function see [`cosi.h`](./cosi.h))
+These functions are useful for getting data about particular symbol or structure definitions and locations. For more information about a function see [`cosi.h`](./cosi.h)
 
 ```c
 target_ptr_t kaslr_offset(CPUState *cpu);
@@ -35,15 +34,21 @@ void free_cosi_str(char *string);
 ```
 
 ## OS Resource APIs
-
-(For more information about a function see [`cosi.h`](./cosi.h))
+These functions are useful for getting data about the actual state of the system, including data about running processes, open files, etc. For more information about a function see [`cosi.h`](./cosi.h)
 
 ```c
-struct CosiProc *get_current_process(CPUState *cpu);
+struct CosiProc *get_current_cosiproc(CPUState *cpu);
 void free_process(struct CosiProc *proc);
 char *cosi_proc_name(const struct CosiProc *proc);
-struct CosiThread *get_current_thread(CPUState *cpu);
+struct CosiFiles *cosi_proc_files(const struct CosiProc);
+struct CosiThread *get_current_cosithread(CPUState *cpu);
 void free_thread(struct CosiThread *thread);
+struct CosiFiles *get_current_files(CPUState *cpu);
+uintptr_t cosi_files_len(const struct CosiFiles *files);
+const struct CosiFile *cosi_files_get(const struct CosiFiles *files, uintptr_t index);
+const struct CosiFile *cosi_files_file_from_fd(const struct CosiFiles *files, uint32_t fd);
+void free_cosi_files(struct CosiFiles *files);
+char *cosi_file_name(const struct CosiFile *file);
 ```
 
 ## Cosi Usage/Structure
