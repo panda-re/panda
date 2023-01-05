@@ -92,9 +92,12 @@ Symbol Tables, in this context, are `.json` files containing kernel symbol and s
   },
 ```
 
-As you can see, the fields for this structure are "size," "fields," and "kind." These fields may vary from structure to structure, but this should give you a rough idea of the format of the (very large) symbol tables. If you are very set on exploring these tables more, or need to view them for debugging purposes, the command line tool [jless] might prove useful, or if that somewhat too manual, the python script [`jdcoder.py`] (./jdcoder.py) provided here may help as well.
+As you can see, the fields for this structure are "size," "fields," and "kind." These fields may vary from structure to structure, but this should give you a rough idea of the format of the (very large) symbol tables. If you are very set on exploring these tables more, or need to view them for debugging purposes, the command line tool [jless] might prove useful, or if that somewhat too manual, the python script [`jdcoder.py`](./jdcoder.py) provided here may help as well.
 
-  [jless]: https://github.com/PaulJuliusMartinez/jless
+[jless]: https://github.com/PaulJuliusMartinez/jless
+
+
+### Source Files
 
 src/structs.rs contains two types of structure definitions. The first type are meant to mimic the kernel's definition of the structure (a stripped down version with only fields we care about, or that are typically present) so that fields we want for that structure can be read out of the guest and accessed as you would expect. The second type, which start with "Cosi," are the structures the user is meant to interact with. These Cosi structures have the underlying kernel structure as a field, but contain additional fields which hold metadata like a guest pointer to the underlying structure, as well as commonly useful fields which might require some computation or multiple dereferences to get at, such as the ppid of a process. Additionally, the Cosi structures have `new` defined (except for CosiThread, for now) which returns a populated Cosi structure given a pointer to a certain kernel struct, and `get_current_*` which returns a Cosi struct for the named data type of the current process. For instance, calling `CosiFiles::get_current_files(cpu);` will return a CosiFiles structure which wraps the `files_struct` for the `current task_struct`.
 
