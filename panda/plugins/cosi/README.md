@@ -125,7 +125,7 @@ as well as several functions which allow the plugin to work.
 
 ### Usage
 
-#### PyPanda
+#### Python
 COSI is loaded like any other panda plugin:
 
 `panda.load_plugin("cosi")`
@@ -136,6 +136,6 @@ and can be provided the optional argument `profile`, the file name of the compre
 
 After you load cosi, you can call the functions explosed in cosi.h. For example, to get the current process you might do:
 
-`cosu_current = panda.plugins['cosi'].get_current_cosiproc(cpu)`
+`cosi_current = panda.cosi.current_process()`
 
 For an example of how to use COSI in a python script, see [example.py](./examples/example.py)
