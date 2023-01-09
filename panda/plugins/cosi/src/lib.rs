@@ -299,7 +299,7 @@ fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_u
     //print_current_cosifile_info(cpu);
     //print_current_cosimappings_info(cpu);
     //print_process_list(cpu);
-    print_children(cpu);
+    //print_children(cpu);
 
     //println!("OSI2 INFO END\n\n");
 
