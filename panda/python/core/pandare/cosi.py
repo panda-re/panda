@@ -334,6 +334,18 @@ class Cosi:
 
         return CosiProcess(self.panda, proc)
 
+    def process_list(self):
+        '''
+        Get a list of the current processes
+        '''
+
+        proc_list = self.panda.plugins[COSI].cosi_get_proc_list(self.panda.get_cpu())
+
+        if proc_list == self.panda.ffi.NULL:
+            return []
+        else:
+            return CosiProcList(panda, proc_list)
+
     def current_thread(self):
         '''
         Get info about the current thread
@@ -369,9 +381,9 @@ class CosiFiles:
         file_ptr = self.panda.plugins[COSI].cosi_files_get(self.inner, key)
 
         if file_ptr == self.panda.ffi.NULL:
-            raise IndexError("Integer {} out of bounds of ")
+            raise IndexError("Integer {} out of bounds of CosiFiles len")
 
-        return CosiFile(self.panda, file_ptr)
+        return CosiFile(self.panda, file_ptr, hold_ref=self)
 
     def __iter__(self):
         for i in range(len(self)):
@@ -392,11 +404,16 @@ class CosiFiles:
             return CosiFile(self.panda, file_ptr)
 
 class CosiFile:
-    def __init__(self, panda, file_ptr):
+    def __init__(self, panda, file_ptr, hold_ref=None):
         self.inner = file_ptr
         self.panda = panda
+        self.hold_ref = hold_ref
 
     def get_name(self) -> str:
+        '''
+        Get the name/path from which this file was accessed
+        '''
+
         cstr_name = self.panda.plugins[COSI].cosi_file_name(self.inner)
         name = self.panda.ffi.string(cstr_name)
         self.panda.plugins[COSI].free_cosi_str(cstr_name)
@@ -425,9 +442,10 @@ class CosiThread:
         return getattr(self.inner, key)
 
 class CosiProcess:
-    def __init__(self, panda, proc):
+    def __init__(self, panda, proc, hold_ref=None):
         self.panda = panda
         self.inner = proc
+        self.hold_ref = hold_ref
 
     def __del__(self):
         self.panda.plugins[COSI].free_process(self.inner)
@@ -456,6 +474,48 @@ class CosiProcess:
 
         files = self.panda.plugins[COSI].cosi_proc_files(self.inner)
         return CosiFiles(self.panda, files)
+
+    def children(self):
+        '''
+        Returns a list of this process' children
+        '''
+
+        children = self.panda.plugins[COSI].cosi_proc_children(
+            self.panda.get_cpu(),
+            self.inner
+        )
+
+        if children == self.panda.ffi.NULL:
+            return None
+
+        return CosiProcList(self.panda, children)
+
+class CosiProcList:
+    def __init__(self, panda, inner):
+        self.inner = inner
+        self.panda = panda
+
+    def __del__(self):
+        self.panda.plugins[COSI].cosi_free_proc_list(self.inner)
+        self.inner = None
+
+    def __len__(self) -> int:
+        return self.panda.plugins[COSI].cosi_proc_list_len(self.inner)
+
+    def __getitem__(self, key: int):
+        if not type(key) is int:
+            raise TypeError("CosiProcList must be indexed with an integer")
+
+        file_ptr = self.panda.plugins[COSI].cosi_proc_list_get(self.inner, key)
+
+        if file_ptr == self.panda.ffi.NULL:
+            raise IndexError("Integer {} out of bounds of CosiProcList length")
+
+        return CosiProc(self.panda, file_ptr, hold_ref=self)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
 
 import struct
 
