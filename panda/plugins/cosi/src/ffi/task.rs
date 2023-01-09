@@ -45,3 +45,34 @@ pub extern "C" fn get_current_cosithread(cpu: &mut CPUState) -> Option<Box<CosiT
 pub extern "C" fn free_thread(thread: Option<Box<CosiThread>>) {
     drop(thread);
 }
+
+/// Gets a list of the current processes. Must be freed with `cosi_free_proc_list`
+#[no_mangle]
+pub extern "C" fn cosi_get_proc_list(cpu: &mut CPUState) -> Option<Box<Vec<CosiProc>>> {
+    crate::get_process_list(cpu).map(Box::new)
+}
+
+/// Get a reference to an individual process in a cosi proc list
+#[no_mangle]
+pub extern "C" fn cosi_proc_list_get(list: &Vec<CosiProc>, index: usize) -> Option<&CosiProc> {
+    list.get(index)
+}
+
+/// Get the length of a cosi proc list
+#[no_mangle]
+pub extern "C" fn cosi_proc_list_len(list: &Vec<CosiProc>) -> usize {
+    list.len()
+}
+
+/// Free a cosi proc list
+#[no_mangle]
+pub extern "C" fn cosi_free_proc_list(_list: Option<Box<Vec<CosiProc>>>) {}
+
+/// Gets a list of the children of a given process. Must be freed using `cosi_free_proc_list`
+#[no_mangle]
+pub extern "C" fn cosi_proc_children(
+    cpu: &mut CPUState,
+    proc: &CosiProc,
+) -> Option<Box<Vec<CosiProc>>> {
+    crate::get_process_children(cpu, proc).map(Box::new)
+}

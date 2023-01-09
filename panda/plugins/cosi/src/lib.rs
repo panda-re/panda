@@ -29,9 +29,7 @@ use structs::*;
 #[derive(PandaArgs)]
 #[name = "cosi"]
 struct Args {
-    #[arg(
-        about = "Path to a volatility 3 symbol table to use (.xz compressed json)"
-    )]
+    #[arg(about = "Path to a volatility 3 symbol table to use (.xz compressed json)")]
     profile: String,
 }
 
@@ -149,7 +147,7 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec<CosiProc>> {
 }
 
 /// `get_process_children` returns a `Vec` of `CosiProcs` representing all the children of the process represented by a given `CosiProc`
-fn get_process_children(cpu: &mut CPUState, proc: CosiProc) -> Option<Vec<CosiProc>> {
+fn get_process_children(cpu: &mut CPUState, proc: &CosiProc) -> Option<Vec<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
     let mut ts_current = proc.get_next_child(cpu)?;
     let first_addr = ts_current.addr;
@@ -258,7 +256,7 @@ fn print_children(cpu: &mut CPUState) -> bool {
                 "[current] name: {} | pid: {} | ppid: {} | addr: {:x}",
                 proc.name, proc.task.pid, proc.ppid, proc.addr
             );
-            match get_process_children(cpu, proc) {
+            match get_process_children(cpu, &proc) {
                 Some(children) => {
                     for c in children.iter() {
                         println!(

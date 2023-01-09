@@ -14,9 +14,59 @@ typedef struct {} VolatilityStruct;
  */
 #define TASK_COMM_LEN 16
 
+/**
+ * # Structure
+ * `CosiFiles` holds a `Vec` of `CosiFile`s representing all open files for some process
+ *     `files` is a `Vec` of `CosiFile`s representing the open files of a process
+ * # Functions
+ * `get_file_from_fd` returns the `CosiFile` with the given file descriptor from `files`
+ * `get_current_cosifiles` returns a `CosiFiles` representing all open `file`s of the current process
+ * `new` returns a `CosiFiles` representing all open `file`s associated with a `files_struct` at a given pointer
+ */
 typedef struct CosiFiles CosiFiles;
 
 typedef struct String String;
+
+typedef struct Vec_CosiProc Vec_CosiProc;
+
+typedef struct Path {
+  target_ptr_t dentry;
+  target_ptr_t mnt;
+} Path;
+
+typedef struct File {
+  struct Path f_path;
+  target_ptr_t f_pos;
+} File;
+
+/**
+ * # Structure
+ * `CosiFile` bundles useful data and metadata about `file`s
+ *     `addr` is a pointer to the underlying  `file` structure
+ *     `file_struct` is the underlying `file` read from memory
+ *     `name` is the name of the file on disk associated with the `file`
+ *     `fd` is the file descriptor associated with this `file` in the `files_struct` that keeps track of it
+ * # Functions
+ * `new` returns a `CosiFile` representing the `file` pointed to by a given pointer
+ */
+typedef struct CosiFile {
+  /**
+   * `addr` is a pointer to the underlying  `file` structure
+   */
+  target_ptr_t addr;
+  /**
+   * `file_struct` is the underlying `file` read from memory
+   */
+  struct File file_struct;
+  /**
+   * `name` is the name of the file on disk associated with the `file`
+   */
+  struct String *name;
+  /**
+   * `fd` is the file descriptor associated with this `file` in the `files_struct` that keeps track of it
+   */
+  uint32_t fd;
+} CosiFile;
 
 typedef struct ListHead {
   target_ptr_t next;
@@ -51,37 +101,76 @@ typedef struct MmStruct {
   target_ptr_t mmap;
 } MmStruct;
 
+/**
+ * # Structure
+ * `CosiProc` bundles up useful data and metadata about `task_struct`s.
+ *     `addr`  is a pointer to the underlying task_struct
+ *     `task`  is the task_struct we read from the memory
+ *     `name`  is the name of the process
+ *     `ppid`  is the pid of the parent task_struct
+ *     `mm`    is the mm_struct pointed to by task.mm, read from memory
+ *     `asid`  is the asid of the process
+ *     `taskd` is task.group_leader
+ *
+ *  # Functions
+ * `get_next_process` walks task.tasks to find the next process in the process list and returns it as a CosiProc
+ * `get_prev_process` walks task.tasks backwards to find the previous process in the process list and returns it as a CosiProc
+ * `get_next_child` returns a CosiProc representaion of the process reffered to by task.children.next
+ * `get_next_sibling` returns a CosiProc representation of the process reffered to by task.sibling.next
+ * `get_init_cosiproc` returns a CosiProc representation of the process pointed to by the init_task symbol
+ * `get_current_cosiproc` returns a CosiProc representation of the current process
+ * `new` returns a CosiProc representation of a task_struct, given a pointer to that task_struct
+ * `get_mappings` returns a CosiMappings representation of modules loaded in process represented by the CosiProc calling this function
+ */
 typedef struct CosiProc {
+  /**
+   * `addr` is a pointer to the underlying task_struct
+   */
   target_ptr_t addr;
+  /**
+   * `task` is the task_struct we read from the memory
+   */
   struct TaskStruct task;
+  /**
+   * `name` is the name of the process
+   */
   struct String *name;
+  /**
+   * `ppid` is the pid of the parent task_struct
+   */
   uint32_t ppid;
+  /**
+   * `mm` is the mm_struct pointed to by task.mm, read from memory
+   */
   struct MmStruct mm;
+  /**
+   * `asid`  is the asid of the process
+   */
   uint32_t asid;
+  /**
+   * `taskd` is task.group_leader
+   */
   target_ptr_t taskd;
 } CosiProc;
 
+/**
+ * # Structure
+ * `CosiThread` bundles up useful information about `thread_struct`s
+ *     `tid` is the pid of the owning process
+ *     `pid` is the thread group id of the owning process
+ * # Functions
+ * `get_current_cosithread` returns a CosiThread representation of the current process
+ */
 typedef struct CosiThread {
+  /**
+   * `tid` is the pid of the owning process
+   */
   uint32_t tid;
+  /**
+   * `pid` is the thread group id of the owning process
+   */
   uint32_t pid;
 } CosiThread;
-
-typedef struct Path {
-  target_ptr_t dentry;
-  target_ptr_t mnt;
-} Path;
-
-typedef struct File {
-  struct Path f_path;
-  target_ptr_t f_pos;
-} File;
-
-typedef struct CosiFile {
-  target_ptr_t addr;
-  struct File file_struct;
-  struct String *name;
-  uint32_t fd;
-} CosiFile;
 
 /**
  * Get the KASLR offset of the system, calculating and caching it if it has not already
@@ -201,6 +290,40 @@ target_ulong current_cpu_offset(CPUState *cpu);
 void free_cosi_str(char *string);
 
 /**
+ * Get the information for files available to the current process.
+ *
+ * Must be freed using `free_cosi_files`.
+ */
+struct CosiFiles *get_current_files(CPUState *cpu);
+
+/**
+ * Get the number of files in a given CosiFiles
+ */
+uintptr_t cosi_files_len(const struct CosiFiles *files);
+
+/**
+ * From a given CosiFiles get a specific file by index if it exists
+ */
+const struct CosiFile *cosi_files_get(const struct CosiFiles *files, uintptr_t index);
+
+/**
+ * Get a reference to a file from the file descriptor if it exists
+ */
+const struct CosiFile *cosi_files_file_from_fd(const struct CosiFiles *files, uint32_t fd);
+
+/**
+ * frees a CosiFiles struct
+ */
+void free_cosi_files(struct CosiFiles *files);
+
+/**
+ * Get the name of a given CosiFile
+ *
+ * Must be freed using `free_cosi_str`
+ */
+char *cosi_file_name(const struct CosiFile *file);
+
+/**
  * Gets a reference to the current process which can be freed with `free_process`
  */
 struct CosiProc *get_current_cosiproc(CPUState *cpu);
@@ -234,37 +357,28 @@ struct CosiThread *get_current_cosithread(CPUState *cpu);
 void free_thread(struct CosiThread *thread);
 
 /**
- * Get the information for files available to the current process.
- *
- * Must be freed using `free_cosi_files`.
+ * Gets a list of the current processes. Must be freed with `cosi_free_proc_list`
  */
-struct CosiFiles *get_current_files(CPUState *cpu);
+struct Vec_CosiProc *cosi_get_proc_list(CPUState *cpu);
 
 /**
- * Get the number of files in a given CosiFiles
+ * Get a reference to an individual process in a cosi proc list
  */
-uintptr_t cosi_files_len(const struct CosiFiles *files);
+const struct CosiProc *cosi_proc_list_get(const struct Vec_CosiProc *list, uintptr_t index);
 
 /**
- * From a given CosiFiles get a specific file by index if it exists
+ * Get the length of a cosi proc list
  */
-const struct CosiFile *cosi_files_get(const struct CosiFiles *files, uintptr_t index);
+uintptr_t cosi_proc_list_len(const struct Vec_CosiProc *list);
 
 /**
- * Get a reference to a file from the file descriptor if it exists
+ * Free a cosi proc list
  */
-const struct CosiFile *cosi_files_file_from_fd(const struct CosiFiles *files, uint32_t fd);
+void cosi_free_proc_list(struct Vec_CosiProc *_list);
 
 /**
- * frees a CosiFiles struct
+ * Gets a list of the children of a given process. Must be freed using `cosi_free_proc_list`
  */
-void free_cosi_files(struct CosiFiles *files);
-
-/**
- * Get the name of a given CosiFile
- *
- * Must be freed using `free_cosi_str`
- */
-char *cosi_file_name(const struct CosiFile *file);
+struct Vec_CosiProc *cosi_proc_children(CPUState *cpu, const struct CosiProc *proc);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
