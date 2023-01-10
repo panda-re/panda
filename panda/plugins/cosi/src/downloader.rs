@@ -31,7 +31,7 @@ pub fn download_symbol_table(file: &str, kernel: &str) -> bool {
         transfer.perform().unwrap();
     }
     if buf.len() > 0 {
-        f.write_all(&buf);
+        f.write_all(&buf).expect("Failed to write to file");
         println!("OK");
         true
     } else {

@@ -1,5 +1,5 @@
 //use crate::{get_osiproc_info, get_osithread_info, CosiProc, OsiThread};
-use crate::{structs::CosiFiles, CosiProc, CosiThread};
+use crate::structs::{CosiFiles, CosiProc, CosiThread};
 
 use panda::{prelude::*, sys::get_cpu};
 use std::{ffi::CString, os::raw::c_char};

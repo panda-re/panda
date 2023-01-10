@@ -355,10 +355,10 @@ class Cosi:
         '''
 
         thread = self.panda.plugins[COSI].get_current_cosithread(self.panda.get_cpu())
-        
+
         if thread == self.panda.ffi.NULL:
             return None
-        
+
         return CosiThread(self.panda, thread)
 
     def current_files(self):
@@ -367,10 +367,10 @@ class Cosi:
         '''
 
         files = self.panda.plugins[COSI].get_current_files(self.panda.get_cpu())
-                
+
         if files == self.panda.ffi.NULL:
-            return None
-        
+            return []
+
         return CosiFiles(self.panda, files)
 
 class CosiFiles:
@@ -497,7 +497,7 @@ class CosiProcess:
         )
 
         if children == self.panda.ffi.NULL:
-            return None
+            return []
 
         return CosiProcList(self.panda, children)
 
