@@ -9,8 +9,6 @@ use panda::prelude::*;
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
-//use panda::plugins::cosi::osi_static;
-
 use panda::plugins::syscalls2::Syscalls2Callbacks;
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();

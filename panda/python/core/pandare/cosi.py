@@ -347,7 +347,7 @@ class Cosi:
         if proc_list == self.panda.ffi.NULL:
             return []
         else:
-            return CosiProcList(panda, proc_list)
+            return CosiProcList(self.panda, proc_list)
 
     def current_thread(self):
         '''
@@ -522,7 +522,7 @@ class CosiProcList:
         if file_ptr == self.panda.ffi.NULL:
             raise IndexError("Integer {} out of bounds of CosiProcList length")
 
-        return CosiProc(self.panda, file_ptr, hold_ref=self)
+        return CosiProcess(self.panda, file_ptr, hold_ref=self)
 
     def __iter__(self):
         for i in range(len(self)):
