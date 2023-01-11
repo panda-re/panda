@@ -55,7 +55,6 @@
 #include "io/channel-buffer.h"
 #include "io/channel-file.h"
 #include "panda/callbacks/cb-support.h"
-
 #include "migration/savevm.h"
 
 #ifndef ETH_P_RARP
@@ -1891,17 +1890,9 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
     trace_qemu_loadvm_state_section_startfull(section_id, idstr,
             instance_id, version_id);
 
-    if (panda_is_in_replay && !idstr_is_important(idstr)) {
-        return 0;
-    }
-    
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
-        if (panda_is_in_replay && !idstr_is_important(idstr)) { 
-            return 0;
-        }
-
         error_report("Unknown savevm section or instance '%s' %d",
                      idstr, instance_id);
         return -EINVAL;
