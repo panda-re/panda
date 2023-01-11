@@ -1633,10 +1633,10 @@ void rr_do_end_record(void)
 
     time_t rr_end_time;
     time(&rr_end_time);
-    //if (!panda_get_library_mode())  {
+    if (!panda_get_library_mode())  {
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
-    //}
+    }
     
     // Write the nondetlog to the archive
     printf("Finalizing the recording\n");
@@ -1808,7 +1808,7 @@ void rr_do_end_replay(int is_error)
         printf("ERROR: replay failed!\n");
     }
 
-    //if(!panda_get_library_mode()) {
+    if(!panda_get_library_mode()) {
       time_t rr_end_time;
       time(&rr_end_time);
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
@@ -1823,10 +1823,10 @@ void rr_do_end_replay(int is_error)
           rr_size_of_log_entries[i] = 0;
       }
       printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
-//#ifdef RR_DEBUG
+#ifdef RR_DEBUG
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
-//#endif
-    //}
+#endif
+    }
     rr_max_num_queue_entries = 0;
 
     // mz some more sanity checks - the queue should contain only the RR_LAST
