@@ -207,19 +207,44 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
     
     Shad *src_shad;
     Shad *dst_shad;
+
+    // if RAM Is not contiguous, the raw RAM addresses need converted
+    ram_addr_t src_addr_offset;
+    ram_addr_t dst_addr_offset;
     switch (type)
     {
     case NET_TRANSFER_RAM_TO_IOB:
         src_shad = &shadow->ram;
         dst_shad = &shadow->io;
+        if (PandaPhysicalAddressToRamOffset(&src_addr_offset, src_addr, false)
+        		!= MEMTX_OK)
+        {
+        	fprintf(stderr,
+        			"Cannot convert source address 0x%lx to RAM Offset\n",
+        			src_addr);
+        	return;
+        }
+        dst_addr_offset = dst_addr;
         break;
     case NET_TRANSFER_IOB_TO_RAM:
         src_shad = &shadow->io;
         dst_shad = &shadow->ram;
+        src_addr_offset = src_addr;
+        if (PandaPhysicalAddressToRamOffset(&dst_addr_offset, dst_addr, true)
+        		!= MEMTX_OK)
+        {
+        	fprintf(stderr,
+        			"Cannot convert destination address 0x%lx to RAM Offset\n",
+					dst_addr);
+        	return;
+        }
+
         break;
     case NET_TRANSFER_IOB_TO_IOB:
         src_shad = &shadow->io;
         dst_shad = &shadow->io;
+        src_addr_offset = src_addr;
+        dst_addr_offset = dst_addr;
         break;
     default:
         fprintf(stderr, "Invalid network transfer type (%d)\n", type);
@@ -227,9 +252,9 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
     }
 
     taint_log("net xfer (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
-    		dst_addr, num_bytes, src_shad->name(), src_addr);
-    taint_log_labels(src_shad, src_addr, num_bytes);
-    Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
+    		dst_addr_offset, num_bytes, src_shad->name(), src_addr_offset);
+    taint_log_labels(src_shad, src_addr_offset, num_bytes);
+    Shad::copy(dst_shad, dst_addr_offset, src_shad, src_addr_offset, num_bytes);
     return;
 } // end of function on_replay_net_transfer
 
