@@ -468,9 +468,9 @@ bool setup_osi() {
     // moved out of init_plugin case statement to mollify SonarQube
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     #if defined(TARGET_X86_64)
-    if (panda_os_familyno != OS_LINUX) {
+    if ((panda_os_familyno != OS_LINUX) && (0 != strncmp(panda_os_variant, "7", 1))) {
         fprintf(stderr,
-            "ERROR:  threaded stack_type is not supported on Windows 64-bit\n");
+            "ERROR:  threaded stack_type is not supported on Windows 64-bit except for Windows 7\n");
         return false;
     }
     #endif
