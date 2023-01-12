@@ -189,6 +189,9 @@ void replay_hd_transfer_callback(CPUState *cpu, uint32_t type,
         return;
     }
 
+    taint_log("hd xfer (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
+    		(uint64_t)dst_addr, num_bytes, src_shad->name(), (uint64_t)src_addr);
+    taint_log_labels(src_shad, (uint64_t)src_addr, num_bytes);
     Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
 
     return;
@@ -222,6 +225,10 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
         fprintf(stderr, "Invalid network transfer type (%d)\n", type);
         return;
     }
+
+    taint_log("net xfer (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
+    		dst_addr, num_bytes, src_shad->name(), src_addr);
+    taint_log_labels(src_shad, src_addr, num_bytes);
     Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
     return;
 } // end of function on_replay_net_transfer
@@ -256,6 +263,9 @@ void on_replay_before_dma(CPUState *cpu, const uint8_t *src_addr,
         ss_addr = dest_addr;
         ds_addr = (uint64_t)src_addr;
     }
+    taint_log("dma (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
+    		ds_addr, num_bytes, src_shad->name(), ss_addr);
+    taint_log_labels(src_shad, ss_addr, num_bytes);
     Shad::copy(dst_shad, ds_addr, src_shad, ss_addr, num_bytes);
     return;
 }  // end of function on_replay_before_dma
