@@ -119,6 +119,15 @@ pub(crate) fn initialize_pyplugins(args: Args) {
         .unwrap();
     };
 
+    if use_flask {
+        let panda_obj = &panda_obj;
+        context.run(python! {
+            'panda_obj.pyplugins.serve()
+        });
+
+        println!("[snake_hook] flask server has started up");
+    }
+
     // hold onto the Panda object to allow for deleting callbacks on uninit
     PANDA_OBJ.set(panda_obj).unwrap();
 }

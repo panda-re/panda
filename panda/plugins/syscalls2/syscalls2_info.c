@@ -42,7 +42,14 @@ int load_syscall_info(void) {
     }
 
     dlerror();  // clear errors
-    void *syscall_info_dl = dlopen(syscall_info_dlname, RTLD_NOW|RTLD_NODELETE);
+
+    char* sys_info_dlname_path = panda_shared_library_path(syscall_info_dlname);
+    if (sys_info_dlname_path == NULL) {
+        fprintf(stderr, "Could not find %s\n", syscall_info_dlname);
+        return -1;
+    }
+
+    void *syscall_info_dl = dlopen(sys_info_dlname_path, RTLD_NOW|RTLD_NODELETE);
     if (syscall_info_dl == NULL) {
         LOG_ERROR("%s", dlerror());
         g_free(syscall_info_dlname);

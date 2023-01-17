@@ -18,7 +18,7 @@
 #include "exec/address-spaces.h"
 #include "panda/types.h"
 
-/**
+/*
  * @brief Branch predition hint macros.
  */
 #if !defined(likely)
@@ -31,11 +31,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+    
 #if defined(TARGET_MIPS)
 #define MIPS_HFLAG_KSU    0x00003 /* kernel/supervisor/user mode mask   */
 #define MIPS_HFLAG_KM     0x00000 /* kernel mode flag                   */
-/**
+/*
  *  Register values from: http://www.cs.uwm.edu/classes/cs315/Bacon/Lecture/HTML/ch05s03.html
  */
 #define MIPS_SP           29      /* value for MIPS stack pointer offset into GPR */
@@ -53,27 +53,67 @@ void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
 void panda_break_main_loop(void);
 MemoryRegion* panda_find_ram(void);
-
+    
 extern bool panda_exit_loop;
 extern bool panda_break_vl_loop_req;
 
 
-/*
- * @brief Returns the guest address space identifier.
- */
-target_ulong panda_current_asid(CPUState *env);
-
 /**
- * @brief Returns the guest program counter.
+ * panda_current_asid() - Obtain guest ASID.
+ * @env: Pointer to cpu state.
+ * 
+ * This function figures out and returns the ASID (address space
+ * identifier) for a number of archiectures (e.g., cr3 for x86). In
+ * many cases, this can be used to distinguish between processes.
+ * 
+ * Return: A guest pointer is returned, the ASID.
+*/
+target_ulong panda_current_asid(CPUState *env);
+    
+/**
+ * panda_current_pc() - Get current program counter.
+ * @cpu: Cpu state.
+ *
+ * Note that Qemu typically only updates the pc after executing each
+ * basic block of code. If you want this value to be more accurate,
+ * you will have to call panda_enable_precise_pc.
+ * 
+ * Return: Program counter is returned.
  */
 target_ulong panda_current_pc(CPUState *cpu);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 /**
- * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
+ * panda_find_max_ram_address() - Get max guest ram address.
+ *
+ * Computes the maximum address of guest system memory that maps to
+ * RAM.
+ * 
+ * Return: The max ram address is returned.
  */
+Int128 panda_find_max_ram_address(void);
 
+
+/* (not kernel-doc)
+ * panda_physical_memory_rw() - Copy data between host and guest.
+ * @addr: Guest physical addr of start of read or write.
+ * @buf: Host pointer to a buffer either containing the data to be
+ *    written to guest memory, or into which data will be copied
+ *    from guest memory.
+ * @len: The number of bytes to copy
+ * @is_write: If true, then buf will be copied into guest
+ *    memory, else buf will be copied out of guest memory.
+ *
+ * Either reads memory out of the guest into a buffer if
+ * (is_write==false), or writes data from a buffer into guest memory
+ * (is_write==true). Note that buf has to be big enough for read or
+ * write indicated by len.
+ *
+ * Return:
+ * * MEMTX_OK      - Read/write succeeded
+ * * MEMTX_ERROR   - An error 
+ */
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
     hwaddr l = len;
@@ -95,8 +135,48 @@ static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
     return MEMTX_OK;
 }
 
+
+/* (not kernel-doc)
+ * panda_physical_memory_read() - Copy data from guest memory into host buffer.
+ * @addr: Guest physical address of start of read.
+ * @buf: Host pointer to a buffer into which data will be copied from guest.
+ * @len: Number of bytes to copy.
+ * 
+ * Return: 
+ * * MEMTX_OK      - Read succeeded
+ * * MEMTX_ERROR   - An error
+ */
+static inline int panda_physical_memory_read(hwaddr addr,
+                                            uint8_t *buf, int len) {
+    return panda_physical_memory_rw(addr, buf, len, 0);
+}
+
+
+/* (not kernel-doc)
+ * panda_physical_memory_write() - Copy data from host buffer into guest memory.
+ * @addr: Guest physical address of start of desired write.
+ * @buf: Host pointer to a buffer from which data will be copied into guest.
+ * @len: Number of bytes to copy.
+ * 
+ * Return: 
+ * * MEMTX_OK      - Write succeeded
+ * * MEMTX_ERROR   - An error
+ */
+static inline int panda_physical_memory_write(hwaddr addr,
+                                             uint8_t *buf, int len) {
+    return panda_physical_memory_rw(addr, buf, len, 1);
+}
+
+
 /**
- * @brief Translates guest virtual addres \p addr to a guest physical address.
+ * panda_virt_to_phys() - Translate guest virtual to physical address.
+ * @env: Cpu state.
+ * @addr: Guest virtual address.
+ *
+ * This conversion will fail if asked about a virtual address that is
+ * not currently mapped to a physical one in the guest. Good luck on MIPS.
+ *
+ * Return: A guest physical address.
  */
 static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
     target_ulong page;
@@ -111,25 +191,55 @@ static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
     return phys_addr;
 }
 
+
 /**
- * @brief If required for the target architecture, enter into a high-privilege mode in
- * order to conduct some memory access. Returns true if a switch into high-privilege
- * mode has been made. A NO-OP on systems where such changes are unnecessary.
+ * enter_priv() - Enter privileged mode.
+ * @cpu: Cpu state.
+ * 
+ * Enter into a higher-privileged mode, e.g., in order to conduct some
+ * memory access. This is a NO-OP on systems without different
+ * privilege modes.
+ * 
+ * Return: 
+ * * True      -  Switch into high-privilege happened.
+ * * False     -  Switch did not happen.
  */
 bool enter_priv(CPUState* cpu);
 
+
 /**
- * @brief Revert the guest to the privilege mode it was in prior to the last call
+ * exit_priv() - Exit privileged mode.
+ * @cpu: Cpu state. 
+ *
+ * Revert the guest to the privilege mode it was in prior to the last call
  * to enter_priv(). A NO-OP for architectures where enter_priv() is a NO-OP.
  */
 void exit_priv(CPUState* cpu);
 
-
-/**
- * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
+    
+/* (not kernel-doc)
+ * panda_virtual_memory_rw() - Copy data between host and guest.
+ * @env: Cpu sate.
+ * @addr: Guest virtual addr of start of read or write.
+ * @buf: Host pointer to a buffer either containing the data to be
+ *    written to guest memory, or into which data will be copied
+ *    from guest memory.
+ * @len: The number of bytes to copy
+ * @is_write: If true, then buf will be copied into guest
+ *    memory, else buf will be copied out of guest memory.
  *
- * For ARM/MIPS we switch into privileged mode if the access fails. The mode is always reset
+ * Either reads memory out of the guest into a buffer if
+ * (is_write==false), or writes data from a buffer into guest memory
+ * (is_write==true). Note that buf has to be big enough for read or
+ * write indicated by len. Also note that if the virtual address is
+ * not mapped, then the read or write will fail.
+ *
+ * We switch into privileged mode if the access fails. The mode is always reset
  * before we return.
+ * 
+ * Return:
+ * * 0      - Read/write succeeded
+ * * -1     - An error 
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                                           uint8_t *buf, int len, bool is_write) {
@@ -180,24 +290,51 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     return 0;
 }
 
-/**
- * @brief Reads data into \p buf from guest virtual address \p addr.
- */
+
+/* (not kernel-doc)
+ * panda_virtual_memory_read() - Copy data from guest memory into host buffer.
+ * @env: Cpu sate.
+ * @addr: Guest virtual address of start of desired read
+ * @buf: Host pointer to a buffer into which data will be copied from guest.
+ * @len: Number of bytes to copy.
+ * 
+ * Return:
+ * * 0      - Read succeeded
+ * * -1     - An error 
+ */ 
 static inline int panda_virtual_memory_read(CPUState *env, target_ulong addr,
                                             uint8_t *buf, int len) {
     return panda_virtual_memory_rw(env, addr, buf, len, 0);
 }
 
-/**
- * @brief Writes data from \p buf data to guest virtual address \p addr.
- */
+    
+/* (not kernel-doc)
+ * panda_virtual_memory_write() - Copy data from host buffer into guest memory.
+ * @env: Cpu sate.
+ * @addr: Guest virtual address of start of desired write.
+ * @buf: Host pointer to a buffer from which data will be copied into guest.
+ * @len: Number of bytes to copy.
+ * 
+ * Return:
+ * * 0      - Write succeeded
+ * * -1     - An error 
+ */ 
 static inline int panda_virtual_memory_write(CPUState *env, target_ulong addr,
                                              uint8_t *buf, int len) {
     return panda_virtual_memory_rw(env, addr, buf, len, 1);
 }
 
+    
 /**
- * @brief Obtains a host pointer for the given virtual address.
+ * panda_map_virt_to_host() - Map guest virtual addresses into host.
+ * @env: Cpu state.
+ * @addr: Guest virtual address start of range.
+ * @len: Length of address range.
+ * 
+ * Returns a pointer to host memory that is an alias for a range of
+ * guest virtual addresses.
+ *
+ * Return: A host pointer.
  */
 static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
                                            int len)
@@ -215,9 +352,21 @@ static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
     return qemu_map_ram_ptr(mr->ram_block, addr1);
 }
 
+
 /**
- * @brief Translate a physical address to a RAM Offset (needed for the taint system)
- * Returns MEMTX_OK on success.
+ * PandaPhysicalAddressToRamOffset() - Translate guest physical address to ram offset.
+ * @out: A pointer to the ram_offset_t, which will be written by this function.
+ * @addr: The guest physical address.
+ * @is_write: Is this mapping for ultimate read or write.
+ *  
+ * This function is useful for callers needing to know not merely the
+ * size of physical memory, but the actual largest physical address
+ * that might arise given non-contiguous ram map.  Panda's taint
+ * system needs it to set up its shadow ram, e.g..
+ * 
+ * Return: The desired return value is pointed to by out.
+ * * MEMTX_OK      - Read succeeded
+ * * MEMTX_ERROR   - An error
  */
 static inline MemTxResult PandaPhysicalAddressToRamOffset(ram_addr_t* out, hwaddr addr, bool is_write)
 {
@@ -276,9 +425,22 @@ static inline MemTxResult PandaPhysicalAddressToRamOffset(ram_addr_t* out, hwadd
     return MEMTX_OK;
 }
 
+
 /**
- * @brief Translate a virtual address to a RAM Offset (needed for the taint system)
- * Returns MEMTX_OK on success.
+ * PandaVirtualAddressToRamOffset() - Translate guest virtual address to ram offset,
+ * @out: A pointer to the ram_offset_t, which will be written by this function.
+ * @cpu: Cpu state.
+ * @addr: The guest virtual address.
+ * @is_write: Is this mapping for ultimate read or write.
+ *  
+ * This function is useful for callers needing to know not merely the
+ * size of virtual memory, but the actual largest virtual address that
+ * might arise given non-contiguous ram map.  Panda's taint system
+ * needs it to set up its shadow ram.
+ * 
+ * Return: The desired return value is pointed to by out.
+ * * MEMTX_OK      - Read succeeded
+ * * MEMTX_ERROR   - An error
  */
 static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUState* cpu, target_ulong addr, bool is_write)
 {
@@ -288,8 +450,14 @@ static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUSta
     return PandaPhysicalAddressToRamOffset(out, PhysicalAddress, is_write);
 }
 
-/**
- * @brief Determines if guest is currently executing in kernel mode, e.g. execution privilege level.
+
+/* (not kernel-doc)
+ * panda_in_kernel_mode() - Determine if guest is in kernel.
+ * @cpu: Cpu state.
+ *
+ * Determines if guest is currently executing in kernel mode, e.g. execution privilege level.
+ *
+ * Return: True if in kernel, false otherwise.
  */
 static inline bool panda_in_kernel_mode(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -313,34 +481,67 @@ static inline bool panda_in_kernel_mode(const CPUState *cpu) {
 #endif
 }
 
-/**
- * @brief Determines if guest is currently executing in kernel mode. Old API name for panda_in_kernel_mode().
+
+/* (not kernel-doc)
+ * panda_in_kernel() - Determine if guest is in kernel.
+ * @cpu: Cpu state.
+ *
+ * Determines if guest is currently executing in kernel mode, e.g. execution privilege level.
+ * DEPRECATED.
+ * 
+ * Return: True if in kernel, false otherwise.
  */
 static inline bool panda_in_kernel(const CPUState *cpu) {
     return panda_in_kernel_mode(cpu);
 }
 
-/**
- * @brief Determines if guest is currently executing kernelspace code, regardless of privilege level.
- * Necessary because there's a small bit of kernelspace code that runs AFTER a switch to usermode privileges.
- * Therefore, certain analysis logic can't rely on panda_in_kernel_mode() alone.
- * Checking the MSB means this should work even if KASLR is enabled.
+
+/* (not kernel-doc)
+ * address_in_kernel_code_linux() - Determine if virtual address is in kernel.                                                                           *                                                                                                                       
+ * @addr: Virtual address to check.
+ *
+ * Checks the top bit of the address to determine if the address is in
+ * kernel space. Checking the MSB means this should work even if KASLR
+ * is enabled.
+ *
+ * Return: True if address is in kernel, false otherwise.
  */
-static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
+static inline bool address_in_kernel_code_linux(target_ulong addr){
     // https://www.kernel.org/doc/html/latest/vm/highmem.html
     // https://github.com/torvalds/linux/blob/master/Documentation/x86/x86_64/mm.rst
     // If addr MSB set -> kernelspace!
 
     target_ulong msb_mask = ((target_ulong)1 << ((sizeof(target_long) * 8) - 1));
-    if (msb_mask & cpu->panda_guest_pc) {
+    if (msb_mask & addr) {
         return true;
     } else {
         return false;
     }
 }
 
-/**
- * @brief Returns the guest kernel stack pointer.
+
+/* (not kernel-doc)
+ * panda_in_kernel_code_linux() - Determine if current pc is kernel code.
+ * @cpu: Cpu state.
+ *
+ * Determines if guest is currently executing kernelspace code,
+ * regardless of privilege level.  Necessary because there's a small
+ * bit of kernelspace code that runs AFTER a switch to usermode
+ * privileges.  Therefore, certain analysis logic can't rely on
+ * panda_in_kernel_mode() alone. 
+ *
+ * Return: true if pc is in kernel, false otherwise.
+ */
+static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
+    return address_in_kernel_code_linux(panda_current_pc(cpu));
+}
+
+
+/* (not kernel-doc)
+ * panda_current_ksp() - Get guest kernel stack pointer.
+ * @cpu: Cpu state.
+ * 
+ * Return: Guest pointer value.
  */
 static inline target_ulong panda_current_ksp(CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -381,8 +582,12 @@ static inline target_ulong panda_current_ksp(CPUState *cpu) {
 #endif
 }
 
-/**
- * @brief Returns the guest stack pointer.
+
+/* (not kernel-doc)
+ * panda_current_sp() - Get current guest stack pointer.
+ * @cpu: Cpu state.
+ * 
+ * Return: Returns guest pointer.
  */
 static inline target_ulong panda_current_sp(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -403,11 +608,17 @@ static inline target_ulong panda_current_sp(const CPUState *cpu) {
 #endif
 }
 
-/**
- * @brief Returns the return value of the guest.
- * The function is only meant to provide a platform-independent
- * abstraction for retrieving a call return value. It still has to
- * be used in the proper context to retrieve a meaningful value.
+
+/* (not kernel-doc)
+ * panda_get_retval() - Get return value for function.
+ * @cpu: Cpu state.
+ *
+ * This function provides a platform-independent abstraction for
+ * retrieving a call return value. It still has to be used in the
+ * proper context to retrieve a meaningful value, such as just after a
+ * RET instruction under x86.
+ *
+ * Return: Guest ulong value.
  */
 static inline target_ulong panda_get_retval(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;

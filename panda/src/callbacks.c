@@ -64,6 +64,7 @@ int nb_panda_plugins_loaded = 0;
 char *panda_plugins_loaded[MAX_PANDA_PLUGINS];
 
 bool panda_please_flush_tb = false;
+bool panda_please_break_exec = false;
 bool panda_update_pc = false;
 bool panda_use_memcb = false;
 bool panda_tb_chaining = true;
@@ -99,18 +100,31 @@ bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
 // Forward declaration
 static void panda_args_set_help_wanted(const char *);
 
+/*
+* This function takes ownership of path.
+*/
+static char* attempt_normalize_path(char* path){
+    char* new_path = g_malloc(PATH_MAX); 
+    if (realpath(path, new_path) == NULL) {
+        strncpy(new_path, path, PATH_MAX-1);
+    }
+    g_free((char*)path);
+    return new_path;
+}
+
 bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
     // don't load the same plugin twice
+    char* rfilename = attempt_normalize_path(strdup(filename));
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
-        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
+        if (0 == (strcmp(rfilename, panda_plugins_loaded[i]))) {
             fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;
         }
     }
     // NB: this is really a list of plugins for which we have started loading
     // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
-    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
+    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(rfilename);
     nb_panda_plugins_loaded ++;
     void *plugin = plugin_uuid;//going to be a handle of some sort -> dlopen(filename, RTLD_NOW);
     bool (*init_fn)(void *) = init_fn_ptr; //normally dlsym init_fun
@@ -123,7 +137,7 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     if (plugin_name) {
         strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
     } else {
-        char *pn = g_path_get_basename((char *) filename);
+        char *pn = g_path_get_basename(rfilename);
         *g_strrstr(pn, HOST_DSOSUF) = '\0';
         strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
         g_free(pn);
@@ -250,23 +264,26 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 
 extern const char *qemu_file;
 
-// Resolve a plugin to a path. If the plugin doesn't exist in any of the search
-// paths, then NULL is returned. The search order for plugins is as follows:
+// Resolve a file in the plugin directory to a path. If the file doesn't
+// exist in any of the search paths, then NULL is returned. The search order 
+// for files is as follows:
 //
 //   - Relative to the PANDA_DIR environment variable.
 //   - Relative to the QEMU binary
 //   - Relative to the install prefix directory.
-char *panda_plugin_path(const char *plugin_name) {
-char *plugin_path;
+char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* name){
+    char *plugin_path, *name_formatted;
+    // makes "taint2" -> "panda_taint2"
+    name_formatted = g_strdup_printf(file_name_fmt, name);
     // First try relative to PANDA_PLUGIN_DIR
 #ifdef PLUGIN_DIR
     if (g_getenv("PANDA_DIR") != NULL) {
-      plugin_path = g_strdup_printf(
-          "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
-      if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
-          return plugin_path;
-      }
-      g_free(plugin_path);
+        plugin_path = attempt_normalize_path(g_strdup_printf(
+            "%s/%s/%s" , g_getenv("PANDA_DIR"), PLUGIN_DIR, name_formatted));
+        if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+            return plugin_path;
+        }
+        g_free(plugin_path);
     }
 #endif
 
@@ -276,8 +293,9 @@ char *plugin_path;
 
     // Second, try relative to PANDA binary as it would be in the build or install directory
     char *dir = g_path_get_dirname(qemu_file);
-    plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir,
-                                  plugin_name);
+    plugin_path = attempt_normalize_path(g_strdup_printf(
+                                "%s/panda/plugins/%s", dir,
+                                  name_formatted));
 
     g_free(dir);
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
@@ -286,9 +304,9 @@ char *plugin_path;
     g_free(plugin_path);
 
     // Finally, try relative to the installation path.
-    plugin_path =
-        g_strdup_printf("%s/%s/panda_%s" HOST_DSOSUF, CONFIG_PANDA_PLUGINDIR,
-                        TARGET_NAME, plugin_name);
+    plugin_path = attempt_normalize_path(
+        g_strdup_printf("%s/%s/%s", CONFIG_PANDA_PLUGINDIR,
+                        TARGET_NAME, name_formatted));
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
         return plugin_path;
     }
@@ -296,6 +314,22 @@ char *plugin_path;
 
     // Return null if plugin resolution failed.
     return NULL;
+}
+
+// Resolve a shared library in the plugins directory to a path. If the shared
+// object doesn't exist in any of paths, then NULL is returned. The search
+// order is the same as panda_plugin_path.
+// example: "libso.so" might resolve to to
+// /path/to/build/x86_64-softmmu/panda/plugins/libso.so
+char* panda_shared_library_path(const char* name){
+    return resolve_file_from_plugin_directory("%s", name);
+}
+
+// Resolve a plugin in the plugins directory to a path.
+// example: "taint2" might resolve to
+// /path/to/build/x86_64-softmmu/panda/plugins/panda_taint2.so
+char *panda_plugin_path(const char *plugin_name) {
+    return resolve_file_from_plugin_directory("panda_%s" HOST_DSOSUF, plugin_name);
 }
 
 void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
@@ -763,6 +797,20 @@ panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
     return NULL;
 }
 
+void panda_do_break_exec(void) {
+  panda_please_break_exec = true;
+}
+
+bool panda_break_exec(void) {
+    if (panda_please_break_exec) {
+        panda_please_break_exec = false;
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
 bool panda_flush_tb(void)
 {
     if (panda_please_flush_tb) {
@@ -946,6 +994,15 @@ int panda_replay_end(void) {
 
     rr_control.next = RR_OFF;
     return RRCTRL_OK;
+}
+
+/**
+ * @brief Return the name of the current PANDA record/replay
+ * 
+ * @return char* 
+ */
+char* panda_get_rr_name(void){
+    return rr_control.name;
 }
 
 // Parse out arguments and return them to caller
@@ -1427,7 +1484,9 @@ void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
     panda_cb_list *plist;
     const char *cmd = qdict_get_try_str(qdict, "cmd");
     for(plist = panda_cbs[PANDA_CB_MONITOR]; plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.monitor(plist->context, mon, cmd);
+        if (plist->enabled){
+            plist->entry.monitor(plist->context, mon, cmd);
+        }
     }
 }
 

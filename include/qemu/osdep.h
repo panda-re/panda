@@ -475,5 +475,6 @@ pid_t qemu_fork(Error **errp);
 void panda_set_library_mode(bool);
 bool panda_get_library_mode(void);
 
+
 #endif
 

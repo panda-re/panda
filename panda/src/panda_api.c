@@ -129,7 +129,7 @@ void panda_disable_callback_helper(void *plugin, panda_cb_type type, panda_cb* c
 
 //int panda_replay(char *replay_name) -> Now use panda_replay_being(char * replay_name)
 
-int rr_get_guest_instr_count_external(void){
+uint64_t rr_get_guest_instr_count_external(void){
 	return rr_get_guest_instr_count();
 }
 
@@ -144,11 +144,11 @@ int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *
 }
 
 int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len){
-	return panda_physical_memory_rw(addr, buf, len, 0);
+	return panda_physical_memory_read(addr, buf, len);
 }
 
 int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len){
-	return panda_physical_memory_rw(addr,buf,len, 1);
+	return panda_physical_memory_write(addr,buf,len);
 }
 
 bool panda_in_kernel_external(const CPUState *cpu){

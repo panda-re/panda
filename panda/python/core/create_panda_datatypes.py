@@ -242,10 +242,11 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     elif arch == "arm":
         define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_32.h")
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm.h")
-
+        define_clean_header(ffi, include_dir + "/arm_helpers.h")
     elif arch == "aarch64": # Could also do arch and bits==64
         define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_64.h")
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm64.h")
+        define_clean_header(ffi, include_dir + "/arm_helpers.h")
     elif arch == "ppc" and int(bits) == 32:
         define_clean_header(ffi, include_dir + "/panda_datatypes_PPC_32.h")
         print('WARNING: no syscalls support for PPC 32')
@@ -264,11 +265,17 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     else:
         print("PANDA_DATATYPES: Architecture not supported")
 
+    # Define some common QEMU types
+    define_clean_header(ffi, include_dir + "/qemu_helpers.h")
+
     # Define some common panda datatypes
     define_clean_header(ffi, include_dir + "/panda_datatypes.h")
 
     # get some libc functionality
     define_clean_header(ffi, include_dir + "/libc_includes.h")
+    
+    # QEMU logging functionality
+    define_clean_header(ffi, include_dir + "/qlog.h")
 
     # Now syscalls2 common:
     define_clean_header(ffi, include_dir + "/syscalls2_info.h")
@@ -381,7 +388,7 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
-        pdty.write("""
+        pdty.write("""from __future__ import print_function
 \"\"\"
 Auto-generated type declaration to provide c-definitions for the cffi interface. It's highly unlikely you actually need this.
 If you simply need a list of callbacks consult the manual in main PANDA.
@@ -586,13 +593,41 @@ def get_cbs(ffi):
             ("mips64",64),
         ]
 
-        from multiprocessing import Process
-        ps = (
-            Process(target=compile, args=(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP))
-            for arch in arches
-        )
-        [p.start() for p in ps]
-        [p.join() for p in ps]
+        import multiprocessing as mp
+        import traceback
+
+        # https://stackoverflow.com/a/33599967
+        class Process(mp.Process):
+            def __init__(self, *args, **kwargs):
+                mp.Process.__init__(self, *args, **kwargs)
+                self._pconn, self._cconn = mp.Pipe()
+                self._exception = None
+
+            def run(self):
+                try:
+                    mp.Process.run(self)
+                    self._cconn.send(None)
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    self._cconn.send((e, tb))
+                    # raise e  # You can still rise this exception if you need to
+
+            @property
+            def exception(self):
+                if self._pconn.poll():
+                    self._exception = self._pconn.recv()
+                return self._exception
+
+        for arch in arches:
+            print("Compiling headers for:", arch)
+            compile(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP)
+
+        #ps = (
+        #    Process(target=compile, args=(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP))
+        #    for arch in arches
+        #)
+        #[p.start() for p in ps]
+        #[p.join() for p in ps]
 
 
 if __name__ == '__main__':

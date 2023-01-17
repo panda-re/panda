@@ -29,6 +29,7 @@ static uint64_t instr_count = 0;
 static const char *filename = NULL;
 static const char* register_filename = NULL;
 static uint64_t pmem_len = 0;
+extern MachineState* current_machine;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -49,7 +50,7 @@ static void actually_dump_physical_memory(FILE* out, size_t len)
         size_t l = sizeof(block);
         if (l > len)
             l = len;
-        if (panda_physical_memory_rw(addr, block, l, false) == MEMTX_OK)
+        if (panda_physical_memory_read(addr, block, l) == MEMTX_OK)
             fwrite(block, 1, l, out);
         else
             fwrite(_zero_block, 1, l, out);
@@ -60,6 +61,12 @@ static void actually_dump_physical_memory(FILE* out, size_t len)
 
 void dump_memory(void){
     FILE* out = fopen(filename, "wb");
+
+    if (pmem_len == 0){
+        // dump all memory if not specified as arg
+        pmem_len = ram_size;
+    }
+
     actually_dump_physical_memory(out, pmem_len);
     fclose(out);
     if (register_filename)
@@ -104,7 +111,11 @@ bool init_plugin(void *self) {
     instr_count = panda_parse_uint64_opt(args, "instrcount", 0, "dump memory after a given instruction count is reached");
     filename = panda_parse_string_opt(args, "file", "memsavep.raw", "filename of the memory dump to create");
     register_filename = panda_parse_string_opt(args, "regfile", NULL, "filename of the register file to create");
-    pmem_len = panda_parse_uint64_opt(args, "size", ram_size, "number of bytes of physical memory");
+    
+    // do not use ram_size. It's not set until after init_plugin
+    pmem_len = panda_parse_uint64_opt(args, "size", 0, "number of bytes of physical memory");
+
+
 
     if(!instr_count && percent > 100.0){
         printf("memsavep: You should specify either one of percent or instrcount");

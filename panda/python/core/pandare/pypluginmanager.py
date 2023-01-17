@@ -29,7 +29,7 @@ class _PppFuncs(_DotGetter):
         method = self.data.get(name, None)
         if method is None:
             raise AttributeError(f"No method {name}: available options are {self}")
-        return lambda *args: method(*args)
+        return lambda *args, **kwargs: method(*args, **kwargs)
 
 class _PppPlugins(_DotGetter):
     def __getattr__(self, name):
@@ -173,17 +173,22 @@ class PyPluginManager:
 
         for pluginclass in pluginclasses:
             if not isinstance(pluginclass, type) or not issubclass(pluginclass, PyPlugin):
-                raise ValueError(f"pluginclass must be an uninstantiated subclass of PyPlugin")
+                raise ValueError(f"{pluginclass} must be an uninstantiated subclass of PyPlugin")
+
+            # If PyPlugin is in scope it should not be treated as a plugin
+            if pluginclass is PyPlugin:
+                continue
 
             name = pluginclass.__name__
 
             self.plugins[name] = pluginclass.__new__(pluginclass)
             self.plugins[name].__preinit__(self, args)
-            self.plugins[name].__init__(self.panda)
             self.get_ppp_funcs(self.plugins[name])
+            self.plugins[name].__init__(self.panda)
 
             # Setup webserver if necessary
-            if self.flask:
+            if self.flask and hasattr(self.plugins[name], 'webserver_init') and \
+                    callable(self.plugins[name].webserver_init):
                 self.plugins[name].flask = self.app
 
                 # If no template_dir was provided, try using ./templates in the dir of the plugin
@@ -202,33 +207,51 @@ class PyPluginManager:
 
     def load_all(self, plugin_file, args=None, template_dir=None):
         '''
-        Given a path to a python file, load every PyPlugin defind in that file by identifying
-        all classes that subclass PyPlugin and passing them to self.load()
+        Given a path to a python file, load every PyPlugin defined in that file
+        by identifying all classes that subclass PyPlugin and passing them to
+        self.load()
+
+        Args:
+            plugin_file (str): A path specifying a Python file from which PyPlugin classes should be loaded
+            args (dict): Optional. A dictionary of arguments to pass to the PyPlugin
+            template_dir (string): Optional. A directory for template files, passed through to `self.load`.
+
+        Returns:
+            String list of PyPlugin class names loaded from the plugin_file
         '''
         import inspect, importlib
-        spec = importlib.util.spec_from_file_location("snake_hook", plugin_file)
+        spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
+        if spec is None:
+            # Likely an invalid path
+            raise ValueError(f"Unable to load {plugin_file}")
+
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x) and x.__module__ == "snake_hook"): # matches module set above
+        names = []
+        for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x)):
+            if not issubclass(cls, PyPlugin) or cls == PyPlugin:
+                continue
+            cls.__name__ = name
             self.load(cls, args, template_dir)
+            names.append(name)
+        return names
 
-    def unload(self, pluginclass):
+    def unload(self, pluginclass, do_del=True):
         if isinstance(pluginclass, str):
             name = pluginclass
         else:
             name = pluginclass.__name__
 
-        del self.plugins[name]
+        if callable(getattr(self.plugins[name], "uninit", None)):
+            self.plugins[name].uninit()
+
+        if do_del:
+            del self.plugins[name]
 
     def unload_all(self):
-        # XXX: Why don't we just clear the plugin list? The refcount isn't
-        # dropping to zero after the clear and I can't figure out why. So
-        # we'll explicitly call __del__ if it exists on unload as per
-        # the PyPlugin API
-        for instance in self.plugins.values():
-            if callable(getattr(instance, "__del__", None)):
-                instance.__del__()
+        for name in self.plugins.keys():
+            self.unload(name, do_del=False)
         self.plugins.clear()
 
     def is_loaded(self, pluginclass):
@@ -262,7 +285,7 @@ class PyPluginManager:
         @self.app.route("/")
         def index():
             return "PANDA PyPlugin web interface. Available plugins:" + "<br\>".join( \
-                    [f"<li><a href='/{name}'>{name}</a></li>" \
+                    [f"<li><a href='./{name}'>{name}</a></li>" \
                             for name in self.plugins.keys() \
                             if hasattr(self.plugins[name], 'flask')])
 

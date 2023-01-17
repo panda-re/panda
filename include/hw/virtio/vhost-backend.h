@@ -88,6 +88,10 @@ typedef int (*vhost_update_device_iotlb_op)(struct vhost_dev *dev,
 typedef int (*vhost_invalidate_device_iotlb_op)(struct vhost_dev *dev,
                                                 uint64_t iova, uint64_t len);
 
+typedef bool (*vhost_backend_mem_section_filter_op)(struct vhost_dev *dev,
+                                                MemoryRegionSection *section);
+
+
 typedef struct VhostOps {
     VhostBackendType backend_type;
     vhost_backend_init vhost_backend_init;
@@ -122,6 +126,7 @@ typedef struct VhostOps {
     vhost_set_iotlb_callback_op vhost_set_iotlb_callback;
     vhost_update_device_iotlb_op vhost_update_device_iotlb;
     vhost_invalidate_device_iotlb_op vhost_invalidate_device_iotlb;
+    vhost_backend_mem_section_filter_op vhost_backend_mem_section_filter;
 } VhostOps;
 
 extern const VhostOps user_ops;

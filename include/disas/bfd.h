@@ -11,6 +11,10 @@
 
 #include "qemu/fprintf-fn.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void *PTR;
 typedef uint64_t bfd_vma;
 typedef int64_t bfd_signed_vma;
@@ -506,5 +510,9 @@ bfd_vma bfd_getb32 (const bfd_byte *addr);
 bfd_vma bfd_getl16 (const bfd_byte *addr);
 bfd_vma bfd_getb16 (const bfd_byte *addr);
 typedef bool bfd_boolean;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DISAS_BFD_H */

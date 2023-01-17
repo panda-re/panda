@@ -273,7 +273,7 @@ void panda_disable_precise_pc(void);
 ```
 These functions enable or disable precise tracking of the program counter.
 After enabling precise PC tracking, the program counter will be available in
-`env->panda_guest_pc` and can be assumed to accurately reflect the guest state.
+`env->panda_guest_pc` and can be assumed to accurately reflect the guest state. In most cases the helper function `panda_current_pc` should be used. It will provide the precise PC if enabled.
 
 Some plugins (`taint2`, `callstack_instr`, etc) add instrumentation that runs
 *inside* a basic block of emulated code.  If such a plugin is enabled mid-replay
@@ -375,6 +375,10 @@ Possible return values are:
     ```
     Writes a textual representation of disassembly of the guest code
     at virtual address `code` of `size` bytes.
+  * ```C
+    target_ulong panda_current_pc(CPUState *cpu);
+    ```
+    Returns current program counter. If `panda_precise_pc` has been enabled it returns the precise value.
 
 ## Record/Replay Details
 
@@ -446,17 +450,37 @@ more details.
 
 You can also debug the guest under replay using PANDA's [**time-travel debugging**](./time-travel.md).
 
+To create a recording with the new `rr2` format, simply add `.rr2` as an 
+extention to your `begin_record` call, e.g. `begin_record new_format.rr2`. The 
+new format produces a `.tar.gz` file with extention ending in `.rr2`. 
+The compressed file contains a magic `RRv2`, the `snapshot`, the `nondetlog`, a 
+`capture.cmd` containing the command line command used to initiate PANDA for 
+recording, and a `sha1` file containing the sha1 hashes of the other files. 
+The replay command supports both the new `rr2` format, as well as the old 
+format. When you start a replay, the format will automatically be detected.
+
 ### Sharing Recordings
 
-To make it easier to share record/replay logs, PANDA has two scripts,
-`rrpack.py` and `rrunpack.py`, that bundle up and compress a recording.
-These can be found in the `scripts` directory. To pack up a recording,
+To produce a `rr2` file with an old recording use the `rr2pack.py`
+script, which can be found in the `scripts` directory. To pack up a recording,
 just use:
+
+    scripts/rr2pack.py <name> --output <output_name>
+
+This will bundle up `<name>-rr-snp` and `<name>-rr-nondet.log` and put
+them into PANDA's packed record/replay format in a file named
+`<output_name>.rr2`. This file can be unpacked using:
+
+    tar -xvf <output_name>.rr2
+
+
+For older recordings use the `scripts/rrpack.py`. To pack an old recording into
+the old packed record/replay format use:
 
     scripts/rrpack.py <name>
 
 This will bundle up `<name>-rr-snp` and `<name>-rr-nondet.log` and put
-them into PANDA's packed record/replay format in a file named
+them into PANDA's old packed record/replay format, in a file named
 `<name>.rr`. This file can be unpacked and verified using:
 
     scripts/rrunpack.py <name>.rr

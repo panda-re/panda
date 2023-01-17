@@ -33,14 +33,24 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
-	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
+	const syscall_info_t *call = NULL;
+	syscall_info_t zero = {0};
+	if (syscall_meta != NULL && ctx.no <= syscall_meta->max_generic) {
+	  // If the syscall_info object from dso_info_....c doesn't have an entry
+	  // for this syscall, we want to leave it as a NULL pointer
+	  if (memcmp(&syscall_info[ctx.no], &zero, sizeof(syscall_info_t)) != 0) {
+		call = &syscall_info[ctx.no];
+	  }
+	}
 
 	switch (ctx.no) {
 	{%- for syscall in syscalls %}
 	// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
 	case {{syscall.no}}: {
 		panda_noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }};
+		ctx.double_return = {{ 'true' if syscall.panda_double_return else 'false' }};
 		{%- if syscall.args|length > 0 %}
 		{%- for arg in syscall.args %}
 		{{arg.emit_temp_assignment()}}
@@ -67,8 +77,10 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 		struct hook h;
 		h.addr = ctx.retaddr;
 		h.asid = ctx.asid;
-		h.cb.start_block_exec = hook_syscall_return;
-		h.type = PANDA_CB_START_BLOCK_EXEC;
+		//h.cb.start_block_exec = hook_syscall_return;
+		//h.type = PANDA_CB_START_BLOCK_EXEC;
+		h.cb.before_tcg_codegen = hook_syscall_return;
+		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
 		hooks_add_hook(&h);

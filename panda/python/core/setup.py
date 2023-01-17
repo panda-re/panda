@@ -54,8 +54,8 @@ def copy_objs():
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
     arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']
     if pypi_build:
-        # XXX need to drop aarch64/mipsel/ppc to fit into pypi
-        arches = ['arm', 'i386', 'x86_64', 'mipsel']
+        # Nobody really wants mips32 anymore, shrink our distribution size by dropping
+        arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips64']
 
     for arch in arches:
         libname = "libpanda-"+arch+".so"
@@ -126,7 +126,7 @@ class custom_install(install_orig):
             create_datatypes(install=True)
             copy_objs()
         except ImportError:
-            assert(os.path.isfile("pandare/data/pypanda/include/panda_datatypes.h")), \
+            assert(os.path.isfile("pandare/include/panda_datatypes.h")), \
                             "panda_datatypes.h missing and can't be generated"
             assert(os.path.isfile("pandare/autogen/panda_datatypes.py")), \
                             "panda_datatypes.py missing and can't be generated"
@@ -150,7 +150,7 @@ except CalledProcessError:
     raise
 
 setup(name='pandare',
-      version='0.1.1.2',
+      version='0.1.1.5',
       description='Python Interface to PANDA',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -165,6 +165,8 @@ setup(name='pandare',
           'data/*-softmmu/panda/plugins/**/*',# All plugin files
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
+          'data/pc-bios/**/*',                # Keymaps
+          'qcows.json'                        # Generic Images
           ]},
       install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf=='+pc_version],
       python_requires='>=3.6',

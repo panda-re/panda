@@ -28,9 +28,12 @@ def get_arglists(pf):
             #print "function name = [%s]" % function_name
             fundec = d.children()[0][1]
             args[function_name] = []
-            for arg in fundec.args.params:
-                if not (arg.name is None):
-                    args[function_name].append(arg.name)
+            # if a function does not have args it will not have params
+            # member
+            if hasattr(fundec.args,"params"):
+                for arg in fundec.args.params:
+                    if not (arg.name is None):
+                        args[function_name].append(arg.name)
     return args
 
 

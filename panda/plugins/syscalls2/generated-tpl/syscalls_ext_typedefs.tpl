@@ -43,6 +43,7 @@ struct syscall_ctx {
     target_ptr_t retaddr; /**< return address */
     uint8_t args[GLOBAL_MAX_SYSCALL_ARGS]
                 [GLOBAL_MAX_SYSCALL_ARG_SIZE]; /**< arguments */
+    bool double_return;
 };
 typedef struct syscall_ctx syscall_ctx_t;
 

@@ -71,3 +71,12 @@ texinfo
 uuid-dev
 xfslibs-dev
 zlib1g-dev
+
+# libosi install deps
+cmake
+ninja-build
+rapidjson-dev
+
+# RR2 install deps
+libarchive-dev
+libssl-dev

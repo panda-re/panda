@@ -1,4 +1,6 @@
 ARG BASE_IMAGE="ubuntu:20.04"
+# Note PANDA supports ubuntu:22.04, but docker versions <= 20.10.7 can't run 22.04 containers
+
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,aarch64-softmmu"
 
 ### BASE IMAGE
@@ -7,7 +9,7 @@ ARG BASE_IMAGE
 
 # Copy dependencies lists into container. Note this
 #  will rarely change so caching should still work well
-COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
+COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/ 
 
 # Base image just needs runtime dependencies
 RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
@@ -26,18 +28,26 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get clean && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
+    python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
 # Then install capstone from source
 RUN cd /tmp && \
-    curl -o cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-    tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
-    rm -rf /tmp/capstone-4.0.2
+    git clone https://github.com/capstone-engine/capstone/ -b 4.0.2 && \
+    cd capstone/ && ./make.sh && make install && cd /tmp && \
+    rm -rf /tmp/capstone && ldconfig
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Sanity check to ensure cargo is installed
 RUN cargo --help
+
+# install libosi
+RUN cd /tmp && \
+    git clone https://github.com/panda-re/libosi && \
+    mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
+    cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
+    cd /tmp && rm -rf libosi/ && ldconfig 
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -70,13 +80,19 @@ RUN  make -C /panda/build install
 # Install pypanda
 RUN cd /panda/panda/python/core && \
     python3 setup.py install
+RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
+
+# BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
+RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
+RUN bash -c "ls $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/panda_{aarch64_64,arm_32,mips64_64,mips_32,mipsel_32,ppc_32,ppc_64,x86_64_64,i386_32}.py"
 
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
-# Copy panda + libcapstone.so*
+# Copy panda + libcapstone.so* + libosi libraries
 COPY --from=installer /usr/local /usr/local
-COPY --from=installer /lib/x86_64-linux-gnu/libcapstone* /lib/x86_64-linux-gnu/
+COPY --from=installer /usr/lib/libcapstone* /usr/lib/
+COPY --from=installer /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"

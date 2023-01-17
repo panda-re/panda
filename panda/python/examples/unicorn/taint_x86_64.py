@@ -60,6 +60,9 @@ def setup(cpu):
     # Set starting pc
     panda.arch.set_pc(cpu, ADDRESS)
 
+    # Enable tainting
+    panda.taint_enable()
+
     # Taint buffer using PHYSICAL addresses
     for idx in range(len(buf)):
         panda.taint_label_ram(buf_src+idx, idx)

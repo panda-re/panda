@@ -276,6 +276,7 @@ endif
 		echo $$f; \
 		$(INSTALL_PROG) $$f "$(DESTDIR)$(qemu_datadir)/scripts"; \
 	done
+	$(INSTALL_DATA) $(SRC_PATH)/docs/qemupciserial.inf "$(DESTDIR)$(qemu_datadir)/qemupciserial.inf"
 # N.B. the new rpath must not be longer than the old rpath or chrpath will fail
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		echo $$p; \

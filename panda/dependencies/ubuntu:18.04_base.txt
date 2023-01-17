@@ -74,3 +74,6 @@ libusbredirparser1
 libx11-6
 zlib1g
 libxen-4.9
+
+#rr2 depends on libarchive
+libarchive-dev

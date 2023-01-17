@@ -304,7 +304,7 @@ vde=""
 vnc_sasl=""
 vnc_jpeg=""
 vnc_png=""
-xen=""
+xen="no" # Disabled for PANDA
 xen_ctrl_version=""
 xen_pv_domain_build="no"
 xen_pci_passthrough=""
@@ -3252,6 +3252,31 @@ if ! compile_prog "$glib_cflags -Werror" "$glib_libs" ; then
         glib_cflags="-Wno-unknown-attributes $glib_cflags"
         CFLAGS="-Wno-unknown-attributes $CFLAGS"
     fi
+fi
+
+##########################################
+# libarchive support probe
+if $pkg_config --modversion libarchive > /dev/null 2>&1 ; then
+    archive_libs=`$pkg_config --libs libarchive`
+    LIBS="$archive_libs $LIBS"
+else
+    echo "libarchive is required to compile PANDA"
+    exit 1
+fi
+
+##########################################
+# openssl support probe
+if $pkg_config --modversion libssl > /dev/null 2>&1; then
+    if $pkg_config --modversion libcrypto > /dev/null 2>&1; then
+        ssl_libs=`$pkg_config --libs libssl libcrypto`
+        LIBS="$ssl_libs $LIBS"
+    else
+        echo "libcrypto is required to compile PANDA"
+        exit1
+    fi
+else
+    echo "libssl (openssl) is required to compile PANDA"
+    exit 1
 fi
 
 ##########################################

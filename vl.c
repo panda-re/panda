@@ -3093,10 +3093,6 @@ void main_panda_run(void) {
     panda_in_main_loop = 0;
 }
 
-void set_replay_name(char *name) {
-    replay_name = name;
-}
-
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
  {
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
@@ -3145,7 +3141,12 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
         = QSIMPLEQ_HEAD_INITIALIZER(bdo_queue);
 
     // PANDA stuff
-    gargv = argv;
+    gargv = malloc(argc * sizeof(gargv));
+    int j;
+    for(j=0; j < argc ; ++j )
+    {
+        gargv[j] = strdup(argv[j]);
+    }
     gargc = argc;
     if (pmm == PANDA_NORMAL)
         qemu_file = this_executable_path(argv[0]);
@@ -5035,7 +5036,9 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     if (replay_mode != REPLAY_MODE_NONE) {
         replay_vmstate_init();
     } else if (loadvm) {
-        if (load_vmstate(loadvm) < 0) {
+        if (replay_name) {
+          fprintf(stderr, "Ignoring request to loadvm since we're in replay mode\n");
+        } else if (load_vmstate(loadvm) < 0) {
             autostart = 0;
         }
     }
@@ -5079,6 +5082,14 @@ PANDA_MAIN_FINISH:
     if(rr_in_record()){
         rr_do_end_record();
     }
+
+    int x;
+    for(x=0; x < gargc ; ++x )
+    {
+        free(gargv[x]);
+        gargv[x] = NULL;
+    }
+    free(gargv);
 
     replay_disable_events();
     iothread_stop_all();

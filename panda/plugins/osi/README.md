@@ -10,7 +10,7 @@ Expressed graphically, this arrangement looks like:
     +-------------------+  +-------------------+
     |        osi        |  |        osi        |
     +-------------------+  +-------------------+
-    |     osi_linux     |  |    win7x86intro   |
+    |     osi_linux     |  |  wintrospection   |
     +-------------------+  +-------------------+
 
 The key is that you can swap out the bottom layer to support a new operating system without needing to modify your plugin.
@@ -21,10 +21,13 @@ The key is that you can swap out the bottom layer to support a new operating sys
 ```C
   const char * valid_os_re[] = {
       "windows[-_]32[-_]xpsp[23]",
-      "windows[-_]32[-_]7",
       "windows[-_]32[-_]2000",
+      "windows[-_]32[-_]7sp[01]",
+      "windows[-_]64[-_]7sp[01]",
       "linux[-_]32[-_].+",
       "linux[-_]64[-_].+",
+      "freebsd[-_]32[-_].+",
+      "freebsd[-_]64[-_].+",
       NULL
   };
 ```

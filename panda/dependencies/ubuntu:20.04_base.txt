@@ -25,6 +25,9 @@ python3-colorama
 python3-protobuf
 python3-pycparser
 
+# Not sure what this one is needed for
+liblzo2-2
+
 # apt-rdepends qemu-system-common
 acl
 libc6
@@ -77,3 +80,5 @@ libusbredirparser1
 libvirglrenderer1
 zlib1g
 
+#rr2 depends on libarchive
+libarchive-dev

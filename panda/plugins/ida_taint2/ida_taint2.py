@@ -76,6 +76,127 @@ class ProcessSelectDialog(QDialog):
             return psd.selectedProcess()
         return None
 
+class LabelsCompressor:
+    def __init__(self, have_semantic_labels):
+        self._have_semantic_labels = have_semantic_labels
+        
+    def _semantic_label_sorter(self, item):
+        # semantic labels are formatted <packet number>-<byte offset>
+        # we want to sort first by packet number, then by byte offset
+        parts = item.split("-")
+        packet_num = int(parts[0])
+        offset = int(parts[1])
+        return (packet_num, offset)
+    
+    def _append_semantic_label(self, labels, first):
+        if (len(labels) > 0):
+            groupsep = ", "
+            lastlf = labels.rfind("\n")
+            # lastlf will be -1 if none found, but that won't mess up the formatting
+            if ((len(labels) - lastlf) > 50):
+                groupsep = ",\n"
+            updated_labels = labels + groupsep + str(first[0]) + ":" + str(first[1])
+        else:
+            updated_labels = str(first[0]) + ":" + str(first[1])
+        return updated_labels
+    
+    def _append_semantic_label_range(self, labels, first, last):
+        if (len(labels) > 0):
+            groupsep = ", "
+            lastlf = labels.rfind("\n")
+            if ((len(labels) - lastlf) > 50):
+                groupsep = ",\n"
+            updated_labels = labels + groupsep + str(first[0]) + ":" + str(first[1]) + "-" + str(last[1])
+        else:
+            updated_labels = str(first[0]) + ":" + str(first[1]) + "-" + str(last[1])
+        return updated_labels
+        
+    def _compress_sorted_semantic_labels(self, labels):
+        clabels = ""
+        first = None
+        last = None
+        for item in labels:
+            itemparts = self._semantic_label_sorter(item)
+            if (None == first):
+                first = itemparts
+            elif (None == last):
+                if (first[0] == itemparts[0]):
+                    if ((first[1]+1) == itemparts[1]):
+                        last = itemparts
+                    else:
+                        clabels = self._append_semantic_label(clabels, first)
+                        first = itemparts
+                else:
+                    clabels = self._append_semantic_label(clabels, first)
+                    first = itemparts
+            elif (last[0] == itemparts[0]):
+                if ((last[1]+1) == itemparts[1]):
+                    last = itemparts
+                else:
+                    clabels = self._append_semantic_label_range(clabels, first, last)
+                    first = itemparts
+                    last = None
+            else:
+                clabels = self._append_semantic_label_range(clabels, first, last)
+                first = itemparts
+                last = None
+        if (None == last):
+            clabels = self._append_semantic_label(clabels, first)
+        else:
+            clabels = self._append_semantic_label_range(clabels, first, last)
+        return clabels
+        
+    def _compress_sorted_standard_labels(self, labels):
+        clabels = ""
+        lastline = ""
+        first = None
+        last = None
+        for item in labels:
+            if (0 == len(clabels)):
+                # very first label
+                clabels = str(item)
+                lastline = str(item)
+                first = item
+            elif (None == last):
+                if ((first + 1) == item):
+                    # part of a consecutive sequence starting at first
+                    last = item
+                else:
+                    # first did not start a consecutive sequence
+                    if (len(lastline) > 50):
+                        clabels = clabels + ",\n" + str(item)
+                        lastline = str(item)
+                    else:
+                        clabels = clabels + ", " + str(item)
+                        lastline = lastline + ", " + str(item)
+                    first = item
+            elif ((last + 1) == item):
+                # item extends the consecutive sequence from last
+                last = item
+            else:
+                # the previous last ended a consecutive sequence
+                if (len(lastline) > 50):
+                    clabels = clabels + "-" + str(last) + ",\n" + str(item)
+                    lastline = str(item)
+                else:
+                    clabels = clabels + "-" + str(last) + ", " + str(item)
+                    lastline = lastline + "-" + str(last) + ", " + str(item)
+                first = item
+                last = None
+        if (last is not None):
+            # last label ends a consecutive sequence
+            clabels = clabels + "-" + str(last)
+        return clabels
+        
+    def compress_labels(self, labels):
+        if (self._have_semantic_labels):
+            sorted_labels = sorted(labels, key=self._semantic_label_sorter)
+            compressed_labels = self._compress_sorted_semantic_labels(sorted_labels)
+        else:
+            sorted_labels = sorted(labels, key=int)
+            compressed_labels = self._compress_sorted_standard_labels(sorted_labels)
+        return compressed_labels
+        
 def read_semantic_labels(filename):
     semantic_labels = dict()
     try:
@@ -155,11 +276,13 @@ def main():
         labels_for_pc[pc].add(label)
     input_file.close()
 
+    labels_compressor = LabelsCompressor(len(semantic_labels)>0)
     for pc, labels in labels_for_pc.items():
         comment = ida_bytes.get_cmt(pc, 0)
         if not comment:
             comment = ""
-        label_portion = "taint labels = {}".format(list(labels))
+        compressed_labels = labels_compressor.compress_labels(labels)
+        label_portion = "taint labels = " + compressed_labels
         if comment == "":
             comment = label_portion
         else:

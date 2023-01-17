@@ -1,5 +1,5 @@
 """
-This module simply contains the Panda class
+This module simply contains the Panda class.
 """
 
 from sys import version_info, exit
@@ -32,13 +32,13 @@ from shlex import quote as shlex_quote, split as shlex_split
 from time import sleep
 from cffi import FFI
 
-from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list
+from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list, find_build_dir, rr2_recording, rr2_contains_member
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
-from .qcows import Qcows
-from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
-from .cosi import Cosi
+from .qcows_internal import Qcows
+from .qemu_logging import QEMU_Log_Manager
+from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -97,6 +97,7 @@ class Panda():
         self.ending = False # True during end_analysis
         self.cdrom = None
         self.catch_exceptions=catch_exceptions
+        self.qlog = QEMU_Log_Manager(self)
 
         self.serial_unconsumed_data = b''
 
@@ -140,12 +141,12 @@ class Panda():
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         elif self.arch_name in ["mips64"]:
-            self.arch = MipsArch(self) # XXX: We probably need a different class?
+            self.arch = Mips64Arch(self)
         else:
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
 
-        self.build_dir  = self._find_build_dir()
+        self.build_dir  = find_build_dir(self.arch_name)
         environ["PANDA_DIR"] = self.build_dir
 
         if libpanda_path:
@@ -211,6 +212,7 @@ class Panda():
 
         # Callbacks
         self.register_cb_decorators()
+        self.plugin_register_count = 0
         self.registered_callbacks = {} # name -> {procname: "bash", enabled: False, callback: None}
 
         # Register asid_changed CB if and only if a callback requires procname
@@ -219,12 +221,11 @@ class Panda():
 
         self._initialized_panda = False
         self.disabled_tb_chaining = False
-        self.taint_enabled = False
-        self.taint_sym_enabled = False
         self.named_hooks = {}
         self.hook_list = []
         self.hook_list2 = {}
         self.mem_hooks = {}
+        self.sr_hooks = []
 
         # Asid stuff
         self.current_asid_name = None
@@ -301,8 +302,6 @@ class Panda():
 
         self._initialized_panda = True
 
-        
-
     def __main_loop_wait_cb(self):
         '''
         __main_loop_wait_cb is called at the start of the main cpu loop in qemu.
@@ -319,31 +318,6 @@ class Panda():
             self.main_loop_wait_fnargs = []
         except KeyboardInterrupt:
             self.end_analysis()
-
-    def _find_build_dir(self):
-        '''
-        Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
-        1) check relative to file (in the case of installed packages)
-        2) Check in../ ../../../build/
-        3) raise RuntimeError
-        '''
-        archs = ['i386', 'x86_64', 'arm', 'ppc']
-        python_package = pjoin(*[dirname(__file__), "data"])
-        local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
-        path_end = "{0}-softmmu/libpanda-{0}.so".format(self.arch_name)
-
-        pot_paths = [python_package, local_build]
-        for potential_path in pot_paths:
-            if isfile(pjoin(potential_path, path_end)):
-                print("Loading libpanda from {}".format(potential_path))
-                return potential_path
-
-        searched_paths = "\n".join(["\t"+p for p in  pot_paths])
-        raise RuntimeError(("Couldn't find libpanda-{}.so.\n"
-                            "Did you built PANDA for this architecture?\n"
-                            "Searched paths:\n{}"
-                           ).format(self.arch_name, searched_paths))
-
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
         '''
@@ -465,13 +439,13 @@ class Panda():
         def SigHandler(SIG,a,b):
             from signal import SIGINT, SIGHUP, SIGTERM
             if SIG == SIGINT:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.exit_exception = KeyboardInterrupt
                 self.end_analysis()
             elif SIG == SIGHUP:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.exit_exception = KeyboardInterrupt
                 self.end_analysis()
             elif SIG == SIGTERM:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.exit_exception = KeyboardInterrupt
                 self.end_analysis()
             else:
                 print(f"PyPanda Signal handler received unhandled signal {SIG}")
@@ -537,21 +511,9 @@ class Panda():
         #self.libpanda.panda_cleanup_record()
         if self._in_replay:
             self.reset()
-        if hasattr(self, "end_run_raise_signal"):
-            saved_exception = self.end_run_raise_signal
-            del self.end_run_raise_signal
-            raise saved_exception
-        if hasattr(self, "callback_exit_exception"):
-            saved_exception = self.callback_exit_exception
-            del self.callback_exit_exception
-            raise saved_exception
-        if hasattr(self, "blocking_queue_error"):
-            saved_exception = self.blocking_queue_error
-            del self.blocking_queue_error
-            raise saved_exception
-        if hasattr(self, "hook_exit_exception"):
-            saved_exception = self.hook_exit_exception
-            del self.hook_exit_exception
+        if hasattr(self, "exit_exception"):
+            saved_exception = self.exit_exception
+            del self.exit_exception
             raise saved_exception
 
 
@@ -603,7 +565,7 @@ class Panda():
         res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
-    
+
     def recording_exists(self, name):
         '''
         Checks if a recording file exists on disk.
@@ -614,7 +576,7 @@ class Panda():
         Returns:
             boolean: true if file exists, false otherwise
         '''
-        if exists(name + "-rr-snp"):
+        if exists(name + "-rr-snp") or rr2_contains_member(name, "snapshot"):
             return True
 
     def run_replay(self, replaypfx):
@@ -627,7 +589,7 @@ class Panda():
         Returns:
             None
         '''
-        if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
+        if (not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log")) and not rr2_recording(replaypfx):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
 
         self.ending = False
@@ -668,6 +630,10 @@ class Panda():
         Load a C plugin with no arguments. Deprecated. Use load_plugin
         '''
         self.load_plugin(name, args={})
+    
+    def _plugin_loaded(self, name):
+        name_c = self.ffi.new("char[]", bytes(name, "utf-8"))
+        return self.libpanda.panda_get_plugin_by_name(name_c) != self.ffi.NULL
 
     def load_plugin(self, name, args={}):
         '''
@@ -839,7 +805,8 @@ class Panda():
             err = self.libpanda.panda_virtual_memory_read_external(env, addr_u, buf_a, length_a)
 
         if err < 0:
-            raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
+            # TODO: We should support a custom error class instead of a generic ValueError
+            raise ValueError(f"Failed to read guest memory at {addr:x} got err={err}")
 
         r = self.ffi.unpack(buf, length)
         if fmt == 'bytearray':
@@ -849,7 +816,7 @@ class Panda():
         elif fmt=='str':
             return self.ffi.string(buf, length)
         elif fmt=='ptrlist':
-            # This one is weird. Chunmk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
+            # This one is weird. Chunk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
             # return a list
             bytelen = int(self.bits/8)
             if (length % bytelen != 0):
@@ -873,9 +840,12 @@ class Panda():
             buf (bytestring):  byte string to write into memory
 
         Returns:
-            bool: error
+            None
+
+        Raises:
+            ValueError if the call to panda.physical_memory_write fails (e.g., if you pass a pointer to an invalid memory region)
         '''
-        return self._memory_write(None, addr, buf, physical=True)
+        self._memory_write(None, addr, buf, physical=True)
 
     def virtual_memory_write(self, cpu, addr, buf):
         '''
@@ -887,10 +857,12 @@ class Panda():
             buf (bytestr): byte string to write into memory
 
         Returns:
-            bool: error
+            None
 
+        Raises:
+            ValueError if the call to panda.virtual_memory_write fails (e.g., if you pass a pointer to an unmapped page)
         '''
-        return self._memory_write(cpu, addr, buf, physical=False)
+        self._memory_write(cpu, addr, buf, physical=False)
 
     def _memory_write(self, cpu, addr, buf, physical=False):
         '''
@@ -905,9 +877,12 @@ class Panda():
             self.enable_memcb()
 
         if physical:
-            return self.libpanda.panda_physical_memory_write_external(addr, buf_a, length_a)
+            err = self.libpanda.panda_physical_memory_write_external(addr, buf_a, length_a)
         else:
-            return self.libpanda.panda_virtual_memory_write_external(cpu, addr, buf_a, length_a)
+            err = self.libpanda.panda_virtual_memory_write_external(cpu, addr, buf_a, length_a)
+
+        if err < 0:
+            raise ValueError(f"Memory write failed with err={err}") # TODO: make a PANDA Exn class
 
     def callstack_callers(self, lim, cpu): # XXX move into new directory, 'callstack' ?
         '''
@@ -952,9 +927,11 @@ class Panda():
             try:
                 f()
             except Exception as e:
-                self.blocking_queue_error = e
-                self.end_analysis()
-
+                if self.catch_exceptions:
+                    self.exit_exception = e
+                    self.end_analysis()
+                else:
+                    raise e
 
         # Keep the original function name instead of replacing it with 'wrapper'
         wrapper.__name__ = f.__name__
@@ -1190,6 +1167,13 @@ class Panda():
         '''
         return self.libpanda.panda_do_flush_tb()
 
+    def break_exec(self):
+        '''
+        If called from a start block exec callback, will cause the emulation to bail *before* executing
+        the rest of the current block.
+        '''
+        return self.libpanda.panda_do_break_exec()
+
     def enable_precise_pc(self):
         '''
         By default, QEMU does not update the program counter after every instruction.
@@ -1285,6 +1269,18 @@ class Panda():
             integer: value of current ASID
         '''
         return self.libpanda.panda_current_asid(cpu)
+    
+    def get_id(self, cpu):
+        '''
+        Get current hw_proc_id ID
+
+        Args:
+            cpu (CPUState): CPUState structure
+        
+        Returns:
+            integer: value of current hw_proc_id
+        '''
+        return self.plugins["hw_proc_id"].get_id(cpu)
 
     def disas2(self, code, size):
         '''
@@ -1376,7 +1372,7 @@ class Panda():
         Returns:
             DeviceState struct
         '''
-        return self.libpanda.sysbus_create_varargs(name,addr,ffi.NULL)
+        return self.libpanda.sysbus_create_varargs(name,addr, self.ffi.NULL)
 
     def cpu_class_by_name(self, name, cpu_model):
         '''
@@ -1534,7 +1530,7 @@ class Panda():
         Returns:
             struct ObjectProperty pointer
         '''
-        return self.libpanda.object_property_find(obj,name,ffi.NULL)
+        return self.libpanda.object_property_find(obj,name, self.ffi.NULL)
 
     def memory_region_allocate_system_memory(self, mr, obj, name, ram_size):
         '''
@@ -1624,10 +1620,13 @@ class Panda():
         Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
 
             "windows[-_]32[-_]xpsp[23]",
-            "windows[-_]32[-_]7",
             "windows[-_]32[-_]2000",
+            "windows[-_]32[-_]7sp[01]",
+            "windows[-_]64[-_]7sp[01]",
             "linux[-_]32[-_].+",
             "linux[-_]64[-_].+",
+            "freebsd[-_]32[-_].+",
+            "freebsd[-_]64[-_].+",
 
             Args:
                 os_name (str): Name that matches the format for the os flag.
@@ -1639,6 +1638,17 @@ class Panda():
         os_name_new = self.ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)
 
+    def get_os_family(self):
+        '''
+        Get the current OS family name. Valid values are the entries in `OSFamilyEnum`
+
+        Returns:
+            string: one of OS_UNKNOWN, OS_WINDOWS, OS_LINUX, OS_FREEBSD
+        '''
+
+        family_num = self.libpanda.panda_os_familyno
+        family_name = self.ffi.string(self.ffi.cast("PandaOsFamily", family_num))
+        return family_name
 
     def get_mappings(self, cpu):
         '''
@@ -1879,71 +1889,65 @@ class Panda():
             self.disable_callback("pyperipheral_write_callback", forever=True)
             self.pyperipherals_registered_cb = False
         return True
+    
 
     ############## TAINT FUNCTIONS ###############
     # Convenience methods for interacting with the taint subsystem.
-    def taint_enable(self, cont=True):
-        """
-        Inform python that taint is enabled.
-        """
-        if not self.taint_enabled:
-            progress("taint not enabled -- enabling")
-            self.vm_stop()
-            self.load_plugin("taint2")
-#            self.queue_main_loop_wait_fn(self.load_plugin, ["taint2"])
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_enable_taint, [])
-            if cont:
-                self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-            self.taint_enabled = True
 
-    # label all bytes in this register.
-    # or at least four of them
+    def taint_enabled(self):
+        '''
+        Checks to see if taint2 plugin has been loaded
+        '''
+        return self._plugin_loaded("taint2") and self.plugins["taint2"].taint2_enabled()
+
+    def taint_enable(self):
+        '''
+        Enable taint.
+        '''
+        self.plugins["taint2"].taint2_enable_taint()
+    
+    def _assert_taint_enabled(self):
+        if not self.taint_enabled():
+            raise Exception("taint2 must be loaded before tainting values")
+
     def taint_label_reg(self, reg_num, label):
-        self.taint_enable(cont=False)
-        #if debug:
-        #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
-
-        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
-        #     or some other safe way where the main_loop_wait code will always be run
-        #self.stop()
+        '''
+        Labels taint register reg_num with label.
+        '''
+        self._assert_taint_enabled()
         for i in range(self.register_size):
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_reg, [reg_num, i, label])
-        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+            self.plugins["taint2"].taint2_label_reg(reg_num, i, label)
 
     def taint_label_ram(self, addr, label):
-        self.taint_enable(cont=False)
-        #if debug:
-            #progress("taint_ram addr=0x%x label=%d" % (addr, label))
+        '''
+        Labels ram at address with label.
+        '''
+        self._assert_taint_enabled()
+        self.plugins["taint2"].taint2_label_ram(addr, label)
 
-        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
-        #     or some other safe way where the main_loop_wait code will always be run
-        #self.stop()
-        self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_ram, [addr, label])
-        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-
-    # returns true if any bytes in this register have any taint labels
     def taint_check_reg(self, reg_num):
-        if not self.taint_enabled: return False
-#        if debug:
-#            progress("taint_check_reg %d" % (reg_num))
+        '''
+        Checks if register reg_num is tainted. Returns boolean.
+        '''
+        self._assert_taint_enabled()
         for offset in range(self.register_size):
             if self.plugins['taint2'].taint2_query_reg(reg_num, offset) > 0:
                 return True
+        return False
 
-    # returns true if this physical address is tainted
     def taint_check_ram(self, addr):
-        if not self.taint_enabled: return False
-        if self.plugins['taint2'].taint2_query_ram(addr) > 0:
-            return True
+        '''
+        returns boolean representing if physical address is tainted.
+        '''
+        self._assert_taint_enabled()
+        return self.plugins['taint2'].taint2_query_ram(addr) > 0
 
     def taint_get_reg(self, reg_num):
         '''
         Returns array of results, one for each byte in this register
         None if no taint.  QueryResult struct otherwise
         '''
-        if not self.taint_enabled: return None
-        if debug:
-            progress("taint_get_reg %d" % (reg_num))
+        self._assert_taint_enabled()
         res = []
         for offset in range(self.register_size):
             if self.plugins['taint2'].taint2_query_reg(reg_num, offset) > 0:
@@ -1955,10 +1959,12 @@ class Panda():
                 res.append(None)
         return res
 
-    # returns array of results, one for each byte in this register
-    # None if no taint.  QueryResult struct otherwise
     def taint_get_ram(self, addr):
-        if not self.taint_enabled: return None
+        '''
+        returns array of results, one for each byte in this register
+        None if no taint.  QueryResult struct otherwise
+        '''
+        self._assert_taint_enabled()
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
             query_res = self.ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_ram_full(addr, query_res)
@@ -1967,16 +1973,19 @@ class Panda():
         else:
             return None
 
-    # returns true if this laddr is tainted
     def taint_check_laddr(self, addr, off):
-        if not self.taint_enabled: return False
-        if self.plugins['taint2'].taint2_query_laddr(addr, off) > 0:
-            return True
+        '''
+        returns boolean result checking if this laddr is tainted
+        '''
+        self._assert_taint_enabled()
+        return self.plugins['taint2'].taint2_query_laddr(addr, off) > 0
 
-    # returns array of results, one for each byte in this laddr
-    # None if no taint.  QueryResult struct otherwise
     def taint_get_laddr(self, addr, offset):
-        if not self.taint_enabled: return None
+        '''
+        returns array of results, one for each byte in this laddr
+        None if no taint.  QueryResult struct otherwise
+        '''
+        self._assert_taint_enabled()
         if self.plugins['taint2'].taint2_query_laddr(addr, offset) > 0:
             query_res = self.ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_laddr_full(addr, offset, query_res)
@@ -1986,43 +1995,31 @@ class Panda():
             return None
 
     # enables symbolic tracing
-    def taint_sym_enable(self, cont=True):
+    def taint_sym_enable(self):
         """
         Inform python that taint is enabled.
         """
-        if not self.taint_enabled:
+        if not self.taint_enabled():
+            self.taint_enable()
             progress("taint symbolic not enabled -- enabling")
-            self.vm_stop()
-            self.load_plugin("taint2")
-#            self.queue_main_loop_wait_fn(self.load_plugin, ["taint2"])
-        if not self.taint_sym_enabled:
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_enable_sym, [])
-            if cont:
-                self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-            self.taint_enabled = True
+        self.plugins["taint2"].taint2_enable_sym()
+    
+    def _assert_taint_sym_enabled(self):
+        self._assert_taint_enabled()
+        self.plugins['taint2'].taint2_enable_sym()
 
     def taint_sym_label_ram(self, addr, label):
-        self.taint_sym_enable(cont=False)
-        #if debug:
-            #progress("taint_ram addr=0x%x label=%d" % (addr, label))
+        self._assert_taint_sym_enabled()
+        self.plugins['taint2'].taint2_sym_label_ram(addr,label)
 
-        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
-        #     or some other safe way where the main_loop_wait code will always be run
-        #self.stop()
-        self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_ram, [addr, label])
-        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-
-    # label all bytes in this register.
-    # or at least four of them
-    # XXX label must increment by panda.register_size after the call
     def taint_sym_label_reg(self, reg_num, label):
-        self.taint_sym_enable(cont=False)
-        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
-        #     or some other safe way where the main_loop_wait code will always be run
-        #self.stop()
+        # label all bytes in this register.
+        # or at least four of them
+        # XXX label must increment by panda.register_size after the call
+        self._assert_taint_sym_enabled()
+        self.taint_sym_enable()
         for i in range(self.register_size):
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label+i])
-        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+            self.plugins['taint2'].taint2_sym_label_reg(reg_num, i, label+i)
     
     # Deserialize a z3 solver
     # Lazy import z3. 
@@ -2325,7 +2322,9 @@ class Panda():
     @blocking
     def type_serial_cmd(self, cmd):
         #Can send message into socket without guest running (no self.running.wait())
-        self.serial_console.send(cmd.encode("utf8")) # send, not sendline
+        if isinstance(cmd, str):
+            cmd = cmd.encode('utf8')
+        self.serial_console.send(cmd) # send, not sendline
 
     def finish_serial_cmd(self):
         result = self.serial_console.send_eol()
@@ -2450,7 +2449,7 @@ class Panda():
 
         if isfile(pjoin(copy_directory, setup_script)):
             setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout)
-            progress("[Setup command]: {setup_result}")
+            progress(f"[Setup command]: {setup_result}")
 
     @blocking
     def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
@@ -2589,21 +2588,22 @@ class Panda():
             return_from_exception = 0
 
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                try:
-                    r = fun(*args, **kwargs)
-                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
-                    #assert(isinstance(r, int)), "Invalid return type?"
-                    #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
-                    return r
-                except Exception as e:
-                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                    # machine exits.
-                    if self.catch_exceptions:
-                        self.callback_exit_exception = e
-                        self.end_analysis()
-                    else:
-                        raise e
-                    return return_from_exception
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                        #assert(isinstance(r, int)), "Invalid return type?"
+                        #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
             cast_rc_string = str(self.ffi.typeof(cast_rc))
@@ -2690,7 +2690,8 @@ class Panda():
         cb = self.callback_dictionary[callback]
 
         # Generate a unique handle for each callback type using the number of previously registered CBs of that type added to a constant
-        handle = self.ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))
+        self.plugin_register_count += 1
+        handle = self.ffi.cast('void *', self.plugin_register_count)
 
         # XXX: We should have another layer of indirection here so we can catch
         #      exceptions raised during execution of the CB and abort analysis
@@ -2829,20 +2830,21 @@ class Panda():
                 local_name = fun.__name__
 
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                try:
-                    r = fun(*args, **kwargs)
-                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
-                    #assert(isinstance(r, int)), "Invalid return type?"
-                    return r
-                except Exception as e:
-                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                    # machine exits.
-                    if self.catch_exceptions:
-                        self.callback_exit_exception = e
-                        self.end_analysis()
-                    else:
-                        raise e
-                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                        #assert(isinstance(r, int)), "Invalid return type?"
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
 
             cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
@@ -2936,9 +2938,27 @@ class Panda():
 
             if debug:
                 print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
+            
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                        #assert(isinstance(r, int)), "Invalid return type?"
+                        #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return 0
 
             # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(fun)
+            hook_cb_passed = hook_cb_type(_run_and_catch)
             new_hook = self.ffi.new("struct hook*")
             new_hook.type = type_num
             new_hook.addr = addr
@@ -2959,23 +2979,72 @@ class Panda():
             self.plugins['hooks'].add_hook(new_hook)
             self.hook_list.append((new_hook, hook_cb_passed))
 
-            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                try:
-                    r = fun(*args, **kw)
-                    #assert(isinstance(r, int)), "Invalid return type?"
-                    return r
-                except Exception as e:
-                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                    # machine exits.
-                    self.hook_exit_exception = e
-                    self.end_analysis()
-                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
-                    return 0
-
+                return _run_and_catch(args,kw)
             return wrapper
         return decorator
 
+    def hook_symbol_resolution(self, libraryname, symbol, name=None):
+        '''
+        Decorate a function to setup a hook: when a guest process resolves a symbol
+        the function will be called with args (CPUState, struct hook_symbol_resolve, struct symbol, OsiModule)
+
+        Args:
+            libraryname (string): Name of library containing symbol to be hooked. May be None to match any.
+            symbol (string, int): Name of symbol or offset into library to hook
+            name (string): name of hook, defaults to function name
+
+        Returns:
+            None: Decorated function is called when guest resolves the specified symbol in the specified library.
+        '''
+        #Mostly based on hook_symbol below
+        def decorator(fun):
+            sh = self.ffi.new("struct hook_symbol_resolve*")
+            sh.hook_offset = False
+            if symbol is not None:
+                if isinstance(symbol, int):
+                    sh.offset = symbol
+                    sh.hook_offset = True
+                    symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+                else:
+                    symbolname_ffi = self.ffi.new("char[]",bytes(symbol,"utf-8"))
+            else:
+                symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(sh.name,symbolname_ffi,len(symbolname_ffi))
+
+            if libraryname is not None:
+                libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
+            else:
+                libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(sh.section,libname_ffi,len(libname_ffi))
+
+            #sh.id #not used here
+            sh.enabled = True
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return None
+
+            sr_hook_cb_type = self.ffi.callback("void (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m)")
+            sr_hook_cb_ptr = sr_hook_cb_type(_run_and_catch)
+            sh.cb = sr_hook_cb_ptr
+            hook_ptr = self.plugins['dynamic_symbols'].hook_symbol_resolution(sh)
+            self.sr_hooks.append((sh, sr_hook_cb_ptr, hook_ptr))
+
+            def wrapper(*args, **kw):
+                _run_and_catch(args,kw)
+            return wrapper
+        return decorator
 
     def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="start_block_exec"):
         '''
@@ -3007,8 +3076,26 @@ class Panda():
                 print("function type not supported")
                 return
 
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        if cb_type == "before_block_exec_invalidate_opt":
+                            return False
+                        return None
+
+
             # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(fun)
+            hook_cb_passed = hook_cb_type(_run_and_catch)
             new_hook = self.ffi.new("struct symbol_hook*")
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
             new_hook.type = type_num
@@ -3036,20 +3123,8 @@ class Panda():
                 self.named_hooks[name] = hook_ptr
             self.hook_list.append((fun, new_hook,hook_cb_passed, hook_ptr))
 
-            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                try:
-                    r = fun(*args, **kw)
-                    #assert(isinstance(r, int)), "Invalid return type?"
-                    return r
-                except Exception as e:
-                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
-                    # machine exits.
-                    self.hook_exit_exception = e
-                    self.end_analysis()
-                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
-                    return 0
-
+                _run_and_catch(args,kw)
             return wrapper
         return decorator
 
@@ -3120,7 +3195,26 @@ class Panda():
             hook_cb_type = self.ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
             # Inform the plugin that it has a new breakpoint at addr
 
-            hook_cb_passed = hook_cb_type(fun)
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                        #assert(isinstance(r, int)), "Invalid return type?"
+                        #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return True
+
+
+            hook_cb_passed = hook_cb_type(_run_and_catch)
             if not hasattr(self, "hook_gc_list"):
                 self.hook_gc_list = [hook_cb_passed]
             else:
@@ -3133,10 +3227,8 @@ class Panda():
 
             self.hook_list2[name] = hook_number
 
-            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
-                return fun(*args, **kw)
-
+                return _run_and_catch(*args, **kw)
             return wrapper
         return decorator
 
@@ -3157,8 +3249,23 @@ class Panda():
         def decorator(fun):
             mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
             # Inform the plugin that it has a new breakpoint at addr
+            
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return None
 
-            hook_cb_passed = mem_hook_cb_type(fun)
+            hook_cb_passed = mem_hook_cb_type(_run_and_catch)
             mem_reg = self.ffi.new("struct memory_hooks_region*")
             mem_reg.start_address = start_address
             mem_reg.stop_address = end_address
@@ -3175,9 +3282,10 @@ class Panda():
 
             self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
 
-            @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+
             def wrapper(*args, **kw):
-                return fun(*args, **kw)
+                _run_and_catch(args,kw)
+
 
             return wrapper
         return decorator
