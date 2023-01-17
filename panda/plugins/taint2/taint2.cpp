@@ -190,7 +190,7 @@ void replay_hd_transfer_callback(CPUState *cpu, uint32_t type,
     }
 
     taint_log("hd xfer (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
-    		(uint64_t)dst_addr, num_bytes, src_shad->name(), (uint64_t)src_addr);
+            (uint64_t)dst_addr, num_bytes, src_shad->name(), (uint64_t)src_addr);
     taint_log_labels(src_shad, (uint64_t)src_addr, num_bytes);
     Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
 
@@ -217,12 +217,12 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
         src_shad = &shadow->ram;
         dst_shad = &shadow->io;
         if (PandaPhysicalAddressToRamOffset(&src_addr_offset, src_addr, false)
-        		!= MEMTX_OK)
+                != MEMTX_OK)
         {
-        	fprintf(stderr,
-        			"Cannot convert source address 0x%lx to RAM Offset\n",
-        			src_addr);
-        	return;
+            fprintf(stderr,
+                    "Cannot convert source address 0x%lx to RAM Offset\n",
+                    src_addr);
+            return;
         }
         dst_addr_offset = dst_addr;
         break;
@@ -231,12 +231,12 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
         dst_shad = &shadow->ram;
         src_addr_offset = src_addr;
         if (PandaPhysicalAddressToRamOffset(&dst_addr_offset, dst_addr, true)
-        		!= MEMTX_OK)
+                != MEMTX_OK)
         {
-        	fprintf(stderr,
-        			"Cannot convert destination address 0x%lx to RAM Offset\n",
-					dst_addr);
-        	return;
+            fprintf(stderr,
+                    "Cannot convert destination address 0x%lx to RAM Offset\n",
+                    dst_addr);
+            return;
         }
 
         break;
@@ -252,7 +252,7 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
     }
 
     taint_log("net xfer (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
-    		dst_addr_offset, num_bytes, src_shad->name(), src_addr_offset);
+            dst_addr_offset, num_bytes, src_shad->name(), src_addr_offset);
     taint_log_labels(src_shad, src_addr_offset, num_bytes);
     Shad::copy(dst_shad, dst_addr_offset, src_shad, src_addr_offset, num_bytes);
     return;
@@ -289,7 +289,7 @@ void on_replay_before_dma(CPUState *cpu, const uint8_t *src_addr,
         ds_addr = (uint64_t)src_addr;
     }
     taint_log("dma (copy): %s[%lx+%lx] <- %s[%lx] ", dst_shad->name(),
-    		ds_addr, num_bytes, src_shad->name(), ss_addr);
+            ds_addr, num_bytes, src_shad->name(), ss_addr);
     taint_log_labels(src_shad, ss_addr, num_bytes);
     Shad::copy(dst_shad, ds_addr, src_shad, ss_addr, num_bytes);
     return;
