@@ -417,7 +417,7 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
         {
             taint_delete(shad, curAddr, 1);
             taint_log("detaint: control bits 0 for %s[%lx]\n", shad->name(),
-            		curAddr);
+                    curAddr);
         }
     }
 }
