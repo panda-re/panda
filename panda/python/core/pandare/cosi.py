@@ -198,19 +198,6 @@ class VolatilityBaseType:
 
         return self.panda.plugins[COSI].is_base_type_signed(self.inner)
 
-class CosiKernelSymbols:
-    '''
-    Object to get pointers to kernel data structures. Access via `panda.cosi.kernel`.
-    '''
-
-    def __init__(self, panda):
-        self._panda = panda
-
-    def __getattr__(self, item):
-        symbol = self._panda.cosi.symbol_from_name(item)
-
-        todo()
-
 class Cosi:
     '''
     Object to interact with the `cosi` PANDA plugin. An instance can be foudn at
@@ -219,7 +206,6 @@ class Cosi:
 
     def __init__(self, panda):
         self.panda = panda
-        self.kernel = CosiKernelSymbols(panda)
 
     def symbol_addr_from_name(self, name: str) -> int:
         '''
