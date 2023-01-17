@@ -9,6 +9,7 @@ use panda::prelude::*;
 use once_cell::sync::{Lazy, OnceCell};
 use volatility_profile::VolatilityJson;
 
+#[cfg(not(feature = "ppc"))]
 use panda::plugins::syscalls2::Syscalls2Callbacks;
 
 static SYMBOL_TABLE: OnceCell<VolatilityJson> = OnceCell::new();
@@ -92,11 +93,14 @@ fn init(_: &mut PluginHandle) -> bool {
 
     let first_syscall = panda::PppCallback::new();
 
-    first_syscall.on_all_sys_enter(move |_, _, _| {
-        READY_FOR_KASLR_SEARCH.store(true, Ordering::SeqCst);
+    #[cfg(not(feature = "ppc"))]
+    {
+        first_syscall.on_all_sys_enter(move |_, _, _| {
+            READY_FOR_KASLR_SEARCH.store(true, Ordering::SeqCst);
 
-        first_syscall.disable();
-    });
+            first_syscall.disable();
+        });
+    }
 
     true
 }
@@ -145,8 +149,11 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec<CosiProc>> {
                 let tmp = CosiProc::new(cpu, res.taskd)?;
                 tmp.get_next_process(cpu)?
             }
-            None => //{ println!("[debug] couldnt read current cosiproc"); return None},
-                    return None,
+            None =>
+            //{ println!("[debug] couldnt read current cosiproc"); return None},
+            {
+                return None
+            }
         },
     };
     let first_addr = ts_current.addr;
@@ -167,10 +174,11 @@ fn get_process_list(cpu: &mut CPUState) -> Option<Vec<CosiProc>> {
 fn get_process_children(cpu: &mut CPUState, proc: &CosiProc) -> Option<Vec<CosiProc>> {
     let mut ret = Vec::<CosiProc>::new();
     let mut ts_current = proc.get_next_child(cpu)?;
-    match &ts_current.mm {
-        Some(res) => (),
-        None => return None,
-       }
+
+    if ts_current.mm.is_none() {
+        return None;
+    }
+
     let first_addr = ts_current.addr;
     println!("First addr: {first_addr:x} | proc_addr: {:x}", proc.addr);
     loop {
@@ -187,141 +195,4 @@ fn get_process_children(cpu: &mut CPUState, proc: &CosiProc) -> Option<Vec<CosiP
         }
     }
     Some(ret)
-}
-#[allow(dead_code)]
-fn print_current_cosiproc_info(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_cosiproc(cpu) {
-        Some(res) => {
-            if res.asid != 0 {
-                println!("asid: {:x}", res.asid);
-            } else {
-                println!("asid: Err");
-            }
-            println!("start_time: {:x}", res.task.start_time);
-            println!("name: {}", res.name);
-            println!("pid, {:x}", res.task.pid);
-            println!("ppid, {:x}", res.ppid);
-            println!("taskd, {:x}", res.taskd);
-        }
-        None => println!("Could not read current proc"),
-    };
-    true
-}
-
-#[allow(dead_code)]
-fn print_current_cosithread_info(cpu: &mut CPUState) -> bool {
-    match CosiThread::get_current_cosithread(cpu) {
-        Some(res) => {
-            println!("tid: {:x}", res.tid);
-            println!("pid: {:x}", res.pid);
-        }
-        None => println!("Could not read current proc"),
-    };
-    true
-}
-
-#[allow(dead_code)]
-fn print_current_cosifile_info(cpu: &mut CPUState) -> bool {
-    match CosiFiles::get_current_files(cpu) {
-        Some(res) => {
-            if let Some(fd1) = res.file_from_fd(1) {
-                println!("fd 1 name: {}", fd1.name);
-            }
-
-            for i in res.files {
-                println!("file name: {} | fd: {}", i.name, i.fd);
-            }
-        }
-        None => println!("Could not read files from current proc"),
-    }
-    true
-}
-
-#[allow(dead_code)]
-fn print_current_cosimappings_info(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_cosiproc(cpu) {
-        Some(res) => match res.get_mappings(cpu) {
-            Some(mapping) => {
-                for mdl in mapping.modules.iter() {
-                    println!(
-                        "modd: {:x} | base: {:x} | size: {:x} | file: {} | name: {}",
-                        mdl.modd, mdl.base, mdl.size, mdl.file, mdl.name
-                    )
-                }
-            }
-            None => println!("Could not read memory mapping"),
-        },
-        None => println!("Could not read current process"),
-    }
-    true
-}
-
-#[allow(dead_code)]
-fn print_process_list(cpu: &mut CPUState) -> bool {
-    match get_process_list(cpu) {
-        Some(res) => {
-            for i in res.iter() {
-                println!("name: {} | pid: {}", i.name, i.task.pid);
-            }
-        }
-        None => println!("No process list found"),
-    };
-
-    true
-}
-
-fn print_children(cpu: &mut CPUState) -> bool {
-    match CosiProc::get_current_cosiproc(cpu) {
-        Some(proc) => {
-            println!(
-                "[current] name: {} | pid: {} | ppid: {} | addr: {:x}",
-                proc.name, proc.task.pid, proc.ppid, proc.addr
-            );
-            match get_process_children(cpu, &proc) {
-                Some(children) => {
-                    for c in children.iter() {
-                        println!(
-                            "\t [child] name: {} | pid: {} | ppid: {}",
-                            c.name, c.task.pid, c.ppid
-                        );
-                    }
-                    //std::process::exit(0);
-                }
-                None => println!("No Children (2003)"),
-            }
-        }
-        None => println!("Could not get current process"),
-    };
-    true
-}
-static mut download: bool = false;
-
-#[panda::asid_changed]
-fn asid_changed(cpu: &mut CPUState, _old_asid: target_ulong, _new_asid: target_ulong) -> bool {
-    println!("\n\nOSI2 INFO START");
-
-    // Manually testing the downloader functionality
-    if unsafe { download } {
-        println!("Downloading...");
-        match download_symbol_table("look_at_me", "ubuntu:3.4.0-4-goldfish:32") {
-            true => println!("Downloaded!"),
-            false => {
-                println!("Download failed, exiting");
-                std::process::exit(1)
-            }
-        }
-        unsafe {
-            download = false;
-        }
-    }
-
-    //print_current_cosiproc_info(cpu);
-    //print_current_cosithread_info(cpu);
-    //print_current_cosifile_info(cpu);
-    //print_current_cosimappings_info(cpu);
-    //print_process_list(cpu);
-    print_children(cpu);
-
-    println!("OSI2 INFO END\n\n");
-    true
 }
