@@ -99,25 +99,34 @@ This is a cool script that, implausibly, tries to do the following.
 
 2. Start replaying the mozilla recording of Panda replay.
 
-3. Set breakpoint for the former in `rr_do_begin_record`, i.e., just when we request that a recording be taken.
+3. Set breakpoint for the former in `rr_do_begin_record`, i.e., just
+when we request that a recording be taken.
 
-4. Set breakpoint for the latter in `rr_do_begin_replay`, i.e., just when panda begins to replay a recording.
+4. Set breakpoint for the latter in `rr_do_begin_replay`, i.e., just
+when panda begins to replay a recording.
    
 5. Allow both to continue to their respective break points.
 
-6. Set breakpoints in both at cpu_loop_exec_tb, which is the function that executes a single guest emulated basic block
+6. Set breakpoints in both at `cpu_loop_exec_tb`, which is the function
+that executes a single guest emulated basic block
 
 7. Make those breakpoints in 6 conditional upon instruction count.
 
-8. Perform a binary search over instruction counts, with initial bracketing being something like [low_instr_count, max_instr_count] where that upper bounds comes from where the PANDA replay failed.
+8. Perform a binary search over instruction counts, with initial
+bracketing being something like [low_instr_count, max_instr_count]
+where that upper bounds comes from where the PANDA replay failed.
 
-9. The binary search is looking for the point at which there is a memory+regs+cpu_hidden_state divergence between the two mozilla replays.  
-Divergence is judged via panda functions that compute checksums over memory, regs, hidden state.
+9. The binary search is looking for the point at which there is a
+memory+regs+cpu_hidden_state divergence between the two mozilla
+replays.  Divergence is judged via panda functions that compute
+checksums over memory, regs, hidden state.
 
 
 **NB: 6 implies that diverge.py is assuming that basic block chaining is *disabled* during recording and replaying.**
 
-The result of `diverge.py` is usually a fairly tight bracket of instruction counts between which you need to figure out why divergence occurs. 
+The result of `diverge.py` is usually a fairly tight bracket of
+instruction counts between which you need to figure out why divergence
+occurs.
 
 Here's how to actually run `diverge.py`.  First, you need to do this
 in tmux so get yourself inside a tmux session.
