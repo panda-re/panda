@@ -1,5 +1,5 @@
 //use crate::{get_osiproc_info, get_osithread_info, CosiProc, OsiThread};
-use crate::structs::{CosiFiles, CosiProc, CosiThread};
+use crate::structs::{CosiFiles, CosiMappings, CosiModule, CosiProc, CosiThread};
 
 use panda::{prelude::*, sys::get_cpu};
 use std::{ffi::CString, os::raw::c_char};
@@ -76,3 +76,28 @@ pub extern "C" fn cosi_proc_children(
 ) -> Option<Box<Vec<CosiProc>>> {
     crate::get_process_children(cpu, proc).map(Box::new)
 }
+
+/// Get a list of the memory mappings for the given process
+#[no_mangle]
+pub extern "C" fn cosi_proc_get_mappings(
+    cpu: &mut CPUState,
+    proc: &CosiProc,
+) -> Option<Box<CosiMappings>> {
+    proc.get_mappings(cpu).map(Box::new)
+}
+
+/// Get the module behind the index of a CosiMappings
+#[no_mangle]
+pub extern "C" fn cosi_mappings_get(list: &CosiMappings, index: usize) -> Option<&CosiModule> {
+    list.modules.get(index)
+}
+
+/// Get the number of modules in the CosiMappings
+#[no_mangle]
+pub extern "C" fn cosi_mappings_len(list: &CosiMappings) -> usize {
+    list.modules.len()
+}
+
+/// Free the CosiMappings
+#[no_mangle]
+pub extern "C" fn cosi_free_mappings(_mappings: Option<Box<CosiMappings>>) {}

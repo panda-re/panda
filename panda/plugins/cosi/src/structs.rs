@@ -121,8 +121,6 @@ impl TaskStruct {
     }
 }
 
-#[repr(C)]
-#[derive(Debug, Clone)]
 /// # Structure
 /// `CosiProc` bundles up useful data and metadata about `task_struct`s.
 ///     `addr`  is a pointer to the underlying task_struct
@@ -142,6 +140,8 @@ impl TaskStruct {
 /// `get_current_cosiproc` returns a CosiProc representation of the current process
 /// `new` returns a CosiProc representation of a task_struct, given a pointer to that task_struct
 /// `get_mappings` returns a CosiMappings representation of modules loaded in process represented by the CosiProc calling this function
+#[repr(C)]
+#[derive(Debug, Clone)]
 pub struct CosiProc {
     /// `addr` is a pointer to the underlying task_struct
     pub addr: target_ptr_t,
@@ -152,7 +152,7 @@ pub struct CosiProc {
     /// `ppid` is the pid of the parent task_struct
     pub ppid: u32,
     /// `mm` is the mm_struct pointed to by task.mm, read from memory
-    pub mm: Option<MmStruct>,
+    pub mm: Option<Box<MmStruct>>,
     /// `asid`  is the asid of the process
     pub asid: u32,
     /// `taskd` is task.group_leader
@@ -195,11 +195,11 @@ impl CosiProc {
             Some(res) => {
                 //println!("[debug] Got result");
                 res
-            },
+            }
             None => {
                 //println!("[debug]Failed to read current_task");
                 std::process::exit(0)
-                },
+            }
         };
         //println!("[debug]Got current task addr");
         CosiProc::new(cpu, curr_task_addr)
@@ -210,7 +210,7 @@ impl CosiProc {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
         //println!("[debug] Past task struct | pid: {} | gl: {:x} | mm: {:x}", task.pid, task.group_leader, task.mm);
         let mm_ptr = task.mm;
-        let mm = MmStruct::osi_read(cpu, mm_ptr).ok();
+        let mm = MmStruct::osi_read(cpu, mm_ptr).ok().map(Box::new);
         //println!("[debug] Past MmStruct");
         let asid = match &mm {
             Some(res) => res.pgd,
@@ -246,10 +246,11 @@ impl CosiProc {
     /// `get_mappings` returns a CosiMappings representation of modules loaded in process represented by the CosiProc calling this function
     pub fn get_mappings(&self, cpu: &mut CPUState) -> Option<CosiMappings> {
         let taskd = CosiProc::new(cpu, self.taskd)?;
-        match  taskd.mm {
-            Some(res) => CosiMappings::new(cpu, res.mmap),
-            None => None,
-        }
+
+        taskd
+            .mm
+            .map(|res| CosiMappings::new(cpu, res.mmap))
+            .flatten()
     }
 }
 
@@ -525,7 +526,6 @@ pub struct VmAreaStruct {
     pub vm_flags: target_ptr_t, // type long unsigned int
 }
 
-#[repr(C)]
 /// # Structure
 /// `CosiModule` bundles data and metadata associated with a `vm_area_struct`
 ///     `modd` is a pointer to the underlying `vm_area_struct`
@@ -536,6 +536,7 @@ pub struct VmAreaStruct {
 ///     `name` is the name of the file backing the memory region
 /// # Functions
 /// `new` returns a `CosiModule` representing the `vm_area_struct` at the given address
+#[repr(C)]
 pub struct CosiModule {
     /// `modd` is a pointer to the underlying `vm_area_struct`
     pub modd: target_ptr_t, // vma_addr
@@ -586,21 +587,21 @@ impl CosiModule {
     }
 }
 
-#[repr(C)]
 /// # Structure
 /// `CosiMappings` holds a `Vec` of `CosiModule`s representing all mapped memory regions for a process
 ///     `modules` is a `Vec` of `CosiModule`s which each represent a mapped memory region for a process
 /// # Functions
 /// `new` returns a `CosiMappings` containing `CosiModule`s for all modules discoverable by traversing the `vm_next` linked list of a `vm_area_struct` at the given address
+#[repr(C)]
 pub struct CosiMappings {
     /// `modules` is a `Vec` of `CosiModule`s which each represent a mapped memory region for a process
-    pub modules: Vec<CosiModule>,
+    pub modules: Box<Vec<CosiModule>>,
 }
 
 impl CosiMappings {
     /// `new` returns a `CosiMappings` containing `CosiModule`s for all modules discoverable by traversing the `vm_next` linked list of a `vm_area_struct` at the given address
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiMappings> {
-        let mut modules = Vec::new();
+        let mut modules = Box::new(Vec::new());
         let vma_first = addr;
         let mut vma_current = vma_first;
 

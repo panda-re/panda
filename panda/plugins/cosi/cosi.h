@@ -27,6 +27,8 @@ typedef struct CosiFiles CosiFiles;
 
 typedef struct String String;
 
+typedef struct Vec_CosiModule Vec_CosiModule;
+
 typedef struct Vec_CosiProc Vec_CosiProc;
 
 typedef struct Path {
@@ -142,7 +144,7 @@ typedef struct CosiProc {
   /**
    * `mm` is the mm_struct pointed to by task.mm, read from memory
    */
-  struct MmStruct mm;
+  struct MmStruct *mm;
   /**
    * `asid`  is the asid of the process
    */
@@ -171,6 +173,20 @@ typedef struct CosiThread {
    */
   uint32_t pid;
 } CosiThread;
+
+/**
+ * # Structure
+ * `CosiMappings` holds a `Vec` of `CosiModule`s representing all mapped memory regions for a process
+ *     `modules` is a `Vec` of `CosiModule`s which each represent a mapped memory region for a process
+ * # Functions
+ * `new` returns a `CosiMappings` containing `CosiModule`s for all modules discoverable by traversing the `vm_next` linked list of a `vm_area_struct` at the given address
+ */
+typedef struct CosiMappings {
+  /**
+   * `modules` is a `Vec` of `CosiModule`s which each represent a mapped memory region for a process
+   */
+  struct Vec_CosiModule *modules;
+} CosiMappings;
 
 /**
  * Get the KASLR offset of the system, calculating and caching it if it has not already
@@ -380,5 +396,10 @@ void cosi_free_proc_list(struct Vec_CosiProc *_list);
  * Gets a list of the children of a given process. Must be freed using `cosi_free_proc_list`
  */
 struct Vec_CosiProc *cosi_proc_children(CPUState *cpu, const struct CosiProc *proc);
+
+/**
+ * Get a list of the memory mappings for the given process
+ */
+struct CosiMappings *cosi_proc_get_mappings(CPUState *cpu, const struct CosiProc *proc);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
