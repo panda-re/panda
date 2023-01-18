@@ -163,39 +163,42 @@ And then you can disable that bp and add this one to go one bb at a time
 Really these notes are about how to access things from gdb debugging
 PANDA that you will find useful.
 
-1. Here's how to print disassembly of bb about to execute.
+Here's how to print disassembly of guest basic block about to execute.
 
     call target_disas(stdout, cpu, tb->pc, tb->size, 0)
 
-2. Here's how to print out lots of register values.
+Here's how to print out lots of guest register values.
 
     call cpu_dump_state((CPUState*) cpus->tqh_first, stderr, fprintf, CPU_DUMP_FPU)
 
-3. This has something to do with pending exceptions?
+This has something to do with pending exceptions?
 
     p/x ((CPUMIPSState *) (cpus->tqh_first->env_ptr))->CP0_EPC
 
-4. This is the MIPS asid, kinda
+This is the MIPS asid, kinda.
 
     p/x ((CPUMIPSState *) (cpus->tqh_first->env_ptr))->CP0_EntryHi
 
-5. This is the instruction count
+This is the guest instruction count.
 
     p cpus->tqh_first->rr_guest_instr_count
 
-6. This is the PC
+This is the guest PC.
 
     p/x ((CPUMIPSState*)cpus->tqh_first->env_ptr)->active_tc.PC
 
-7. Checksums:
+Here are some checksums.
 
     call rr_checksum_regs()
     call rr_checksum_ram()
     call rr_checksum_tlb() 
-
-8. Here's how to determine if a virtual address is currently mapped to a physical one. 
+```
+Here's how to determine if a virtual address is currently mapped to a physical one. 
 
     call panda_virt_to_phys(cpus->tqh_first, 0x7f81cac0)
+
+The return value should be -1 if the virtual address isn't in the tlb.
+Otherwise, it will be a physical address.
 
 In mips, we've seen situations in which this will succeed in the rr
 record but fail in the rr replay.  This is due to tlb being flushed
