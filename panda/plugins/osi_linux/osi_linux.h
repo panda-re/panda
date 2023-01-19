@@ -460,6 +460,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         } else {
           pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
         }
+        fixupendian(pcomp_length);
 #else
         // Little endian: kernel version doesn't matter, len will always be second after an unsigned int
         pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
