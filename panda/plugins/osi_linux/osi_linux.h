@@ -55,7 +55,7 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset)
         return struct_get_ret_t::ERROR_DEREF;
     }
 
-    switch(panda_virtual_memory_rw(cpu, ptr+offset, (uint8_t *)v, sizeof(T), 0)) {
+    switch(panda_virtual_memory_read(cpu, ptr+offset, (uint8_t *)v, sizeof(T))) {
         case -1:
             memset((uint8_t *)v, 0, sizeof(T));
             return struct_get_ret_t::ERROR_MEMORY;
@@ -114,7 +114,7 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initiali
 #define IMPLEMENT_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
 static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
     _retType _t; \
-    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
+    if (-1 == panda_virtual_memory_read(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType))) { \
         return (_errorRetValue); \
     } \
     return (flipbadendian(_t)); \
@@ -135,7 +135,7 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
     _retType _t; \
     if (_offset == NULL)\
         return 0; \
-    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
+    if (-1 == panda_virtual_memory_read(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType))) { \
         return (_errorRetValue); \
     } \
     return (flipbadendian(_t)); \
@@ -156,10 +156,10 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
 static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
     _retType1 _t1; \
     _retType2 _t2; \
-    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
+    if (-1 == panda_virtual_memory_read(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1))) { \
         return (_errorRetValue); \
     } \
-    if (-1 == panda_virtual_memory_rw(env, flipbadendian(_t1) + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
+    if (-1 == panda_virtual_memory_read(env, flipbadendian(_t1) + _offset2, (uint8_t *)&_t2, sizeof(_retType2))) { \
         return (_errorRetValue); \
     } \
     return (flipbadendian(_t2)); \
@@ -183,7 +183,7 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
     size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
     OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset); \
     OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset, ret_size); \
-    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)_retName, ret_size, 0)) { \
+    if (-1 == panda_virtual_memory_read(env, _paramName + _offset, (uint8_t *)_retName, ret_size)) { \
         return OG_ERROR_MEMORY; \
     } \
     OG_printf(#_funcName ":3:ok\n"); \
@@ -202,7 +202,7 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
     size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
     OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset1); \
     OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset1, sizeof(target_ptr_t)); \
-    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_p1, sizeof(target_ptr_t), 0)) { \
+    if (-1 == panda_virtual_memory_read(env, _paramName + _offset1, (uint8_t *)&_p1, sizeof(target_ptr_t))) { \
         return OG_ERROR_MEMORY; \
     } \
     OG_printf(#_funcName ":3:" TARGET_PTR_FMT ":%d\n", _p1, _offset2); \
@@ -210,7 +210,7 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
         return OG_ERROR_DEREF; \
     } \
     OG_printf(#_funcName ":4:" TARGET_PTR_FMT ":%zu\n", _p1 + _offset2, ret_size); \
-    if (-1 == panda_virtual_memory_rw(env, _p1 + _offset2, (uint8_t *)_retName, ret_size, 0)) { \
+    if (-1 == panda_virtual_memory_read(env, _p1 + _offset2, (uint8_t *)_retName, ret_size)) { \
         return OG_ERROR_MEMORY; \
     } \
     OG_printf(#_funcName ":5:ok\n"); \
@@ -376,7 +376,7 @@ static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array
     fd_file_ptr = fd_file_array+n*sizeof(target_ptr_t);
 
     // Read address of the file struct.
-    if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
+    if (-1 == panda_virtual_memory_read(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t))) {
         return (target_ptr_t)NULL;
     }
     fixupendian(fd_file_ptr);
@@ -460,6 +460,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         } else {
           pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
         }
+        fixupendian(pcomp_length);
 #else
         // Little endian: kernel version doesn't matter, len will always be second after an unsigned int
         pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
@@ -468,6 +469,11 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         if (pcomp_length == (uint32_t)-1) { // Not sure why this happens, but it does
               printf("Warning: OSI_linux Unhandled pcomp value, ignoring\n");
               break;
+        }
+
+        if (pcomp_length > PATH_MAX){
+            printf("Error: OSI_linux pcomp length %d exceeds PATH_MAX. Check endianness.\n", pcomp_length);
+            assert(pcomp_length <= PATH_MAX);
         }
         pcomp_length += 1; // space for string terminator
 
@@ -484,7 +490,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         target_ptr_t guest_addr = *(target_ptr_t *)(d_name + ki.qstr.name_offset);
         fixupendian(guest_addr);
         OG_printf("Reading name from guest 0x" TARGET_FMT_lx "\n", guest_addr);
-        og_err1 = panda_virtual_memory_rw(env, guest_addr, (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+        og_err1 = panda_virtual_memory_read(env, guest_addr, (uint8_t *)pcomp, pcomp_length*sizeof(char));
 
     // I think this aims to be a re-implementation of the Linux kernel function
     // __dentry_path but the logic seems pretty different.
@@ -625,7 +631,7 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name) {
     if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
     else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
-    if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
+    if (-1 == panda_virtual_memory_read(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char))) {
         strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
     }
     return name;
