@@ -507,16 +507,24 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
  * Return: True if address is in kernel, false otherwise.
  */
 static inline bool address_in_kernel_code_linux(target_ulong addr){
+    // TODO: Find a way to ask QEMU what the permissions are on an area.
+    #if defined(TARGET_ARM) || (defined(TARGET_I386) && !defined(TARGET_X86_64))
+    // I386: https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/page_32_types.h#L18
+    // ARM32: https://people.kernel.org/linusw/how-the-arm32-kernel-starts
+    // ARM has a variable VMSPLIT. Technically this can be several values,
+    // but the most common offset is 0xc0000000. 
+    target_ulong vmsplit =  0xc0000000;
+    return addr >= vmsplit;
+    #else
+    // MIPS32: https://elixir.bootlin.com/linux/latest/source/arch/mips/include/asm/mach-malta/spaces.h#L36
+    // https://techpubs.jurassic.nl/manuals/0620/developer/DevDriver_PG/sgi_html/ch01.html
     // https://www.kernel.org/doc/html/latest/vm/highmem.html
-    // https://github.com/torvalds/linux/blob/master/Documentation/x86/x86_64/mm.rst
+    // x86_64: https://github.com/torvalds/linux/blob/master/Documentation/x86/x86_64/mm.rst
     // If addr MSB set -> kernelspace!
-
+    // AARCH64: https://elixir.bootlin.com/linux/latest/source/arch/arm64/include/asm/memory.h#L45
     target_ulong msb_mask = ((target_ulong)1 << ((sizeof(target_long) * 8) - 1));
-    if (msb_mask & addr) {
-        return true;
-    } else {
-        return false;
-    }
+    return msb_mask & addr;
+    #endif
 }
 
 
