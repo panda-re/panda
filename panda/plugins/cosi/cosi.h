@@ -188,6 +188,54 @@ typedef struct CosiMappings {
   struct Vec_CosiModule *modules;
 } CosiMappings;
 
+typedef struct VmAreaStruct {
+  target_ptr_t vm_mm;
+  target_ptr_t vm_start;
+  target_ptr_t vm_end;
+  target_ptr_t vm_next;
+  target_ptr_t vm_file;
+  target_ptr_t vm_flags;
+} VmAreaStruct;
+
+/**
+ * # Structure
+ * `CosiModule` bundles data and metadata associated with a `vm_area_struct`
+ *     `modd` is a pointer to the underlying `vm_area_struct`
+ *     `base` is `vm_area_struct.vm_start`
+ *     `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start`
+ *     `vma` is the underlying `vm_area_struct` read from memory
+ *     `file` is the path to the file backing the memory region
+ *     `name` is the name of the file backing the memory region
+ * # Functions
+ * `new` returns a `CosiModule` representing the `vm_area_struct` at the given address
+ */
+typedef struct CosiModule {
+  /**
+   * `modd` is a pointer to the underlying `vm_area_struct`
+   */
+  target_ptr_t modd;
+  /**
+   * `base` is `vm_area_struct.vm_start`
+   */
+  target_ptr_t base;
+  /**
+   * `size` is `vm_area_struct.vm_end` - `vm_area_struct.vm_start`
+   */
+  target_ptr_t size;
+  /**
+   * `vma` is the underlying `vm_area_struct` read from memory
+   */
+  struct VmAreaStruct vma;
+  /**
+   * `file` is the path to the file backing the memory region
+   */
+  struct String file;
+  /**
+   * `name` is the name of the file backing the memory region
+   */
+  struct String name;
+} CosiModule;
+
 /**
  * Get the KASLR offset of the system, calculating and caching it if it has not already
  * been found. For systems without KASLR this will be 0.
@@ -401,5 +449,20 @@ struct Vec_CosiProc *cosi_proc_children(CPUState *cpu, const struct CosiProc *pr
  * Get a list of the memory mappings for the given process
  */
 struct CosiMappings *cosi_proc_get_mappings(CPUState *cpu, const struct CosiProc *proc);
+
+/**
+ * Get the module behind the index of a CosiMappings
+ */
+const struct CosiModule *cosi_mappings_get(const struct CosiMappings *list, uintptr_t index);
+
+/**
+ * Get the number of modules in the CosiMappings
+ */
+uintptr_t cosi_mappings_len(const struct CosiMappings *list);
+
+/**
+ * Free the CosiMappings
+ */
+void cosi_free_mappings(struct CosiMappings *_mappings);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
