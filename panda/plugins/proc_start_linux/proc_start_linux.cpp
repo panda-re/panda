@@ -272,7 +272,7 @@ void sbe(CPUState *cpu, TranslationBlock *tb){
             panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
             free(vals);
         }else{
-            printf("got here and could not read stack\n");
+            log("got here and could not read stack\n");
             // this would be the case where fault_hooks would work well.
         }
     }
@@ -293,6 +293,9 @@ bool init_plugin(void *self) {
 
     #if defined(TARGET_MIPS64)
         fprintf(stderr, "[ERROR] proc_start_linux: mips64 architecture not supported!\n");
+        return false;
+    #elif defined(TARGET_AARCH64)
+        fprintf(stderr, "[ERROR] proc_start_linux: aarch64 architecture not supported!\n");
         return false;
     #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");

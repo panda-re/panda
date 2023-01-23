@@ -13,7 +13,7 @@ def guest_interaction():
 
 @panda.ppp("proc_start_linux", "on_rec_auxv")
 def recv_auxv(cpu, tb, auxv):
-    procname = panda.ffi.string(auxv.procname)
+    procname = panda.ffi.string(auxv.execfn)
     print(f"started proc {procname} {auxv.phdr:x} {auxv.entry:x}")
 
 panda.run()
