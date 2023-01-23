@@ -445,7 +445,8 @@ class CosiProcess:
         self.hold_ref = hold_ref
 
     def __del__(self):
-        self.panda.plugins[COSI].free_process(self.inner)
+        if self.hold_ref is None:
+            self.panda.plugins[COSI].free_process(self.inner)
         self.inner = None
 
     def get_name(self):
@@ -487,6 +488,21 @@ class CosiProcess:
 
         return CosiProcList(self.panda, children)
 
+    def mappings(self):
+        '''
+        Returns a list of the mappings of the process
+        '''
+
+        mappings = self.panda.plugins[COSI].cosi_proc_get_mappings(
+            self.panda.get_cpu(),
+            self.inner
+        )
+
+        if mappings == self.panda.ffi.NULL:
+            return []
+
+        return CosiMappings(self.panda, mappings)
+
 class CosiProcList:
     def __init__(self, panda, inner):
         self.inner = inner
@@ -509,6 +525,68 @@ class CosiProcList:
             raise IndexError("Integer {} out of bounds of CosiProcList length")
 
         return CosiProcess(self.panda, file_ptr, hold_ref=self)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
+class CosiModule:
+    def __init__(self, panda, proc, hold_ref=None):
+        self.panda = panda
+        self.inner = proc
+        self.hold_ref = hold_ref
+
+    def __del__(self):
+        if self.hold_ref is None:
+            pass # TODO: free module if it's not a reference
+        self.inner = None
+
+    def get_name(self):
+        cstr_name = self.panda.plugins[COSI].cosi_module_name(self.inner)
+        name = self.panda.ffi.string(cstr_name)
+        self.panda.plugins[COSI].free_cosi_str(cstr_name)
+        return name.decode('utf8')
+
+    def get_file(self):
+        cstr_name = self.panda.plugins[COSI].cosi_module_file(self.inner)
+        name = self.panda.ffi.string(cstr_name)
+        self.panda.plugins[COSI].free_cosi_str(cstr_name)
+        return name.decode('utf8')
+
+    def __getattr__(self, key):
+        if key == "name":
+            return self.get_name()
+        elif key == "file":
+            return self.get_file()
+
+        attr = getattr(self.inner, key, None)
+        if not attr is None:
+            return attr
+
+        return getattr(self.inner.task, key)
+
+class CosiMappings:
+    def __init__(self, panda, inner):
+        self.inner = inner
+        self.panda = panda
+
+    def __del__(self):
+        self.panda.plugins[COSI].cosi_free_mappings(self.inner)
+        self.inner = None
+
+    def __len__(self) -> int:
+        return self.panda.plugins[COSI].cosi_mappings_len(self.inner)
+
+    def __getitem__(self, key: int):
+        if not type(key) is int:
+            raise TypeError("CosiMappings must be indexed with an integer")
+
+        file_ptr = self.panda.plugins[COSI].cosi_mappings_get(self.inner, key)
+
+        if file_ptr == self.panda.ffi.NULL:
+            raise IndexError("Integer {} out of bounds of CosiProcList length")
+
+        return CosiModule(self.panda, file_ptr, hold_ref=self)
 
     def __iter__(self):
         for i in range(len(self)):

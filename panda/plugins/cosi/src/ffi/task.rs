@@ -101,3 +101,23 @@ pub extern "C" fn cosi_mappings_len(list: &CosiMappings) -> usize {
 /// Free the CosiMappings
 #[no_mangle]
 pub extern "C" fn cosi_free_mappings(_mappings: Option<Box<CosiMappings>>) {}
+
+/// Get the name of a module from a reference to it as a C string. Must be freed using
+/// the `free_cosi_str` function.
+#[no_mangle]
+pub extern "C" fn cosi_module_name(module: &CosiModule) -> *mut c_char {
+    CString::new((*module.name).clone())
+        .ok()
+        .map(CString::into_raw)
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// Get the file path of a module from a reference to it as a C string. Must be freed using
+/// the `free_cosi_str` function.
+#[no_mangle]
+pub extern "C" fn cosi_module_file(module: &CosiModule) -> *mut c_char {
+    CString::new((*module.file).clone())
+        .ok()
+        .map(CString::into_raw)
+        .unwrap_or(std::ptr::null_mut())
+}

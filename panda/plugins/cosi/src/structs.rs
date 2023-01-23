@@ -547,9 +547,9 @@ pub struct CosiModule {
     /// `vma` is the underlying `vm_area_struct` read from memory
     pub vma: VmAreaStruct, // underlying structure
     /// `file` is the path to the file backing the memory region
-    pub file: String, // read_dentry result
+    pub file: Box<String>, // read_dentry result
     /// `name` is the name of the file backing the memory region
-    pub name: String, // strstr(file, "/") if file backed, else something like [stack] or [heap]
+    pub name: Box<String>, // strstr(file, "/") if file backed, else something like [stack] or [heap]
 }
 
 impl CosiModule {
@@ -581,8 +581,8 @@ impl CosiModule {
             base,
             size,
             vma,
-            file,
-            name,
+            file: Box::new(file),
+            name: Box::new(name),
         })
     }
 }

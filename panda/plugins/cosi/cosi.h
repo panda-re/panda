@@ -229,11 +229,11 @@ typedef struct CosiModule {
   /**
    * `file` is the path to the file backing the memory region
    */
-  struct String file;
+  struct String *file;
   /**
    * `name` is the name of the file backing the memory region
    */
-  struct String name;
+  struct String *name;
 } CosiModule;
 
 /**
@@ -464,5 +464,17 @@ uintptr_t cosi_mappings_len(const struct CosiMappings *list);
  * Free the CosiMappings
  */
 void cosi_free_mappings(struct CosiMappings *_mappings);
+
+/**
+ * Get the name of a module from a reference to it as a C string. Must be freed using
+ * the `free_cosi_str` function.
+ */
+char *cosi_module_name(const struct CosiModule *module);
+
+/**
+ * Get the file path of a module from a reference to it as a C string. Must be freed using
+ * the `free_cosi_str` function.
+ */
+char *cosi_module_file(const struct CosiModule *module);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
