@@ -294,9 +294,6 @@ bool init_plugin(void *self) {
     #if defined(TARGET_MIPS64)
         fprintf(stderr, "[ERROR] proc_start_linux: mips64 architecture not supported!\n");
         return false;
-    #elif defined(TARGET_AARCH64)
-        fprintf(stderr, "[ERROR] proc_start_linux: aarch64 architecture not supported!\n");
-        return false;
     #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
         return false;

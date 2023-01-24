@@ -603,8 +603,13 @@ static inline target_ulong panda_current_sp(const CPUState *cpu) {
     // valid on x86 and x86_64
     return env->regs[R_ESP];
 #elif defined(TARGET_ARM)
-    // R13 on ARM.
-    return env->regs[13];
+    if (env->aarch64) {
+        // X31 on AARCH64.
+        return env->xregs[31];
+    } else {
+        // R13 on ARM.
+        return env->regs[13];
+    }
 #elif defined(TARGET_PPC)
     // R1 on PPC.
     return env->gpr[1];
