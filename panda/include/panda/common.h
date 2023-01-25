@@ -508,7 +508,7 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
  */
 static inline bool address_in_kernel_code_linux(target_ulong addr){
     // TODO: Find a way to ask QEMU what the permissions are on an area.
-    #if defined(TARGET_ARM) || (defined(TARGET_I386) && !defined(TARGET_X86_64))
+    #if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_I386) && !defined(TARGET_X86_64))
     // I386: https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/page_32_types.h#L18
     // ARM32: https://people.kernel.org/linusw/how-the-arm32-kernel-starts
     // ARM has a variable VMSPLIT. Technically this can be several values,
