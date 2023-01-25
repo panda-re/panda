@@ -41,6 +41,7 @@ struct auxv_values {
     target_ulong random;
     target_ulong platform;
     target_ulong program_header; // this is just PHDR - sizeof(ehdr). it's a best guess
+    target_ulong minsigstksz;
 };
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!

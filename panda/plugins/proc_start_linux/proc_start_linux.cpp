@@ -88,6 +88,17 @@ panda_cb pcb_sbe_execve;
 #define FAIL_READ_ENVP -2
 #define FAIL_READ_AUXV -3
 
+/*
+ * AT_MINSIGSTKSZ isn't always defined for systems that run PANDA, but could be
+ * provided by a guest kernel.
+ * AT_MINSIGSTKSZ was defined as a uapi standard in v5.14 of the kernel:
+ * https://git.kernel.org/tip/7cd60e43a6def40ecb75deb8decc677995970d0b
+*/
+
+#ifndef AT_MINSIGSTKSZ
+#define AT_MINSIGSTKSZ  51
+#endif
+
 string read_str(CPUState* cpu, target_ulong ptr){
     string buf = "";
     char tmp;
@@ -128,6 +139,7 @@ string read_str(CPUState* cpu, target_ulong ptr){
 
 int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
     target_ulong sp = panda_current_sp(cpu);
+    log("read_aux_vals: sp=" TARGET_FMT_lx "\n",sp);
     
     // keep track of where on the stack we are
     int ptrlistpos = 1;
@@ -240,6 +252,8 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
             vals->random = entryval;
         }else if (entrynum == AT_PLATFORM){
             vals->platform = entryval;
+        }else if (entrynum == AT_MINSIGSTKSZ){
+            vals->minsigstksz = entryval;
         }
     }
     return 0;
@@ -261,6 +275,7 @@ void sbe(CPUState *cpu, TranslationBlock *tb){
             memset(vals, 0, sizeof(struct auxv_values));
             int status = read_aux_vals(cpu, vals);
             if (!status && vals->entry && vals->phdr){
+                log("read auxv\n");
                 PPP_RUN_CB(on_rec_auxv, cpu, tb, vals);
             }else if (status == FAIL_READ_ARGV){
                 log("failed to read argv\n");
@@ -268,6 +283,9 @@ void sbe(CPUState *cpu, TranslationBlock *tb){
                 log("failed to read envp\n");
             }else if (status == FAIL_READ_AUXV){
                 log("failed to read auxv\n");
+            }else{
+                log("read_aux_vals failed, status: %d",status);
+                log(" vals->entry: " TARGET_FMT_lx ", vals->phdr: " TARGET_FMT_lx "\n", vals->entry, vals->phdr);
             }
             panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
             free(vals);
@@ -293,6 +311,9 @@ bool init_plugin(void *self) {
 
     #if defined(TARGET_MIPS64)
         fprintf(stderr, "[ERROR] proc_start_linux: mips64 architecture not supported!\n");
+        return false;
+    #elif defined(TARGET_AARCH64)
+        fprintf(stderr, "[ERROR] proc_start_linux: aarch64 architecture not supported!\n");
         return false;
     #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
