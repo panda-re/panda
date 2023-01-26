@@ -7,8 +7,28 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
-// This needs to be defined before anything is included in order to get
-// the PRIx64 macro
+
+/**
+ * Logic for this plugin:
+ *  On the first execve or execveat the system will transition to the kernel
+ *  and back to userspace. We attempt to catch the very first block of the new
+ *  program by looking for the first block where the stack pointer is in 
+ *  userspace, paged in, and has a value that makes sense for the auxiliary
+ *  vector (described below). Specifically, we check that the first argument,
+ *  the argc value, is a reasonable number. We chose this reasonable number
+ *  to be 0x200000, a common value for ARG_MAX on unix systems.
+ * 
+ *  Once we have established the location of the auxiliary vector we make a PPP
+ *  callback and pass the values of the auxv to the callback.
+ * 
+ * Issues:
+ *  Currently the plugin catches about 95% of the new programs across
+ *  architectures. The remaining 5% are somewhat elusive. It may be that the
+ *  kernel does something like immediately switching to a new program or memory
+ *  is not paged in at the stage we might expect.
+ */
+
+
 #define __STDC_FORMAT_MACROS
 
 #include <linux/auxvec.h>
@@ -22,15 +42,15 @@ using namespace std;
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-bool init_plugin(void *);
-void uninit_plugin(void *);
-#include "syscalls2/syscalls_ext_typedefs.h"
-#include "syscalls2/syscalls2_info.h"
-#include "syscalls2/syscalls2_ext.h"
-#include "proc_start_linux.h"
-#include "proc_start_linux_ppp.h"
-PPP_PROT_REG_CB(on_rec_auxv);
-PPP_CB_BOILERPLATE(on_rec_auxv);
+    bool init_plugin(void *);
+    void uninit_plugin(void *);
+    #include "syscalls2/syscalls_ext_typedefs.h"
+    #include "syscalls2/syscalls2_info.h"
+    #include "syscalls2/syscalls2_ext.h"
+    #include "proc_start_linux.h"
+    #include "proc_start_linux_ppp.h"
+    PPP_PROT_REG_CB(on_rec_auxv);
+    PPP_CB_BOILERPLATE(on_rec_auxv);
 }
 
 // uncomment to look under the hood
@@ -41,7 +61,6 @@ PPP_CB_BOILERPLATE(on_rec_auxv);
 #else
 #define log(...)
 #endif
-
 
 #if defined(TARGET_WORDS_BIGENDIAN)
 #if TARGET_LONG_SIZE == 4
@@ -63,6 +82,23 @@ PPP_CB_BOILERPLATE(on_rec_auxv);
 void *self_ptr;
 panda_cb pcb_sbe_execve;
 
+#define ARG_MAX 0x200000
+
+#define FAIL_READ_ARGV -1
+#define FAIL_READ_ENVP -2
+#define FAIL_READ_AUXV -3
+
+/*
+ * AT_MINSIGSTKSZ isn't always defined for systems that run PANDA, but could be
+ * provided by a guest kernel.
+ * AT_MINSIGSTKSZ was defined as a uapi standard in v5.14 of the kernel:
+ * https://git.kernel.org/tip/7cd60e43a6def40ecb75deb8decc677995970d0b
+*/
+
+#ifndef AT_MINSIGSTKSZ
+#define AT_MINSIGSTKSZ  51
+#endif
+
 string read_str(CPUState* cpu, target_ulong ptr){
     string buf = "";
     char tmp;
@@ -79,11 +115,6 @@ string read_str(CPUState* cpu, target_ulong ptr){
     }
     return buf;
 }
-
-#define FAIL_READ_ARGV -1
-#define FAIL_READ_ENVP -2
-#define FAIL_READ_AUXV -3
-
 
 /**
  * 
@@ -108,6 +139,7 @@ string read_str(CPUState* cpu, target_ulong ptr){
 
 int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
     target_ulong sp = panda_current_sp(cpu);
+    log("read_aux_vals: sp=" TARGET_FMT_lx "\n",sp);
     
     // keep track of where on the stack we are
     int ptrlistpos = 1;
@@ -122,6 +154,7 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
         if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(target_ulong)), (uint8_t *)&ptr, sizeof(ptr)) != MEMTX_OK){
             return FAIL_READ_ARGV;
         }
+        fixupendian(ptr);
         ptrlistpos++;
         if (ptr == 0){
             break;
@@ -146,6 +179,7 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
         if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(target_ulong)), (uint8_t *)&ptr, sizeof(ptr)) != MEMTX_OK){
             return FAIL_READ_ENVP;
         }
+        fixupendian(ptr);
         ptrlistpos++;
         if (ptr == 0){
             break;
@@ -218,24 +252,30 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
             vals->random = entryval;
         }else if (entrynum == AT_PLATFORM){
             vals->platform = entryval;
+        }else if (entrynum == AT_MINSIGSTKSZ){
+            vals->minsigstksz = entryval;
         }
     }
     return 0;
 }
 
-bool has_been_in_kernel = false;
 
 void sbe(CPUState *cpu, TranslationBlock *tb){
-    bool in_kernel = panda_in_kernel_code_linux(cpu);
-    if (unlikely(!panda_in_kernel_code_linux(cpu) && has_been_in_kernel)){
-        // check that we can read the stack
-        target_ulong sp = panda_current_sp(cpu);
+    target_ulong sp = panda_current_sp(cpu);
+    bool sp_in_kernel = address_in_kernel_code_linux(sp);
+    if (!sp_in_kernel){ 
         target_ulong argc;
         if (panda_virtual_memory_read(cpu, sp, (uint8_t *)&argc, sizeof(argc)) == MEMTX_OK){
+            fixupendian(argc);
+            if (argc > ARG_MAX){
+                log("argc is incorrect " TARGET_FMT_lx "\n", argc);
+                return;
+            }
             struct auxv_values *vals = (struct auxv_values*)malloc(sizeof(struct auxv_values));
             memset(vals, 0, sizeof(struct auxv_values));
             int status = read_aux_vals(cpu, vals);
             if (!status && vals->entry && vals->phdr){
+                log("read auxv\n");
                 PPP_RUN_CB(on_rec_auxv, cpu, tb, vals);
             }else if (status == FAIL_READ_ARGV){
                 log("failed to read argv\n");
@@ -243,24 +283,26 @@ void sbe(CPUState *cpu, TranslationBlock *tb){
                 log("failed to read envp\n");
             }else if (status == FAIL_READ_AUXV){
                 log("failed to read auxv\n");
+            }else{
+                log("read_aux_vals failed, status: %d",status);
+                log(" vals->entry: " TARGET_FMT_lx ", vals->phdr: " TARGET_FMT_lx "\n", vals->entry, vals->phdr);
             }
             panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
             free(vals);
-            has_been_in_kernel = false;
         }else{
+            log("got here and could not read stack\n");
             // this would be the case where fault_hooks would work well.
-            // printf("got here and could not read stack\n");
         }
-    } else if (in_kernel){
-        has_been_in_kernel = true;
     }
 }
 
 void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
+    log("execve\n");
     panda_enable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
 }
 
 void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
+    log("execveat\n");
     panda_enable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
 }
 
@@ -269,6 +311,9 @@ bool init_plugin(void *self) {
 
     #if defined(TARGET_MIPS64)
         fprintf(stderr, "[ERROR] proc_start_linux: mips64 architecture not supported!\n");
+        return false;
+    #elif defined(TARGET_AARCH64)
+        fprintf(stderr, "[ERROR] proc_start_linux: aarch64 architecture not supported!\n");
         return false;
     #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
@@ -293,10 +338,10 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 #if defined(TARGET_PPC) or defined(TARGET_MIPS64)
 #else
-  void* syscalls = panda_get_plugin_by_name("syscalls2");
-  if (syscalls != NULL){
-    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
-    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-  }
+    void* syscalls = panda_get_plugin_by_name("syscalls2");
+    if (syscalls != NULL){
+        PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+        PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+    }
 #endif
 }
