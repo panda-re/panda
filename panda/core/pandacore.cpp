@@ -19,6 +19,8 @@ extern "C" {
 
 using namespace std;
 
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "pandacore";
+
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
 
 QEMU_PLUGIN_EXPORT int (*external_plugin_install)(qemu_plugin_id_t id, const qemu_info_t *info,int argc, char **argv);
