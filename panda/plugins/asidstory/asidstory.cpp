@@ -772,8 +772,8 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
-#if defined(TARGET_MIPS)
-    fprintf(stderr, "[ERROR] asidstory: MIPS unsupported!\n");
+#if defined(TARGET_MIPS64)
+    fprintf(stderr, "[ERROR] asidstory: MIPS64 unsupported!\n");
     return false;
 #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] asidstory: PPC architecture is not supported by syscalls2!\n");
