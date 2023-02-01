@@ -19,7 +19,7 @@ root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-
 
 pypi_build = False # Set to true if trying to minimize size for pypi package upload. Note this disables some architectures
 
-lib_dir = os.path.join("pandare", "data")
+lib_dir = os.path.join("pandare2", "data")
 def copy_objs():
     '''
     Run to copy objects into a (local and temporary) python module before installing to the system.
@@ -39,10 +39,10 @@ def copy_objs():
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
     # Copy pypanda's include directory (different than core panda's) into a datadir
-    pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "pandare", "include"])
+    pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "pandare2", "include"])
     if not os.path.isdir(pypanda_inc):
         raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
-    pypanda_inc_dest = os.path.join(*["pandare", "data", "pypanda", "include"])
+    pypanda_inc_dest = os.path.join(*["pandare2", "data", "pypanda", "include"])
     if os.path.isdir(pypanda_inc_dest):
         shutil.rmtree(pypanda_inc_dest)
     shutil.copytree(pypanda_inc, pypanda_inc_dest)
@@ -127,9 +127,9 @@ class custom_install(install_orig):
             create_datatypes(install=True)
             copy_objs()
         except ImportError:
-            assert(os.path.isfile("pandare/include/panda_datatypes.h")), \
+            assert(os.path.isfile("pandare2/include/panda_datatypes.h")), \
                             "panda_datatypes.h missing and can't be generated"
-            assert(os.path.isfile("pandare/autogen/panda_datatypes.py")), \
+            assert(os.path.isfile("pandare2/autogen/panda_datatypes.py")), \
                             "panda_datatypes.py missing and can't be generated"
         super().run()
 
@@ -150,7 +150,7 @@ except CalledProcessError:
     print("ERROR: protoc not installed. Install with sudo apt install protoc")
     raise
 
-setup(name='pandare',
+setup(name='pandare2',
       version='0.1.1.5',
       description='Python Interface to PANDA',
       long_description=long_description,
