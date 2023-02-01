@@ -13,6 +13,9 @@ def qb():
 
 md = capstone.Cs(capstone.CS_ARCH_ARM, capstone.CS_MODE_ARM)
 
+global i
+i = 0
+
 @panda.cb_vcpu_tb_trans
 def vcpu_tb(id, tb):
     pc = panda.libpanda.qemu_plugin_tb_vaddr(tb)
