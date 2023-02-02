@@ -257,10 +257,13 @@ static inline void save_snp_shot(void) {
     QIOChannelFile* ioc =
         qio_channel_file_new_path(snp_name, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
-    panda_is_in_record = 1;
+
+    set_rr_snapshot();
+
     qemu_savevm_state(snp, NULL);
     qemu_fclose(snp);
-    panda_is_in_record = 0;
+
+    unset_rr_snapshot();
 }
 
 static void create_command_file(void) {

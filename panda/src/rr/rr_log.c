@@ -92,6 +92,14 @@ bool rr_replay_complete = false;
 
 int panda_is_in_record = 0;
 
+void set_rr_snapshot(void) {
+    panda_is_in_record = 1;
+}
+
+void unset_rr_snapshot(void) {
+    panda_is_in_record = 0;
+}
+
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \
     if (!(exp)) {                                                              \
@@ -1587,7 +1595,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
 
-    panda_is_in_record = 1;
+    set_rr_snapshot();
 
     snapshot_ret = qemu_savevm_state(snp, &err);
     qemu_fclose(snp);
@@ -1649,7 +1657,7 @@ void rr_do_end_record(void)
 
     printf("...complete!\n");
 
-    panda_is_in_record = 0;
+    unset_rr_snapshot();
 
     // log_all_cpu_states();
 
