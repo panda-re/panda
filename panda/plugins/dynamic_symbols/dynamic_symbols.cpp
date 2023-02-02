@@ -575,6 +575,9 @@ void update_symbols_in_space(CPUState* cpu){
         return;
     }
     OsiProc *current = get_current_process(cpu);
+    if (current == NULL){
+        return;
+    }
     target_ulong asid = panda_current_asid(cpu);
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
