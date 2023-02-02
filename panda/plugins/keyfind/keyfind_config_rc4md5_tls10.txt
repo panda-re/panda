@@ -1,0 +1,8 @@
+# ==== 127.0.0.1:443 <-> 127.0.0.1:49925 ====
+Client-Random: 508d968488d4eb25d113266d063df41f2609dd7a0e1bbf4eff96a0718136a549
+Server-Random: 508d9684886ecd7c274b7093592ec38dc78c3e7a56df01716087abc7e01b5bfb
+Content-Type:  16
+Version:       0301
+Enc-Msg:       155d7b65edc26fa37ad02bef197309eeb431184a1f75acdf260c63f3e99788c6
+Cipher:        RC4
+MAC:           MD5
