@@ -274,7 +274,6 @@ fn init(_: &mut PluginHandle) -> bool {
             i += 1;
         }
 
-        //println!("syscalls: {:#x?}", syscall_info);
         SYSCALL_INFO.set(syscall_info).unwrap();
 
         first_bb.disable();
@@ -341,7 +340,6 @@ fn init(_: &mut PluginHandle) -> bool {
                     }
                     write!(stdout, ")");
                     stdout.flush();
-                    //println!("{}(...) - {:?}", syscall.name, syscall.args);
                 } else {
                     println!("UNK_sys_{}(...)", callno);
                 }

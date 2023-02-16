@@ -18,7 +18,6 @@ mod downloader;
 /// Interface for other plugins to interact with
 mod ffi;
 mod kaslr;
-mod process;
 mod structs;
 
 use kaslr::kaslr_offset;

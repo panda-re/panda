@@ -192,26 +192,17 @@ impl CosiProc {
     /// `get_current_cosiproc` returns a CosiProc representation of the current process
     pub fn get_current_cosiproc(cpu: &mut CPUState) -> Option<CosiProc> {
         let curr_task_addr = match find_per_cpu_address(cpu, "current_task").ok() {
-            Some(res) => {
-                //println!("[debug] Got result");
-                res
-            }
-            None => {
-                //println!("[debug]Failed to read current_task");
-                std::process::exit(0)
-            }
+            Some(res) => res
+            None => std::process::exit(0)
         };
-        //println!("[debug]Got current task addr");
         CosiProc::new(cpu, curr_task_addr)
     }
 
     /// `new` returns a CosiProc representation of a task_struct, given a pointer to that task_struct
     pub fn new(cpu: &mut CPUState, addr: target_ptr_t) -> Option<CosiProc> {
         let task = TaskStruct::osi_read(cpu, addr).ok()?;
-        //println!("[debug] Past task struct | pid: {} | gl: {:x} | mm: {:x}", task.pid, task.group_leader, task.mm);
         let mm_ptr = task.mm;
         let mm = MmStruct::osi_read(cpu, mm_ptr).ok().map(Box::new);
-        //println!("[debug] Past MmStruct");
         let asid = match &mm {
             Some(res) => res.pgd,
             None => 0,
@@ -223,9 +214,7 @@ impl CosiProc {
             .position(|&x| x == 0u8)
             .unwrap_or(TASK_COMM_LEN);
         let name = Box::new(String::from_utf8_lossy(&comm_data[..task_comm_len]).into_owned());
-        //println!("[debug] Past name");
         let parent = TaskStruct::osi_read(cpu, task.parent).ok();
-        //println!("[debug] Past parent");
         let ppid = match &parent {
             Some(res) => res.pid,
             None => 0,

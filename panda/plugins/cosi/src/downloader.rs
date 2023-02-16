@@ -1,8 +1,6 @@
-//use std::io::{stdout, Write, BufReader};
 use panda::os::name;
 use std::fs::File;
 use std::io::Write;
-//use std::env;
 use curl::easy::Easy;
 
 pub fn get_symtab_name() -> String {
