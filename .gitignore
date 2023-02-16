@@ -113,6 +113,7 @@ venv
 /docs/qemu-qmp-ref.txt
 /docs/version.texi
 /panda/plugins/*/docs/
+/panda/plugins/*/target/
 **/target
 *.tps
 .stgit-*

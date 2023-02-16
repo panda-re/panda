@@ -384,6 +384,7 @@ def main(install=False,recompile=True):
     
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/cosi", "cosi.h"))
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:

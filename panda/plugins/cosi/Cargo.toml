@@ -1,0 +1,27 @@
+[package]
+name = "cosi"
+version = "0.1.0"
+authors = ["Luke Craig <Luke.Craig@ll.mit.edu>", "Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+once_cell = "1.8.0"
+panda-re = { version = "0.46.0", default-features = false }
+regex = "1.5.4"
+curl = "0.4.44"
+volatility_profile = { path = "./volatility_profile" }
+
+[features]
+default = ["x86_64"]
+
+x86_64 = ["panda-re/x86_64"]
+i386 = ["panda-re/i386"]
+arm = ["panda-re/arm"]
+ppc = ["panda-re/ppc"]
+mips = ["panda-re/mips"]
+mipsel = ["panda-re/mipsel"]
+mips64 = ["panda-re/mips64"]
+aarch64 = ["panda-re/aarch64"]
