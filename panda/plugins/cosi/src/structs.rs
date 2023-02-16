@@ -192,8 +192,8 @@ impl CosiProc {
     /// `get_current_cosiproc` returns a CosiProc representation of the current process
     pub fn get_current_cosiproc(cpu: &mut CPUState) -> Option<CosiProc> {
         let curr_task_addr = match find_per_cpu_address(cpu, "current_task").ok() {
-            Some(res) => res
-            None => std::process::exit(0)
+            Some(res) => res,
+            None => std::process::exit(0),
         };
         CosiProc::new(cpu, curr_task_addr)
     }
