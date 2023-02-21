@@ -116,6 +116,8 @@ class Argument(object):
     # the "ptr" list is types used in system calls which ARE pointers
     # the other lists are just the types for the associated arch_bits which are
     # of the size & signedness associated with the list name
+    # the default type is U32, so any type that should map to something else
+    # needs to be listed explicitly
     # list for arch_bits=32
     types32 = {
         'reserved': ['new', 'data', 'int', 'cpu'],
@@ -135,20 +137,44 @@ class Argument(object):
         'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'USHORT'],
         'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
     }
-    # the lists in types64 are appropriate for 64-bit linux (64-bit Windows will
-    # likely need a separate list)
+    # list for arch_bits=64
     types64 = {
         'reserved': ['new', 'data', 'int', 'cpu'],
         'twoword': ['unsigned int', 'unsigned long'],
-        'u64': ['loff_t', 'u64', 'unsigned long', 'off_t', 'aio_context_t'],
+        'u64': [
+            'loff_t', 'u64', 'unsigned long', 'off_t', 'aio_context_t',
+            'ALPC_HANDLE', 'HANDLE', 'KAFFINITY', 'LPGUID', 'PACCESS_MASK',
+            'PALPC_CONTEXT_ATTR', 'PALPC_DATA_VIEW_ATTR', 'PALPC_HANDLE',
+            'PALPC_MESSAGE_ATTRIBUTES', 'PALPC_PORT_ATTRIBUTES',
+            'PALPC_SECURITY_ATTR', 'PBOOLEAN', 'PBOOT_ENTRY', 'PBOOT_OPTIONS',
+            'PCHAR', 'PCLIENT_ID', 'PCONTEXT', 'PCRM_PROTOCOL_ID',
+            'PDBGUI_WAIT_STATE_CHANGE', 'PEFI_DRIVER_ENTRY', 'PEXECUTION_STATE',
+            'PEXCEPTION_RECORD', 'PFILE_BASIC_INFORMATION',
+            'PFILE_IO_COMPLETION_INFORMATION', 'PFILE_NETWORK_OPEN_INFORMATION',
+            'PFILE_PATH', 'PFILE_SEGMENT_ELEMENT', 'PGENERIC_MAPPING',
+            'PGROUP_AFFINITY', 'PHANDLE', 'PINITIAL_TEB', 'PIO_APC_ROUTINE',
+            'PIO_STATUS_BLOCK', 'PJOB_SET_ARRAY', 'PKEY_VALUE_ENTRY',
+            'PKTMOBJECT_CURSOR', 'PLARGE_INTEGER', 'PLCID', 'PLONG', 'PLUID',
+            'PULONG', 'PNTSTATUS', 'POBJECT_ATTRIBUTES', 'POBJECT_TYPE_LIST',
+            'PPLUGPLAY_EVENT_BLOCK', 'PPORT_MESSAGE', 'PPORT_VIEW',
+            'PPRIVILEGE_SET', 'PPROCESS_ATTRIBUTE_LIST', 'PPROCESS_CREATE_INFO',
+            'PPS_APC_ROUTINE', 'PPS_ATTRIBUTE_LIST', 'PREMOTE_PORT_VIEW',
+            'PRTL_ATOM', 'PRTL_USER_PROCESS_PARAMETERS', 'PSECURITY_DESCRIPTOR',
+            'PSECURITY_QUALITY_OF_SERVICE', 'PSID', 'PSIZE_T',
+            'PTIMER_APC_ROUTINE', 'PTOKEN_DEFAULT_DACL', 'PTOKEN_GROUPS',
+            'PTOKEN_OWNER', 'PTOKEN_PRIMARY_GROUP', 'PTOKEN_PRIVILEGES',
+            'PTOKEN_SOURCE', 'PTOKEN_USER', 'PTRANSACTION_NOTIFICATION',
+            'PULARGE_INTEGER', 'PULONG', 'PULONG_PTR', 'PUNICODE_STRING',
+            'PUSHORT', 'PVOID', 'PWSTR', 'SIZE_T', 'ULONG_PTR'
+            ],
         's64': ['long'],
         'u32': [
             'unsigned int', 'size_t', 'u32', 'rwf_t',
             'timer_t', 'key_t', 'key_serial_t', 'mqd_t', 'clockid_t',
-            'qid_t', 'old_sigset_t', 'union semun'
+            'qid_t', 'old_sigset_t', 'union semun', 'ULONG'
         ],
-        's32': ['int', '__s32', 'pid_t'],
-        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t'],
+        's32': ['int', '__s32', 'pid_t', 'LONG'],
+        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'USHORT'],
         'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
     }
 
@@ -181,7 +207,7 @@ class Argument(object):
 
         # identify argument type
         # types defined above are matched against the whole raw argument string
-        # this means that e.g. mode_t will also match a umode_t agument
+        # this means that e.g. mode_t will also match a umode_t argument
         if Argument.charre.search(self.raw) and not any([self.name.endswith('buf'), self.name == '...', self.name.endswith('[]')]):
             self.type = 'STR_PTR'
         elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in typesforbits['ptr']])]) and (not 'struct' in self.raw) and (not '_t' in self.raw):
