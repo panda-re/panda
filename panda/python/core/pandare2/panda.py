@@ -338,7 +338,7 @@ class Panda():
         python_package = pjoin(*[dirname(__file__), "data"])
         local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
         path_end = "libpanda_{0}-softmmu.so".format(arch_name)
-        print(f"{path_end=}")
+        #print(f"{path_end=}")
         pot_paths = [python_package, local_build]
         for potential_path in pot_paths:
             if isfile(pjoin(potential_path, path_end)):

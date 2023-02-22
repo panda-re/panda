@@ -61,7 +61,7 @@ static void vcpu_mem(unsigned int cpu_index, qemu_plugin_meminfo_t info,
         //panda_callbacks_phys_mem_read
         //panda_callbacks_phys_mem_write
     }
-    std::cout << "vcpu_mem " << std::endl;
+    //std::cout << "vcpu_mem " << std::endl;
 }
 
 static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
@@ -71,7 +71,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 
     n_insns = qemu_plugin_tb_n_insns(tb);
     
-    std::cout << "tb_trans " << n_insns << std::endl;
+    //std::cout << "tb_trans " << n_insns << std::endl;
 
     /**
      * This replicates insn_translate + insn_exec behavior
@@ -112,7 +112,7 @@ int qemu_plugin_install(qemu_plugin_id_t id, const qemu_info_t *info,
                         int argc, char **argv)
 {
     // qemu_plugin_outs("Hello from pandacore plugin");
-    cout << "hello from pandacore plugin" << endl;
+    //cout << "hello from pandacore plugin" << endl;
     qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
     qemu_plugin_register_atexit_cb(id, plugin_exit, NULL);
     if (external_plugin_install) {
