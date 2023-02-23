@@ -467,13 +467,13 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 #endif
         OG_printf("Pcomp length %d\n", pcomp_length);
         if (pcomp_length == (uint32_t)-1) { // Not sure why this happens, but it does
-              printf("Warning: OSI_linux Unhandled pcomp value, ignoring\n");
-              break;
+            printf("Warning: OSI_linux Unhandled pcomp value, ignoring\n");
+            break;
         }
 
         if (pcomp_length > PATH_MAX){
             printf("Error: OSI_linux pcomp length %d exceeds PATH_MAX. Check endianness.\n", pcomp_length);
-            assert(pcomp_length <= PATH_MAX);
+            break;
         }
         pcomp_length += 1; // space for string terminator
 
