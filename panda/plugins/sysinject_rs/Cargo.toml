@@ -13,10 +13,11 @@ panda-re = { version = "0.42.1", default-features = false }
 
 [features]
 #default = ["mips"]
-#default = ["arm"]
-default = ["i386"]
+default = ["arm"]
+#default = ["i386"]
+#default = ["x86_64"]
 
-#x86_64 = ["panda-re/x86_64"]
+x86_64 = ["panda-re/x86_64"]
 i386 = ["panda-re/i386"]
 arm = ["panda-re/arm"]
 #ppc = ["panda-re/ppc"]
