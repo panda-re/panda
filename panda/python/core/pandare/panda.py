@@ -1662,10 +1662,13 @@ class Panda():
         proc = self.plugins['osi'].get_current_process(cpu)
         if proc == self.ffi.NULL:
             return None
-        fname_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+        try:
+            fname_ptr = self.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+        except OverflowError:
+            return None
         if fname_ptr == self.ffi.NULL:
             return None
-        return panda.ffi.string(fname_ptr)
+        return self.ffi.string(fname_ptr)
 
     def get_mappings(self, cpu):
         '''
