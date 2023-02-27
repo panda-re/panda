@@ -1650,6 +1650,25 @@ class Panda():
         family_num = self.libpanda.panda_os_familyno
         family_name = self.ffi.string(self.ffi.cast("PandaOsFamily", family_num))
         return family_name
+    
+    def get_file_name(self, cpu, fd):
+        '''
+        Get the name of a file from a file descriptor.
+
+        Returns:
+            string: file name
+            None: on failure
+        '''
+        proc = self.plugins['osi'].get_current_process(cpu)
+        if proc == self.ffi.NULL:
+            return None
+        try:
+            fname_ptr = self.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+        except OverflowError:
+            return None
+        if fname_ptr == self.ffi.NULL:
+            return None
+        return self.ffi.string(fname_ptr)
 
     def get_mappings(self, cpu):
         '''
