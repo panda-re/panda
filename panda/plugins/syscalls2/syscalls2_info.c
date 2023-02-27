@@ -28,11 +28,18 @@ int load_syscall_info(void) {
 #endif
 
     if (panda_os_familyno == OS_WINDOWS) {
-    	// don't support 64-bit Windows (yet)
-    	assert(panda_os_bits == 32);
+    	// don't support 64-bit Windows (yet) except for Windows 7 SP 0 and 1
+    	assert((panda_os_bits == 32) ||
+    	        (0 == strcmp(panda_os_variant, "7sp0")) ||
+    	        (0 == strcmp(panda_os_variant, "7sp1")));
 
-        // for windows, take into account the panda_os_variant
-        syscall_info_dlname = g_strdup_printf("%s_dso_info_%s_%s_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, panda_os_variant, arch);
+    	// Windows 7 is special - SP 0 and 1 are in same file
+    	if (0 == strncmp(panda_os_variant, "7", 1)) {
+    	    syscall_info_dlname = g_strdup_printf("%s_dso_info_%s_7_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, arch);
+    	} else {
+            // for windows, take into account the panda_os_variant
+            syscall_info_dlname = g_strdup_printf("%s_dso_info_%s_%s_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, panda_os_variant, arch);
+    	}
     }
     else {
     	assert((panda_os_bits == 32) || (panda_os_bits == 64));

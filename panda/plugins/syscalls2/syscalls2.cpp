@@ -65,21 +65,27 @@ int64_t get_s64_generic(CPUState *cpu, uint32_t argnum);
 int32_t get_return_s32_generic(CPUState *cpu, uint32_t argnum);
 int64_t get_return_s64_generic(CPUState *cpu, uint32_t argnum);
 target_long get_return_val_x86(CPUState *cpu);
+target_long get_return_val_x64(CPUState *cpu);
 target_long get_return_val_arm(CPUState *cpu);
 target_long get_return_val_mips(CPUState *cpu);
 uint32_t get_return_32_windows_x86(CPUState *cpu, uint32_t argnum);
+uint32_t get_return_32_windows_x64(CPUState *cpu, uint32_t argnum);
 uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum);
+uint64_t get_return_64_windows_x64(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_x64(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum);
+uint64_t get_64_windows_x64(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_linux_x86(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_linux_x64(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_linux_arm(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_linux_mips(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_windows_x86(CPUState *cpu, uint32_t argnum);
+uint32_t get_32_windows_x64(CPUState *cpu, uint32_t argnum);
 target_ulong calc_retaddr_windows_x86(CPUState *cpu, target_ulong pc);
+target_ulong calc_retaddr_windows_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_x86(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
@@ -94,11 +100,24 @@ enum ProfileType {
     PROFILE_WINDOWS_XPSP2_X86,
     PROFILE_WINDOWS_XPSP3_X86,
     PROFILE_WINDOWS_7_X86,
-	PROFILE_LINUX_X64,
-	PROFILE_FREEBSD_X64,
+    PROFILE_WINDOWS_7_X64,
+    PROFILE_LINUX_X64,
+    PROFILE_FREEBSD_X64,
     PROFILE_LAST
 };
 
+// enter_switch:  the generated function that invokes the enter callback
+// return_switch:  the generated function that invokes the return callback
+// get_return_val:  function to get the return value for this system call
+// calc_retaddr:  function to fetch the address this system call returns to
+// get_32, get_s32, get_64 and get_s64:  used at syscall_enter to get the
+//   requested argument to the system call as the given type
+// get_return_32, get_return_s32, get_return_64, get_return_s64:  not really
+//   sure, but maybe like the above 4 but to be called during syscall_return???
+// windows_return_addr_register:  used to calculate where to read the return
+//   address from (-1 = NA)
+// windows_arg_offset:  offset from EDX where args start
+// syscall_interrupt_number:  interrupt used for system calls (ignored if NA)
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong, int);
     void         (*return_switch)(CPUState *, target_ulong, const syscall_ctx_t *);
@@ -186,7 +205,7 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = -1,
         .syscall_interrupt_number = 0x80,
     },
-    {
+    {   /* PROFILE_WINDOWS_2000_X86 */
         .enter_switch = syscall_enter_switch_windows_2000_x86,
         .return_switch = syscall_return_switch_windows_2000_x86,
         .get_return_val = get_return_val_x86,
@@ -207,7 +226,7 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = 0,
         .syscall_interrupt_number = 0x2E,
     },
-    {
+    {   /* PROFILE_WINDOWS_XPSP2_X86 */
         .enter_switch = syscall_enter_switch_windows_xpsp2_x86,
         .return_switch = syscall_return_switch_windows_xpsp2_x86,
         .get_return_val = get_return_val_x86,
@@ -228,7 +247,7 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = 8,
         .syscall_interrupt_number = 0x80,
     },
-    {
+    {   /* PROFILE_WINDOWS_XPSP3_X86 */
         .enter_switch = syscall_enter_switch_windows_xpsp3_x86,
         .return_switch = syscall_return_switch_windows_xpsp3_x86,
         .get_return_val = get_return_val_x86,
@@ -249,7 +268,7 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = 8,
         .syscall_interrupt_number = 0x80,
     },
-    {
+    {   /* PROFILE_WINDOWS_7_X86 */
         .enter_switch = syscall_enter_switch_windows_7_x86,
         .return_switch = syscall_return_switch_windows_7_x86,
         .get_return_val = get_return_val_x86,
@@ -270,7 +289,28 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = 8,
         .syscall_interrupt_number = 0x80,
     },
-    {
+    {   /* PROFILE_WINDOWS_7_X64 */
+        .enter_switch = syscall_enter_switch_windows_7_x64,
+        .return_switch = syscall_return_switch_windows_7_x64,
+        .get_return_val = get_return_val_x64,
+        .calc_retaddr = calc_retaddr_windows_x64,
+        .get_32 = get_32_windows_x64,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_windows_x64,
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_return_32_windows_x64,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_return_64_windows_x64,
+        .get_return_s64 = get_return_s64_generic,
+#if defined(TARGET_X86_64)
+        .windows_return_addr_register = R_ECX,
+#else
+        .windows_return_addr_register = -1,
+#endif
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
+    },
+    {   /* PROFILE_LINUX_X64 */
         .enter_switch = syscall_enter_switch_linux_x64,
         .return_switch = syscall_return_switch_linux_x64,
         .get_return_val = get_return_val_x86,
@@ -287,7 +327,7 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = -1,
         .syscall_interrupt_number = 0x80,
     },
-    {
+    {   /* PROFILE_FREEBSD_X64 */
         .enter_switch = syscall_enter_switch_freebsd_x64,
         .return_switch = syscall_return_switch_freebsd_x64,
         .get_return_val = get_return_val_x86,
@@ -322,6 +362,10 @@ target_long get_return_val_x86(CPUState *cpu){
     return static_cast<target_long>(env->regs[R_EAX]);
 #endif
     return 0;
+}
+
+target_long get_return_val_x64(CPUState *cpu){
+    return get_return_val_x86(cpu);
 }
 
 target_long get_return_val_arm(CPUState *cpu){
@@ -363,6 +407,19 @@ target_ulong calc_retaddr_windows_x86(CPUState* cpu, target_ulong pc) {
     target_ulong retaddr = 0;
     assert(syscalls_profile->windows_return_addr_register >= 0);
     panda_virtual_memory_rw(cpu, env->regs[syscalls_profile->windows_return_addr_register], (uint8_t *) &retaddr, 4, false);
+    return retaddr;
+#else
+    // shouldn't happen
+    assert (1==0);
+#endif
+}
+
+target_ulong calc_retaddr_windows_x64(CPUState* cpu, target_ulong pc) {
+#if defined(TARGET_I386) && defined(TARGET_X86_64)
+    // at least in 64-bit Windows 7, at the time this is called, the stub
+    // containing the syscall instruction has not yet executed, so the return
+    // address isn't in a register anywhere - but as syscall is 2 bytes...
+    target_ulong retaddr = pc + 2;
     return retaddr;
 #else
     // shouldn't happen
@@ -550,8 +607,8 @@ uint64_t get_linux_x64_argnum(CPUState *cpu, uint32_t argnum) {
 }
 
 static uint32_t get_win_syscall_arg(CPUState* cpu, int nr) {
-#if defined(TARGET_I386)
-    // At sysenter on Windows7, args start at env->regs[R_EDX]+8
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    // At sysenter on 32-bit Windows7, args start at env->regs[R_EDX]+8
     // At INT 0x2E on Windows 2000, args start at env->regs[R_EDX]
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     uint32_t arg = 0;
@@ -632,6 +689,69 @@ uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
     return (uint32_t) get_win_syscall_arg(cpu, argnum);
 }
 
+// TEMP...
+void print_arg_info(CPUState *cpu, uint32_t argnum)
+{
+#if defined(TARGET_I386)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    fprintf(stderr, "TEMP fetching arg %d when RCX=0x" TARGET_FMT_lx
+            ", RDX=0x" TARGET_FMT_lx ", R8=0x" TARGET_FMT_lx
+            ", R9=0x" TARGET_FMT_lx ", RSP=0x" TARGET_FMT_lx "\n", argnum,
+            env->regs[R_ECX], env->regs[R_EDX], env->regs[8], env->regs[9],
+            env->regs[R_ESP]);
+    unsigned char buf[88] = {};
+    int rv = panda_virtual_memory_rw(cpu, env->regs[R_ESP], buf, 88, false);
+    if (0 == rv) {
+        int bstart = 0;
+        fprintf(stderr, "TEMP data at RSP: ");
+        for (int i = 0; i < 11; i++) {
+            fprintf(stderr, " ");
+            bstart = i*8;
+            for (int j = 7; j >= 0; j--) {
+                fprintf(stderr, "%02x", buf[bstart+j]);
+            }
+            fprintf(stderr, " ");
+        }
+        fprintf(stderr, "\n");
+    } else {
+        fprintf(stderr, "TEMP COULD NOT READ DATA AT RSP\n");
+    }
+#endif
+}
+// ... TEMP
+uint32_t get_32_windows_x64(CPUState *cpu, uint32_t argnum) {
+#if defined(TARGET_I386)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    uint32_t argval = 0;
+    // haven't seen any structures in first 4 args to a system call, or any
+    // floating point values, so don't have to worry about those special cases
+    switch (argnum)
+    {
+        case 0:
+            argval = (uint32_t)((env->regs[R_ECX]) & 0xFFFFFFFF);
+            break;
+        case 1:
+            argval = (uint32_t)((env->regs[R_EDX]) & 0xFFFFFFFF);
+            break;
+        case 2:
+            argval = (uint32_t)((env->regs[8]) & 0xFFFFFFFF);
+            break;
+        case 3:
+            argval = (uint32_t)((env->regs[9]) & 0xFFFFFFFF);
+            break;
+        default:
+            // the rest are on the stack, 8 bytes apart
+            uint64_t argval8b = 0;
+            panda_virtual_memory_rw(cpu, env->regs[R_ESP]+8*(argnum+1),
+                    (uint8_t *)&argval8b, 8, false);
+            argval = (uint32_t)(argval8b & 0xFFFFFFFF);
+    }
+    return argval;
+#else
+    return 0;
+#endif
+}
+
 uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum) {
     assert (argnum < 6);
     return (((uint64_t) get_linux_x86_argnum(cpu, argnum)) << 32) | (get_linux_x86_argnum(cpu, argnum));
@@ -675,6 +795,37 @@ uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum) {
     return 0;
 }
 
+uint64_t get_64_windows_x64(CPUState *cpu, uint32_t argnum) {
+#if defined(TARGET_X86_64)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    uint64_t argval = 0;
+    // haven't seen any structures in first 4 args to a system call, or any
+    // floating point values, so don't have to worry about those special cases
+    switch (argnum)
+    {
+        case 0:
+            argval = env->regs[R_ECX];
+            break;
+        case 1:
+            argval = env->regs[R_EDX];
+            break;
+        case 2:
+            argval = env->regs[8];
+            break;
+        case 3:
+            argval = env->regs[9];
+            break;
+        default:
+            // the rest are on the stack, 8 bytes apart
+            panda_virtual_memory_rw(cpu, env->regs[R_ESP]+8*(argnum+1),
+                    (uint8_t *)&argval, 8, false);
+    }
+    return argval;
+#else
+    return 0;
+#endif
+}
+
 // Argument getting (at syscall return)
 static uint32_t get_win_syscall_return_arg(CPUState* cpu, int nr) {
 #if defined(TARGET_I386)
@@ -693,8 +844,20 @@ uint32_t get_return_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
     return get_win_syscall_return_arg(cpu, argnum);
 }
 
+uint32_t get_return_32_windows_x64(CPUState *cpu, uint32_t argnum) {
+    // TODO have NO idea where to find args at syscall_return
+    // use print_arg_info above to help figure it out when get that far
+    LOG_WARNING("TODO get_return_32_windows_x64, returning dummy value\n");
+    return 0;
+}
 uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
     assert (false && "64-bit arguments not supported on Windows 7 x86");
+}
+
+uint64_t get_return_64_windows_x64(CPUState *cpu, uint32_t argnum) {
+    // TODO have NO idea where to find args at syscall return
+    LOG_WARNING("TODO get_return_64_windows_x64, returning dummy value\n");
+    return 0;
 }
 
 // Wrappers
@@ -952,6 +1115,20 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     int static_callno = -1; // Set to non -1 if syscall num can be
                             // statically identified
+#if defined(TARGET_I386) && defined(TARGET_X86_64)
+    if (panda_os_familyno == OS_WINDOWS) {
+        CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+        if ((env->efer & MSR_EFER_SCE) && (env->efer & MSR_EFER_LMA)) {
+            // TODO not sure how to handle compatibility mode
+            if (!(env->segs[R_CS].flags & DESC_L_MASK)) {
+                LOG_WARNING("x86_64 windows replay is in compatibility mode!\n");
+            }
+        } else {
+            LOG_WARNING("x86_64 windows replay not in long mode or syscalls not enabled - not instrumenting\n");
+            return;
+        }
+    }
+#endif
     target_ulong res = doesBlockContainSyscall(cpu, tb, &static_callno);
 #ifdef DEBUG
     if(res == (target_ulong) -1){
@@ -1055,11 +1232,12 @@ bool init_plugin(void *self) {
 #endif
     }
     else if (panda_os_familyno == OS_WINDOWS) {
-        if (panda_os_bits != 32) {
-            std::cerr << PANDA_MSG "no support for 64-bit windows" << std::endl;
+        if ((panda_os_bits != 32) && (0 != strncmp(panda_os_variant, "7", 1))) {
+            std::cerr << PANDA_MSG "only windows 7 supported for 64-bit windows" << std::endl;
             return false;
         }
 #if defined(TARGET_I386)
+#if !defined(TARGET_X86_64)
         if (0 == strcmp(panda_os_variant, "xpsp2")) {
             std::cerr << PANDA_MSG "using profile for windows sp2 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP2_X86];
@@ -1076,6 +1254,12 @@ bool init_plugin(void *self) {
             std::cerr << PANDA_MSG "using profile for windows 2000 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_2000_X86];
         }
+#else
+        if (0 == strncmp(panda_os_variant, "7", 1)) {
+            std::cerr << PANDA_MSG "using profile for windows 7 x64 64-bit" << std::endl;
+            syscalls_profile = &profiles[PROFILE_WINDOWS_7_X64];
+        }
+#endif
 #endif
     } else if (panda_os_familyno == OS_FREEBSD) {
 #if defined(TARGET_X86_64)
