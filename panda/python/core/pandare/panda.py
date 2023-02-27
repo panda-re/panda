@@ -2861,7 +2861,7 @@ class Panda():
             # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
             self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
 
-            eval(f"self.plugins['{plugin_name}'].ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string. XXX insecure eval
+            getattr(self.plugins[plugin_name], f'ppp_add_cb_{attr}')(cast_rc) # All PPP  cbs start with this string.
             return cast_rc
         return decorator
 
@@ -2892,7 +2892,7 @@ class Panda():
         '''
 
         (f, plugin_name, attr) = self.ppp_registered_cbs[name]
-        eval(f"self.plugins['{plugin_name}'].ppp_remove_cb_{attr}")(f) # All PPP cbs start with this string. XXX insecure eval
+        getattr(self.plugins[plugin_name], f'ppp_remove_cb_{attr}')(f) # All PPP cbs start with this string.
         del self.ppp_registered_cbs[name] # It's now safe to be garbage collected
 
     ########## GDB MIXINS ##############
