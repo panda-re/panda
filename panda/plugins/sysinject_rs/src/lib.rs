@@ -4,6 +4,29 @@ use panda::sys::cpu_loop_exit_restore;
 use panda::{abi, regs, Callback};
 use std::process::abort;
 use std::slice;
+use std::mem::transmute;
+
+#[no_mangle]
+pub extern "C" fn sys_access(
+    cpu: &mut CPUState,
+    //pathname: target_ulong,
+    //mode: target_ulong,
+    args: *const target_ulong,
+) {
+    println!("Doing sys_access");
+
+    //let args: *const target_ulong = unsafe {transmute([pathname, mode])};
+    // sys_access syscall num is 4033 for mips
+    #[cfg(feature = "mips")] {
+        inject_syscall(cpu, 4033, 2, args);
+    }
+
+    // and 33 for arm/x86
+    #[cfg(any(feature = "i386", feature = "arm"))] {
+        println!("Doing arm stuff");
+        inject_syscall(cpu, 33, 2, args);
+    }
+}
 
 /// Inject a system call. Arguments are passed in as a raw array of target_ulong
 #[no_mangle]
@@ -13,6 +36,7 @@ pub extern "C" fn inject_syscall(
     nargs: usize,
     raw_args: *const target_ulong,
 ) {
+    println!("The times they are a'cahngin");
     let mut args: Vec<target_ulong> = vec![];
     #[allow(unused_variables)]
     let mut instr_len: usize = 0;
@@ -42,7 +66,7 @@ pub extern "C" fn inject_syscall(
 
     //Back up all GPRs since we are doing this non-cooperatively
     let backed_up_regs: Vec<_> = regs::Reg::iter()
-        .map({ |reg| (reg, regs::get_reg(cpu, reg)) })
+        .map(|reg| (reg, regs::get_reg(cpu, reg)))
         .collect();
     //Create a vector in case we have stack based arguments
     let mut backed_up_stack: Vec<(abi::StorageLocation, target_ulong)> = Vec::new();
