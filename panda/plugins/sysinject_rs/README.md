@@ -47,4 +47,5 @@ def function_hook(cpu, tb, h):
 
 panda.enable_precise_pc()
 panda.disable_tb_chaining()
-panda.run()```
+panda.run()
+```
