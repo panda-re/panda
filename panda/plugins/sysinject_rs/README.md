@@ -24,7 +24,6 @@ Example
 
 The following is small example of how to use this plugin, it functions if you replace `ptr` with an address you know will actually be hit.
 
-ptr = 0xface0ff
 
 ```from pandare import Panda
 panda = Panda(generic="arm")
@@ -34,6 +33,8 @@ def run_cmd():
     // print out the exit code, which should be 0xaa if everything worked
     print(panda.run_serial_cmd('printf "Exit code: %x" $?'))
     panda.end_analysis()
+
+ptr = 0xface0ff
 
 // Hook some known address where we want the syscall to fire
 // This hook uses the base plugin interface, which is clunky and likely not what you want,
