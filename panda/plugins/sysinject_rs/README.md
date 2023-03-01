@@ -22,7 +22,9 @@ To use the plugin, simply put the call to `inject_syscall` where you want it to 
 Example
 ------
 
-The following is small example of how to use this plugin, it functions if you replace `0xface0ff` with an address you know will actually be hit.
+The following is small example of how to use this plugin, it functions if you replace `ptr` with an address you know will actually be hit.
+
+ptr = 0xface0ff
 
 ```from pandare import Panda
 panda = Panda(generic="arm")
@@ -34,18 +36,44 @@ def run_cmd():
     panda.end_analysis()
 
 // Hook some known address where we want the syscall to fire
-panda.hook(0xface0ff)
-def function_hook(cpu, tb, h):
+// This hook uses the base plugin interface, which is clunky and likely not what you want,
+// but is presented here for completeness
+panda.hook(ptr)
+def hook(cpu, tb, h):
     // need to cast the arguments to the syscall to types rust can handle, namely *const target_ulong
     raw_args = panda.ffi.new("target_ulong[]", [panda.ffi.cast("target_ulong",0xaa)])
-    // call inject_syscall, passing: 
+    // call inject_syscall through sysinject_rs, passing: 
     //     cpu 
     //     248 (syscall num for exit_group in arm)
     //     1 (since exit_group takes one argument)
-    //     raw_args
+    //     raw_args: the arguments to pass to the syscall, in this case 0xaa since it's a non-standard exit code
     panda.plugins["sysinject_rs"].inject_syscall(cpu, 248, 1, raw_args)
 
+// Only one of this or the previous will actually run, since the syscall is exiting, but both work
+panda.hook(ptr)
+def hook2(cpu, tb, h):
+    // Using this interface, you do not need to do the casting yourself
+    // call inject_syscall through panda, passing:
+    //     cpu: cpu state
+    //     args: list of arguments, in this case just 0xab since it's a non-standard exit code
+    panda.inject_syscall(cpu, [0xab])
+    
+// This hook will call sys_access through the base plugin interface
+panda.hook(ptr)
+def access(cpu, tb, h):
+    raw_args = panda.ffi.new("target_ulong[]", [panda.ffi.cast("target_ulong", 0xfeedbeef), panda.ffi.cast("taret_ulong", 0x0)])
+    // call sys_access, passing a pointer to the file name to access (the pointer can instead be used to page in memory containing that address)
+    // as well as the mode
+    panda.plugins["sysinject_rs"].sys_access(cpu, raw_args)
+    
+panda.hook(ptr)
+def access2(cpu, tb, h):
+    // basically the same as the previous hook, with fewer steps
+    panda.sys_access(cpu, [0xfeedbeef, 0x0])
+    
 panda.enable_precise_pc()
 panda.disable_tb_chaining()
 panda.run()
 ```
+
+A more complete, runnable, example can be found in `panda/python/examples/sysinject`.
