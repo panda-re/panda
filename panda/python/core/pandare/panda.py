@@ -3327,7 +3327,7 @@ class Panda():
         '''
         Wrapper for sysinject's sys_access
         '''
-        self.plugins["sysinject_rs"].sys_access(cpu, args)
+        self.plugins["sysinject"].sys_access(cpu, args)
 
     def inject_syscall(self, cpu, num, args):
         '''
@@ -3339,6 +3339,6 @@ class Panda():
         for arg in args:
             raw_args.append(self.ffi.cast("target_ulong", arg))
         raw_args = self.new("target_ulong[]", raw_args)
-        self.plugins["sysinject_rs"].inject_syscall(cpu, num, nargs, raw_args)
+        self.plugins["sysinject"].inject_syscall(cpu, num, nargs, raw_args)
 
 # vim: expandtab:tabstop=4:

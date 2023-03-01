@@ -13,8 +13,6 @@ pub extern "C" fn sys_access(
     //mode: target_ulong,
     args: *const target_ulong,
 ) {
-    println!("Doing sys_access");
-
     //let args: *const target_ulong = unsafe {transmute([pathname, mode])};
     // sys_access syscall num is 4033 for mips
     #[cfg(feature = "mips")] {
@@ -23,7 +21,6 @@ pub extern "C" fn sys_access(
 
     // and 33 for arm/x86
     #[cfg(any(feature = "i386", feature = "arm"))] {
-        println!("Doing arm stuff");
         inject_syscall(cpu, 33, 2, args);
     }
 }
@@ -36,7 +33,6 @@ pub extern "C" fn inject_syscall(
     nargs: usize,
     raw_args: *const target_ulong,
 ) {
-    println!("The times they are a'cahngin");
     let mut args: Vec<target_ulong> = vec![];
     #[allow(unused_variables)]
     let mut instr_len: usize = 0;

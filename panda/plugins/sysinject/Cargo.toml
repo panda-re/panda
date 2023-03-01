@@ -1,7 +1,7 @@
 [package]
-name = "sysinject_rs"
+name = "sysinject"
 version = "0.1.0"
-authors = ["Zak Estrada <Zachary.Estrada@ll.mit.edu", "Luke Craig <Luke.Craig@ll.mit.edu>"]
+authors = ["Zak Estrada <Zachary.Estrada@ll.mit.edu", "Luke Craig <Luke.Craig@ll.mit.edu>", "Ryan Maggio <Ryan.Maggio@ll.mit.edu>"]
 edition = "2018"
 
 [lib]
@@ -17,7 +17,7 @@ default = ["arm"]
 #default = ["i386"]
 #default = ["x86_64"]
 
-x86_64 = ["panda-re/x86_64"]
+#x86_64 = ["panda-re/x86_64"]
 i386 = ["panda-re/i386"]
 arm = ["panda-re/arm"]
 #ppc = ["panda-re/ppc"]
@@ -25,4 +25,3 @@ mips = ["panda-re/mips"]
 #mipsel = ["panda-re/mipsel"]
 #mips64 = ["panda-re/mips64"]
 #aarch64 = ["panda-re/aarch64"]
-#dummy = []

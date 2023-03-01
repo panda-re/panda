@@ -45,8 +45,9 @@ snake_hook
 stringsearch
 syscalls2
 syscalls_logger
+sysinject
 textprinter
 trace
 track_intexc
 unigrams
-wintrospection
+#wintrospection
