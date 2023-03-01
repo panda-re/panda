@@ -3323,4 +3323,22 @@ class Panda():
         '''
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 
+    def sys_access(self, cpu, args):
+        '''
+        Wrapper for sysinject's sys_access
+        '''
+        self.plugins["sysinject_rs"].sys_access(cpu, args)
+
+    def inject_syscall(self, cpu, num, args):
+        '''
+        Wrapper for sysinject's inject_syscall which handles argument nastiness
+        '''
+
+        nargs = len(args)
+        raw_args = []
+        for arg in args:
+            raw_args.append(self.ffi.cast("target_ulong", arg))
+        raw_args = self.new("target_ulong[]", raw_args)
+        self.plugins["sysinject_rs"].inject_syscall(cpu, num, nargs, raw_args)
+
 # vim: expandtab:tabstop=4:
