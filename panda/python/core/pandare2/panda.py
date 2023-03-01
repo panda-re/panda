@@ -152,14 +152,14 @@ class Panda():
         if libpanda_path:
             self.libpanda_path = libpanda_path
         else:
-            self.libpanda_path = pjoin(self.build_dir, "libpanda_{0}-softmmu.so".format(self.arch_name))
+            self.libpanda_path = pjoin(self.build_dir, f"{self.arch_name}-softmmu", f"libpanda_{self.arch_name}-softmmu.so")
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
 
         self.ffi = self._do_types_import()
 
         self.libpanda = self.ffi.dlopen(self.libpanda_path, self.ffi.RTLD_GLOBAL)
         from os.path import join
-        pandummy_path = join(dirname(self.libpanda_path),'panda/core/libpandacore.so')
+        pandummy_path = join(dirname(self.libpanda_path),'../panda/core/libpandacore.so')
         self.pandummy = self.ffi.dlopen(pandummy_path)
         self.C = self.ffi.dlopen(None)
 
@@ -337,11 +337,14 @@ class Panda():
         archs = ['i386', 'x86_64', 'arm', 'ppc']
         python_package = pjoin(*[dirname(__file__), "data"])
         local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
-        path_end = "libpanda_{0}-softmmu.so".format(arch_name)
+        path_end = f"libpanda_{arch_name}-softmmu.so"
         #print(f"{path_end=}")
         pot_paths = [python_package, local_build]
         for potential_path in pot_paths:
             if isfile(pjoin(potential_path, path_end)):
+                #print("Loading libpanda from {}".format(potential_path))
+                return potential_path
+            if isfile(pjoin(potential_path, f"{arch_name}-softmmu", path_end)):
                 #print("Loading libpanda from {}".format(potential_path))
                 return potential_path
 
@@ -2917,7 +2920,7 @@ class Panda():
             # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
             self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
 
-            eval(f"self.plugins['{plugin_name}'].ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string. XXX insecure eval
+            getattr(self.plugins[plugin_name], f"ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string.
             return cast_rc
         return decorator
 

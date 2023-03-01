@@ -14,7 +14,6 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <gmodule.h>
 
 /*
  * For best performance, build the plugin with -fvisibility=hidden so that
@@ -46,7 +45,7 @@ typedef uint64_t qemu_plugin_id_t;
  *
  * No return value.
  */
-typedef void (*cb_func_t) (gpointer evdata, gpointer udata);
+typedef void (*cb_func_t) (void *evdata, void *udata);
 
 /*
  * Versioning plugins:
@@ -419,7 +418,7 @@ int qemu_plugin_load_plugin(char *path, int argc, char **argv);
  *
  * Returns: NULL on failure, function pointer on success
  */
-gpointer qemu_plugin_import_function(const char *plugin, const char *function);
+void *qemu_plugin_import_function(const char *plugin, const char *function);
 
 /**
  * qemu_plugin_create_callback() - create a new cb with given name
@@ -441,7 +440,7 @@ bool qemu_plugin_create_callback(qemu_plugin_id_t id, const char *name);
  * Returns: true if any registerd functions were run, false otherwise
  */
 bool qemu_plugin_run_callback(qemu_plugin_id_t id, const char *name,
-                              gpointer evdata, gpointer udata);
+                              void *evdata, void *udata);
 
 /**
  * qemu_plugin_reg_callback() - register a function to be called on cb with
@@ -475,7 +474,7 @@ bool qemu_plugin_unreg_callback(const char *target_plugin, const char *cb_name,
  *
  * Returns: -1 on failure
  */
-int qemu_plugin_read_guest_virt_mem(uint64_t gva, void* buf, size_t length);
+int qemu_plugin_read_guest_virt_mem(uint64_t gva, void *buf, size_t length);
 
 /**
  * Translates guest virtual addres to a guest physical address.
@@ -491,7 +490,7 @@ uint64_t qemu_plugin_virt_to_phys(uint64_t addr);
  *
  * Returns: Host virtual address
  */
-void* qemu_plugin_virt_to_host(uint64_t addr, int len);
+void *qemu_plugin_virt_to_host(uint64_t addr, int len);
 
 /**
  * qemu_plugin_tb_get_insn() - retrieve handle for instruction

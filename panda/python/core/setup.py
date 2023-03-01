@@ -38,6 +38,14 @@ def copy_objs():
         raise RuntimeError(f"Could not find PC-bios directory at {biosdir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
+    # pandacore
+    panda_dir = os.path.join(*["pandare2", "data", "panda"])
+    core_dir = os.path.join(*[panda_dir, "core"])
+    pandacore_path = os.path.join(*[build_root, "panda", "core", "libpandacore.so"])
+    os.mkdir(panda_dir)
+    os.mkdir(core_dir)
+    shutil.copy(pandacore_path, os.path.join(core_dir, "libpandacore.so"))
+
     # Copy pypanda's include directory (different than core panda's) into a datadir
     pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "pandare2", "include"])
     if not os.path.isdir(pypanda_inc):
@@ -58,9 +66,9 @@ def copy_objs():
         arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips64']
 
     for arch in arches:
-        libname = "libpanda-"+arch+".so"
+        libname = "libpanda_"+arch+"-softmmu.so"
         softmmu = arch+"-softmmu"
-        path      = os.path.join(*[build_root, softmmu, libname])
+        path      = os.path.join(*[build_root, libname])
         plugindir = os.path.join(*[build_root, softmmu, "panda", "plugins"])
         llvm1     = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
         llvm2     = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
@@ -72,15 +80,15 @@ def copy_objs():
 
         os.mkdir(os.path.join(lib_dir, softmmu))
 
-        new_plugindir = os.path.join(lib_dir, softmmu, "panda/plugins")
-        os.mkdir(os.path.dirname(new_plugindir)) # When we copy the whole tree, it will make the plugins directory
+        #new_plugindir = os.path.join(lib_dir, softmmu, "panda/plugins")
+        #os.mkdir(os.path.dirname(new_plugindir)) # When we copy the whole tree, it will make the plugins directory
 
         shutil.copy(        path,       os.path.join(lib_dir, softmmu))
         if llvm_enabled:
             shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
             shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
 
-        shutil.copytree(plugindir,  new_plugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
+        #shutil.copytree(plugindir,  new_plugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
 
     # Strip libpandas and plugins to save space (Need <100mb for pypi)
     if pypi_build:
@@ -159,13 +167,15 @@ setup(name='pandare2',
       author_email='fasano@mit.edu',
       url='https://github.com/panda-re/panda/',
       packages=find_packages(),
-      package_data = { 'pandare': ['data/**/*', # Copy everything (fails?)
+      package_data = { 'pandare2': ['data/**/*', # Copy everything (fails?)
           'data/*-softmmu/libpanda-*.so',     # Libpandas
           'data/*-softmmu/llvm-helpers*.bc*', # Llvm-helpers
           'data/*-softmmu/panda/plugins/*',   # All plugins
           'data/*-softmmu/panda/plugins/**/*',# All plugin files
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
+          'data/panda/*',                     #
+          'data/panda/**/*',                  # pandacore
           ]},
       install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf=='+pc_version],
       python_requires='>=3.6',
