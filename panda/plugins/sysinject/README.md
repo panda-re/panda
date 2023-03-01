@@ -43,12 +43,12 @@ panda.hook(ptr)
 def hook(cpu, tb, h):
     // need to cast the arguments to the syscall to types rust can handle, namely *const target_ulong
     raw_args = panda.ffi.new("target_ulong[]", [panda.ffi.cast("target_ulong",0xaa)])
-    // call inject_syscall through sysinject_rs, passing: 
+    // call inject_syscall through sysinject, passing: 
     //     cpu 
     //     248 (syscall num for exit_group in arm)
     //     1 (since exit_group takes one argument)
     //     raw_args: the arguments to pass to the syscall, in this case 0xaa since it's a non-standard exit code
-    panda.plugins["sysinject_rs"].inject_syscall(cpu, 248, 1, raw_args)
+    panda.plugins["sysinject"].inject_syscall(cpu, 248, 1, raw_args)
 
 // Only one of this or the previous will actually run, since the syscall is exiting, but both work
 panda.hook(ptr)
@@ -65,7 +65,7 @@ def access(cpu, tb, h):
     raw_args = panda.ffi.new("target_ulong[]", [panda.ffi.cast("target_ulong", 0xfeedbeef), panda.ffi.cast("taret_ulong", 0x0)])
     // call sys_access, passing a pointer to the file name to access (the pointer can instead be used to page in memory containing that address)
     // as well as the mode
-    panda.plugins["sysinject_rs"].sys_access(cpu, raw_args)
+    panda.plugins["sysinject"].sys_access(cpu, raw_args)
     
 panda.hook(ptr)
 def access2(cpu, tb, h):
