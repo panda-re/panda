@@ -5,7 +5,7 @@ import subprocess
 import struct
 import hashlib
 
-RRPACK_MAGIC = "PANDA_RR"
+RRPACK_MAGIC = b"PANDA_RR"
 
 # PANDA Packed RR file format (all integers are little-endian):
 # 0x00: magic "PANDA_RR"
@@ -38,7 +38,7 @@ print("Packing RR log %s with %d instructions..." % (base, num_guest_insns))
 outf = open(outfname, 'wb')
 outf.write(RRPACK_MAGIC)
 outf.write(struct.pack("<Q", num_guest_insns))
-outf.write("\0" * 16) # Placeholder for checksum
+outf.write(b"\0" * 16) # Placeholder for checksum
 outf.flush()
 subprocess.check_call(['tar', 'cJf', '-', base + '-rr-snp', base + '-rr-nondet.log'], stdout=outf)
 outf.close()
