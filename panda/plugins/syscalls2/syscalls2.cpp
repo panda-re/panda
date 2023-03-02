@@ -847,6 +847,7 @@ uint32_t get_return_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
 uint32_t get_return_32_windows_x64(CPUState *cpu, uint32_t argnum) {
     // TODO have NO idea where to find args at syscall_return
     // use print_arg_info above to help figure it out when get that far
+    print_arg_info(cpu, argnum);
     LOG_WARNING("TODO get_return_32_windows_x64, returning dummy value\n");
     return 0;
 }
@@ -856,6 +857,7 @@ uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
 
 uint64_t get_return_64_windows_x64(CPUState *cpu, uint32_t argnum) {
     // TODO have NO idea where to find args at syscall return
+    print_arg_info(cpu, argnum);
     LOG_WARNING("TODO get_return_64_windows_x64, returning dummy value\n");
     return 0;
 }
@@ -1115,20 +1117,6 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     int static_callno = -1; // Set to non -1 if syscall num can be
                             // statically identified
-#if defined(TARGET_I386) && defined(TARGET_X86_64)
-    if (panda_os_familyno == OS_WINDOWS) {
-        CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-        if ((env->efer & MSR_EFER_SCE) && (env->efer & MSR_EFER_LMA)) {
-            // TODO not sure how to handle compatibility mode
-            if (!(env->segs[R_CS].flags & DESC_L_MASK)) {
-                LOG_WARNING("x86_64 windows replay is in compatibility mode!\n");
-            }
-        } else {
-            LOG_WARNING("x86_64 windows replay not in long mode or syscalls not enabled - not instrumenting\n");
-            return;
-        }
-    }
-#endif
     target_ulong res = doesBlockContainSyscall(cpu, tb, &static_callno);
 #ifdef DEBUG
     if(res == (target_ulong) -1){
@@ -1145,6 +1133,23 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
 // syscall (as identified by doesBlockContainSyscall). Inserted into TCG by
 // before_tcg_codegen.
 void syscall_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc, int callno) {
+#if defined(TARGET_I386) && defined(TARGET_X86_64)
+    if (panda_os_familyno == OS_WINDOWS) {
+        CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+        if ((env->efer & MSR_EFER_SCE) && (env->efer & MSR_EFER_LMA)) {
+            // shouldn't happen, as WOW should covert the system calls and
+            // leave compatibility mode before executing them, but just in case...
+            if (!(env->segs[R_CS].flags & DESC_L_MASK)) {
+                LOG_WARNING("x86_64 windows replay is in compatibility mode!\n");
+                return;
+            }
+        } else {
+            LOG_WARNING("x86_64 windows replay not in long mode or syscalls not enabled - not executing callback\n");
+            return;
+        }
+    }
+#endif
+
 #if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     int no = env->regs[R_EAX];
