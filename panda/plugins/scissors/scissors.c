@@ -18,6 +18,7 @@
 #include "panda/include/panda/rr/panda_rr2.h"
 
 #include "migration/migration.h"
+#include "migration/savevm.h"
 #include "include/exec/address-spaces.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
@@ -256,8 +257,13 @@ static inline void save_snp_shot(void) {
     QIOChannelFile* ioc =
         qio_channel_file_new_path(snp_name, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+
+    set_rr_snapshot();
+
     qemu_savevm_state(snp, NULL);
     qemu_fclose(snp);
+
+    unset_rr_snapshot();
 }
 
 static void create_command_file(void) {

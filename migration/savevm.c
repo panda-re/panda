@@ -55,6 +55,7 @@
 #include "io/channel-buffer.h"
 #include "io/channel-file.h"
 #include "panda/callbacks/cb-support.h"
+#include "migration/savevm.h"
 
 #ifndef ETH_P_RARP
 #define ETH_P_RARP 0x8035
@@ -82,6 +83,30 @@ static struct mig_cmd_args {
     [MIG_CMD_PACKAGED]         = { .len =  4, .name = "PACKAGED" },
     [MIG_CMD_MAX]              = { .len = -1, .name = "MAX" },
 };
+
+const char* important_idstrs[] = {
+"ram",
+"cpu",
+NULL
+};
+
+int idstr_is_important(char* idstr);
+
+
+int idstr_is_important(char* idstr) {
+
+    int i = 0;
+    while (important_idstrs[i]) {
+        if (strcmp(idstr, important_idstrs[i]) == 0) {
+            return 1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
 
 static int announce_self_create(uint8_t *buf,
                                 uint8_t *mac_addr)
@@ -1153,6 +1178,10 @@ void qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only)
     json_start_array(vmdesc, "devices");
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
 
+        if (panda_is_in_record && !idstr_is_important(se->idstr)) {
+            continue;
+        }
+
         if ((!se->ops || !se->ops->save_state) && !se->vmsd) {
             continue;
         }
@@ -1838,6 +1867,7 @@ void loadvm_free_handlers(MigrationIncomingState *mis)
     }
 }
 
+
 static int
 qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
 {
@@ -1859,6 +1889,7 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
 
     trace_qemu_loadvm_state_section_startfull(section_id, idstr,
             instance_id, version_id);
+
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
