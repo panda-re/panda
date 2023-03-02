@@ -5,7 +5,7 @@ import subprocess
 import struct
 import hashlib
 
-RRPACK_MAGIC = "PANDA_RR"
+RRPACK_MAGIC = b"PANDA_RR"
 
 # PANDA Packed RR file format (all integers are little-endian):
 # 0x00: magic "PANDA_RR"
