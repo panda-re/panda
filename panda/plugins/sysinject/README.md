@@ -60,46 +60,46 @@ panda = Panda(generic="arm")
 @panda.queue_blocking
 def run_cmd():
     panda.revert_sync("root")
-    // print out the exit code, which should be 0xaa if everything worked
+    # print out the exit code, which should be 0xaa if everything worked
     print(panda.run_serial_cmd('printf "Exit code: %x" $?'))
     panda.end_analysis()
 
 ptr = 0xface0ff
 
-// Hook some known address where we want the syscall to fire
-// This hook uses the base plugin interface, which is clunky and likely not what you want,
-// but is presented here for completeness
+# Hook some known address where we want the syscall to fire
+# This hook uses the base plugin interface, which is clunky and likely not what you want,
+# but is presented here for completeness
 panda.hook(ptr)
 def hook(cpu, tb, h):
-    // need to cast the arguments to the syscall to types rust can handle, namely *const target_ulong
+    # need to cast the arguments to the syscall to types rust can handle, namely *const target_ulong
     raw_args = panda.ffi.new("target_ulong[]", [panda.ffi.cast("target_ulong",0xaa)])
-    // call inject_syscall through sysinject, passing: 
-    //     cpu 
-    //     248 (syscall num for exit_group in arm)
-    //     1 (since exit_group takes one argument)
-    //     raw_args: the arguments to pass to the syscall, in this case 0xaa since it's a non-standard exit code
+    # call inject_syscall through sysinject, passing: 
+    #     cpu 
+    #     248 (syscall num for exit_group in arm)
+    #     1 (since exit_group takes one argument)
+    #     raw_args: the arguments to pass to the syscall, in this case 0xaa since it's a non-standard exit code
     panda.plugins["sysinject"].inject_syscall(cpu, 248, 1, raw_args)
 
-// Only one of this or the previous will actually run, since the syscall is exiting, but both work
+# Only one of this or the previous will actually run, since the syscall is exiting, but both work
 panda.hook(ptr)
 def hook2(cpu, tb, h):
-    // Using this interface, you do not need to do the casting yourself
-    // call inject_syscall through panda, passing:
-    //     cpu: cpu state
-    //     args: list of arguments, in this case just 0xab since it's a non-standard exit code
+    # Using this interface, you do not need to do the casting yourself
+    # call inject_syscall through panda, passing:
+    #     cpu: cpu state
+    #     args: list of arguments, in this case just 0xab since it's a non-standard exit code
     panda.inject_syscall(cpu, [0xab])
     
-// This hook will call sys_access through the base plugin interface
+# This hook will call sys_access through the base plugin interface
 panda.hook(ptr)
 def access(cpu, tb, h):
     raw_args = panda.ffi.new("target_ulong[]", [panda.ffi.cast("target_ulong", 0xfeedbeef), panda.ffi.cast("taret_ulong", 0x0)])
-    // call sys_access, passing a pointer to the file name to access (the pointer can instead be used to page in memory containing that address)
-    // as well as the mode
+    # call sys_access, passing a pointer to the file name to access (the pointer can instead be used to page in memory containing that address)
+    # as well as the mode
     panda.plugins["sysinject"].sys_access(cpu, raw_args)
     
 panda.hook(ptr)
 def access2(cpu, tb, h):
-    // basically the same as the previous hook, with fewer steps
+    # basically the same as the previous hook, with fewer steps
     panda.sys_access(cpu, [0xfeedbeef, 0x0])
     
 panda.enable_precise_pc()
