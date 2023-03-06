@@ -50,4 +50,4 @@ textprinter
 trace
 track_intexc
 unigrams
-#wintrospection
+wintrospection
