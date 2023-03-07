@@ -43,22 +43,19 @@ pub extern "C" fn inject_syscall(
     #[allow(unused_variables)]
     let mut orig_addr: target_ulong = 0;
 
-    #[cfg(not(feature = "x86_64"))]
-    {
-        let targs = unsafe { slice::from_raw_parts(raw_args, nargs) };
-        args = targs.to_vec();
-    }
+    let targs = unsafe { slice::from_raw_parts(raw_args, nargs) };
+    args = targs.to_vec();
 
     // Separating out x86_64 argument parsing because instructions are not all length 4, and we pass that data in from outside
     // (because I didn't want to figure out capstone from the rust side, although that would be preferable)
     // We assume the first two arguments passed in are the length of the current instruction, and the length of the previous instruction.
-    #[cfg(feature = "x86_64")]
-    {
-        let targs = unsafe { slice::from_raw_parts(raw_args, nargs + 2) };
-        instr_len = targs[0] as usize;
-        prev_instr_len = targs[1] as usize;
-        args = targs[2..].to_vec();
-    }
+    //#[cfg(feature = "x86_64")]
+    //{
+    //    let targs = unsafe { slice::from_raw_parts(raw_args, nargs + 2) };
+    //    instr_len = targs[0] as usize;
+    //    prev_instr_len = targs[1] as usize;
+    //    args = targs[2..].to_vec();
+    //}
 
     //Back up all GPRs since we are doing this non-cooperatively
     let backed_up_regs: Vec<_> = regs::Reg::iter()
@@ -96,6 +93,9 @@ pub extern "C" fn inject_syscall(
     }
 
     // 64 bit support not ready yet, leaving this in incase we need to work on it later.
+    // But as with arm, we need to overwrite instructions, since attempts to use the backwards
+    // compatability of the int 0x80 method of syscall invocation has not worked for me
+    // might be worth trying that again, though, incase I missed something
     //#[cfg(feature = "x86_64")] {
     //    orig_addr = regs::get_pc(cpu);
     //    //orig_addr = regs::get_pc(cpu) + (prev_instr_len as target_ulong);
