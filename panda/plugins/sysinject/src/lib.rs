@@ -221,11 +221,12 @@ pub extern "C" fn inject_syscall(
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    println!("Loaded sysinject");
+    #[cfg(feature = "x86_64")]{
+        false
+    }
     true
 }
 
 #[panda::uninit]
 fn exit(_: &mut PluginHandle) {
-    println!("Unloading sysinject");
 }
