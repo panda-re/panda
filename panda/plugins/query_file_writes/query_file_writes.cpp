@@ -139,7 +139,7 @@ bool init_plugin(void *self)
     // OS specific setup
     switch (panda_os_familyno) {
     case OS_WINDOWS: {
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
         cout << "No support for windows file write querying\n";
         return false;        
 #endif
