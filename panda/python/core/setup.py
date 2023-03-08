@@ -46,6 +46,11 @@ def copy_objs():
     os.mkdir(core_dir)
     shutil.copy(pandacore_path, os.path.join(core_dir, "libpandacore.so"))
 
+    # copy plugins
+    plugins_path = os.path.join(*[build_root, "contrib", "plugins"])
+    plugins_copy_to_path = os.path.join(*[panda_dir, "plugins"])
+    shutil.copytree(plugins_path, plugins_copy_to_path)
+
     # Copy pypanda's include directory (different than core panda's) into a datadir
     pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "pandare2", "include"])
     if not os.path.isdir(pypanda_inc):
@@ -175,7 +180,7 @@ setup(name='pandare2',
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           'data/panda/*',                     #
-          'data/panda/**/*',                  # pandacore
+          'data/panda/**/*',                  # pandacore and plugins
           ]},
       install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf=='+pc_version],
       python_requires='>=3.6',

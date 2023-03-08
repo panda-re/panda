@@ -684,13 +684,24 @@ class Panda():
         Load a C plugin with no arguments. Deprecated. Use load_plugin
         '''
         self.load_plugin(name, args={})
-    
+
     def _plugin_loaded(self, name):
         name_c = self.ffi.new("char[]", bytes(name, "utf-8"))
         return self.libpanda.panda_get_plugin_by_name(name_c) != self.ffi.NULL
-    
+
     def plugin_outs(self, message:str):
         return self.libpanda.qemu_plugin_outs(self.ffi.new("char[]",bytes(message,"utf8")))
+
+    def _plugins_dir(self):
+        return pjoin(*[dirname(self.panda), "..", "panda", "plugins"])
+
+    def _plugin_path(self, name):
+        plugin_path = abspath(pjoin(*[self._plugins_dir(), f"lib{name}.so"]))
+
+        if isfile(plugin_path):
+            return plugin_path
+        else:
+            raise Exception(f"Plugin {name} not found at {plugin_path}")
 
     def load_plugin(self, name, args={}):
         '''
@@ -706,36 +717,44 @@ class Panda():
         if debug:
             progress ("Loading plugin %s" % name),
 
-        argstrs_ffi = []
-        if isinstance(args, dict):
-            for k,v in args.items():
-                this_arg_s = "{}={}".format(k,v)
-                this_arg = self.ffi.new("char[]", bytes(this_arg_s, "utf-8"))
-                argstrs_ffi.append(this_arg)
+        plugin_path = self._plugin_path(name)
+        plugin_path_ffi = self.ffi.new("char[]", plugin_path.encode('utf8'))
+        ret = self.libpanda.qemu_plugin_load_plugin(plugin_path_ffi, 0, self.ffi.NULL)
 
-            n = len(args.keys())
-        elif isinstance(args, list):
-            for arg in args:
-                this_arg = self.ffi.new("char[]", bytes(arg, "utf-8"))
-                argstrs_ffi.append(this_arg)
-            n = len(args)
+        if ret != 0:
+            raise Exception(f"Failed to load plugin {name} (err={ret})")
 
-        else:
-            raise ValueError("Arguments to load plugin must be a list or dict of key/value pairs")
+        #argstrs_ffi = []
+        #if isinstance(args, dict):
+        #    for k,v in args.items():
+        #        this_arg_s = "{}={}".format(k,v)
+        #        this_arg = self.ffi.new("char[]", bytes(this_arg_s, "utf-8"))
+        #        argstrs_ffi.append(this_arg)
 
-        # First set qemu_path so plugins can load (may be unnecessary after the first time)
-        assert(self.panda), "Unknown location of PANDA"
-        panda_name_ffi = self.ffi.new("char[]", bytes(self.panda,"utf-8"))
-        self.libpanda.panda_set_qemu_path(panda_name_ffi)
+        #    n = len(args.keys())
+        #elif isinstance(args, list):
+        #    for arg in args:
+        #        this_arg = self.ffi.new("char[]", bytes(arg, "utf-8"))
+        #        argstrs_ffi.append(this_arg)
+        #    n = len(args)
 
-        if len(argstrs_ffi):
-            plugin_args = argstrs_ffi
-        else:
-            plugin_args = self.ffi.NULL
+        #else:
+        #    raise ValueError("Arguments to load plugin must be a list or dict of key/value pairs")
 
-        charptr = self.ffi.new("char[]", bytes(name,"utf-8"))
-        self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
+        ## First set qemu_path so plugins can load (may be unnecessary after the first time)
+        #assert(self.panda), "Unknown location of PANDA"
+        #panda_name_ffi = self.ffi.new("char[]", bytes(self.panda,"utf-8"))
+        #self.libpanda.panda_set_qemu_path(panda_name_ffi)
+
+        #if len(argstrs_ffi):
+        #    plugin_args = argstrs_ffi
+        #else:
+        #    plugin_args = self.ffi.NULL
+
+        #charptr = self.ffi.new("char[]", bytes(name,"utf-8"))
+        #self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self._load_plugin_library(name)
+
 
     def _procname_changed(self, cpu, name):
         for cb_name, cb in self.registered_callbacks.items():
@@ -953,8 +972,8 @@ class Panda():
             libpanda_path_chr = self.ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         if not name in self.plugins.keys():
-            assert(isfile(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
-            library = self.ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
+            path = self._plugin_path(name)
+            library = self.ffi.dlopen(path)
             self.plugins[name] = library
 
     def queue_async(self, f, internal=False):
@@ -2871,8 +2890,9 @@ class Panda():
             ...
         '''
 
-        if plugin_name not in self.plugins and autoload: # Could automatically load it?
-            print(f"PPP automatically loaded plugin {plugin_name}")
+        if plugin_name not in self.plugins:
+            self.load_plugin(plugin_name)
+            print("Loaded plugin",plugin_name)
 
         if not hasattr(self, "ppp_registered_cbs"):
             self.ppp_registered_cbs = {}
@@ -2889,10 +2909,10 @@ class Panda():
             if local_name is None:
                 local_name = fun.__name__
 
-            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+            def _run_and_catch(evdata, udata): # Run function but if it raises an exception, stop panda and raise it
                 if not hasattr(self, "exit_exception"):
                     try:
-                        r = fun(*args, **kwargs)
+                        r = fun(evdata, udata)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
                         return r
@@ -2906,7 +2926,8 @@ class Panda():
                             raise e
                         # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
 
-            cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
+            #cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
+            cast_rc = self.ffi.callback("cb_func_t", _run_and_catch)
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
@@ -2918,10 +2939,13 @@ class Panda():
             assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
 
             # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
+            #self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
             self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
 
-            getattr(self.plugins[plugin_name], f"ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string.
-            return cast_rc
+            self.libpanda.qemu_plugin_reg_callback(plugin_name.encode('utf8'), attr.encode('utf8'), cast_rc)
+            print("callback registered")
+            #getattr(self.plugins[plugin_name], f"ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string.
+            return _run_and_catch
         return decorator
 
 

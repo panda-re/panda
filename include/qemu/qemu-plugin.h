@@ -59,6 +59,7 @@ typedef void (*cb_func_t) (void *evdata, void *udata);
  */
 
 extern QEMU_PLUGIN_EXPORT int qemu_plugin_version;
+extern QEMU_PLUGIN_EXPORT const char *qemu_plugin_name;
 
 #define QEMU_PLUGIN_VERSION 2
 
@@ -403,8 +404,8 @@ int32_t qemu_plugin_get_reg32(unsigned int reg_idx, bool* error);
 int64_t qemu_plugin_get_reg64(unsigned int reg_idx, bool* error);
 
 /**
- * qemu_plugin_import_function() - return pointer to a function in another plugin
- * @plugin: plugin name
+ * qemu_plugin_load_plugin() - load a plugin in another plugin
+ * @path: plugin name
  * @function: function name
  *
  * Returns: NULL on failure, function pointer on success
