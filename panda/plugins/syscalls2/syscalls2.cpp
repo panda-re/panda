@@ -689,36 +689,6 @@ uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
     return (uint32_t) get_win_syscall_arg(cpu, argnum);
 }
 
-// TEMP...
-void print_arg_info(CPUState *cpu, uint32_t argnum)
-{
-#if defined(TARGET_I386)
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    fprintf(stderr, "TEMP fetching arg %d when RCX=0x" TARGET_FMT_lx
-            ", RDX=0x" TARGET_FMT_lx ", R8=0x" TARGET_FMT_lx
-            ", R9=0x" TARGET_FMT_lx ", RSP=0x" TARGET_FMT_lx "\n", argnum,
-            env->regs[R_ECX], env->regs[R_EDX], env->regs[8], env->regs[9],
-            env->regs[R_ESP]);
-    unsigned char buf[88] = {};
-    int rv = panda_virtual_memory_rw(cpu, env->regs[R_ESP], buf, 88, false);
-    if (0 == rv) {
-        int bstart = 0;
-        fprintf(stderr, "TEMP data at RSP: ");
-        for (int i = 0; i < 11; i++) {
-            fprintf(stderr, " ");
-            bstart = i*8;
-            for (int j = 7; j >= 0; j--) {
-                fprintf(stderr, "%02x", buf[bstart+j]);
-            }
-            fprintf(stderr, " ");
-        }
-        fprintf(stderr, "\n");
-    } else {
-        fprintf(stderr, "TEMP COULD NOT READ DATA AT RSP\n");
-    }
-#endif
-}
-// ... TEMP
 uint32_t get_32_windows_x64(CPUState *cpu, uint32_t argnum) {
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
@@ -845,10 +815,8 @@ uint32_t get_return_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
 }
 
 uint32_t get_return_32_windows_x64(CPUState *cpu, uint32_t argnum) {
-    // TODO have NO idea where to find args at syscall_return
-    // use print_arg_info above to help figure it out when get that far
-    print_arg_info(cpu, argnum);
-    LOG_WARNING("TODO get_return_32_windows_x64, returning dummy value\n");
+    // suspect the part of the profile this is for is dead code
+    LOG_WARNING("get_return_32_windows_x64, returning dummy value from presumed dead code\n");
     return 0;
 }
 uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
@@ -856,9 +824,8 @@ uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
 }
 
 uint64_t get_return_64_windows_x64(CPUState *cpu, uint32_t argnum) {
-    // TODO have NO idea where to find args at syscall return
-    print_arg_info(cpu, argnum);
-    LOG_WARNING("TODO get_return_64_windows_x64, returning dummy value\n");
+    // suspect the part of the profile this is for is dead code
+    LOG_WARNING("get_return_64_windows_x64, returning dummy value from presumed dead code\n");
     return 0;
 }
 
