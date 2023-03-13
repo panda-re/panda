@@ -221,7 +221,7 @@ pub extern "C" fn inject_syscall(
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    #[cfg(any(feature = "x86_64", feature = "aarch64", feature = "mips64", feature = "mipsel"))]{
+    #[cfg(any(feature = "x86_64", feature = "aarch64"))]{
         return false;
     }
     true
