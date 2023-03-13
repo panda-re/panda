@@ -18,7 +18,7 @@ If you look in the `syscalls2` plugin directory, you will see a number of files 
     windows_7_x86_prototypes.txt
     ...
 
-Each line in each of these files is the prototype for a system call, with named paramters.
+Each line in each of these files is the prototype for a system call, with named parameters.
 The number at the beginning of each line is the system call number.
 On x86, for instance, you load that number into the EAX register, push arguments to the stack,
 and then execute the `systenter` instruction to invoke a system call.
@@ -29,7 +29,11 @@ For Windows prototypes, whose signatures do not change between OS releases (thou
 Caveats
 ----
 
-Linux x86, x86_64, ARM,  and MIPS as well as several versions of Windows x86 are currently supported. 64-bit versions of Windows are not currently supported, because we have not yet implemented the 64-bit Windows system call ABI. Patches for 64-bit support would be greatly appreciated!
+Linux x86, x86_64, ARM, and MIPS as well as several versions of Windows x86 are currently supported. The only x86_64 Windows version currently supported is Windows 7.
+
+As with some Linux versions, the x86_64 Windows 7 version has deficiencies in how it handles 16-bit system call parameters.  It also has a similar deficiency in how 8-bit system call parameters are handled.  This is because the syscalls2 framework currently only has support for 32-bit and 64-bit parameters.  If the system call of interest has an 8-bit or 16-bit parameter, then you can mask the parameter value appropriately in your plugin.
+
+Patches for additional operating system versions, and to enhance the framework so that 8-bit and 16-bit system call arguments can be automatically properly masked would be appreciated!
 
 Use
 ----
