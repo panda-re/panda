@@ -222,7 +222,7 @@ pub extern "C" fn inject_syscall(
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     #[cfg(feature = "x86_64")]{
-        false
+        return false;
     }
     true
 }
