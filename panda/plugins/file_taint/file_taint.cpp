@@ -118,7 +118,7 @@ void read_enter(const std::string &filename, uint64_t file_id,
     free_osithread(thr);
 }
 
-// A normaled read_return function. Called by both Linux and Windows read return
+// A normalized read_return function. Called by both Linux and Windows read return
 // implementations.
 void read_return(uint64_t file_id, uint64_t bytes_read,
                  target_ulong buffer_addr)
@@ -197,13 +197,15 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
 }
 
 #ifdef TARGET_I386
-// Handle a Windows read enter. Extract the filename and offset of the file
-// handle and call the normalized read enter.
-void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
-                        uint32_t Event, uint32_t UserApcRoutine,
-                        uint32_t UserApcContext, uint32_t IoStatusBlock,
-                        uint32_t Buffer, uint32_t BufferLength,
-                        uint32_t ByteOffset, uint32_t Key)
+
+// From DDK
+typedef uint32_t NTSTATUS;
+const NTSTATUS STATUS_SUCCESS = 0x00000000;
+const NTSTATUS STATUS_PENDING = 0x00000103;
+
+// Common code for Windows read enter.  Extract the filename and offset of the
+// file handle and call the normalized read enter.
+void windows_read_enter(CPUState *cpu, uint64_t FileHandle)
 {
     // get_handle_name will assert if the filename is null
     char *filename = get_handle_name(cpu, FileHandle);
@@ -225,18 +227,74 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
     g_free(filename);
 }
 
-// From DDK
-typedef uint32_t NTSTATUS;
-const NTSTATUS STATUS_SUCCESS = 0x00000000;
-const NTSTATUS STATUS_PENDING = 0x00000103;
+#ifdef TARGET_X86_64
 
-// Handle a Windows read return. Gets the number of bytes read from the file and
-// calls the normalized read return.
-void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
-                         uint32_t Event, uint32_t UserApcRoutine,
-                         uint32_t UserApcContext, uint32_t IoStatusBlock,
-                         uint32_t Buffer, uint32_t BufferLength,
-                         uint32_t ByteOffset, uint32_t Key)
+// Handle a 64-bit Windows read enter. Extract the filename and offset of the
+// file handle and call the normalized read enter.
+void windows64_read_enter(CPUState *cpu, target_ulong pc, uint64_t FileHandle,
+                          uint64_t Event, uint64_t ApcRoutine,
+                          uint64_t ApcContext, uint64_t IoStatusBlock,
+                          uint64_t Buffer, uint32_t Length,
+                          uint64_t ByteOffset, uint64_t Key)
+{
+    windows_read_enter(cpu, FileHandle);
+}
+
+
+// Handle a 64-bit Windows read return. Gets the number of bytes read from the
+// file and calls the normalized read return.
+void windows64_read_return(CPUState *cpu, target_ulong pc, uint64_t FileHandle,
+                           uint64_t Event, uint64_t ApcRoutine,
+                           uint64_t ApcContext, uint64_t IoStatusBlock,
+                           uint64_t Buffer, uint32_t Length,
+                           uint64_t ByteOffset, uint64_t Key)
+{
+    struct {
+        union {
+            NTSTATUS status;
+            uint64_t pointer;
+        };
+        uint64_t information;
+    } io_status_block2;
+    if (panda_virtual_memory_read(cpu, IoStatusBlock,
+                                  (uint8_t *)&io_status_block2,
+                                  sizeof(io_status_block2)) == -1) {
+        printf("failed to read number of bytes read\n");
+        return;
+    }
+
+    if (io_status_block2.status == STATUS_PENDING) {
+        printf(
+            "file_taint read return: detected async read return, ignoring\n");
+    } else if (io_status_block2.status == STATUS_SUCCESS) {
+        read_return(FileHandle, io_status_block2.information, Buffer);
+    } else {
+        printf("file_taint windows_read_return: detected read failure, "
+               "ignoring\n");
+    }
+}
+
+#else
+
+// Handle a 32-bit Windows read enter. Extract the filename and offset of the
+// file handle and call the normalized read enter.
+void windows32_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
+                          uint32_t Event, uint32_t UserApcRoutine,
+                          uint32_t UserApcContext, uint32_t IoStatusBlock,
+                          uint32_t Buffer, uint32_t BufferLength,
+                          uint32_t ByteOffset, uint32_t Key)
+{
+    windows_read_enter(cpu, FileHandle);
+}
+
+
+// Handle a 32-bit Windows read return. Gets the number of bytes read from the
+// file and calls the normalized read return.
+void windows32_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
+                           uint32_t Event, uint32_t UserApcRoutine,
+                           uint32_t UserApcContext, uint32_t IoStatusBlock,
+                           uint32_t Buffer, uint32_t BufferLength,
+                           uint32_t ByteOffset, uint32_t Key)
 {
     struct {
         union {
@@ -262,7 +320,8 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                "ignoring\n");
     }
 }
-#endif
+#endif  // end of not TARGET_X86_64
+#endif  // end of TARGET_I386
 
 // Extract the filename and offset of the file descriptor and call the
 // normalized read enter.
@@ -428,15 +487,28 @@ bool init_plugin(void *self)
     // OS specific setup
     switch (panda_os_familyno) {
     case OS_WINDOWS: {
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
+#if !defined(TARGET_X86_64)
         verbose_printf("file_taint: setting up Windows file read detection\n");
-        PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows_read_enter);
-        PPP_REG_CB("syscalls2", on_NtReadFile_return, windows_read_return);
-
+        PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows32_read_enter);
+        PPP_REG_CB("syscalls2", on_NtReadFile_return, windows32_read_return);
+#else
+        if ((0 == strcmp(panda_os_variant, "7sp0") ||
+                (0 == strcmp(panda_os_variant, "7sp1")))) {
+            verbose_printf("file_taint: setting up 64-bit Windows file read detection\n");
+            PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows64_read_enter);
+            PPP_REG_CB("syscalls2", on_NtReadFile_return, windows64_read_return);
+        } else {
+            fprintf(stderr,
+                    "ERROR: Windows is only supported on x86 (32-bit) and 64-bit Windows 7\n");
+            return false;
+        }
+#endif
         panda_require("wintrospection");
         assert(init_wintrospection_api());
 #else
-        fprintf(stderr, "ERROR: Windows is only supported on x86 (32-bit)\n");
+        fprintf(stderr,
+                "ERROR: Windows is only supported on x86 (32-bit) and 64-bit Windows 7\n");
         return false;
 #endif
     } break;
