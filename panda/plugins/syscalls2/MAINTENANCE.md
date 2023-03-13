@@ -42,7 +42,9 @@ Then, modify either `make_all_prototypes.sh` or `prototype_parser_config.py` to 
 Execute `make_all_prototypes.sh` to create a mytarget_prototypes.txt file in the `generated-in` folder.  If only a few prototypes need to be (re)generated, you can also call `prototype_parser.py` individually for each one. 
 
 ### Windows
-TBD
+The `make_all_prototypes.sh` script already creates prototypes for a great many Windows versions.  It is the next step, generating the support files, that drops many Windows versions from the processing.
+
+TBD:  How to extract system call prototypes for another Windows version
 
 ## Generating `syscalls2` support files
 
@@ -55,15 +57,13 @@ The files used to generate the C/C++ headers and sources are in the `scripts`, `
 
 Some of the files created by `make_all_generated.sh` contain information on more than one target.  Thus it is necessary to have all input prepared, and to run the script with all targets specified.  The output will be written to the `generated` folder.
 
-### Linux
+The high-level steps are the same for both Linux and Windows:
+
 Modify `make_all_generated.sh` to add your new target to the `syscall_parser.py` arguments.
 
 If your new target has any system calls that do not return, add a section for your target naming them in the `context_target.json` file.
 
 In `syscall_parser.py`, it may be necessary to add a new architecture and/or OS, and to tweak the type lists and/or their processing to properly convert the types encountered in your new target's prototype file.
-
-### Windows
-TBD
 
 ## Modifying syscalls2 hand-written code
 
