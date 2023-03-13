@@ -17,11 +17,14 @@ default = ["arm"]
 #default = ["i386"]
 #default = ["x86_64"]
 
-x86_64 = ["panda-re/x86_64"]
 i386 = ["panda-re/i386"]
+x86_64 = ["panda-re/x86_64"]
+
 arm = ["panda-re/arm"]
-#ppc = ["panda-re/ppc"]
+aarch64 = ["panda-re/aarch64"]
+
+ppc = ["panda-re/ppc"]
+
 mips = ["panda-re/mips"]
 mipsel = ["panda-re/mipsel"]
 mips64 = ["panda-re/mips64"]
-aarch64 = ["panda-re/aarch64"]
