@@ -1,12 +1,15 @@
 use panda::mem::{virtual_memory_read, virtual_memory_write};
 use panda::prelude::*;
 use panda::sys::cpu_loop_exit_restore;
-use panda::{abi, regs, Callback};
 use std::process::abort;
 use std::slice;
 use std::mem::transmute;
 
+#[cfg(any(feature = "arm", feature = "aarch64", feature = "mips", feature = "mipsel", feature = "mips64", feature = "i386"))]
+    use panda::{abi, regs, Callback};
+
 #[no_mangle]
+#[cfg(any(feature = "arm", feature = "aarch64", feature = "mips", feature = "mipsel", feature = "mips64", feature = "i386"))]
 pub extern "C" fn sys_access(
     cpu: &mut CPUState,
     //pathname: target_ulong,
@@ -27,6 +30,7 @@ pub extern "C" fn sys_access(
 
 /// Inject a system call. Arguments are passed in as a raw array of target_ulong
 #[no_mangle]
+#[cfg(any(feature = "arm", feature = "aarch64", feature = "mips", feature = "mipsel", feature = "mips64", feature = "i386"))]
 pub extern "C" fn inject_syscall(
     cpu: &mut CPUState,
     callno: target_ulong,

@@ -16,6 +16,7 @@ panda-re = { version = "0.42.1", default-features = false }
 default = ["arm"]
 #default = ["i386"]
 #default = ["x86_64"]
+#default = ["ppc"]
 
 i386 = ["panda-re/i386"]
 x86_64 = ["panda-re/x86_64"]
