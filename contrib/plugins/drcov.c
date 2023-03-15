@@ -21,6 +21,7 @@
 #include <qemu-plugin.h>
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "drcov";
 
 static char header[] = "DRCOV VERSION: 2\n"
                 "DRCOV FLAVOR: drcov-64\n"

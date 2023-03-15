@@ -34,6 +34,7 @@
 #include <qemu-plugin.h>
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "lockstep";
 
 /* saved so we can uninstall later */
 static qemu_plugin_id_t our_id;

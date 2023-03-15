@@ -14,6 +14,7 @@
 #define STRTOLL(x) g_ascii_strtoll(x, NULL, 10)
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "cache";
 
 static enum qemu_plugin_mem_rw rw = QEMU_PLUGIN_MEM_RW;
 
