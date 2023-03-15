@@ -3,11 +3,14 @@
 #include <plugin-qpp.h>
 #include "syscalls.h"
 #include <assert.h>
-#include "sc_file_log.h"
+#include <gmodule.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "sc_file_log";
+
+#include "sc_file_log.h"
 
 get_syscall_arg_t get_syscall_arg = NULL;
 should_log_t should_log = NULL;
@@ -79,8 +82,15 @@ static SyscallArgSelector arg_selectors[] = {
   { NULL,      get_other,   should_log_other},
 };
 
-void log_syscall(uint64_t pc, uint64_t callno)
+typedef struct {
+    uint64_t pc;
+    uint64_t callno;
+} syscall_evdata;
+
+void log_syscall(syscall_evdata* ev, void* ignore)
 {
+  uint64_t callno = ev->callno;
+  uint64_t pc = ev->pc;
   if (should_log(callno)) {
     bool error = false;
     char str_val[100];

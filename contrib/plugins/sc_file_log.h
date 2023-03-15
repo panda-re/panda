@@ -1,4 +1,4 @@
-void log_syscall(uint64_t pc, uint64_t callno);
+//void log_syscall(uint64_t pc, uint64_t callno);
 
 typedef uint64_t (*get_syscall_arg_t)(int argno, bool *error);
 typedef bool (*should_log_t)(int argno);

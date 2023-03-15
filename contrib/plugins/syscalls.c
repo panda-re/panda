@@ -162,7 +162,7 @@ static void syscall_64(unsigned int cpu_index, void *udata) {
   uint64_t evdata[2];
   evdata[0] = pc;
   evdata[1] = callno;
-  qemu_plugin_run_callback(self_id, "on_all_sys_enter", (gpointer)evdata, NULL);
+  qemu_plugin_run_callback(self_id, "on_all_sys_enter", evdata, NULL);
 }
 
 //int first = 0;
