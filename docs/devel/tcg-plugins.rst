@@ -283,6 +283,14 @@ run::
   160          1      0
   135          1      0
 
+- tests/plugins/qpp_srv.c & tests/plugins/qpp_client.c
+
+These plugins demonstrate QPP interactions. The qpp_srv plugin defines
+a few exported functions and its own callback which are then imported and
+used by the qpp_client plugin. The qpp_client plugin registers its own
+function to run on qpp_srv's defined callback. The tests for these plugins
+are modified as both plugins must be loaded in order to work.
+
 - contrib/plugins/hotblocks.c
 
 The hotblocks plugin allows you to examine the where hot paths of
