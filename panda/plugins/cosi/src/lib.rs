@@ -39,9 +39,9 @@ static ARGS: Lazy<Args> = Lazy::new(Args::from_panda_args);
 #[allow(deprecated)]
 fn symbol_table() -> &'static VolatilityJson {
     SYMBOL_TABLE.get_or_init(|| {
-        let name = get_symtab_name();
 
         let path = if ARGS.profile.is_empty() || !Path::new(&ARGS.profile).exists() {
+            let name = get_symtab_name();
             let filename = if ARGS.profile.is_empty() {
                 &name
             } else {
@@ -99,6 +99,10 @@ fn init(_: &mut PluginHandle) -> bool {
 
             first_syscall.disable();
         });
+    }
+
+    #[cfg(any(feature = "mips", feature = "mipsel"))] {
+        structs::HWPROCID.ensure_init();
     }
 
     true

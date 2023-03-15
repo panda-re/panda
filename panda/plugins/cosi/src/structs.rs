@@ -1,11 +1,21 @@
 use crate::symbol_table;
 use panda::plugins::cosi::{find_per_cpu_address, OsiType};
 use panda::prelude::*;
+use panda::mem::read_guest_type;
 use panda::GuestType;
 use std::mem::size_of;
 
 /// Max length of process command (`comm` field in task_struct)
 pub const TASK_COMM_LEN: usize = 16;
+
+
+// For MIPS, we use hw_proc_id to get the current task struct
+#[cfg(any(feature = "mips", feature = "mipsel"))]
+panda::plugin_import!{
+    static HWPROCID: Hwprocid = extern "hw_proc_id" {
+        fn get_id(cpu: *mut CPUState) -> target_ulong;
+    };
+}
 
 //#################################################################
 //#################### Task related structures ####################
@@ -191,9 +201,17 @@ impl CosiProc {
 
     /// `get_current_cosiproc` returns a CosiProc representation of the current process
     pub fn get_current_cosiproc(cpu: &mut CPUState) -> Option<CosiProc> {
-        let curr_task_addr = match find_per_cpu_address(cpu, "current_task").ok() {
-            Some(res) => res,
-            None => std::process::exit(0),
+        #[cfg(any(feature = "mips", feature = "mipsel"))] 
+        let curr_task_addr = {
+            let addr = HWPROCID.get_id(cpu);
+            read_guest_type(cpu, addr).unwrap()
+        };
+        #[cfg(not(any(feature = "mips", feature = "mipsel")))] 
+        let curr_task_addr = {
+            match find_per_cpu_address(cpu, "current_task").ok() {
+                Some(res) => res,
+                None => std::process::exit(0),
+            }
         };
         CosiProc::new(cpu, curr_task_addr)
     }
