@@ -1,4 +1,5 @@
 #include "osi_linux/osi_types.h"
+#include "plugin-qpp.h"
 
 /*
 QPP_CB_PROTOTYPE(void, on_get_current_process, OsiProc**);

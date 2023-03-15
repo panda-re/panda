@@ -35,6 +35,7 @@ OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2
 PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
 INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2", "include"]))           # panda-git/panda/python/core/pandare/include
 INCLUDE_DIR_OVERRIDES = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2", "include", "overrides"]))           # panda-git/panda/python/core/pandare/include
+INCLUDE_DIR_OVERRIDES_QEMU = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2", "include", "overrides", "qemu"]))           # panda-git/panda/python/core/pandare/include
 INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
 INCLUDE_DIR_CORE = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "..", "include"]))   # panda-git/include
 QEMU_INCLUDE_DIR = os.path.abspath(os.path.join(root_dir,"include"))
@@ -205,16 +206,26 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
         #print("Pulling cdefs from ", fname)
         # CFFI can't handle externs, but sometimes we have to extern C (as opposed to
         glib_flags = check_output("pkg-config --cflags --libs glib-2.0".split()).decode().split()
-        out = check_output(["cpp", "-I", INCLUDE_DIR_OVERRIDES, "-I", os.path.join(*[QEMU_INCLUDE_DIR, "qemu"]), "-I",QEMU_INCLUDE_DIR,*glib_flags,fname])
+        out = check_output([
+            "cpp",
+            "-DPYPANDA",
+            "-I", INCLUDE_DIR_OVERRIDES,
+            "-I", INCLUDE_DIR_OVERRIDES_QEMU,
+            "-I", "../../../contrib/plugins",
+            "-I", os.path.join(*[QEMU_INCLUDE_DIR, "qemu"]),
+            "-I",QEMU_INCLUDE_DIR,
+            *glib_flags,
+            fname
+        ])
         outval = "\n".join([i for i in out.decode().split("\n") if not i.startswith("# ")])
         outval = outval.replace("__attribute__((visibility(\"hidden\")))", "")
         outval = outval.replace("__attribute__((visibility(\"default\")))", "")
         outval = outval.replace("__attribute__((unused))", "")
         outval = outval.replace("__attribute__ ((constructor))", "")
-        ffi.cdef(outval)
-    
+        ffi.cdef(outval, override=True)
+
     define_messy_header(ffi,"pandare2/include/header.h")
-    define_messy_header(ffi,"../../../contrib/plugins/osi.h")
+    #define_messy_header(ffi,"../../../contrib/plugins/osi.h")
 
     # def define_clean_header(ffi, fname):
     #     '''Convenience function to pull in headers from file in C'''

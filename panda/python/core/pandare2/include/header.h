@@ -25,4 +25,5 @@ extern int qemu_loglevel;
 // #include "qemu/host-utils.h"
 // #include "sysemu/sysemu.h"
 #include "qemu/qemu-plugin.h"
+#include "osi.h"
 extern int (*external_plugin_install)(qemu_plugin_id_t id, const qemu_info_t *info,int argc, char **argv);

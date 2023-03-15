@@ -3,6 +3,8 @@
  * @brief Base data types for PANDA OSI.
  */
 #pragma once
+
+#ifndef PYPANDA
 #include <gmodule.h>
 #include <stdio.h>
 #include <assert.h>
@@ -28,8 +30,6 @@ extern "C" {
 #endif
 
 //Intentional changes for QEMU
-typedef void CPUState;
-typedef uint64_t target_ulong; // This is iffy?
 // Stupid panda shim
 static int panda_virtual_memory_rw(uint64_t gva, void* buf, size_t length, bool is_write) {
   assert(is_write == 0); // Not yet implemented
@@ -42,12 +42,15 @@ static int panda_virtual_memory_rw(uint64_t gva, void* buf, size_t length, bool 
 #define unlikely(x)   __builtin_expect(!!(x), 0)
 
 // PANDA types from panda/include/panda.types.h
+#endif
+
+typedef void CPUState;
+typedef uint64_t target_ulong; // This is iffy?
+
 #define TARGET_PTR_FMT "%lx"
 #define TARGET_PID_FMT "%u"
 typedef target_ulong target_ptr_t;
 typedef int32_t target_pid_t;
-
-
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
@@ -112,6 +115,7 @@ typedef struct osi_proc_struct {
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 
+#ifndef PYPANDA
 /* ******************************************************************
  * Helper functions for freeing/copying osi structs.
  ******************************************************************* */
@@ -251,4 +255,5 @@ static inline OsiModule *copy_osimod(OsiModule *from, OsiModule *to) {
     return to;
 }
 
+#endif
 /* vim:set tabstop=4 softtabstop=4 expandtab: */
