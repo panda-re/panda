@@ -20,7 +20,7 @@ if sys.version_info[0] < 3:
 # XXX: WIP if we do this this file should be renamed
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 build_root = os.path.join(root_dir, "build")
-lib_dir = os.path.join("pandare", "data")
+lib_dir = os.path.join("pandare2", "data")
 
 # for arch in ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']:
 #     softmmu = arch+"-softmmu"
@@ -31,12 +31,13 @@ lib_dir = os.path.join("pandare", "data")
 # else:
 #     raise RuntimeError("Unable to find any plog_pb2.py files in build directory")
 
-OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "autogen"]))                # panda-git/panda/python/core/pandare/autogen
+OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2", "autogen"]))                # panda-git/panda/python/core/pandare/autogen
 PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
-INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "include"]))           # panda-git/panda/python/core/pandare/include
+INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2", "include"]))           # panda-git/panda/python/core/pandare/include
+INCLUDE_DIR_OVERRIDES = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare2", "include", "overrides"]))           # panda-git/panda/python/core/pandare/include
 INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
 INCLUDE_DIR_CORE = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "..", "include"]))   # panda-git/include
-QEMU_INCLDUE_DIR = os.path.abspath(os.path.join(root_dir,"include"))
+QEMU_INCLUDE_DIR = os.path.abspath(os.path.join(root_dir,"include"))
 
 GLOBAL_MAX_SYSCALL_ARG_SIZE = 64
 GLOBAL_MAX_SYSCALL_ARGS = 17
@@ -199,15 +200,21 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     def define_messy_header(ffi, fname):
         from subprocess import check_output
+        import os
         '''Convenience function to pull in headers from file in C'''
         #print("Pulling cdefs from ", fname)
         # CFFI can't handle externs, but sometimes we have to extern C (as opposed to
         glib_flags = check_output("pkg-config --cflags --libs glib-2.0".split()).decode().split()
-        out = check_output(["cpp", "-I",QEMU_INCLDUE_DIR,*glib_flags,fname])
+        out = check_output(["cpp", "-I", INCLUDE_DIR_OVERRIDES, "-I", os.path.join(*[QEMU_INCLUDE_DIR, "qemu"]), "-I",QEMU_INCLUDE_DIR,*glib_flags,fname])
         outval = "\n".join([i for i in out.decode().split("\n") if not i.startswith("# ")])
+        outval = outval.replace("__attribute__((visibility(\"hidden\")))", "")
+        outval = outval.replace("__attribute__((visibility(\"default\")))", "")
+        outval = outval.replace("__attribute__((unused))", "")
+        outval = outval.replace("__attribute__ ((constructor))", "")
         ffi.cdef(outval)
     
     define_messy_header(ffi,"pandare2/include/header.h")
+    define_messy_header(ffi,"../../../contrib/plugins/osi.h")
 
     # def define_clean_header(ffi, fname):
     #     '''Convenience function to pull in headers from file in C'''
