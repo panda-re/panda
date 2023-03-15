@@ -154,7 +154,7 @@ pub unsafe extern "C" fn symbol_value_from_name(name: *const c_char) -> target_p
     if let Some(sym) = symbol_from_name(name) {
         sym.address as target_ptr_t
     } else {
-        panic!("Invalid symbol name, could not retrieve volatility symbol")
+        panic!("Invalid symbol name, could not retrieve volatility symbol for '{}'", CStr::from_ptr(name).to_str().expect("could not covert to str"));
     }
 }
 
