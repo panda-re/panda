@@ -1,6 +1,13 @@
 #ifndef SYSCALLS_H
 #define SYSCALLS_H
 
+#include <inttypes.h>
+
+typedef struct {
+    uint64_t pc;
+    uint64_t callno;
+} syscall_ev;
+
 /* 
  * Non-public functions 
  */

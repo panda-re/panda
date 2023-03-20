@@ -2889,6 +2889,10 @@ class Panda():
         def my_fun(cpu, pc, filename, flags, mode):
             ...
         '''
+        import inspect
+
+        def get_args(func):
+            return [(x, y.annotation) for x, y in inspect.signature(func).parameters.items()]
 
         if plugin_name not in self.plugins:
             self.load_plugin(plugin_name)
@@ -2909,10 +2913,22 @@ class Panda():
             if local_name is None:
                 local_name = fun.__name__
 
+            args = get_args(fun)
+            if not len(args) in [1, 2]:
+                raise Exception("panda.ppp decorator requires 1-2 arguments, event data and optionally user data")
+
+            cast_type = args[0][1] if type(args[0][1]) is str else None
+
             def _run_and_catch(evdata, udata): # Run function but if it raises an exception, stop panda and raise it
                 if not hasattr(self, "exit_exception"):
                     try:
-                        r = fun(evdata, udata)
+                        if cast_type is not None:
+                            evdata = self.ffi.cast(cast_type, evdata)
+
+                        if len(args) == 1:
+                            r = fun(evdata)
+                        else:
+                            r = fun(evdata, udata)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
                         return r

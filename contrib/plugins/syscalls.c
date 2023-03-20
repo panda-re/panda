@@ -1,4 +1,3 @@
-#include <inttypes.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,10 +158,11 @@ static void syscall_64(unsigned int cpu_index, void *udata) {
   uint64_t pc = qemu_plugin_get_pc();
   //QPP_RUN_CB(on_all_sys_enter, pc, callno);
 
-  uint64_t evdata[2];
-  evdata[0] = pc;
-  evdata[1] = callno;
-  qemu_plugin_run_callback(self_id, "on_all_sys_enter", evdata, NULL);
+  syscall_ev evdata = {
+      .pc = pc,
+      .callno = callno
+  };
+  qemu_plugin_run_callback(self_id, "on_all_sys_enter", &evdata, NULL);
 }
 
 //int first = 0;
