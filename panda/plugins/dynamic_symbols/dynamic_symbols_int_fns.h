@@ -35,7 +35,7 @@ struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, targ
 
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
-void update_symbols_in_space(CPUState* cpu);
+bool update_symbols_in_space(CPUState* cpu);
 
 struct dt_hash_section{
     uint32_t nchains;
