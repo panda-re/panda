@@ -54,10 +54,10 @@ extern "C" {
 }
 
 // uncomment to look under the hood
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
-#define log(...) //printf(__VA_ARGS__)
+#define log(...) printf(__VA_ARGS__)
 #else
 #define log(...)
 #endif
