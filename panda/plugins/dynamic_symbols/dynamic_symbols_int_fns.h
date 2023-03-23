@@ -10,6 +10,8 @@
 
 struct symbol {
     target_ulong address;
+    // char bind;
+    // char type;
     char name[MAX_PATH_LEN]; 
     char section[MAX_PATH_LEN]; 
 };

@@ -52,8 +52,10 @@ map<target_ulong, map<string, target_ulong>> mapping;
 
 #if TARGET_LONG_BITS == 32
 #define ELF(r) Elf32_ ## r
+#define ELFD(r) ELF32_ ## r
 #else
 #define ELF(r) Elf64_ ## r
+#define ELFD(r) ELF64_ ## r
 #endif
 
 #define DT_INIT_ARRAY	   25		  ,  /* Array with addresses of init fct */
@@ -117,8 +119,8 @@ struct pair_hash {
 
 // [section name, address] -> map of symbol name to symbols 
 unordered_map<pair<target_ulong,string>, unordered_map<string,struct symbol>, pair_hash> seen_libraries;
-// [section name, address] -> map of symbol name to symbols 
-unordered_map<target_ulong, unordered_set<string>> seen_nonlibraries;
+// these are section names we've tried and confirmed are not libraries
+unordered_set<string> seen_nonlibraries;
 // asid -> section_name ->  symbols map pointer
 unordered_map<target_ulong, unordered_map<string, unordered_map<string,struct symbol>*>> symbols;
 
@@ -185,7 +187,7 @@ void new_assignment_check_symbols(CPUState* cpu, char* procname, unordered_map<s
     }
     if (!symbols_to_flush.empty()){
         //panda_do_flush_tb();
-        printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
+        // printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
     }
     while (!symbols_to_flush.empty()){
         auto p = symbols_to_flush.back();
@@ -410,9 +412,8 @@ bool find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
     e_type = bswap16(e_type);
     #endif
     if (e_type != ET_DYN){
-        printf("add " TARGET_FMT_lx " %s to seen_nonlibraries\n", asid, m->name);
-        printf("e_type: %d\n", ehdr.e_type);
-        seen_nonlibraries[asid].insert(name);
+        // printf("add " TARGET_FMT_lx " %s to seen_nonlibraries\n", asid, m->name);
+        seen_nonlibraries.insert(name);
         return true;
     }
 
@@ -517,15 +518,21 @@ bool find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
         ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
         fixupendian(a->st_name);
         fixupendian(a->st_value);
+        fixupendian(a->st_info);
+
         if (a->st_name < strtab_size && a->st_value != 0){
             struct symbol s;
             strncpy((char*)&s.name, &strtab_buf[a->st_name], sizeof(s.name)-2);
             strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
+            // s.bind = ELFD(ST_BIND)(a->st_info);
+            // s.type = ELFD(ST_TYPE)(a->st_info);
+            // int r_type = ELFD(R_TYPE)(a->st_info);
             s.address = m->base + a->st_value;
 #ifdef TARGET_ARM
             s.address &= ~0x1;
 #endif
-            // printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
+            // if (s.type != 2)
+            //  printf("found symbol %s %s 0x%llx %d %d %d\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address, s.bind, s.type, r_type);
             string sym_name(s.name);
             seen_libraries[c][sym_name] = s;
         }
@@ -583,7 +590,7 @@ bool update_symbols_in_space(CPUState* cpu){
                 continue;
             }
 
-            if (seen_nonlibraries[asid].find(m->name) != seen_nonlibraries[asid].end()){
+            if (seen_nonlibraries.find(m->name) != seen_nonlibraries.end()){
                 // error_case(current->name, m->name, " in seen_nonlibraries[asid] already");
                 continue;
             }
