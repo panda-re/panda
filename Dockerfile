@@ -71,7 +71,11 @@ FROM builder as developer
 RUN cd /panda/panda/python/core && \
     python3 setup.py develop && \
     ldconfig && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
+    cd /panda && \
+    ( git config --get-regexp http > /dev/null && \
+    git config --remove-section http.https://github.com/ || true ) && \
+    git remote set-url origin https://github.com/panda-re/panda
 WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4
