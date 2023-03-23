@@ -34,6 +34,7 @@ PANDAENDCOMMENT */
 #include <linux/auxvec.h>
 #include <linux/elf.h>
 #include <string>
+#include <unordered_set>
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -54,7 +55,7 @@ extern "C" {
 }
 
 // uncomment to look under the hood
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #define log(...) printf(__VA_ARGS__)
@@ -80,7 +81,7 @@ extern "C" {
 #endif
 
 void *self_ptr;
-panda_cb pcb_sbe_execve;
+panda_cb pcb_sbe_execve, pcb_asid;
 
 #define ARG_MAX 0x200000
 
@@ -260,40 +261,61 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
 }
 
 
+target_ulong saved_sp = 0;
+
+
+bool try_run_auxv(CPUState *cpu, TranslationBlock *tb, target_ulong sp){
+    log("checking sp " TARGET_FMT_lx "\n", sp);
+    target_ulong argc;
+    if (panda_virtual_memory_read(cpu, sp, (uint8_t *)&argc, sizeof(argc)) != MEMTX_OK){
+        log("got here and could not read stack " TARGET_FMT_lx "\n", sp);
+        saved_sp = sp;
+        return false;
+    }
+    fixupendian(argc);
+    log("sp " TARGET_FMT_lx "\n", sp);
+    if (argc > ARG_MAX){
+        log("argc is incorrect " TARGET_FMT_lx "\n", argc);
+        return false;
+    }
+    struct auxv_values *vals = (struct auxv_values*)malloc(sizeof(struct auxv_values));
+    memset(vals, 0, sizeof(struct auxv_values));
+    int status = read_aux_vals(cpu, vals);
+    if (!status && vals->entry && vals->phdr) {
+        PPP_RUN_CB(on_rec_auxv, cpu, tb, vals);
+        free(vals);
+        return true;
+    }else if (status == FAIL_READ_ARGV){
+        log("failed to read argv\n");
+    }else if (status == FAIL_READ_ENVP){
+        log("failed to read envp\n");
+    }else if (status == FAIL_READ_AUXV){
+        log("failed to read auxv\n");
+    }else{
+        log("read_aux_vals failed, status: %d",status);
+        log(" vals->entry: " TARGET_FMT_lx ", vals->phdr: " TARGET_FMT_lx "\n", vals->entry, vals->phdr);
+    }
+    free(vals);
+    return false;
+}
+
 void sbe(CPUState *cpu, TranslationBlock *tb){
     target_ulong sp = panda_current_sp(cpu);
     bool sp_in_kernel = address_in_kernel_code_linux(sp);
-    if (!sp_in_kernel){ 
-        target_ulong argc;
-        if (panda_virtual_memory_read(cpu, sp, (uint8_t *)&argc, sizeof(argc)) == MEMTX_OK){
-            fixupendian(argc);
-            if (argc > ARG_MAX){
-                log("argc is incorrect " TARGET_FMT_lx "\n", argc);
-                return;
-            }
-            struct auxv_values *vals = (struct auxv_values*)malloc(sizeof(struct auxv_values));
-            memset(vals, 0, sizeof(struct auxv_values));
-            int status = read_aux_vals(cpu, vals);
-            if (!status && vals->entry && vals->phdr){
-                log("read auxv\n");
-                PPP_RUN_CB(on_rec_auxv, cpu, tb, vals);
-            }else if (status == FAIL_READ_ARGV){
-                log("failed to read argv\n");
-            }else if (status == FAIL_READ_ENVP){
-                log("failed to read envp\n");
-            }else if (status == FAIL_READ_AUXV){
-                log("failed to read auxv\n");
-            }else{
-                log("read_aux_vals failed, status: %d",status);
-                log(" vals->entry: " TARGET_FMT_lx ", vals->phdr: " TARGET_FMT_lx "\n", vals->entry, vals->phdr);
-            }
-            panda_disable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
-            free(vals);
-        }else{
-            log("got here and could not read stack\n");
-            // this would be the case where fault_hooks would work well.
+    bool pc_in_kernel = address_in_kernel_code_linux(tb->pc);
+    if (!sp_in_kernel && !pc_in_kernel){ 
+        if (!try_run_auxv(cpu, tb, sp)){
+            log("Failed to read in this ASID. Try the next one\n");
+            panda_enable_callback(self_ptr, PANDA_CB_ASID_CHANGED, pcb_asid);
         }
+        panda_disable_callback(self_ptr,  PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
     }
+}
+
+bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+    panda_enable_callback(self_ptr, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
+    panda_disable_callback(self_ptr, PANDA_CB_ASID_CHANGED, pcb_asid);
+    return false;
 }
 
 void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
@@ -308,7 +330,6 @@ void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename
 
 bool init_plugin(void *self) {
     self_ptr = self;
-
     #if defined(TARGET_MIPS64)
         fprintf(stderr, "[ERROR] proc_start_linux: mips64 architecture not supported!\n");
         return false;
@@ -322,6 +343,9 @@ bool init_plugin(void *self) {
         pcb_sbe_execve.start_block_exec = sbe;
         panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
         panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_sbe_execve);
+        pcb_asid.asid_changed = asid_changed;
+        panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+        panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
 
         // why? so we don't get 1000 messages telling us syscalls2 is already loaded
         void* syscalls2 = panda_get_plugin_by_name("syscalls2");
@@ -338,6 +362,7 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 #if defined(TARGET_PPC) or defined(TARGET_MIPS64)
 #else
+
     void* syscalls = panda_get_plugin_by_name("syscalls2");
     if (syscalls != NULL){
         PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
