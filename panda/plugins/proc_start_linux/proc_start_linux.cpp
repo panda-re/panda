@@ -34,7 +34,6 @@ PANDAENDCOMMENT */
 #include <linux/auxvec.h>
 #include <linux/elf.h>
 #include <string>
-#include <unordered_set>
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -58,7 +57,7 @@ extern "C" {
 #define DEBUG
 
 #ifdef DEBUG
-#define log(...) printf(__VA_ARGS__)
+#define log(...) //printf(__VA_ARGS__)
 #else
 #define log(...)
 #endif
