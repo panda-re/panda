@@ -260,15 +260,11 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
 }
 
 
-target_ulong saved_sp = 0;
-
-
 bool try_run_auxv(CPUState *cpu, TranslationBlock *tb, target_ulong sp){
     log("checking sp " TARGET_FMT_lx "\n", sp);
     target_ulong argc;
     if (panda_virtual_memory_read(cpu, sp, (uint8_t *)&argc, sizeof(argc)) != MEMTX_OK){
         log("got here and could not read stack " TARGET_FMT_lx "\n", sp);
-        saved_sp = sp;
         return false;
     }
     fixupendian(argc);
