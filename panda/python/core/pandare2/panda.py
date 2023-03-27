@@ -98,6 +98,8 @@ class Panda():
         self.cdrom = None
         self.catch_exceptions=catch_exceptions
         self.qlog = QEMU_Log_Manager(self)
+        self.ppp_queue = []
+        self.plugin_load_queue = []
 
         self.serial_unconsumed_data = b''
 
@@ -524,15 +526,30 @@ class Panda():
         if debug:
             progress ("Running")
 
-                
+
         def qemu_init_cb(id, info, argc, argv):
+            if not self.started.is_set():
+                self.started.set()
             self.qemu_id = id
             # print(f"in init_cb {self.qemu_id=}")
             if len(self.preinit_callbacks) > 0:
                 while self.preinit_callbacks:
                     cb = self.preinit_callbacks.pop()
                     self.register_callback(*cb['args'],**cb['kwargs'])
-                
+
+            assert(self.started.is_set())
+
+            # load queued plugins
+            plugin_queue, self.plugin_load_queue = self.plugin_load_queue, []
+            for plugin, args in plugin_queue:
+                self.load_plugin(plugin, args=args)
+
+            # take self.ppp_queue and replace it with []
+            queue, self.ppp_queue = self.ppp_queue, []
+
+            for plugin_name, attr, cast_rc in queue:
+                self.libpanda.qemu_plugin_reg_callback(plugin_name.encode('utf8'), attr.encode('utf8'), cast_rc)
+
             return 0
         init2 = self.ffi.callback("int(qemu_plugin_id_t id, const qemu_info_t *info,int argc, char **argv)")(qemu_init_cb)
         self.pandummy.external_plugin_install = init2
@@ -716,6 +733,11 @@ class Panda():
         '''
         if debug:
             progress ("Loading plugin %s" % name),
+
+        if not self.started.is_set():
+            if not any([x[0] == name for x in self.plugin_load_queue]):
+                self.plugin_load_queue.append((name, args))
+            return
 
         plugin_path = self._plugin_path(name)
         plugin_path_ffi = self.ffi.new("char[]", plugin_path.encode('utf8'))
@@ -2958,8 +2980,11 @@ class Panda():
             #self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
             self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
 
-            self.libpanda.qemu_plugin_reg_callback(plugin_name.encode('utf8'), attr.encode('utf8'), cast_rc)
-            print("callback registered")
+            if self.started.is_set():
+                self.libpanda.qemu_plugin_reg_callback(plugin_name.encode('utf8'), attr.encode('utf8'), cast_rc)
+                print("callback registered")
+            else:
+                self.ppp_queue.append((plugin_name, attr, cast_rc))
             #getattr(self.plugins[plugin_name], f"ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string.
             return _run_and_catch
         return decorator

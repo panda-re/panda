@@ -28,19 +28,19 @@ QEMU_PLUGIN_EXPORT int (*external_plugin_install)(qemu_plugin_id_t id, const qem
 static void before_block_exec(unsigned int cpu_index, void *udata)
 {
     // global_val = panda_get_asid()
-    std::cout << "before_block_exec " << hex <<  (uint64_t) udata << std::endl;
+    //std::cout << "before_block_exec " << hex <<  (uint64_t) udata << std::endl;
 }
 
 static void after_block_exec(unsigned int cpu_index, void *udata)
 {
     // if (panda_get_asid() != global_val) { panda_callbacks_asid_changed() }
     // unsigned int 
-    std::cout << "after_block_exec " <<  hex <<  (uint64_t) udata << std::endl;
+    //std::cout << "after_block_exec " <<  hex <<  (uint64_t) udata << std::endl;
 }
 
 static void insn_exec(unsigned int cpu_index, void *udata)
 {
-    std::cout << "insn_exec " << hex << udata << std::endl;
+    //std::cout << "insn_exec " << hex << udata << std::endl;
 }
 
 static void vcpu_mem(unsigned int cpu_index, qemu_plugin_meminfo_t info,
