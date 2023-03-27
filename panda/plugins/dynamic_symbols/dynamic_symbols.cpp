@@ -24,7 +24,9 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include <unordered_map>
+#include <unordered_set>
 #include "osi_linux/endian_helpers.h"
+#include "hw_proc_id/hw_proc_id_ext.h"
 
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -46,10 +48,14 @@ using namespace std;
 
 map<target_ulong, map<string, target_ulong>> mapping;
 
+#define error_case(A,B,C) // printf("%s %s %s\n", A, B, C)
+
 #if TARGET_LONG_BITS == 32
 #define ELF(r) Elf32_ ## r
+#define ELFD(r) ELF32_ ## r
 #else
 #define ELF(r) Elf64_ ## r
+#define ELFD(r) ELF64_ ## r
 #endif
 
 #define DT_INIT_ARRAY	   25		  ,  /* Array with addresses of init fct */
@@ -77,6 +83,7 @@ panda_cb pcb_btc_execve;
 panda_cb before_block_translate_hook_adder_callback;
 
 vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
+
 
 inline bool operator<(const struct symbol& s, const struct symbol& p){
     return s.address < p.address;
@@ -112,6 +119,8 @@ struct pair_hash {
 
 // [section name, address] -> map of symbol name to symbols 
 unordered_map<pair<target_ulong,string>, unordered_map<string,struct symbol>, pair_hash> seen_libraries;
+// these are section names we've tried and confirmed are not libraries
+unordered_set<string> seen_nonlibraries;
 // asid -> section_name ->  symbols map pointer
 unordered_map<target_ulong, unordered_map<string, unordered_map<string,struct symbol>*>> symbols;
 
@@ -132,7 +141,7 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h){
 }
 
 
-void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct symbol> ss, OsiModule* m){
+void new_assignment_check_symbols(CPUState* cpu, char* procname, unordered_map<string, struct symbol> ss, OsiModule* m){
     string module(m->name);
     vector<tuple<struct hook_symbol_resolve, struct symbol, OsiModule>> symbols_to_flush;
 
@@ -178,7 +187,7 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
     }
     if (!symbols_to_flush.empty()){
         //panda_do_flush_tb();
-        //printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
+        // printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
     }
     while (!symbols_to_flush.empty()){
         auto p = symbols_to_flush.back();
@@ -272,7 +281,6 @@ int get_numelements_hash(CPUState* cpu, target_ulong dt_hash){
     if (panda_virtual_memory_read(cpu, dt_hash, (uint8_t*) &dt, sizeof(struct dt_hash_section))!= MEMTX_OK){
         //printf("got error 2\n");
         return -1;
-        //goto nextloop;
     }
     fixupendian(dt.nbuckets);
     //printf("Nbucks: 0x%x\n", dt.nbuckets);
@@ -331,23 +339,16 @@ int get_numelements_gnu_hash(CPUState* cpu, target_ulong gnu_hash){
 }
 
 int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_hash, target_ulong gnu_hash, target_ulong dynamic_section, target_ulong symtab, int numelements_dyn){
-    //printf("Get numelembs symtab 0x%x, 0x%x\n", base, dt_hash);
     if (base != dt_hash){
         int result = get_numelements_hash(cpu, dt_hash);
         if (result != -1)
             return result;
     }
     if (base != gnu_hash){
-        //printf("trying gnu_hash\n");
         int result = get_numelements_gnu_hash(cpu, gnu_hash);
         if (result != -1)
             return result;
     }
-    // we don't actually have the size of these things 
-    // (not included) so we find it by finding the next
-    // closest section
-    //  target_ulong strtab_min = strtab + 0x100000;
-    //printf("continuing onto the end\n");
     target_ulong symtab_min = symtab + 0x100000;
     ELF(Dyn) tag;
     for (int j=0; j< numelements_dyn; j++){
@@ -366,240 +367,280 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
     return (symtab_min - symtab)/(sizeof(ELF(Dyn)));
 }
 
-#define error_case(A,B,C) //printf("%s %s %s\n", A, B, C)
-
-void helper(){};
 
 
-void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule *m){
-    if (m->name == NULL){
-        error_case(current->name, m->name, "m->name is NULL");
-        return;
+char arr[][20] = {"[heap]", "[stack]", "[vdso]", "[vsyscall]", "[vvar]", "[???]", "ld.so.cache"};
+
+
+bool should_ignore_section(char *name){
+    for (int i=0; i<(sizeof(arr)/sizeof(arr[0])); i++){
+        if (strncmp(name, arr[i], strlen(arr[i])) == 0){
+            return true;
+        }
     }
+    return false;
+}
+
+bool find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule *m){
     string name(m->name);
+    ELF(Ehdr) ehdr;
+    ELF(Phdr) dynamic_phdr;
+    ELF(Dyn) tag;
+    target_ulong strtab = 0, symtab = 0, strtab_size = 0, dt_hash = 0;
+    target_ulong symtab_size;
+    target_ulong gnu_hash = 0;
+    target_ulong phnum, phoff;
+    char *symtab_buf, *strtab_buf;
+    int numelements_dyn, numelements_symtab;
 
-    // we already read this one
-    if (symbols[asid].find(name) != symbols[asid].end() && symbols[asid][name]->size() > 0){
-        error_case(current->name, m->name, " in symbols[asid] already and has");
-        //printf("%s %s already exists \n", current->name, m->name);
-        return;
-    }
-
-    pair<target_ulong, string> candidate(m->base, name);
-
-    auto it = seen_libraries.find(candidate);
-    if (it != seen_libraries.end()) {
-        //printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, panda_current_asid(cpu), m->base);
-        //printf("size of ASID before is %d\n", (int)symbols[asid].size());
-        symbols[asid][name] = &seen_libraries[candidate];
-        //printf("size of ASID after is %d\n", (int)symbols[asid].size());
-        new_assignment_check_symbols(cpu, seen_libraries[candidate], m);
-        return;
-    }
-    // static variable to store first 4 bytes of mapping
-    char elf_magic[4];
-
-    // read first 4 bytes
-    if (likely(panda_virtual_memory_read(cpu, m->base, (uint8_t*)elf_magic, 4) != MEMTX_OK)){            
+    if (panda_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){            
         error_case(current->name, m->name, "3 CNRB");
-        // can't read page.
-        return;
+        // can't read page. try again later;
+        return false;
     }
-    // is it an ELF header?
-    if (unlikely(elf_magic[0] == '\x7f' && elf_magic[1] == 'E' && elf_magic[2] == 'L' && elf_magic[3] == 'F')){
-        ELF(Ehdr) ehdr;
-        // attempt to read memory allocation
-        if (panda_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){
-            error_case(current->name, m->name, "4 CNREH");
-            //printf("cant read elf header\n");
-            return;
+
+    // is this an ELF?
+    if (!(ehdr.e_ident[0] == ELFMAG0 && ehdr.e_ident[1] == ELFMAG1 && ehdr.e_ident[2] == ELFMAG2 && ehdr.e_ident[3] == ELFMAG3)){
+        // If we aren't an ELF we don't need to get symbols
+        // therefore we return true
+        error_case(current->name, m->name, "NOT AN ELF HEADER");
+        return true;
+    } 
+    // is this a shared object?
+    uint16_t e_type = ehdr.e_type;
+    #if defined(TARGET_WORDS_BIGENDIAN)
+    e_type = bswap16(e_type);
+    #endif
+    if (e_type != ET_DYN){
+        // printf("add " TARGET_FMT_lx " %s to seen_nonlibraries\n", asid, m->name);
+        seen_nonlibraries.insert(name);
+        return true;
+    }
+
+    phnum = ehdr.e_phnum;
+    phoff = ehdr.e_phoff;
+    fixupendian(phnum);
+    fixupendian(phoff);
+
+    for (int j=0; j<phnum; j++){
+        if (panda_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
+            error_case(current->name, m->name, "5 DPHDR");
+            return false;
+        }
+        fixupendian(dynamic_phdr.p_type)
+        if (dynamic_phdr.p_type == PT_DYNAMIC){
+            break;
+        }else if (dynamic_phdr.p_type == PT_NULL){
+            error_case(current->name, m->name, "PTNULL");
+            //printf("hit PT_NULL\n");
+            return false;
+        }else if (j == phnum -1){
+            error_case(current->name, m->name, "END");
+            //printf("hit phnum-1\n");
+            return false;
+        }
+    }
+    
+    fixupendian(dynamic_phdr.p_filesz);
+    numelements_dyn = dynamic_phdr.p_filesz / sizeof(ELF(Dyn));
+    // iterate over dynamic program headers and find strtab
+    // and symtab
+    int j = 0;
+
+    fixupendian(dynamic_phdr.p_vaddr);
+    while (j < numelements_dyn){
+        if (panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
+            //printf("%s:%s Failed to read entry %d\n", name.c_str(), current->name, j);
+            error_case(current->name, m->name, "5 DPDR");
+            return false;
         }
 
+        fixupendian(tag.d_tag);
+        fixupendian(tag.d_un.d_ptr);
 
-        target_ulong phnum = ehdr.e_phnum;
-        target_ulong phoff = ehdr.e_phoff;
-        fixupendian(phnum);
-        fixupendian(phoff);
-
-        ELF(Phdr) dynamic_phdr;
-
-        //printf("Read Phdr from 0x%x + 0x%x + j*0x%lx\n", m->base, phoff, (sizeof(ELF(Phdr))));
-
-        for (int j=0; j<phnum; j++){
-            if (panda_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
-                error_case(current->name, m->name, "5 DPHDR");
-                return;
-            }
-
-            fixupendian(dynamic_phdr.p_type)
-
-            if (dynamic_phdr.p_type == PT_DYNAMIC){
-                break;
-            }else if (dynamic_phdr.p_type == PT_NULL){
-                error_case(current->name, m->name, "PTNULL");
-                //printf("hit PT_NULL\n");
-                return;
-            }else if (j == phnum -1){
-                error_case(current->name, m->name, "END");
-                //printf("hit phnum-1\n");
-                return;
-            }
+        if (tag.d_tag == DT_STRTAB){
+            strtab = tag.d_un.d_ptr;
+        }else if (tag.d_tag == DT_SYMTAB){
+            symtab = tag.d_un.d_ptr;
+        }else if (tag.d_tag == DT_STRSZ){
+            strtab_size = tag.d_un.d_ptr;
+        }else if (tag.d_tag == DT_HASH){
+            dt_hash = tag.d_un.d_ptr;
+        }else if (tag.d_tag == DT_GNU_HASH){
+            gnu_hash = tag.d_un.d_ptr;
+        }else if (tag.d_tag == DT_NULL){
+            j = numelements_dyn;
         }
-        fixupendian(dynamic_phdr.p_filesz);
-        int numelements_dyn = dynamic_phdr.p_filesz / sizeof(ELF(Dyn));
-        // iterate over dynamic program headers and find strtab
-        // and symtab
-        ELF(Dyn) tag;
-        target_ulong strtab = 0, symtab = 0, strtab_size = 0, dt_hash = 0, gnu_hash = 0;
-        int j = 0;
+        j++;
+    }  
 
-        fixupendian(dynamic_phdr.p_vaddr);
-        while (j < numelements_dyn){
-            //printf("Read Dyn PHDR from 0x%x + 0x%x + j*0x%lx\n", m->base, dynamic_phdr.p_vaddr, (sizeof(ELF(Phdr))));
-            if (panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
-                //printf("%s:%s Failed to read entry %d\n", name.c_str(), current->name, j);
-                error_case(current->name, m->name, "5 DPDR");
-                return;
-            }
+    // some of these are offsets. some are fully qualified
+    // addresses. this is a gimmick that can sort-of tell.
+    // probably better to replace this at some point
+    if (strtab < m->base){
+        strtab += m->base;
+    }
+    if (symtab < m->base){
+        symtab += m->base;
+    }
+    if (dt_hash < m->base){
+        dt_hash += m->base;
+    }
+    if (gnu_hash < m->base){
+        gnu_hash += m->base;
+    }
 
-            fixupendian(tag.d_tag);
-            fixupendian(tag.d_un.d_ptr);
+    numelements_symtab = get_numelements_symtab(cpu,m->base, dt_hash, gnu_hash, m->base + dynamic_phdr.p_vaddr, symtab, numelements_dyn);
+    if (numelements_symtab == -1){
+        error_case(current->name, m->name, "6 GETELEMENTSSYMTAB");
+        return false;
+    }
 
-            if (tag.d_tag == DT_STRTAB){
-                //printf("Found DT_STRTAB\n");
-                strtab = tag.d_un.d_ptr;
-            }else if (tag.d_tag == DT_SYMTAB){
-                //printf("Found DT_SYMTAB\n");
-                symtab = tag.d_un.d_ptr;
-            }else if (tag.d_tag == DT_STRSZ ){
-                //printf("Found DT_STRSZ\n");
-                strtab_size = tag.d_un.d_ptr;
-            }else if (tag.d_tag == DT_HASH){
-                //printf("Found DT_HASH\n");
-                dt_hash = tag.d_un.d_ptr;
-            }else if (tag.d_tag == DT_GNU_HASH){
-                //printf("Found DT_GNU_HASH\n");
-                gnu_hash = tag.d_un.d_ptr;
-            }else if (tag.d_tag == DT_NULL){
-                //printf("Found DT_NULL \n");
-                j = numelements_dyn;
-                //break;
-            }
-
-            j++;
-        }  
-
-        // some of these are offsets. some are fully qualified
-        // addresses. this is a gimmick that can sort-of tell.
-        // probably better to replace this at some point
-        if (strtab < m->base){
-            strtab += m->base;
-        }
-        if (symtab < m->base){
-            symtab += m->base;
-        }
-        if (dt_hash < m->base){
-            dt_hash += m->base;
-        }
-        if (gnu_hash < m->base){
-            gnu_hash += m->base;
-        }
-
-        //printf("strtab: %llx symtab: %llx hash: %llx\n", (long long unsigned int) strtab, (long long unsigned int)symtab, (long long unsigned int) dt_hash);
-
-        int numelements_symtab = get_numelements_symtab(cpu,m->base, dt_hash, gnu_hash, m->base + dynamic_phdr.p_vaddr, symtab, numelements_dyn);
-        if (numelements_symtab == -1){
-            error_case(current->name, m->name, "6 GETELEMENTSSYMTAB");
-            //printf("numelements_symtab not working\n");
-            return;
-        }
-
-        target_ulong symtab_size = numelements_symtab * sizeof(ELF(Sym));
-
-        //printf("symtab_size %llx strtab_size %llx\n",(long long unsigned int)symtab_size, (long long unsigned int)strtab_size);
-
-        char* symtab_buf = (char*)malloc(symtab_size);
-        char* strtab_buf = (char*)malloc(strtab_size);
-
-        //printf("symtab %llx\n", (long long unsigned int) symtab);
-        //printf("symtab: 0x" TARGET_FMT_lx "  0x" TARGET_FMT_lx "\n", symtab, strtab);
-        if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK){
-                if (panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
-                int i = 0; 
-                //for (int idx =0; idx < strtab_size; idx++)
-                //  printf("Strtab[%d]: %c\n", idx, strtab_buf[idx]);
-
-                pair<target_ulong, string> c(m->base, name);
-
-                for (;i<numelements_symtab; i++){
-                    ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
-                    fixupendian(a->st_name);
-                    fixupendian(a->st_value);
-                    if (a->st_name < strtab_size && a->st_value != 0){
-                        struct symbol s;
-                        strncpy((char*)&s.name, &strtab_buf[a->st_name], sizeof(s.name)-2);
-                        strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
-                        s.address = m->base + a->st_value;
-#ifdef TARGET_ARM
-                        s.address &= ~0x1;
-#endif
-
-                        //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                        string sym_name(s.name);
-                        seen_libraries[c][sym_name] = s;
-                    }
-                }
-                if (seen_libraries[c].size() > 0){
-                    symbols[asid][name] = &seen_libraries[c];
-                    new_assignment_check_symbols(cpu, seen_libraries[c], m);
-                    error_case(current->name, m->name, "SUCCESS");
-                    //printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)seen_libraries[c].size(), m->base);
-                }
-                //printf("CURRENT PC: %llx\n", (long long unsigned int) panda_current_pc(cpu));
-            }else{
-                error_case(current->name, m->name, "7 CNR STRTAB");
-            }
-        }else{
-            error_case(current->name, m->name, "8 CNR SYMTAB");
-        }
+    symtab_size = numelements_symtab * sizeof(ELF(Sym));
+    symtab_buf = (char*)malloc(symtab_size);
+    strtab_buf = (char*)malloc(strtab_size);
+    
+    if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) != MEMTX_OK){
+        error_case(current->name, m->name, "8 CNR SYMTAB");
         free(symtab_buf);
         free(strtab_buf);
-        return;
+        return false;
     }
-    error_case(current->name, m->name, "NOT AN ELF HEADER");
+    if (panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) != MEMTX_OK){
+        error_case(current->name, m->name, "7 CNR STRTAB");
+        free(symtab_buf);
+        free(strtab_buf);
+        return false;
+    }
+
+    pair<target_ulong, string> c(m->base, name);
+    for (int i=0;i<numelements_symtab; i++){
+        ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
+        fixupendian(a->st_name);
+        fixupendian(a->st_value);
+        fixupendian(a->st_info);
+
+        if (a->st_name < strtab_size && a->st_value != 0){
+            struct symbol s;
+            strncpy((char*)&s.name, &strtab_buf[a->st_name], sizeof(s.name)-2);
+            strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
+            // s.bind = ELFD(ST_BIND)(a->st_info);
+            // s.type = ELFD(ST_TYPE)(a->st_info);
+            // int r_type = ELFD(R_TYPE)(a->st_info);
+            s.address = m->base + a->st_value;
+#ifdef TARGET_ARM
+            s.address &= ~0x1;
+#endif
+            // if (s.type != 2)
+            //  printf("found symbol %s %s 0x%llx %d %d %d\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address, s.bind, s.type, r_type);
+            string sym_name(s.name);
+            seen_libraries[c][sym_name] = s;
+        }
+    }
+    if (seen_libraries[c].size() > 0){
+        symbols[asid][name] = &seen_libraries[c];
+        new_assignment_check_symbols(cpu, current->name, seen_libraries[c], m);
+        error_case(current->name, m->name, "SUCCESS");
+        // printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)seen_libraries[c].size(), m->base);
+    }
+    free(symtab_buf);
+    free(strtab_buf);
+    return true;
 }
 
 
-void update_symbols_in_space(CPUState* cpu){
+bool update_symbols_in_space(CPUState* cpu){
+    OsiProc *current;
+    OsiModule *m;
+    target_ulong asid;
+    GArray *ms;
+    unordered_map<string, OsiModule*> lowest_library_entry;
+    bool none_missing;
+
     if (panda_in_kernel(cpu)){
-        return;
+        return false;
     }
-    OsiProc *current = get_current_process(cpu);
+    if (!id_is_initialized()){
+        return false;
+    }
+    asid = get_id(cpu);
+    current = get_current_process(cpu);
     if (current == NULL){
-        return;
+        return false;
     }
-    target_ulong asid = panda_current_asid(cpu);
-    GArray *ms = get_mappings(cpu, current);
+    ms = get_mappings(cpu, current);
     if (ms == NULL) {
-        return;
-    } else {
-        //iterate over mappings
-        for (int i = 0; i < ms->len; i++) {
-            OsiModule *m = &g_array_index(ms, OsiModule, i);
-            find_symbols(cpu, asid, current, m);
+        return false;
+    }
+
+    //iterate over mappings and find the lowest VA for each relevant library
+    for (int i = 0; i < ms->len; i++) {
+        m = &g_array_index(ms, OsiModule, i);
+        // printf("mapping name: %s base: " TARGET_FMT_lx "\n", m->name, m->base);
+        if (m->name == NULL){
+            continue;
+        }
+        if (should_ignore_section(m->name)){
+            continue;
+        }
+        if (strstr(m->name, ".so") != NULL){
+            // we already read this one
+            if (symbols[asid].find(m->name) != symbols[asid].end() && symbols[asid][m->name]->size() > 0){
+                // error_case(current->name, m->name, " in symbols[asid] already and has");
+                continue;
+            }
+
+            if (seen_nonlibraries.find(m->name) != seen_nonlibraries.end()){
+                // error_case(current->name, m->name, " in seen_nonlibraries[asid] already");
+                continue;
+            }
+            pair<target_ulong, string> candidate(m->base, m->name);
+            if (seen_libraries.find(candidate) != seen_libraries.end()) {
+                // printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, get_id(cpu), m->base);
+                symbols[asid][m->name] = &seen_libraries[candidate];
+                new_assignment_check_symbols(cpu, current->name, seen_libraries[candidate], m);
+                continue;
+            }
+            if (!find_symbols(cpu, asid, current,m)){
+                none_missing = false;
+            }
         }
     }
+    return none_missing;
 }
 
 void bbt(CPUState *env, target_ulong pc){
-    if (!panda_in_kernel(env)){
-        update_symbols_in_space(env);
+    if (update_symbols_in_space(env)){
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     }
 }
+void sys_mmap_return(
+    CPUState* cpu,
+    target_ulong pc,
+    target_ulong arg0,
+    target_ulong arg1,
+    target_ulong arg2,
+    target_ulong arg3,
+    target_ulong arg4,
+    target_ulong arg5)
+{
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+}
+
+void sys_mmap2_return(CPUState* cpu, target_ulong pc, unsigned int b, unsigned int c, int d, int e, int f, unsigned int g){
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+}
+
+void sys_mmap_arm64_return(CPUState* cpu, target_ulong pc, long unsigned int b, unsigned int c, int d, int e, int f, long unsigned int g){
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+}
+
+void sys_mmap_mips_return(CPUState* cpu, target_ulong pc, unsigned int b, unsigned int c, int d, int e, int f, unsigned int g){
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+}
 
 void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
-    target_ulong asid = panda_current_asid(cpu);
+    target_ulong asid = get_id(cpu);
     symbols.erase(asid);
     panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
 }
@@ -615,7 +656,7 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
 }
 
 void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
-    target_ulong asid = panda_current_asid(env);
+    target_ulong asid = get_id(env);
     symbols.erase(asid);
     struct hook h;
 
@@ -628,12 +669,14 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
     h.addr = av->entry;
 #endif
 
-    h.asid = panda_current_asid(env);
+    h.asid = asid;
     h.type = PANDA_CB_START_BLOCK_EXEC;
     h.cb.start_block_exec = hook_program_start;
     h.km = MODE_USER_ONLY;
     h.enabled = true;
     dlsym_add_hook(&h);
+
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
 }
 
 bool init_plugin(void *self) {
@@ -646,6 +689,8 @@ bool init_plugin(void *self) {
 
     panda_require("osi");
     assert(init_osi_api());
+    panda_require("hw_proc_id");
+    assert(init_hw_proc_id_api());
     panda_require("proc_start_linux");
     PPP_REG_CB("proc_start_linux",on_rec_auxv, recv_auxv);
     #if defined(TARGET_PPC)
@@ -660,6 +705,19 @@ bool init_plugin(void *self) {
         assert(init_syscalls2_api());
         PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
         PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
+        PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
+        PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
+#if defined(TARGET_X86_64)
+    PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
+#elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+    PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_arm64_return);
+#elif defined(TARGET_I386)
+    PPP_REG_CB("syscalls2", on_sys_mmap_pgoff_return, sys_mmap_return);
+#elif defined(TARGET_ARM)
+    PPP_REG_CB("syscalls2", on_do_mmap2_return, sys_mmap_return);
+#elif defined(TARGET_MIPS)
+    PPP_REG_CB("syscalls2", on_mmap2_return, sys_mmap_mips_return);
+#endif
     #endif
     void* hooks = panda_get_plugin_by_name("hooks");
     if (hooks == NULL){
@@ -677,5 +735,4 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) { 
-}
+void uninit_plugin(void *self) {}
