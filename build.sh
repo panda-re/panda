@@ -120,7 +120,7 @@ fi
 
 RUST_VERSION="$(cargo --version | grep -o -E '1\.[0-9]+' | cut -c 3-)"
 
-if [[ "$RUST_VERSION" -lt "52" ]]; then
+if [[ "$RUST_VERSION" -lt "64" ]]; then
     echo "Rust version 1.$RUST_VERSION is not compatible! Updating to latest."
     rustup update stable
     rustup default stable
