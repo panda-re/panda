@@ -56,15 +56,9 @@ panda_cb pcb_memread;
 panda_cb pcb_memwrite;
 bool verbose = false;
 
-// Silly: since we use these as map values, they have to be
-// copy constructible. Plain arrays aren't, but structs containing
-// arrays are. So we make these goofy wrappers.
-struct match_strings {
-    int val[MAX_STRINGS];
-};
-struct string_pos {
-    uint32_t val[MAX_STRINGS];
-};
+using match_strings = std::array<int, MAX_STRINGS>;
+using string_pos = std::array<uint32_t, MAX_STRINGS>;
+
 struct fullstack {
     int n;
     target_ulong callers[MAX_CALLERS];
@@ -100,12 +94,12 @@ void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     for (unsigned int i = 0; i < size; i++) {
         uint8_t val = ((uint8_t *)buf)[i];
         for(int str_idx = 0; str_idx < num_strings; str_idx++) {
-            if (tofind[str_idx][sp.val[str_idx]] == val)
-                sp.val[str_idx]++;
+            if (tofind[str_idx][sp[str_idx]] == val)
+                sp[str_idx]++;
             else
-                sp.val[str_idx] = 0;
+                sp[str_idx] = 0;
 
-            if (sp.val[str_idx] == strlens[str_idx]) {
+            if (sp[str_idx] == strlens[str_idx]) {
                 // Victory!
                 char *sid_string = get_stackid_string(p);
                 if (verbose) {
@@ -114,8 +108,8 @@ void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                          (is_write ? "WRITE" : "READ"), str_idx,
                          rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
                 }
-                matches[p].val[str_idx]++;
-                sp.val[str_idx] = 0;
+                matches[p][str_idx]++;
+                sp[str_idx] = 0;
                 g_free(sid_string);
 
                 // Also get the full stack here
@@ -347,7 +341,7 @@ void uninit_plugin(void *self) {
 
         // Print strings that matched and how many times
         for(int i = 0; i < num_strings; i++)
-            fprintf(mem_report, " %d", it->second.val[i]);
+            fprintf(mem_report, " %d", it->second[i]);
         fprintf(mem_report, "\n");
         g_free(sid_string);
     }
