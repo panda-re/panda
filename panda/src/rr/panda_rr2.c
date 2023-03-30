@@ -237,8 +237,8 @@ struct rr_file_state* rrfile_open_write(const char* fpath)
     if (ARCHIVE_OK != archive_write_add_filter_gzip(archive)) {
         fprintf(stderr, "failed to set gzip mode %s\n", archive_error_string(archive));
     }
-    if (ARCHIVE_OK != archive_write_set_format_ustar(archive)) {
-        fprintf(stderr, "failed to set ustar mode: %s\n", archive_error_string(archive));
+    if (ARCHIVE_OK != archive_write_set_format_pax(archive)) {
+        fprintf(stderr, "failed to set posix tar mode: %s\n", archive_error_string(archive));
     }
 
     // Open a temporary file to write hashes to
