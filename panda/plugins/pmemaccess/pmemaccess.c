@@ -60,8 +60,8 @@ struct request{
 static uint64_t
 connection_read_memory (uint64_t user_paddr, void *buf, uint64_t user_len)
 {
-    ram_addr_t paddr = (ram_addr_t) user_paddr;
-    ram_addr_t len = (ram_addr_t) user_len;
+    hwaddr paddr = (hwaddr) user_paddr;
+    hwaddr len = (hwaddr) user_len;
     void *guestmem = cpu_physical_memory_map(paddr, &len, 0);
     if (!guestmem){
         return 0;
@@ -75,8 +75,8 @@ connection_read_memory (uint64_t user_paddr, void *buf, uint64_t user_len)
 static uint64_t
 connection_write_memory (uint64_t user_paddr, void *buf, uint64_t user_len)
 {
-    ram_addr_t paddr = (ram_addr_t) user_paddr;
-    ram_addr_t len = (ram_addr_t) user_len;
+    hwaddr paddr = (hwaddr) user_paddr;
+    hwaddr len = (hwaddr) user_len;
     void *guestmem = cpu_physical_memory_map(paddr, &len, 1);
     if (!guestmem){
         return 0;
@@ -207,15 +207,16 @@ memory_access_thread (void *path)
         printf("QemuMemoryAccess: listen failed\n");
         goto error_exit;
     }
-
+    printf("Created socket, now accepting connections\n");
     while (true) {
       connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
-      printf("QemuMemoryAccess: Connction accepted on %d.\n", connection_fd);
+      printf("QemuMemoryAccess: Connection accepted on %d.\n", connection_fd);
       tmp_fd = (int *) calloc(1, sizeof(int));
       *tmp_fd = connection_fd;
       pthread_create(&thread, NULL, connection_handler_gate, tmp_fd);
     }
 
+    printf("Closing socket\n");
     close(socket_fd);
     unlink(path);
 error_exit:
@@ -249,12 +250,87 @@ bool uninit_plugin(void *self);
 void *test_mem_access(void *arg);
 void RR_before_block_exec(CPUState *env, TranslationBlock *tb);
 
+void *read_all(void *arg);
+
 // Globals
 char *socket_path = NULL;
 char *volatility_profile = NULL;
 char *volatility_command = NULL;
 char pmemaccess_mode = -1;
 pthread_t tid;
+
+
+void *read_all(void *arg)
+{
+  struct sockaddr_un saddr;
+  struct request req;
+  int sock = -1;
+  int retry = 0;
+  int num_bytes = 0;
+  char *buf = NULL;
+
+  // Wait for VM to boot a little
+  sleep(10);
+
+  // Setup socket
+  saddr.sun_family = AF_UNIX;
+  strncpy(saddr.sun_path, socket_path, sizeof(saddr.sun_path)-1);
+  saddr.sun_path[strlen(saddr.sun_path)] = '\0';
+
+  sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock == -1) {
+    printf("PMemAccess: socket failed\n");
+    perror("socket");
+    return NULL;
+  }
+
+  // Connect to socket
+  while (retry < 10) {
+    printf("Connecting to %s\n", saddr.sun_path);
+    if (connect(sock, (struct sockaddr *)&saddr, strlen(saddr.sun_path)+sizeof(saddr.sun_family)) == -1) { 
+      printf("PMemAccess: connect failed\n");
+      perror("connect");
+      retry++;
+    } else {
+      printf("Success!!!\n");
+      break;
+    }
+    sleep(1);
+  }
+  if (retry == 10)
+    return NULL;
+
+  int block_len = 1024;
+  buf = (char *)calloc(block_len+1, sizeof(char));
+
+  int addr = 0;
+
+  FILE *f = fopen("pmem.out", "wb");
+  if(f== NULL){
+    printf("Error opening file\n");
+    exit(1);
+  }
+
+  while (addr < ram_size) {
+    req.type = REQ_READ;
+    req.length = block_len;
+    req.address = addr;
+    num_bytes = write(sock, &req, sizeof(struct request));
+    if (num_bytes != sizeof(struct request))
+          goto read_fail;
+    num_bytes = read(sock, buf, block_len+1);
+    if (buf[block_len] == 1 && num_bytes != sizeof(struct request)){
+      fwrite(&buf[0], 1, block_len, f);
+      }
+    else {
+      read_fail:
+      addr+= block_len;
+      continue;
+    }
+    addr+=block_len;
+  }
+  exit(0);
+}
 
 void *test_mem_access(void *arg)
 {
@@ -370,7 +446,7 @@ void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   exec_once = 1;
   // Setup the volatility command
   memset(tmp_buf, 0, PATH_MAX);
-  snprintf(tmp_buf, PATH_MAX, "python ~/git/volatility/vol.py -f %s --profile=%s %s",
+  snprintf(tmp_buf, PATH_MAX, "python3 ~/volatility/vol.py -f %s --profile=%s %s",
            socket_path, volatility_profile, volatility_command);
   printf("PMemAccess: Will popen(%s)\n", tmp_buf);
   // Start volatility
@@ -449,6 +525,9 @@ bool init_plugin(void *self)
     case 1: ;// Test RR access with callback
       panda_cb pcb = {.before_block_exec = RR_before_block_exec };
       panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+      break;
+    case 2:
+      pthread_create(&tid, NULL, &read_all, NULL);
       break;
     default:
       break;
