@@ -6,7 +6,7 @@ Whenever the process changes, print it's ASID and name
 panda = Panda(generic='x86_64')
 
 def _active_proc_name(cpu):
-    proc = panda.plugins['osi'].get_current_process(cpu)
+    proc = panda.get_current_process(cpu)
     if proc == panda.ffi.NULL: return ""
     return panda.ffi.string(proc.name).decode("utf8", errors="ignore")
 
