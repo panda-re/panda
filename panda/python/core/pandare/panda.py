@@ -1715,8 +1715,8 @@ class Panda():
         '''
         mappings = self.get_mappings(cpu)
         for m in mappings:
-            if m.name != panda.ffi.NULL:
-                name = panda.ffi.string(m.name).decode("utf-8")
+            if m.name != self.ffi.NULL:
+                name = self.ffi.string(m.name).decode("utf-8")
             else:
                 name = "???"
             if addr >= m.base and addr < m.base+m.size:
