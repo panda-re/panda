@@ -39,6 +39,7 @@ from .qcows_internal import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 from .cosi import Cosi
+from dataclasses import dataclass
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -1710,17 +1711,32 @@ class Panda():
             addr: int
 
         Returns:
-            OsiModule: the matching OsiModule structure
+            OsiModule: dataclass representation of OsiModule structure with strings converted to python strings
+                Note that the strings will be None if their pointer was null
             None: on failure
         '''
+        @dataclass
+        class OsiModule:
+            '''dataclass representation of OsiModule structu'''
+            base: int
+            file: str
+            modd: int
+            name: str
+            size: int
         mappings = self.get_mappings(cpu)
         for m in mappings:
-            if m.name != self.ffi.NULL:
-                name = self.ffi.string(m.name).decode("utf-8")
-            else:
-                name = "???"
+            if m == self.ffi.NULL:
+                continue
             if addr >= m.base and addr < m.base+m.size:
-                return m
+                if m.name != self.ffi.NULL:
+                    name = self.ffi.string(m.name).decode("utf-8")
+                else:
+                    name = None
+                if m.file != self.ffi.NULL:
+                    file = self.ffi.string(m.file).decode("utf-8")
+                else:
+                    file = None
+                return OsiModule(m.base, file, m.modd, name, m.size)
         return None
 
     def get_processes(self, cpu):
