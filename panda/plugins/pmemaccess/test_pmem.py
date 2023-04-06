@@ -43,7 +43,7 @@ def run_cmd():
     #panda.run_serial_cmd("sleep 10")
     print("[PANDA] " + panda.run_serial_cmd("lsb_release -a") + " [PANDA]\n")
     print("[PANDA] " + panda.run_serial_cmd("uname -a") + " [PANDA]\n")
-    set_up(profile, path)
+    #set_up(profile, path)
     print("Done sleep, ending")
     panda.end_analysis()
 
@@ -57,11 +57,12 @@ def asidchange(cpu, old_asid, new_asid):
 
 path = "/home/rdm/pmem_sock3"
 profile = "LinuxUbuntu_4_15_0-208-generic_profilex64"
+dump = "/home/rdm/pmem.dump"
 
 #print("Loading pmemaccess")
 #panda.load_plugin("pmemaccess", args = {"path":path, "mode": 2})
 
-#panda.load_plugin("pmemaccess", args = {"path":path, "mode": 1, "profile":profile, "command":"linux_pslist"})
+panda.load_plugin("pmemaccess", args = {"path":path, "dump":dump, "mode": 3, "profile":profile, "command":"linux_pslist"})
 
 panda.enable_precise_pc()
 panda.disable_tb_chaining()

@@ -6,6 +6,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "panda/plugin.h"
 #include "memory-access.h"
@@ -16,6 +20,7 @@
 #define PLUGIN_ARG_PROFILE_KEY "profile"
 #define PLUGIN_ARG_COMMAND_KEY "command"
 #define PLUGIN_ARG_MODE_KEY "mode"
+#define PLUGIN_ARG_DUMP_FILE_KEY "dump"
 
 /*
  * Acess guest physical memory via a domain socket.
@@ -257,6 +262,7 @@ char *socket_path = NULL;
 char *volatility_profile = NULL;
 char *volatility_command = NULL;
 char pmemaccess_mode = -1;
+char *dump_file = NULL;
 pthread_t tid;
 
 
@@ -305,7 +311,7 @@ void *read_all(void *arg)
 
   int addr = 0;
 
-  FILE *f = fopen("pmem.out", "wb");
+  FILE *f = fopen(dump_file, "wb");
   if(f== NULL){
     printf("Error opening file\n");
     exit(1);
@@ -329,7 +335,7 @@ void *read_all(void *arg)
     }
     addr+=block_len;
   }
-  exit(0);
+  return NULL;
 }
 
 void *test_mem_access(void *arg)
@@ -444,10 +450,16 @@ void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   if (exec_once)
     return;
   exec_once = 1;
+
+  // spin until dump_file is created
+  //while(access(dump_file, F_OK)) {
+  //  sleep(0.5);
+  //}
+
   // Setup the volatility command
   memset(tmp_buf, 0, PATH_MAX);
   snprintf(tmp_buf, PATH_MAX, "python3 ~/volatility/vol.py -f %s --profile=%s %s",
-           socket_path, volatility_profile, volatility_command);
+           dump_file, volatility_profile, volatility_command);
   printf("PMemAccess: Will popen(%s)\n", tmp_buf);
   // Start volatility
   fp = popen(tmp_buf, "r");
@@ -485,6 +497,9 @@ bool init_plugin(void *self)
     if(!strcmp(PLUGIN_ARG_PATH_KEY, pargs->list[i].key)) {
       socket_path = (char *)malloc(strlen(pargs->list[i].value)+1);
       memcpy(socket_path, pargs->list[i].value, strlen(pargs->list[i].value)+1);
+    } else if (!(strcmp(PLUGIN_ARG_DUMP_FILE_KEY, pargs->list[i].key))) {
+      dump_file = (char *)malloc(strlen(pargs->list[i].value)+1);
+      memcpy(dump_file, pargs->list[i].value, strlen(pargs->list[i].value)+1);
     } else if (!strcmp(PLUGIN_ARG_PROFILE_KEY, pargs->list[i].key)) {
       volatility_profile = calloc(strlen(pargs->list[i].value)+1, sizeof(char));
       memcpy(volatility_profile, pargs->list[i].value, strlen(pargs->list[i].value)+1);
@@ -511,6 +526,13 @@ bool init_plugin(void *self)
     printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_COMMAND_KEY);
     return false;
   }
+  if (pmemaccess_mode == 1 && dump_file == NULL) {
+    printf("PMemaccess: %s argument not found\n", PLUGIN_ARG_DUMP_FILE_KEY);
+    return false;
+  }
+  else {
+    printf("Creating dumpfile %s\n", dump_file);
+  }
 
   // Start the memory access socket
   memory_access_start(socket_path);
@@ -528,6 +550,11 @@ bool init_plugin(void *self)
       break;
     case 2:
       pthread_create(&tid, NULL, &read_all, NULL);
+      break;
+    case 3:
+      read_all(NULL);
+      panda_cb pcb2 = {.before_block_exec = RR_before_block_exec };
+      panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
       break;
     default:
       break;
