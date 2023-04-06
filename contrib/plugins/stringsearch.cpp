@@ -11,6 +11,7 @@ extern "C" {
 }
 
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+QEMU_PLUGIN_EXPORT const char *qemu_plugin_name = "stringsearch";
 
 bool verbose = true;
 
@@ -77,6 +78,7 @@ void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
                 qemu_plugin_read_guest_virt_mem(match_addr, big_buf, sl);
 
                 if (memcmp(big_buf, tofind[str_idx], sl) == 0) {
+                    qemu_plugin_run_callback(id, "my_string_found", &called, NULL);
                     printf("... its in memory\n");
                 } else {
                     printf("... its not in memory\n");
@@ -181,6 +183,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
                                            char **argv)
 {
     qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
+    qemu_plugin_create_callback(id, "my_on_string_found");
     
     for (int i = 0; i < argc; i++) {
         char *opt = argv[i];
