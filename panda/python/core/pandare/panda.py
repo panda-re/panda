@@ -12,7 +12,6 @@ import socket
 import select
 import threading
 
-
 import readline
 # XXX: readline is unused but necessary. We need to load python
 # readline, to preempt PANDA loading another version. PANDA
@@ -40,6 +39,7 @@ from .qcows_internal import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
 from .cosi import Cosi
+from dataclasses import dataclass
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -1670,6 +1670,19 @@ class Panda():
             return None
         return self.ffi.string(fname_ptr)
 
+    def get_current_process(self, cpu):
+        '''
+        Get the current process as an OsiProc struct.
+
+        Returns:
+            string: process name
+            None: on failure
+        '''
+        proc = self.plugins['osi'].get_current_process(cpu)
+        if proc == self.ffi.NULL:
+            return None
+        return proc
+
     def get_mappings(self, cpu):
         '''
         Get all active memory mappings in the system.
@@ -1686,6 +1699,45 @@ class Panda():
         maps = self.plugins['osi'].get_mappings(cpu, current)
         map_len = self.garray_len(maps)
         return GArrayIterator(self.plugins['osi'].get_one_module, maps, map_len, self.plugins['osi'].cleanup_garray)
+
+    def get_mapping_by_addr(self, cpu, addr):
+        '''
+        Return the OSI mapping that matches the address specified.
+
+        Requires: OSI
+
+        Args:
+            cpu: CPUState struct
+            addr: int
+
+        Returns:
+            OsiModule: dataclass representation of OsiModule structure with strings converted to python strings
+                Note that the strings will be None if their pointer was null
+            None: on failure
+        '''
+        @dataclass
+        class OsiModule:
+            '''dataclass representation of OsiModule structu'''
+            base: int
+            file: str
+            modd: int
+            name: str
+            size: int
+        mappings = self.get_mappings(cpu)
+        for m in mappings:
+            if m == self.ffi.NULL:
+                continue
+            if addr >= m.base and addr < m.base+m.size:
+                if m.name != self.ffi.NULL:
+                    name = self.ffi.string(m.name).decode("utf-8")
+                else:
+                    name = None
+                if m.file != self.ffi.NULL:
+                    file = self.ffi.string(m.file).decode("utf-8")
+                else:
+                    file = None
+                return OsiModule(m.base, file, m.modd, name, m.size)
+        return None
 
     def get_processes(self, cpu):
         '''
@@ -3069,7 +3121,7 @@ class Panda():
     def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="start_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
-        the function will be called with args (CPUState, TranslationBlock)
+        the function will be called with args (CPUState, TranslationBlock, struct hook)
 
         Args:
             libraryname (string): Name of library containing symbol to be hooked. May be None to match any.

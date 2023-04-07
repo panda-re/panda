@@ -91,7 +91,7 @@ def runner(generic_name, test1=True, test2=True):
             global reverted
             #print("ASID", reverted, panda.arch)
             if reverted and panda.arch_name in osi_supported: # If osi unsupported, bail
-                proc = panda.plugins['osi'].get_current_process(cpu)
+                proc = panda.get_current_process(cpu)
                 name = panda.ffi.string(proc.name)
                 if name not in seen:
                     maps = panda.get_mappings(cpu)
