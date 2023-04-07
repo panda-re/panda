@@ -39,6 +39,7 @@ PANDAENDCOMMENT */
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
+#include "hw_proc_id/hw_proc_id_ext.h"
 
 void syscall_callback(CPUState *cpu, TranslationBlock* tb, target_ulong pc, int static_callno);
 
@@ -927,7 +928,7 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
  * matches the return address of an executing system call.
  */
 void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
-    auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
+    auto k = std::make_pair(tb->pc, get_id(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
     if (unlikely(ctxi == running_syscalls.end())) {
@@ -952,7 +953,7 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
         const syscall_info_t *si = syscall_info;
         const syscall_meta_t *sm = syscall_meta;
         std::string remaining = context_map_t_dump(running_syscalls);
-        LOG_DEBUG("returned: %s:" TARGET_PTR_FMT, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
+        LOG_DEBUG("returned: %s:" TARGET_PTR_FMT, (no > sm->max_generic ? "N/A" : si[no].name), get_id(cpu));
         LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
 #endif
     }
@@ -1134,12 +1135,12 @@ void syscall_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc, int 
     if (no >= 0 && !si[no].noreturn) {
         std::string remaining = context_map_t_dump(running_syscalls);
         const char *c = (rr_get_guest_instr_count() > 7726588867 ? "X" : "");
-        LOG_DEBUG("started%s: %s:" TARGET_PTR_FMT, c, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
+        LOG_DEBUG("started%s: %s:" TARGET_PTR_FMT, c, (no > sm->max_generic ? "N/A" : si[no].name), get_id(cpu));
         LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
     }
 #endif
 #ifdef DEBUG
-        syscallCounter[panda_current_asid(cpu)]++;
+        syscallCounter[get_id(cpu)]++;
 #endif
 }
 
@@ -1265,6 +1266,8 @@ bool init_plugin(void *self) {
 #if defined(SYSCALL_RETURN_DEBUG)
     assert((syscall_info != NULL) && "syscall return debugging requires loading syscall info");
 #endif
+    panda_require("hw_proc_id");
+    assert(init_hw_proc_id_api());
 
     // done parsing arguments
     panda_free_args(plugin_args);
@@ -1291,6 +1294,7 @@ void uninit_plugin(void *self) {
     // if we don't clear tb's when this exits we have TBs which can call
     // into our exited plugin.
     panda_do_flush_tb();
+    printf("leftover running syscalls %ld\n",running_syscalls.size());
 #ifdef DEBUG
     std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){

@@ -1902,7 +1902,7 @@ syscall_info_t __syscall_info_a[] = {
 		.argsz = argsz_60,
 		.argn = argn_60,
 		.argtn = argtn_60,
-		.noreturn = false
+		.noreturn = true
 	},
 	[61] = {
 		.no = 61,
@@ -4372,7 +4372,7 @@ syscall_info_t __syscall_info_a[] = {
 		.argsz = argsz_322,
 		.argn = argn_322,
 		.argtn = argtn_322,
-		.noreturn = false
+		.noreturn = true
 	},
 	[323] = {
 		.no = 323,
