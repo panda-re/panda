@@ -11,7 +11,9 @@
 # plugin-this_plugins_name : plugin-plugin_x
 # or if you're using the extra plugins dir:
 # extra-plugin-this_plugins_name : extra-plugin-plugin_x
+DYNSYMS_SRC  = $(notdir $(wildcard $(PLUGIN_SRC_DIR)/*.cpp))
+DYNSYMS_OBJ  = $(patsubst %.cpp,$(PLUGIN_OBJ_DIR)/%.o,$(DYNSYMS_SRC))
+
 
 # The main rule for your plugin. List all object-file dependencies.
-$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
-	$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o
+$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(DYNSYMS_OBJ)
