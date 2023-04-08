@@ -47,8 +47,8 @@ all: $(SONAMES)
 libstringsearch.so: stringsearch.o
 	$(CC) -shared -Wl,-soname,$@ -o $@ $^ $(LDLIBS)
 
-stringsearch.o: stringsearch.cpp
-	g++  $(CPPFLAGS) -DCURRENT_PLUGIN=\"stringsearch\" -c -o stringsearch.o $<
+stringsearch.o: stringsearch.c
+	gcc  $(CFLAGS) -DCURRENT_PLUGIN=\"stringsearch\" -c -o stringsearch.o $<
 
 libosi_linux.so: osi_linux.o default_profile.o kernelinfo_read.o
 	$(CC) -shared -Wl,-soname,$@ -o $@ $^ $(LDLIBS)
