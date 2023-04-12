@@ -19,23 +19,16 @@ bool verbose = true;
 #define MAX_CALLERS 128
 #define MAX_STRLEN  1024
 
-//using match_strings = std::array<int, MAX_STRINGS>;
 typedef struct {
     int32_t val[MAX_STRINGS];
 } match_strings;
 
-//using string_pos = std::array<uint32_t, MAX_STRINGS>;
 typedef struct {
     uint32_t val[MAX_STRINGS];
 } string_pos;
 
-//std::map<uint64_t, match_strings> matches;
 GHashTable *matches = NULL;
-
-//std::map<uint64_t, string_pos> read_text_tracker;
 GHashTable *read_text_tracker = NULL;
-
-//std::map<uint64_t, string_pos> write_text_tracker;
 GHashTable *write_text_tracker = NULL;
 
 char tofind[MAX_STRINGS][MAX_STRLEN];
@@ -129,7 +122,7 @@ static void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
 
 
 /* Add a string to the list of strings we're searching for. */
-static bool add_string(const char* arg_str)
+QEMU_PLUGIN_EXPORT bool stringsearch_add_string(const char* arg_str)
 {
   size_t arg_len = strlen(arg_str);
   if (arg_len <= 0) {
@@ -235,7 +228,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
         g_autofree char **tokens = g_strsplit(opt, "=", 2);
 
         if (g_strcmp0(tokens[0], "str") == 0) {
-            add_string(tokens[1]);
+            stringsearch_add_string(tokens[1]);
         }
     }
 
