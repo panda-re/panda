@@ -1793,6 +1793,19 @@ ERST
     },
 
 SRST
+``load_plugin``
+  Load a qemu plugin for analysis
+ERST
+
+    {
+        .name       = "load_plugin",
+        .args_type  = "args:s",
+        .params     = "[plugin]",
+        .help       = "Load a qemu plugin for analysis",
+        .cmd        = hmp_load_plugin,
+    },
+
+SRST
 ``set_vcpu_dirty_limit``
   Set dirty page rate limit on virtual CPU, the information about all the
   virtual CPU dirty limit status can be observed with ``info vcpu_dirty_limit``
