@@ -85,7 +85,13 @@ static void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
             if (sp->val[str_idx] == strlens[str_idx]) {
                 /* Victory! */
                 if (verbose) {
-                    printf("%s Match of str %li at pc=0x%lx\n", is_write ? "WRITE" : "READ", str_idx, pc);
+                    size_t output_len = snprintf(NULL, 0, "%s Match of str %li at pc=0x%lx\n", is_write ? "WRITE" : "READ", str_idx, pc);
+                    char *output = (char*)g_malloc0(output_len + 1);
+
+                    snprintf(output, output_len, "%s Match of str %li at pc=0x%lx\n", is_write ? "WRITE" : "READ", str_idx, pc);
+                    qemu_plugin_outs(output);
+
+                    g_free((gpointer)output);
                 }
 
                 match_strings *match = (match_strings*)g_hash_table_lookup(matches, (gconstpointer)p);
@@ -109,9 +115,9 @@ static void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
 
                 if (memcmp(big_buf, tofind[str_idx], sl) == 0) {
                     qemu_plugin_run_callback(plugin_id, "on_string_found", &match_addr, NULL);
-                    printf("... its in memory\n");
+                    qemu_plugin_outs("... its in memory\n");
                 } else {
-                    printf("... its not in memory\n");
+                    qemu_plugin_outs("... its not in memory\n");
                 }
             }
         }
@@ -126,12 +132,12 @@ QEMU_PLUGIN_EXPORT bool stringsearch_add_string(const char* arg_str)
 {
   size_t arg_len = strlen(arg_str);
   if (arg_len <= 0) {
-      printf("WARNING [stringsearch]: not adding empty string\n");
+      qemu_plugin_outs("WARNING [stringsearch]: not adding empty string\n");
       return false;
   }
 
   if (arg_len >= MAX_STRLEN-1) {
-      printf("WARNING [stringsearch]: string too long (max %d)\n", MAX_STRLEN-1);
+      qemu_plugin_outs("WARNING [stringsearch]: string too long\n");
       return false;
   }
 
@@ -143,7 +149,7 @@ QEMU_PLUGIN_EXPORT bool stringsearch_add_string(const char* arg_str)
   }
 
   if (num_strings >= MAX_STRINGS-1) {
-    printf("Warning [stringsearch]: out of string slots (using %ld)\n", num_strings);
+    qemu_plugin_outs("Warning [stringsearch]: out of string slots\n");
     return false;
   }
 
@@ -152,7 +158,13 @@ QEMU_PLUGIN_EXPORT bool stringsearch_add_string(const char* arg_str)
   num_strings++;
 
   if (verbose) {
-      printf("[stringsearch] Adding string %s\n", arg_str);
+      size_t output_len = snprintf(NULL, 0, "[stringsearch] Adding string %s\n\n", arg_str);
+      char *output = (char*)g_malloc0(output_len + 1);
+
+      snprintf(output, output_len, "[stringsearch] Adding string %s\n\n", arg_str);
+      qemu_plugin_outs(output);
+
+      g_free((gpointer)output);
   }
 
   return true;
