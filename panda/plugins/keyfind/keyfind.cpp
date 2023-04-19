@@ -61,6 +61,9 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target
 bool in_openssl;
 
 #define KEYSIZE 48
+#define ENTROPY_THRESHOLD_48 5.0044
+#define ENTROPY_THRESHOLD_32 4.394
+
 //int keysize = 48;
 
 typedef struct Memchunk {
@@ -147,18 +150,20 @@ bool check_key(StringInfo *master_secret, StringInfo *client_random, StringInfo 
 
 }
 
-//Memchunk* find_segment_for_addr(target_ptr_t addr) {
-//    for(int i = 0; i < heap_segments.size(); i++) {
-//        if(addr == heap_segments[i].end){
-//            return &(heap_segments[i]);
-//        }
-//    }
-//
-//    return NULL;
-//}
+//helper function for sorting by buffer value
+bool buffer_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
+    return (memcmp(a.first.buf, b.first.buf, KEYSIZE) < 0);
+}
 
+//helper function for sorting by highest entropy
 bool entropy_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
     return a.second > b.second;
+}
+
+
+//heper function for checking equality of memchunks by buffer value
+bool memchunk_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
+    return (memcmp(a.first.buf, b.first.buf, KEYSIZE) == 0);
 }
 
 double shannon_entropy(uint8_t* buf, size_t size) {
@@ -196,6 +201,27 @@ void print_heap_segments() {
 //    for(int i = 0; i < heap_segments.size(); i++) {
 //        print_memchunk(&heap_segments[i]);
 //    }
+}
+
+void get_heap_bounds(CPUState* env, target_ptr_t* start, target_ptr_t* end) {
+    OsiProc *current;
+    current = get_current_process(env);
+
+    GArray *ms = NULL;
+    ms = get_mappings(env, current);
+    if (ms != NULL) {
+        for (uint32_t j = 0; j < ms->len; j++) {
+            OsiModule *m = &g_array_index(ms, OsiModule, j);
+            if(strcmp(m->name, "[heap]") == 0) {
+                *start = m->base;
+                *end = m->base + m->size;
+                printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
+            }
+        }
+        g_array_free(ms, true);
+    }
+
+   
 }
 
 //server handshake traffic key: c6b78b42 10befbe5 a38e7cca646d214d2ae64174e194a18ad722b18429821635885b747cb98f4372 4e9b46a9 3690e6ed
@@ -276,6 +302,26 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         //check if the write is happening right after the end of the last write
         //if it's not, reset the last_write
         if(addr != last_write.end){
+            //if the next write isn't adjacent to the last AND the last write buffer had KEYSIZE bytes written to it, add it to the vec, then reset last_write
+
+            if(last_write.size == KEYSIZE) {
+                //store in vec, reset last_write
+                double e = shannon_entropy(last_write.buf, KEYSIZE);
+                target_ptr_t heap_start;
+                target_ptr_t heap_end;
+                get_heap_bounds(env, &heap_start, &heap_end);
+
+                //if(e >= ENTROPY_THRESHOLD_48 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
+                if(e >= ENTROPY_THRESHOLD_48 && last_write.start < heap_end && last_write.start >= heap_start) {
+                //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
+                    heap_segments.push_back(std::make_pair(last_write, e));
+                } else if (e >= ENTROPY_THRESHOLD_48) {
+                    non_heap_segments.push_back(std::make_pair(last_write, e));
+                }
+ 
+            }
+
+
             last_write.start = addr;
             last_write.end = addr + size;
             memset(last_write.buf, 0, KEYSIZE);
@@ -289,18 +335,19 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
             last_write.size += size;
 
             //if the last_write chunk reaches the keysize, store it in the vec, and then reset the last_write
-            if(last_write.size == KEYSIZE) {
-                //store in vec, reset last_write
-                double e = shannon_entropy(last_write.buf, KEYSIZE);
 
-                if(e >= 5.0 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
-                //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
-                    heap_segments.push_back(std::make_pair(last_write, e));
-                } else if (e >= 5.0) {
-                    non_heap_segments.push_back(std::make_pair(last_write, e));
-                }
-                
-            }
+            //if(last_write.size == KEYSIZE) {
+            //    //store in vec, reset last_write
+            //    double e = shannon_entropy(last_write.buf, KEYSIZE);
+
+            //    if(e >= 5.0 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
+            //    //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
+            //        heap_segments.push_back(std::make_pair(last_write, e));
+            //    } else if (e >= 5.0) {
+            //        non_heap_segments.push_back(std::make_pair(last_write, e));
+            //    }
+            //    
+            //}
         }
 
         if(seen_first_byte && count < 12) {
@@ -503,38 +550,9 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    printf("%d / %d blocks instrumented.\n", instrumented, total);
-    FILE *mem_report = fopen("key_matches.txt", "w");
-    if(!mem_report) {
-        printf("Couldn't write report:\n");
-        perror("fopen");
-        return;
-    }
-    std::set<prog_point>::iterator it;
-    for (auto m : matches) {
-//    for(it = matches.begin(); it != matches.end(); it++) {
-        // Print prog point
-        std::string s = std::get<2>(m);
-        fprintf(mem_report, TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
-          std::get<0>(m), std::get<1>(m), s.c_str());
-//            it->caller, it->pc, it->cr3);
-        // Print strings that matched and how many times
-    }
-    fclose(mem_report);
-
-    printf("sorting heap_segments by entropy...\n");
-    
-    std::sort(heap_segments.begin(), heap_segments.end(), entropy_compare);
 
     printf("collected %ld heap_segments:\n", heap_segments.size());
     printf("collected %ld non_heap_segments:\n", non_heap_segments.size());
-//    for(int i = 0; i < heap_segments.size(); i++) {
-//        printf("%f, " TARGET_PTR_FMT ": ", heap_segments[i].second, heap_segments[i].first.start);
-//        for(int j = 0; j < KEYSIZE; j++) {
-//            printf("%02x", heap_segments[i].first.buf[j]);
-//        }
-//        printf("\n");
-//    }
 
     int num_pairs = 0;
     for(int i = 0; i < heap_segments.size(); i++) {
@@ -562,37 +580,22 @@ void uninit_plugin(void *self) {
     }
     printf("found %ld pairs in the heap\n", heap_pairs.size());
 
+
     printf("deduplicating the heap segments...\n");
+    std::sort(heap_segments.begin(), heap_segments.end(), buffer_compare);
+    heap_segments.erase(std::unique(heap_segments.begin(), heap_segments.end(), memchunk_compare), heap_segments.end());
+    printf("there are %ld heap segments after deduplication\n", heap_segments.size());
 
-    bool found_match = false;
-    for(int i = 0; i < heap_segments.size(); i++) {
-        found_match = false;
-        for(int j = 0; j < heap_segments.size(); j++) {
-            if(i != j && memcmp(heap_segments[i].first.buf, heap_segments[j].first.buf, KEYSIZE) == 0) {
-                found_match = true;
-            }
-        }
-
-        if(!found_match) {
-            deduplicated_heap.push_back(heap_segments[i]);
-        }
-    }
-    printf("there are %ld heap segments after deduplication\n", deduplicated_heap.size());
 
     printf("deduplicating the non-heap segments...\n");
-    for(int i = 0; i < non_heap_segments.size(); i++) {
-        found_match = false;
-        for(int j = 0; j < non_heap_segments.size(); j++) {
-            if(i != j && memcmp(non_heap_segments[i].first.buf, non_heap_segments[j].first.buf, KEYSIZE) == 0) {
-                found_match = true;
-            }
-        }
+    std::sort(non_heap_segments.begin(), non_heap_segments.end(), buffer_compare);
+    non_heap_segments.erase(std::unique(non_heap_segments.begin(), non_heap_segments.end(), memchunk_compare), non_heap_segments.end());
+    printf("there are %ld non-heap segments after deduplication\n", non_heap_segments.size());
 
-        if(!found_match) {
-            deduplicated_non_heap.push_back(non_heap_segments[i]);
-        }
-    }
-    printf("there are %ld non-heap segments after deduplication\n", deduplicated_non_heap.size());
+
+    printf("sorting heap_segments and non_heap_segments by entropy...\n");
+    std::sort(heap_segments.begin(), heap_segments.end(), entropy_compare);
+    std::sort(non_heap_segments.begin(), non_heap_segments.end(), entropy_compare);
 
     printf("writing heap pairs to file heap_pairs.txt\n");
     FILE *fptr;
