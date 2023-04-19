@@ -117,20 +117,27 @@ connection_handler (int connection_fd)
 {
     int nbytes;
     struct request req;
-
+    int count = 0;
     while (1){
         // client request should match the struct request format
         nbytes = read(connection_fd, &req, sizeof(struct request));
+        
         if (nbytes != sizeof(struct request)){
             // error
+            printf("Error reading request, read 0x%x bytes instead of 0x%lx\n", nbytes, sizeof(struct request));
             continue;
         }
         else if (req.type == 0){
+            printf("Quit requested\n");
             // request to quit, goodbye
             break;
         }
         else if (req.type == 1){
             // request to read
+            if(count % 10 == 0){
+                printf("Read requested: %d\n", count);
+            }
+            count++;
             char *buf = malloc(req.length + 1);
             nbytes = connection_read_memory(req.address, buf, req.length);
             if (nbytes != req.length){
@@ -147,6 +154,7 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 2){
             // request to write
+            printf("Write requested\n");
             void *write_buf = malloc(req.length);
             nbytes = read(connection_fd, write_buf, req.length);
             if (nbytes != req.length){
@@ -165,6 +173,15 @@ connection_handler (int connection_fd)
             }
             free(write_buf);
         }
+        else if (req.type == 3) {
+          // request for ram size
+          printf("RAM size requested\n");
+          unsigned char bytes[sizeof(ram_size)];
+          for(int i = sizeof(ram_size); i > 0; i--) {
+            bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
+          }
+          nbytes = write(connection_fd, bytes, sizeof(ram_size));
+        }
         else{
             // unknown command
             printf("QemuMemoryAccess: ignoring unknown command (%d)\n", req.type);
@@ -174,7 +191,7 @@ connection_handler (int connection_fd)
             free(buf);
         }
     }
-
+    printf("[pmemaccess] Closing time\n");
     close(connection_fd);
 }
 
@@ -452,14 +469,24 @@ void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   exec_once = 1;
 
   // spin until dump_file is created
-  //while(access(dump_file, F_OK)) {
-  //  sleep(0.5);
-  //}
+  /*while(access(dump_file, F_OK)) {
+    sleep(0.1);
+  }
+  FILE *f = fopen(dump_file, "wb");
+  
+  int fsz = 0;
+  while(fsz < 1000000000) {
+    fseek(f, 0L, SEEK_END);
+    fsz = ftell(f);
+    rewind(f);
+  }*/
 
   // Setup the volatility command
   memset(tmp_buf, 0, PATH_MAX);
+  //snprintf(tmp_buf, PATH_MAX, "python3 ~/volatility/vol.py -f %s --profile=%s %s",
+  //         dump_file, volatility_profile, volatility_command);
   snprintf(tmp_buf, PATH_MAX, "python3 ~/volatility/vol.py -f %s --profile=%s %s",
-           dump_file, volatility_profile, volatility_command);
+           socket_path, volatility_profile, volatility_command);
   printf("PMemAccess: Will popen(%s)\n", tmp_buf);
   // Start volatility
   fp = popen(tmp_buf, "r");
