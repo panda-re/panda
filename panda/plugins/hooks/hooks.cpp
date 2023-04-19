@@ -108,7 +108,7 @@ void handle_hook_return (struct hook_symbol_resolve *sh, struct symbol s, target
     // printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) get_id(cpu), (long long unsigned int) s.address - m->base);
     struct hook new_hook;
     new_hook.addr = s.address;
-    new_hook.asid = get_id(cpu);
+    new_hook.asid = asid;
     new_hook.type = resolved.second; 
     new_hook.km = MODE_USER_ONLY;
     new_hook.cb = resolved.first;

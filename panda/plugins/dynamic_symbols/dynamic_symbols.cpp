@@ -34,6 +34,58 @@ unordered_map<string, unordered_map<string, set<struct hook_symbol_resolve>>> ho
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
     string section(h->section);
     string name(h->name);
+
+    // this part checks for previously found matches
+    vector<pair<struct hook_symbol_resolve*, struct symbol>> symbols_to_flush;
+
+    // loop through resolved process libraries
+    for (auto &pl : process_libraries){
+        target_ulong base = pl.second;
+        // empty matches everything. otherwise match partial section name
+        if (section.empty() || pl.first.second.find(section) != string::npos){
+            // find Library from libraries
+            auto it = libraries.find(pl.first.second);
+            if (it != libraries.end()){
+                Library &l = it->second;
+                // if section is empty, either match everything or hook offset
+                if (name.empty()){
+                    if (h->hook_offset){
+                        l.bind(first_cpu, base, (char*)pl.first.second.c_str());
+                        struct symbol s;
+                        memset(&s, 0, sizeof(struct symbol));
+                        s.address = pl.second + h->offset;
+                        strncpy((char*)&s.section, (char*)pl.first.second.c_str(), sizeof(s.section)-2);
+                        symbols_to_flush.push_back(make_pair(h,s));
+                    }else{
+                        // otherwise match everything
+                        l.bind_all(first_cpu, base);
+                        for (auto &s : l.symbols){
+                            symbols_to_flush.push_back(make_pair(h,s.second));
+                        }
+                    }
+                }else{
+                    // otherwise match for names
+                    auto it = l.symbols.find(name);
+                    if (it != l.symbols.end()){
+                        target_ulong symbase = it->second.address;
+                        auto &a = *it;
+                        l.bind(first_cpu, base, (char*)&a.second.name);
+                        symbols_to_flush.push_back(make_pair(h, a.second));
+                    }
+                }
+
+            }
+        }
+    }
+    while (!symbols_to_flush.empty()){
+        auto p = symbols_to_flush.back();
+        auto hook_candidate = p.first;
+        auto s = p.second;
+        (*(hook_candidate->cb))(hook_candidate, s, get_id(first_cpu));
+        symbols_to_flush.pop_back();
+    }
+
+    // add to the hook list
     hooks[section][name].insert(*h);
 }
 
