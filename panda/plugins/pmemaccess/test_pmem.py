@@ -60,7 +60,7 @@ profile = "LinuxUbuntu_4_15_0-208-generic_profilex64"
 dump = "/home/rdm/pmem.dump"
 
 #print("Loading pmemaccess")
-#panda.load_plugin("pmemaccess", args = {"path":path, "mode": 2})
+#panda.load_plugin("pmemaccess", args = {"path":path, "dump": dump, "mode": 2})
 
 panda.load_plugin("pmemaccess", args = {"path":path, "dump":dump, "mode": 1, "profile":profile, "command":"linux_pslist"})
 #panda.load_plugin("pmemaccess", args = {"path":path, "mode": 1, "profile":profile, "command":"linux_pslist"})

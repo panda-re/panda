@@ -25,12 +25,15 @@ class PMemAddressSpace(addrspace.BaseAddressSpace):
         self.sock_path = config.LOCATION[len("file://"):]
         #print("Connecting to: " + self.sock_path)
         self.sock_fd = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.connected = False
         try:
             self.sock_fd.connect(self.sock_path)
+            self.connected = True
         except socket.error as msg:
             sys.stderr.write("PMemAddressSpace:{0}".format(str(msg)))
             sys.stderr.flush()
-            sys.exit(1)
+            #sys.exit(1)
+        self.as_assert(self.connected, "Could not connect to socket")
         #print("SUCCESS: Connected to: " + self.sock_path)
 
     def close(self):
@@ -40,6 +43,8 @@ class PMemAddressSpace(addrspace.BaseAddressSpace):
         '''
         try:
             self.sock_fd
+            if not self.connected:
+                return
         except AttributeError:
             return
         # Send quit message

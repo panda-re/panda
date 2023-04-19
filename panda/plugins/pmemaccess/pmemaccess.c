@@ -492,8 +492,6 @@ void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   status = pclose(fp);
   if (status == -1) {
     printf("PMemAccess: pclose() error.\n");
-  } else {
-    printf("PMemAccess: Volatility finished.\n");
   }
 
   return;
