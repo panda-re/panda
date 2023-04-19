@@ -62,11 +62,11 @@ void sys_mmap2_return()
 }
 
 #ifdef TARGET_MIPS64
-void sys_mprotect_return(CPUState *cpu, target_ulong pc, uint32_t arg0, uint32_t arg1, uint32_t arg2){
+void sys_mprotect_return(CPUState *cpu, target_ulong pc, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 #else
-void sys_mprotect_return(CPUState *cpu, target_ulong pc, target_ulong arg0, uint32_t arg1, target_ulong arg2){
+void sys_mprotect_return(CPUState *cpu, target_ulong pc, target_ulong arg0, uint32_t arg1, target_ulong arg2)
 #endif
-
+{
     enable_analysis(ANALYSIS_SPECIFIC);
 }
 
@@ -134,7 +134,7 @@ bool initialize_process_infopoints(void* self){
         PPP_REG_CB("syscalls2", on_do_mmap2_return, sys_mmap_return);
     #elif defined(TARGET_MIPS)
         PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
-        PPP_REG_CB("syscalls2", on_mmap2_return, sys_mmap2_mips_return);
+        PPP_REG_CB("syscalls2", on_mmap2_return, sys_mmap2_return);
     #endif
     PPP_REG_CB("syscalls2", on_sys_mprotect_return, sys_mprotect_return);
     panda_require("proc_start_linux");

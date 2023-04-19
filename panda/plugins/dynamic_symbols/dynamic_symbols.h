@@ -34,7 +34,6 @@ using namespace std;
 
 // local includes
 #include "util.h"
-#include "process_infopoints.h"
 #include "arch_info.h"
 #define error_case(A,B,C) // printf("%s %s %s\n", A, B, C)
 
