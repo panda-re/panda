@@ -1,6 +1,7 @@
 use crate::symbol_table;
 use panda::plugins::cosi::{find_per_cpu_address, OsiType};
 use panda::prelude::*;
+#[cfg(any(feature = "mips", feature = "mipsel", feature = "arm"))]
 use panda::mem::read_guest_type;
 use panda::GuestType;
 use std::mem::size_of;
@@ -206,7 +207,13 @@ impl CosiProc {
             let addr = HWPROCID.get_id(cpu);
             read_guest_type(cpu, addr).unwrap()
         };
-        #[cfg(not(any(feature = "mips", feature = "mipsel")))] 
+        #[cfg(feature = "arm")]
+        let curr_task_addr = {
+            let kernel_sp = panda::current_ksp(cpu);
+            let task_thread_info = kernel_sp & !(0x2000 - 1);
+            read_guest_type(cpu, task_thread_info + 0xc).unwrap()
+        };
+        #[cfg(not(any(feature = "mips", feature = "mipsel", feature = "arm")))]
         let curr_task_addr = {
             match find_per_cpu_address(cpu, "current_task").ok() {
                 Some(res) => res,
