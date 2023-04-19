@@ -117,27 +117,22 @@ connection_handler (int connection_fd)
 {
     int nbytes;
     struct request req;
-    int count = 0;
     while (1){
         // client request should match the struct request format
         nbytes = read(connection_fd, &req, sizeof(struct request));
         
         if (nbytes != sizeof(struct request)){
             // error
-            printf("Error reading request, read 0x%x bytes instead of 0x%lx\n", nbytes, sizeof(struct request));
+            //printf("Error reading request, read 0x%x bytes instead of 0x%lx\n", nbytes, sizeof(struct request));
             continue;
         }
         else if (req.type == 0){
-            printf("Quit requested\n");
+            //printf("Quit requested\n");
             // request to quit, goodbye
             break;
         }
         else if (req.type == 1){
             // request to read
-            if(count % 10 == 0){
-                printf("Read requested: %d\n", count);
-            }
-            count++;
             char *buf = malloc(req.length + 1);
             nbytes = connection_read_memory(req.address, buf, req.length);
             if (nbytes != req.length){
@@ -154,7 +149,6 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 2){
             // request to write
-            printf("Write requested\n");
             void *write_buf = malloc(req.length);
             nbytes = read(connection_fd, write_buf, req.length);
             if (nbytes != req.length){
@@ -175,7 +169,6 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 3) {
           // request for ram size
-          printf("RAM size requested\n");
           unsigned char bytes[sizeof(ram_size)];
           for(int i = sizeof(ram_size); i > 0; i--) {
             bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
@@ -184,14 +177,13 @@ connection_handler (int connection_fd)
         }
         else{
             // unknown command
-            printf("QemuMemoryAccess: ignoring unknown command (%d)\n", req.type);
+            //printf("QemuMemoryAccess: ignoring unknown command (%d)\n", req.type);
             char *buf = malloc(1);
             buf[0] = 0;
             nbytes = write(connection_fd, buf, 1);
             free(buf);
         }
     }
-    printf("[pmemaccess] Closing time\n");
     close(connection_fd);
 }
 
@@ -199,7 +191,7 @@ static void *
 connection_handler_gate (void *fd)
 {
   connection_handler(*(int *)fd);
-  printf("QemuMemoryAccess: Connection done (%d)\n", *(int *)fd);
+  //printf("QemuMemoryAccess: Connection done (%d)\n", *(int *)fd);
   free(fd);
   return NULL;
 }
@@ -229,16 +221,13 @@ memory_access_thread (void *path)
         printf("QemuMemoryAccess: listen failed\n");
         goto error_exit;
     }
-    printf("Created socket, now accepting connections\n");
     while (true) {
       connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
-      printf("QemuMemoryAccess: Connection accepted on %d.\n", connection_fd);
+      //printf("QemuMemoryAccess: Connection accepted on %d.\n", connection_fd);
       tmp_fd = (int *) calloc(1, sizeof(int));
       *tmp_fd = connection_fd;
       pthread_create(&thread, NULL, connection_handler_gate, tmp_fd);
     }
-
-    printf("Closing socket\n");
     close(socket_fd);
     unlink(path);
 error_exit:
@@ -309,13 +298,11 @@ void *read_all(void *arg)
 
   // Connect to socket
   while (retry < 10) {
-    printf("Connecting to %s\n", saddr.sun_path);
     if (connect(sock, (struct sockaddr *)&saddr, strlen(saddr.sun_path)+sizeof(saddr.sun_family)) == -1) { 
       printf("PMemAccess: connect failed\n");
       perror("connect");
       retry++;
     } else {
-      printf("Success!!!\n");
       break;
     }
     sleep(1);
@@ -381,13 +368,11 @@ void *test_mem_access(void *arg)
 
   // Connect to socket
   while (retry < 10) {
-    printf("Connecting to %s\n", saddr.sun_path);
     if (connect(sock, (struct sockaddr *)&saddr, strlen(saddr.sun_path)+sizeof(saddr.sun_family)) == -1) { 
       printf("PMemAccess: connect failed\n");
       perror("connect");
       retry++;
     } else {
-      printf("Success!!!\n");
       break;
     }
     sleep(1);
