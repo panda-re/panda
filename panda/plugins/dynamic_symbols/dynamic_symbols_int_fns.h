@@ -19,7 +19,7 @@ struct symbol {
 
 struct hook_symbol_resolve;
 
-typedef void (*dynamic_hook_func_t)(CPUState *, struct hook_symbol_resolve *, struct symbol, target_ulong asid);
+typedef void (*dynamic_hook_func_t)(struct hook_symbol_resolve *, struct symbol, target_ulong asid);
 
 struct hook_symbol_resolve{
     char name[MAX_PATH_LEN];

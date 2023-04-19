@@ -18,12 +18,12 @@ panda_cb pcb_bbt;
 panda_cb pcb_btc_execve;
 panda_cb before_block_translate_hook_adder_callback;
 
-typedef target_ulong asid;
-typedef target_ulong base_addr;
+typedef target_ulong ASID;
+typedef target_ulong BASE;
 
 
 // pair<asid, name> -> base
-unordered_map<pair<asid, string>, base, pair_hash> process_libraries;
+unordered_map<pair<ASID, string>, BASE, pair_hash> process_libraries;
 // name of library -> Library (must be rebound)
 unordered_map<string, Library> libraries;
 // these are section names we've tried and confirmed are not libraries
@@ -32,58 +32,9 @@ unordered_set<string> seen_nonlibraries{"ld.so.cache"};
 unordered_map<string, unordered_map<string, set<struct hook_symbol_resolve>>> hooks;
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
-    // ISSUE: Doesn't resolve for hooks that have been previously resolved.
-    // printf("adding hook \"%s\" \"%s\" %llx\n", h->section, h->name, (long long unsigned int) h->cb);
     string section(h->section);
     string name(h->name);
-
-    unordered_set<string> matching_libs;
-
-    for (auto &lib : libraries){
-        // check for valid libraries
-        if (lib.second.sections.name.find(section) != std::string::npos){
-            for (auto &sym : lib.second.symbols){
-                if (sym.first.find(name) != std::string::npos){
-                if (hook_candidate.enabled){
-                    if (symname.empty()){
-                        if (hook_candidate.hook_offset){
-                            struct symbol s;
-                            memset(&s, 0, sizeof(struct symbol));
-                            s.address = m->base + hook_candidate.offset;
-                            strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
-                            symbols_to_flush.push_back(make_tuple(hook_candidate,s, *m));
-                        }else{
-                            for (auto sym: l.symbols){
-                                symbols_to_flush.push_back(make_tuple(hook_candidate, sym.second, *m));
-                            }
-                        }
-                    }else{
-                        auto it = l.symbols.find(symname);
-                        if (it != l.symbols.end()){
-                            auto a = *it;
-                            symbols_to_flush.push_back(make_tuple(hook_candidate, a.second, *m));
-                        }
-                    }
-                }
-
-                }
-            }
-            // look for 
-            for (auto proc_lib : process_libraries){
-                string sec_name = proc_lib.first.second;
-                if (sec_name == lib.second.sections.name){
-                    target_ulong asid = proc_lib.first.first;
-                    target_ulong base = proc_lib.second;
-
-                }
-            }
-            matching_libs.insert(lib.first);
-        }
-    }
-
     hooks[section][name].insert(*h);
-
-
 }
 
 void bind_symbol(CPUState *cpu, char* name, target_ulong base, struct symbol *s, target_ulong pltgot, target_ulong mips_local_gotno, target_ulong mips_gotsym_idx){
@@ -187,7 +138,7 @@ void new_assignment_check_symbols(CPUState* cpu, char* procname, Library l, OsiM
         auto p = symbols_to_flush.back();
         auto hook_candidate = get<0>(p);
         auto s = get<1>(p);
-        auto m = get<2>(p);
+        // auto m = get<2>(p);
         (*(hook_candidate.cb))(&hook_candidate, s, get_id(cpu));
         symbols_to_flush.pop_back();
     }
@@ -233,6 +184,8 @@ struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, targ
     for (const auto& section : process_libraries){
         if (asid == 0 || section.first.first == asid){
             auto library = libraries[section.first.second];
+            // rebind before checking
+            library.bind_all(cpu, section.second);
             for (auto i : library.symbols){
                 struct symbol it = i.second;
                 if (it.address > address){
@@ -416,7 +369,7 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
         process_libraries[c] = m->base;
         new_assignment_check_symbols(cpu, procname, libraries[name], m);
         error_case(procname, m->name, "SUCCESS");
-        printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)libraries[name].symbols.size(), m->base);
+        // printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)libraries[name].symbols.size(), m->base);
     }else{
         printf("no symbols not adding for %s\n", m->name);
     }
@@ -430,7 +383,7 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
 #define SUCCESS 0
 
 string saved_procname;
-unordered_map<target_ulong, unordered_map<string, OsiModule>> missing_libraries;
+unordered_map<ASID, unordered_map<string, OsiModule>> missing_libraries;
 
 #define MAX_READ_FAIL_BLOCKS 10
 int ran_num =0;
@@ -439,8 +392,8 @@ int update_symbols_in_space(CPUState* cpu){
     OsiProc *current;
     OsiModule *m;
     target_ulong asid;
+    char *procname;
     GArray *ms;
-    unordered_map<string, OsiModule*> lowest_library_entry;
     bool none_missing;
 
     if (panda_in_kernel(cpu)){
@@ -451,65 +404,43 @@ int update_symbols_in_space(CPUState* cpu){
     }
     asid = get_id(cpu);
 
-    bool old_data = false;
-
-    if (missing_libraries.empty()){
-        current = get_current_process(cpu);
-        if (current == NULL){
-            return PRE_READ_FAIL;
+    current = get_current_process(cpu);
+    if (current == NULL){
+        return PRE_READ_FAIL;
+    }
+    procname = current->name;
+    ms = get_mappings(cpu, current);
+    if (ms == NULL) {
+        return PRE_READ_FAIL;
+    }
+    //iterate over mappings and find the lowest VA for each relevant library
+    for (int i = 0; i < ms->len; i++) {
+        m = &g_array_index(ms, OsiModule, i);
+        // printf("mapping name: %s base: " TARGET_FMT_lx "\n", m->name, m->base);
+        if (m->name == NULL){
+            continue;
         }
-        saved_procname = current->name;
-        ms = get_mappings(cpu, current);
-        if (ms == NULL) {
-            return PRE_READ_FAIL;
-        }
-        //iterate over mappings and find the lowest VA for each relevant library
-        for (int i = 0; i < ms->len; i++) {
-            m = &g_array_index(ms, OsiModule, i);
-            // printf("mapping name: %s base: " TARGET_FMT_lx "\n", m->name, m->base);
-            if (m->name == NULL){
+        if (strstr(m->name, ".so") != NULL){
+            // we already read this one
+            pair<target_ulong, string> candidate(asid,m->name);
+            if (process_libraries.find(candidate) != process_libraries.end()){
+                // error_case(current->name, m->name, " in symbols[asid] already and has");
                 continue;
             }
-            if (strstr(m->name, ".so") != NULL){
-                // we already read this one
-                pair<target_ulong, string> candidate(asid,m->name);
-                if (process_libraries.find(candidate) != process_libraries.end()){
-                    // error_case(current->name, m->name, " in symbols[asid] already and has");
-                    continue;
-                }
-                if (seen_nonlibraries.find(m->name) != seen_nonlibraries.end()){
-                    // error_case(current->name, m->name, " in seen_nonlibraries[asid] already");
-                    continue;
-                }
-                if (libraries.find(m->name) != libraries.end()) {
-                    // printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, get_id(cpu), m->base);
-                    process_libraries[candidate] = m->base;
-                    new_assignment_check_symbols(cpu, current->name, libraries[m->name], m);
-                    continue;
-                }
-                auto it = missing_libraries.find(m->name);
-                if (it == missing_libraries.end()){
-                    missing_libraries[m->name] = *m;
-                }else if (it->second.base > m->base){
-                    missing_libraries[m->name] = *m;
-                }
+            if (seen_nonlibraries.find(m->name) != seen_nonlibraries.end()){
+                // error_case(current->name, m->name, " in seen_nonlibraries[asid] already");
+                continue;
             }
-        }
-    }else{
-        old_data = true;
-    }
-
-    auto it = missing_libraries.begin();
-    while (it != missing_libraries.end()){
-        if (find_symbols(cpu, asid, (char*)saved_procname.c_str(), &it->second)){
-            if (old_data){
-                printf("found in old data %s ran_num: %d\n", it->second.name, ran_num);
+            if (libraries.find(m->name) != libraries.end()) {
+                printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, get_id(cpu), m->base);
+                process_libraries[candidate] = m->base;
+                new_assignment_check_symbols(cpu, current->name, libraries[m->name], m);
+                continue;
             }
-            missing_libraries.erase(it++);
-        }else {
-            // printf("missing %s\n", m->name);
-            ++it;
-            none_missing = false;
+            if (!find_symbols(cpu, asid, procname, m)){
+                // printf("missing %s\n", m->name);
+                none_missing = false;
+            }
         }
     }
     
@@ -522,13 +453,13 @@ int update_symbols_in_space(CPUState* cpu){
 
 void bbt(CPUState *env, target_ulong pc){
     int ret = update_symbols_in_space(env);
-    if (ret == SUCCESS || ran_num > MAX_READ_FAIL_BLOCKS){
+    if (ret == READ_FAIL){
+        ran_num++;
+    }else if (ret == SUCCESS || ran_num > MAX_READ_FAIL_BLOCKS){
         // printf("ending after %d blocks\n",ran_num);
-        missing_libraries.clear();
+        // missing_libraries.clear();
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
         ran_num = 0;
-    }else if (ret == READ_FAIL){
-        ran_num++;
     }
 }
 

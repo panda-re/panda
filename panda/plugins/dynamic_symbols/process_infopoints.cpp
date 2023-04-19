@@ -104,11 +104,16 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
     enable_analysis();
 }
 
+void sys_all_return(CPUState *cpu, target_ulong pc, target_ulong callno){
+    enable_analysis();
+}
+
 #ifndef TARGET_PPC
 
 bool initialize_process_infopoints(){
     PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
     PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
+    PPP_REG_CB("syscalls2", on_all_sys_return, sys_all_return);
     #if defined(TARGET_X86_64)
         PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
     #elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
