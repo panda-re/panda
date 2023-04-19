@@ -6,49 +6,59 @@ extern "C"{
 }
 
 void (*dlsym_add_hook)(struct hook*);
+panda_cb pcb_asid;
 
 /**
- * Make a check every time the ASID changes.
+ * Make a check every time the process changes.
  */
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    enable_analysis();
+    enable_analysis(ANALYSIS_GENERIC);
     return false;
 }
 
+void task_change(CPUState *env){
+    enable_analysis(ANALYSIS_GENERIC);
+}
+
 /**
- * Handle the various mmap syscalls per architecture.
+ * This handles a check on every return.
  */
-void sys_mmap_return(
-    CPUState* cpu,
-    target_ulong pc,
-    target_ulong arg0,
-    target_ulong arg1,
-    target_ulong arg2,
-    target_ulong arg3,
-    target_ulong arg4,
-    target_ulong arg5)
+
+void sys_all_return(CPUState *cpu, target_ulong pc, target_ulong callno){
+    enable_analysis(ANALYSIS_GENERIC);
+}
+
+/**
+ * Handle MMAP calls. These have a fairly good chance of indicating a library 
+ * change.
+ * 
+ * We have to change mmap, mmap2, old_mmap, mmap_pgoff, and mprotect
+ */
+#if TARGET_MIPS
+void sys_mmap_return(CPUState* cpu, target_ulong pc, unsigned int a, unsigned int b, unsigned int c, unsigned int d, unsigned int e, unsigned int f)
+#elif TARGET_AARCH64
+void sys_mmap_return(CPUState* cpu, target_ulong pc, long unsigned int b, unsigned int c, int d, int e, int f, long unsigned int g)
+#else
+void sys_mmap_return(CPUState* cpu,target_ulong pc, target_ulong arg0,target_ulong arg1, target_ulong arg2, target_ulong arg3, target_ulong arg4,target_ulong arg5)
+#endif
 {
-    enable_analysis();
+    enable_analysis(ANALYSIS_SPECIFIC);
 }
 
 void sys_old_mmap_return(CPUState *cpu, target_ulong pc, uint32_t arg0){
-    enable_analysis();
+    enable_analysis(ANALYSIS_SPECIFIC);
 }
 
-void sys_mmap2_return(CPUState* cpu, target_ulong pc, unsigned int b, unsigned int c, int d, int e, int f, unsigned int g){
-    enable_analysis();
-}
-
-void sys_mmap_arm64_return(CPUState* cpu, target_ulong pc, long unsigned int b, unsigned int c, int d, int e, int f, long unsigned int g){
-    enable_analysis();
-}
-
-void sys_mmap2_mips_return(CPUState* cpu, target_ulong pc, unsigned int b, unsigned int c, int d, int e, int f, unsigned int g){
-    enable_analysis();
-}
-void sys_mmap_mips_return(CPUState* cpu, target_ulong pc, unsigned int a, unsigned int b, unsigned int c, unsigned int d, unsigned int e, unsigned int f){
-    enable_analysis();
+#ifdef TARGET_MIPS
+void sys_mmap2_return(CPUState* cpu, target_ulong pc, unsigned int b, unsigned int c, int d, int e, int f, unsigned int g)
+#elif TARGET_AARCH64
+void sys_mmap2_return(CPUState* cpu, target_ulong pc, unsigned int b, unsigned int c, int d, int e, int f, unsigned int g)
+#else
+void sys_mmap2_return()
+#endif
+{
+    enable_analysis(ANALYSIS_SPECIFIC);
 }
 
 #ifdef TARGET_MIPS64
@@ -57,7 +67,7 @@ void sys_mprotect_return(CPUState *cpu, target_ulong pc, uint32_t arg0, uint32_t
 void sys_mprotect_return(CPUState *cpu, target_ulong pc, target_ulong arg0, uint32_t arg1, target_ulong arg2){
 #endif
 
-    enable_analysis();
+    enable_analysis(ANALYSIS_SPECIFIC);
 }
 
 /**
@@ -67,7 +77,6 @@ void sys_mprotect_return(CPUState *cpu, target_ulong pc, target_ulong arg0, uint
 void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
     target_ulong asid = get_id(cpu);
     remove_asid_entries(asid);
-    enable_analysis();
 }
 
 /**
@@ -76,7 +85,7 @@ void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
  */
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
-    enable_analysis();
+    enable_analysis(ANALYSIS_SPECIFIC);
     h->enabled = false;
 }
 
@@ -101,35 +110,38 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
     h.km = MODE_USER_ONLY;
     h.enabled = true;
     dlsym_add_hook(&h);
-    enable_analysis();
+    enable_analysis(ANALYSIS_SPECIFIC);
 }
 
-void sys_all_return(CPUState *cpu, target_ulong pc, target_ulong callno){
-    enable_analysis();
-}
 
 #ifndef TARGET_PPC
 
-bool initialize_process_infopoints(){
+bool initialize_process_infopoints(void* self){
+    pcb_asid.asid_changed = asid_changed;
+    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+
     PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
     PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
     PPP_REG_CB("syscalls2", on_all_sys_return, sys_all_return);
     #if defined(TARGET_X86_64)
         PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
     #elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
-        PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_arm64_return);
+        PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
     #elif defined(TARGET_I386)
         PPP_REG_CB("syscalls2", on_sys_mmap_pgoff_return, sys_mmap_return);
         PPP_REG_CB("syscalls2", on_sys_old_mmap_return, sys_old_mmap_return);
     #elif defined(TARGET_ARM)
         PPP_REG_CB("syscalls2", on_do_mmap2_return, sys_mmap_return);
     #elif defined(TARGET_MIPS)
-        PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_mips_return);
+        PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
         PPP_REG_CB("syscalls2", on_mmap2_return, sys_mmap2_mips_return);
     #endif
     PPP_REG_CB("syscalls2", on_sys_mprotect_return, sys_mprotect_return);
     panda_require("proc_start_linux");
     PPP_REG_CB("proc_start_linux",on_rec_auxv, recv_auxv);
+
+    // osi initialized in init_plugin
+    PPP_REG_CB("osi", on_task_change, task_change);
     
     void* hooks = panda_get_plugin_by_name("hooks");
     if (hooks == NULL){

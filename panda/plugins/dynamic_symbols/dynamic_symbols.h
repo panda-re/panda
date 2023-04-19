@@ -11,6 +11,7 @@
 #include "panda/plugin.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
+#include "osi/os_intro.h"
 #include <unordered_map>
 #include <unordered_set>
 #include "osi_linux/endian_helpers.h"
@@ -37,10 +38,25 @@ using namespace std;
 #include "arch_info.h"
 #define error_case(A,B,C) // printf("%s %s %s\n", A, B, C)
 
+typedef target_ulong ASID;
+typedef target_ulong BASE;
 
-void enable_analysis();
-bool initialize_process_infopoints();
+enum AnalysisType {
+    ANALYSIS_SPECIFIC, // we have a reason to think things might chane
+    ANALYSIS_GENERIC, // we don't have a reason to think things might change
+};
+
+enum AsidState {
+    ASID_STATE_UNKNOWN,
+    ASID_STATE_SUCCESS,
+    ASID_STATE_FAIL,
+};
+
+
+void enable_analysis(enum AnalysisType type);
+bool initialize_process_infopoints(void* self);
 void remove_asid_entries(target_ulong asid);
+
 
 
 inline bool operator<(const struct symbol& s, const struct symbol& p){

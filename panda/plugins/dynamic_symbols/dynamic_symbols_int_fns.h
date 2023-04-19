@@ -38,7 +38,14 @@ struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, targ
 
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
-int update_symbols_in_space(CPUState* cpu);
+
+enum SymUpdateStatus {
+    SUCCESS,        // fully read everything
+    PRE_READ_FAIL,  // failed to be in the right state
+    READ_FAIL,      // failed to read some symbols
+};
+
+enum SymUpdateStatus update_symbols_in_space(CPUState* cpu);
 
 struct dt_hash_section{
     uint32_t nchains;

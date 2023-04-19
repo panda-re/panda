@@ -13,14 +13,7 @@ PANDAENDCOMMENT */
 #include "dynamic_symbols.h"
 
 void* self_ptr;
-panda_cb pcb_asid;
 panda_cb pcb_bbt;
-panda_cb pcb_btc_execve;
-panda_cb before_block_translate_hook_adder_callback;
-
-typedef target_ulong ASID;
-typedef target_ulong BASE;
-
 
 // pair<asid, name> -> base
 unordered_map<pair<ASID, string>, BASE, pair_hash> process_libraries;
@@ -30,6 +23,7 @@ unordered_map<string, Library> libraries;
 unordered_set<string> seen_nonlibraries{"ld.so.cache"};
 // section -> name -> set struct
 unordered_map<string, unordered_map<string, set<struct hook_symbol_resolve>>> hooks;
+unordered_map<ASID, enum AsidState> asid_status;
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
     string section(h->section);
@@ -67,7 +61,6 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h){
                     // otherwise match for names
                     auto it = l.symbols.find(name);
                     if (it != l.symbols.end()){
-                        target_ulong symbase = it->second.address;
                         auto &a = *it;
                         l.bind(first_cpu, base, (char*)&a.second.name);
                         symbols_to_flush.push_back(make_pair(h, a.second));
@@ -423,24 +416,15 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
         error_case(procname, m->name, "SUCCESS");
         // printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)libraries[name].symbols.size(), m->base);
     }else{
-        printf("no symbols not adding for %s\n", m->name);
+        // printf("no symbols not adding for %s\n", m->name);
     }
     free(symtab_buf);
     free(strtab_buf);
     return true;
 }
 
-#define PRE_READ_FAIL -1
-#define READ_FAIL -2
-#define SUCCESS 0
 
-string saved_procname;
-unordered_map<ASID, unordered_map<string, OsiModule>> missing_libraries;
-
-#define MAX_READ_FAIL_BLOCKS 10
-int ran_num =0;
-
-int update_symbols_in_space(CPUState* cpu){
+enum SymUpdateStatus update_symbols_in_space(CPUState* cpu){
     OsiProc *current;
     OsiModule *m;
     target_ulong asid;
@@ -455,7 +439,6 @@ int update_symbols_in_space(CPUState* cpu){
         return PRE_READ_FAIL;
     }
     asid = get_id(cpu);
-
     current = get_current_process(cpu);
     if (current == NULL){
         return PRE_READ_FAIL;
@@ -473,22 +456,26 @@ int update_symbols_in_space(CPUState* cpu){
             continue;
         }
         if (strstr(m->name, ".so") != NULL){
-            // we already read this one
             pair<target_ulong, string> candidate(asid,m->name);
+            
+            // check if we already read this one
             if (process_libraries.find(candidate) != process_libraries.end()){
                 // error_case(current->name, m->name, " in symbols[asid] already and has");
                 continue;
             }
+            // check if this isn't a library
             if (seen_nonlibraries.find(m->name) != seen_nonlibraries.end()){
                 // error_case(current->name, m->name, " in seen_nonlibraries[asid] already");
                 continue;
             }
+            // check if we've previously read this library in another process
             if (libraries.find(m->name) != libraries.end()) {
-                printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, get_id(cpu), m->base);
+                // printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, get_id(cpu), m->base);
                 process_libraries[candidate] = m->base;
                 new_assignment_check_symbols(cpu, current->name, libraries[m->name], m);
                 continue;
             }
+            // lastly, lets go try to find the symbols
             if (!find_symbols(cpu, asid, procname, m)){
                 // printf("missing %s\n", m->name);
                 none_missing = false;
@@ -502,24 +489,49 @@ int update_symbols_in_space(CPUState* cpu){
     return SUCCESS;
 }
 
-
 void bbt(CPUState *env, target_ulong pc){
-    int ret = update_symbols_in_space(env);
+    enum SymUpdateStatus ret = update_symbols_in_space(env);
+    target_ulong asid = get_id(env);
     if (ret == READ_FAIL){
-        ran_num++;
-    }else if (ret == SUCCESS || ran_num > MAX_READ_FAIL_BLOCKS){
-        // printf("ending after %d blocks\n",ran_num);
-        // missing_libraries.clear();
+        // identify this one needs more scrutiny
+        asid_status[asid] = ASID_STATE_FAIL;
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
-        ran_num = 0;
+    }else if (ret == SUCCESS){
+        // failed
+        asid_status[asid] = ASID_STATE_SUCCESS;
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+    }else if (ret == PRE_READ_FAIL){
+        // this is a PRE_READ_FAIL. We can't read anything yet. Ignore until
+        // we can
+        asid_status[asid] = ASID_STATE_UNKNOWN;
     }
 }
 
-void enable_analysis(){
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+/**
+ * This function takes a specific event and decides whether or not to enable
+ * further analysis. If the event is specific, we always enable analysis.
+ * 
+ * If the event is general, we only enable analysis if we've had success for
+ * this process.
+ */
+void enable_analysis(enum AnalysisType at){
+    // always take specific events into account
+    if (at == ANALYSIS_SPECIFIC){
+        panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+        return;
+    }
+    // only take general events into account for asids with unknown status
+    enum AsidState state = ASID_STATE_UNKNOWN;
+    if (asid_status.find(get_id(first_cpu)) != asid_status.end()){
+        state = asid_status[get_id(first_cpu)];
+    }
+    if (state == ASID_STATE_FAIL || state == ASID_STATE_UNKNOWN){
+        panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+    }
 }
 
 void remove_asid_entries(target_ulong asid){
+    asid_status.erase(asid);
     auto it = process_libraries.begin();
     while (it != process_libraries.end()){
         if (it->first.first == asid) {
@@ -532,8 +544,6 @@ void remove_asid_entries(target_ulong asid){
 
 bool init_plugin(void *self) {
     self_ptr = self;
-    pcb_asid.asid_changed = asid_changed;
-    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
     pcb_bbt.before_block_translate = bbt;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
@@ -547,7 +557,7 @@ bool init_plugin(void *self) {
     #else
         panda_require("syscalls2");
         assert(init_syscalls2_api());
-        return initialize_process_infopoints();
+        return initialize_process_infopoints(self);
     #endif
 }
 
