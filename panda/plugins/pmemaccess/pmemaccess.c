@@ -170,9 +170,11 @@ connection_handler (int connection_fd)
         else if (req.type == 3) {
           // request for ram size
           unsigned char bytes[sizeof(ram_size)];
+          printf("Processing Ram Size Request\n");
           for(int i = sizeof(ram_size); i > 0; i--) {
             bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
           }
+          printf("RAMSIZE: %lx | Sending: %hhn", ram_size, bytes);
           nbytes = write(connection_fd, bytes, sizeof(ram_size));
         }
         else{
@@ -320,19 +322,26 @@ void *read_all(void *arg)
     printf("Error opening file\n");
     exit(1);
   }
-
+  int count = 0;
   while (addr < ram_size) {
+    if(!count% 1000) { 
+      printf("Reading addr %d\n", count);
+    }
+    count++;
     req.type = REQ_READ;
     req.length = block_len;
     req.address = addr;
     num_bytes = write(sock, &req, sizeof(struct request));
-    if (num_bytes != sizeof(struct request))
+    if (num_bytes != sizeof(struct request)){
+          printf("Failed\n");
           goto read_fail;
+    }
     num_bytes = read(sock, buf, block_len+1);
     if (buf[block_len] == 1 && num_bytes != sizeof(struct request)){
       fwrite(&buf[0], 1, block_len, f);
       }
     else {
+      printf("Failed2\n");
       read_fail:
       addr+= block_len;
       continue;
@@ -441,18 +450,19 @@ void *test_mem_access(void *arg)
 error_exit:
   return NULL;
 }
-
+void * _self;
+panda_cb pcb2;
 void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   FILE *fp;
   int status;
   char tmp_buf[PATH_MAX];
-  static int exec_once = 0;
   int tries = 0;
   // We only want to run volatility once
-  if (exec_once)
-    return;
-  exec_once = 1;
-
+  panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
+  //printf("Dumping memory in callback\n");
+  //read_all(NULL);
+  //printf("Done\n");
+  //return;
   // spin until dump_file is created
   /*while(access(dump_file, F_OK)) {
     sleep(0.1);
@@ -500,7 +510,7 @@ void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
 bool init_plugin(void *self)
 {
   int i = 0;
-
+  _self = self;
   // Find the plugin args and make a local copy
   panda_arg_list *pargs = panda_get_args(PLUGIN_NAME);
   for (i = 0; i < pargs->nargs; i++) {
@@ -549,21 +559,19 @@ bool init_plugin(void *self)
 
   // Free PANDA's copy
   panda_free_args(pargs);
-
+  pcb2.before_block_exec = RR_before_block_exec;
   switch (pmemaccess_mode) {
     case 0: // Spawn the test thread
       pthread_create(&tid, NULL, &test_mem_access, NULL);
       break;
     case 1: ;// Test RR access with callback
-      panda_cb pcb = {.before_block_exec = RR_before_block_exec };
-      panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+  
+      panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
       break;
     case 2:
       pthread_create(&tid, NULL, &read_all, NULL);
       break;
     case 3:
-      read_all(NULL);
-      panda_cb pcb2 = {.before_block_exec = RR_before_block_exec };
       panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
       break;
     default:
