@@ -461,16 +461,12 @@ error_exit:
 }
 void * _self;
 panda_cb pcb2;
-int once = 0;
+
 void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   FILE *fp;
   int status;
   char tmp_buf[PATH_MAX];
   int tries = 0;
-  if(once) {
-    return;
-  }
-  once = 1;
   // We only want to run volatility once
   panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
   //printf("Dumping memory in callback\n");
