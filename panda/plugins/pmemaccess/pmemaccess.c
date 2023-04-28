@@ -117,7 +117,6 @@ connection_handler (int connection_fd)
 {
     int nbytes;
     struct request req;
-    int rcount = 0;
     while (1){
         // client request should match the struct request format
         nbytes = read(connection_fd, &req, sizeof(struct request));
@@ -134,15 +133,11 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 1){
             // request to read
-            rcount++;
-            if(!rcount%1000){
-              printf("Read REQ %lx\n", req.address);
-            }
             char *buf = malloc(req.length + 1);
             nbytes = connection_read_memory(req.address, buf, req.length);
             if (nbytes != req.length){
                 // read failure, return failure message
-                printf("Failed to read %lx, sending 0\n", req.address);
+                //printf("Failed to read %lx, sending 0\n", req.address);
                 buf[req.length] = 0; // set last byte to 0 for failure
                 nbytes = write(connection_fd, buf, req.length + 1);
             }
@@ -179,11 +174,11 @@ connection_handler (int connection_fd)
           for(int i = sizeof(ram_size); i > 0; i--) {
             bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
           }
-          printf("RAMSIZE: %lx\n", ram_size);
-          for(int b = 0; b<sizeof(ram_size); b++) {
-            printf("%x", (int)bytes[b]);
-          }
-          printf("\n");
+          //printf("RAMSIZE: %lx\n", ram_size);
+          //for(int b = 0; b<sizeof(ram_size); b++) {
+          //  printf("%x", (int)bytes[b]);
+          //}
+          //printf("\n");
           nbytes = write(connection_fd, bytes, sizeof(ram_size));
         }
         else{
