@@ -2,6 +2,7 @@
 import sys
 from sys import argv
 from pandare import Panda
+import time
 panda = Panda(generic="x86_64")
 
 # Grabbed from malrec's listwins.py
@@ -37,23 +38,35 @@ def run_cmd():
     global name, profile, path, d2, d3
     panda.revert_sync("root")
     # hacky because we need to sleep for a while but doing it as one sleep made panda sad (dead)
-    panda.run_serial_cmd("sleep 10")
+    #panda.run_serial_cmd("sleep 10")
     #panda.run_serial_cmd("sleep 10")
     #panda.run_serial_cmd("sleep 10")
     #panda.run_serial_cmd("sleep 10")
     #panda.run_serial_cmd("sleep 10")
     print("[PANDA] " + panda.run_serial_cmd("lsb_release -a") + " [PANDA]\n")
-    print("[PANDA] " + panda.run_serial_cmd("uname -a") + " [PANDA]\n")
-    set_up(profile, d2)
+    #print("[PANDA] " + panda.run_serial_cmd("uname -a") + " [PANDA]\n")
+    #set_up(profile, d2)
     print("Done sleep, ending")
     panda.end_analysis()
 
-#@panda.cb_asid_changed
+once = 0
+@panda.cb_asid_changed
 def asidchange(cpu, old_asid, new_asid):
-    #with open("outa","wb") as f:
-    #    panda.memsavep(f)
-
-    #panda.disable_callback("asidchange")
+    global once
+    
+    if once >= 2:
+        return 0
+    once += 1
+    if not once:
+        print(f"Asid changed?")    
+        return 0
+    
+    
+    # Do volatility stuff
+    panda.load_plugin("pmemaccess", args = {"path":path, "dump":dump, "mode": 1, "profile":profile, "command":"linux_pslist"})
+    #print(f"Holdin'er steady, capn'")
+    #while True:
+    #    time.sleep(1)
     return 0
 
 path = "/home/rdm/pmem_sock3"
@@ -67,10 +80,10 @@ d3 = "file://" + path
 #panda.load_plugin("pmemaccess", args = {"path":path, "dump": dump, "mode": 2})
 
 # Do volatility stuff
-#panda.load_plugin("pmemaccess", args = {"path":path, "dump":dump, "mode": 1, "profile":profile, "command":"linux_pslist"})
+#panda.load_plugin("pmemaccess", args = {"path":path, "mode": 1, "profile":profile, "command":"linux_pslist"})
 
 # Just open a socket
-panda.load_plugin("pmemaccess", args = {"path": path, "mode": 4})
+#panda.load_plugin("pmemaccess", args = {"path": path, "mode": 4})
 
 panda.enable_precise_pc()
 panda.disable_tb_chaining()

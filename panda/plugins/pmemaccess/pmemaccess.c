@@ -117,6 +117,7 @@ connection_handler (int connection_fd)
 {
     int nbytes;
     struct request req;
+    int rcount = 0;
     while (1){
         // client request should match the struct request format
         nbytes = read(connection_fd, &req, sizeof(struct request));
@@ -133,10 +134,15 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 1){
             // request to read
+            rcount++;
+            if(!rcount%1000){
+              printf("Read REQ %lx\n", req.address);
+            }
             char *buf = malloc(req.length + 1);
             nbytes = connection_read_memory(req.address, buf, req.length);
             if (nbytes != req.length){
                 // read failure, return failure message
+                printf("Failed to read %lx, sending 0\n", req.address);
                 buf[req.length] = 0; // set last byte to 0 for failure
                 nbytes = write(connection_fd, buf, req.length + 1);
             }
@@ -170,11 +176,14 @@ connection_handler (int connection_fd)
         else if (req.type == 3) {
           // request for ram size
           unsigned char bytes[sizeof(ram_size)];
-          printf("Processing Ram Size Request\n");
           for(int i = sizeof(ram_size); i > 0; i--) {
             bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
           }
-          printf("RAMSIZE: %lx | Sending: %hhn", ram_size, bytes);
+          printf("RAMSIZE: %lx\n", ram_size);
+          for(int b = 0; b<sizeof(ram_size); b++) {
+            printf("%x", (int)bytes[b]);
+          }
+          printf("\n");
           nbytes = write(connection_fd, bytes, sizeof(ram_size));
         }
         else{
@@ -452,11 +461,16 @@ error_exit:
 }
 void * _self;
 panda_cb pcb2;
+int once = 0;
 void RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   FILE *fp;
   int status;
   char tmp_buf[PATH_MAX];
   int tries = 0;
+  if(once) {
+    return;
+  }
+  once = 1;
   // We only want to run volatility once
   panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
   //printf("Dumping memory in callback\n");
@@ -544,10 +558,6 @@ bool init_plugin(void *self)
   }
   if (pmemaccess_mode == 1 && volatility_command == NULL) {
     printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_COMMAND_KEY);
-    return false;
-  }
-  if (pmemaccess_mode == 1 && dump_file == NULL) {
-    printf("PMemaccess: %s argument not found\n", PLUGIN_ARG_DUMP_FILE_KEY);
     return false;
   }
   else {
