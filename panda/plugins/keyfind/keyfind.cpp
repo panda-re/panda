@@ -75,12 +75,12 @@ typedef struct Memchunk {
 
 
 std::vector<std::pair<Memchunk, double> > heap_segments;
-std::vector<std::pair<Memchunk, double> > non_heap_segments;
+//std::vector<std::pair<Memchunk, double> > non_heap_segments;
 
 std::vector<std::pair<Memchunk, double> > deduplicated_heap;
-std::vector<std::pair<Memchunk, double> > deduplicated_non_heap;
+//std::vector<std::pair<Memchunk, double> > deduplicated_non_heap;
 
-std::vector<std::pair<Memchunk, Memchunk> > heap_pairs;
+//std::vector<std::pair<Memchunk, Memchunk> > heap_pairs;
 Memchunk last_write;
 //typedef struct cand_prog_point_struct {
 
@@ -215,7 +215,7 @@ void get_heap_bounds(CPUState* env, target_ptr_t* start, target_ptr_t* end) {
             if(strcmp(m->name, "[heap]") == 0) {
                 *start = m->base;
                 *end = m->base + m->size;
-                printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
+                //printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
             }
         }
         g_array_free(ms, true);
@@ -224,14 +224,12 @@ void get_heap_bounds(CPUState* env, target_ptr_t* start, target_ptr_t* end) {
    
 }
 
-//server handshake traffic key: c6b78b42 10befbe5 a38e7cca646d214d2ae64174e194a18ad722b18429821635885b747cb98f4372 4e9b46a9 3690e6ed
-//client traffic secret 0     : a8d81721 039568bc 96e69589117a9e200cfc45b841495cf21ec3b20bd46206f24f66c283b6fc59fb b05c0638 de87e0cf
 
 // after mem write, that is.
 void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
 
-    uint8_t first_8[8] = {0xc6, 0xb7, 0x8b, 0x42, 0x10, 0xbe, 0xfb, 0xe5};
+    //uint8_t first_8[8] = {0xc6, 0xb7, 0x8b, 0x42, 0x10, 0xbe, 0xfb, 0xe5};
     //uint8_t last_8[8] = {0xa8, 0xd8, 0x17, 0x21, 0x03, 0x95, 0x68, 0xbc};
 
     OsiProc *current;
@@ -243,61 +241,61 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
     if(in_openssl) {
 
-        if(seen_first_byte && count < 12) {
-            printf("writing %ld bytes to " TARGET_PTR_FMT " --> ", size, addr);
-            for(int i = 0; i < size; i++) {
-                printf("%02x", buf[i]);
-            }
-            printf("\n");
-            count++;
-            uint8_t out[64] = {0};
-            int res = panda_virtual_memory_read(env, last_write.start, out, 64);
+        //if(seen_first_byte && count < 12) {
+        //    printf("writing %ld bytes to " TARGET_PTR_FMT " --> ", size, addr);
+        //    for(int i = 0; i < size; i++) {
+        //        printf("%02x", buf[i]);
+        //    }
+        //    printf("\n");
+        //    count++;
+        //    uint8_t out[64] = {0};
+        //    int res = panda_virtual_memory_read(env, last_write.start, out, 64);
 
-            printf(TARGET_PTR_FMT " --> ", addr);
-            if(res != -1) {
-                for(int i = 0; i < 64; i++) {
-                    printf("%02x", out[i]);
-                }
-                printf("\n");
-            }
+        //    printf(TARGET_PTR_FMT " --> ", addr);
+        //    if(res != -1) {
+        //        for(int i = 0; i < 64; i++) {
+        //            printf("%02x", out[i]);
+        //        }
+        //        printf("\n");
+        //    }
 
-        }
-        if(!seen_first_byte && memcmp(first_8, buf, 8) == 0) {
-            printf("THERE ARE %ld heap_segments\n", heap_segments.size());
-            printf("matches first_8!\n");
-            printf("writing %ld bytes to " TARGET_PTR_FMT " --> ", size, addr);
-            for(int i = 0; i < size; i++) {
-                printf("%02x", buf[i]);
-            }
-            printf("\n");
-            count = 0;
-            if(addr == (target_ulong) 0x0000000000c1dd90) {
-                seen_first_byte = true;
-                uint8_t out[64] = {0};
-                int res = panda_virtual_memory_read(env, addr, out, 64);
+        //}
+        //if(!seen_first_byte && memcmp(first_8, buf, 8) == 0) {
+        //    printf("THERE ARE %ld heap_segments\n", heap_segments.size());
+        //    printf("matches first_8!\n");
+        //    printf("writing %ld bytes to " TARGET_PTR_FMT " --> ", size, addr);
+        //    for(int i = 0; i < size; i++) {
+        //        printf("%02x", buf[i]);
+        //    }
+        //    printf("\n");
+        //    count = 0;
+        //    if(addr == (target_ulong) 0x0000000000c1dd90) {
+        //        seen_first_byte = true;
+        //        uint8_t out[64] = {0};
+        //        int res = panda_virtual_memory_read(env, addr, out, 64);
 
-                printf(TARGET_PTR_FMT " --> ", addr);
-                if(res != -1) {
-                    for(int i = 0; i < 64; i++) {
-                        printf("%02x", out[i]);
-                    }
-                    printf("\n");
-                }
-            }
-            GArray *ms = NULL;
-            ms = get_mappings(env, current);
-            if (ms != NULL) {
-                for (uint32_t j = 0; j < ms->len; j++) {
-                    OsiModule *m = &g_array_index(ms, OsiModule, j);
-                    printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
-                }
-                g_array_free(ms, true);
-            }
-
-
+        //        printf(TARGET_PTR_FMT " --> ", addr);
+        //        if(res != -1) {
+        //            for(int i = 0; i < 64; i++) {
+        //                printf("%02x", out[i]);
+        //            }
+        //            printf("\n");
+        //        }
+        //    }
+        //    GArray *ms = NULL;
+        //    ms = get_mappings(env, current);
+        //    if (ms != NULL) {
+        //        for (uint32_t j = 0; j < ms->len; j++) {
+        //            OsiModule *m = &g_array_index(ms, OsiModule, j);
+        //            printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
+        //        }
+        //        g_array_free(ms, true);
+        //    }
 
 
-        }
+
+
+        //}
 
         //check if the write is happening right after the end of the last write
         //if it's not, reset the last_write
@@ -316,7 +314,7 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
                     heap_segments.push_back(std::make_pair(last_write, e));
                 } else if (e >= ENTROPY_THRESHOLD_48) {
-                    non_heap_segments.push_back(std::make_pair(last_write, e));
+                    //non_heap_segments.push_back(std::make_pair(last_write, e));
                 }
  
             }
@@ -483,47 +481,8 @@ bool init_plugin(void *self) {
     assert(init_osi_api());
 
 
-    //time(&start);
 
     printf("Initializing plugin keyfind\n");
-
-    //if(!init_callstack_instr_api()) return false;
-
-    // SSL stuff
-    // Init list of ciphers & digests
-    //OpenSSL_add_all_algorithms();
-
-    // Read and parse list of candidate taps
-//    std::ifstream taps("keyfind_candidates.txt");
-//    if (!taps) {
-//        printf("Couldn't open keyfind_candidates.txt; no key tap candidates defined.\n");
-//        printf("We will proceed, but it may be SLOW.\n");
-//        have_candidates = false;
-//    }
-//    else {
-//        std::unordered_set <target_ulong> eipset;
-//        target_ulong caller, pc, asid;
-//        while (taps >> std::hex >> caller) {
-//            taps >> std::hex >> pc;
-//            taps >> std::hex >> asid;
-//
-//            eipset.insert(pc);
-//            asids.insert(asid);
-//
-//            //printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
-//            //       p.caller, p.pc, p.cr3);
-//            auto candidate = std::make_tuple(caller, pc, asid);
-//            candidates.insert(candidate);
-//        }
-//        printf("keyfind: Will check for keys on %ld taps.\n", candidates.size());
-//        taps.close();
-//
-//        // Sort EIPs
-//        for(auto ii : eipset) {
-//            eips.push_back(ii);
-//        }
-//        std::sort(eips.begin(), eips.end());
-//    }
 
     in_openssl = true;
 
@@ -552,33 +511,33 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 
     printf("collected %ld heap_segments:\n", heap_segments.size());
-    printf("collected %ld non_heap_segments:\n", non_heap_segments.size());
+    //printf("collected %ld non_heap_segments:\n", non_heap_segments.size());
 
-    int num_pairs = 0;
-    for(int i = 0; i < heap_segments.size(); i++) {
-        for(int j = 0; j < heap_segments.size(); j++) {
-            if(j != i && ((heap_segments[i].first.start - heap_segments[j].first.start) == 64 || (heap_segments[j].first.start - heap_segments[i].first.start) == 64)) {
-//                printf("found pair:\n");
-//                printf("\t" TARGET_PTR_FMT ": ", heap_segments[i].first.start);
-//                for(int k = 0; k < KEYSIZE; k++) {
-//                    printf("%02x", heap_segments[i].first.buf[k]);
+//    int num_pairs = 0;
+//    for(int i = 0; i < heap_segments.size(); i++) {
+//        for(int j = 0; j < heap_segments.size(); j++) {
+//            if(j != i && ((heap_segments[i].first.start - heap_segments[j].first.start) == 64 || (heap_segments[j].first.start - heap_segments[i].first.start) == 64)) {
+////                printf("found pair:\n");
+////                printf("\t" TARGET_PTR_FMT ": ", heap_segments[i].first.start);
+////                for(int k = 0; k < KEYSIZE; k++) {
+////                    printf("%02x", heap_segments[i].first.buf[k]);
+////                }
+////                printf("\n");
+////                printf("\t" TARGET_PTR_FMT ": ", heap_segments[j].first.start);
+////                for(int k = 0; k < KEYSIZE; k++) {
+////                    printf("%02x", heap_segments[j].first.buf[k]);
+////                }
+////                printf("\n");
+//                if(heap_segments[i].first.start < heap_segments[j].first.start) {
+//                    heap_pairs.push_back(std::make_pair(heap_segments[i].first, heap_segments[j].first));
+//                } else {
+//                    heap_pairs.push_back(std::make_pair(heap_segments[j].first, heap_segments[i].first));
 //                }
-//                printf("\n");
-//                printf("\t" TARGET_PTR_FMT ": ", heap_segments[j].first.start);
-//                for(int k = 0; k < KEYSIZE; k++) {
-//                    printf("%02x", heap_segments[j].first.buf[k]);
-//                }
-//                printf("\n");
-                if(heap_segments[i].first.start < heap_segments[j].first.start) {
-                    heap_pairs.push_back(std::make_pair(heap_segments[i].first, heap_segments[j].first));
-                } else {
-                    heap_pairs.push_back(std::make_pair(heap_segments[j].first, heap_segments[i].first));
-                }
-                num_pairs++;
-            }
-        }
-    }
-    printf("found %ld pairs in the heap\n", heap_pairs.size());
+//                num_pairs++;
+//            }
+//        }
+//    }
+//    printf("found %ld pairs in the heap\n", heap_pairs.size());
 
 
     printf("deduplicating the heap segments...\n");
@@ -587,33 +546,34 @@ void uninit_plugin(void *self) {
     printf("there are %ld heap segments after deduplication\n", heap_segments.size());
 
 
-    printf("deduplicating the non-heap segments...\n");
-    std::sort(non_heap_segments.begin(), non_heap_segments.end(), buffer_compare);
-    non_heap_segments.erase(std::unique(non_heap_segments.begin(), non_heap_segments.end(), memchunk_compare), non_heap_segments.end());
-    printf("there are %ld non-heap segments after deduplication\n", non_heap_segments.size());
+//    printf("deduplicating the non-heap segments...\n");
+//    std::sort(non_heap_segments.begin(), non_heap_segments.end(), buffer_compare);
+//    non_heap_segments.erase(std::unique(non_heap_segments.begin(), non_heap_segments.end(), memchunk_compare), non_heap_segments.end());
+//    printf("there are %ld non-heap segments after deduplication\n", non_heap_segments.size());
 
 
-    printf("sorting heap_segments and non_heap_segments by entropy...\n");
+    printf("sorting heap_segments by entropy...\n");
     std::sort(heap_segments.begin(), heap_segments.end(), entropy_compare);
-    std::sort(non_heap_segments.begin(), non_heap_segments.end(), entropy_compare);
+    //std::sort(non_heap_segments.begin(), non_heap_segments.end(), entropy_compare);
 
-    printf("writing heap pairs to file heap_pairs.txt\n");
-    FILE *fptr;
-
-    fptr = fopen("heap_pairs.txt", "w");
-    for(int i = 0; i < heap_pairs.size(); i++) {
-        for(int j = 0; j < KEYSIZE; j++) {
-            fprintf(fptr, "%02x", heap_pairs[i].first.buf[j]);           
-        }
-        fprintf(fptr, ":");
-        for(int j = 0; j < KEYSIZE; j++) {
-            fprintf(fptr, "%02x", heap_pairs[i].second.buf[j]);
-        }
-        fprintf(fptr, "\n");
-    }
-    fclose(fptr);
+//    printf("writing heap pairs to file heap_pairs.txt\n");
+//
+//    fptr = fopen("heap_pairs.txt", "w");
+//    for(int i = 0; i < heap_pairs.size(); i++) {
+//        for(int j = 0; j < KEYSIZE; j++) {
+//            fprintf(fptr, "%02x", heap_pairs[i].first.buf[j]);           
+//        }
+//        fprintf(fptr, ":");
+//        for(int j = 0; j < KEYSIZE; j++) {
+//            fprintf(fptr, "%02x", heap_pairs[i].second.buf[j]);
+//        }
+//        fprintf(fptr, "\n");
+//    }
+//    fclose(fptr);
     
     printf("writing heap writes to heap_writes.txt\n");
+
+    FILE *fptr;
     fptr = fopen("heap_writes.txt", "w");
     for(int i = 0; i < heap_segments.size(); i++) {
         for(int j = 0; j < KEYSIZE; j++) {
@@ -623,15 +583,15 @@ void uninit_plugin(void *self) {
     }
     fclose(fptr);
 
-    printf("writing deduplicated non-heap writes to non_heap_writes.txt\n");
-    fptr = fopen("non_heap_writes.txt", "w");
-    for(int i = 0; i < non_heap_segments.size(); i++) {
-        for(int j = 0; j < KEYSIZE; j++) {
-            fprintf(fptr, "%02x", non_heap_segments[i].first.buf[j]);
-        }
-        fprintf(fptr, "\n");
-    }
-    fclose(fptr);
+//    printf("writing deduplicated non-heap writes to non_heap_writes.txt\n");
+//    fptr = fopen("non_heap_writes.txt", "w");
+//    for(int i = 0; i < non_heap_segments.size(); i++) {
+//        for(int j = 0; j < KEYSIZE; j++) {
+//            fprintf(fptr, "%02x", non_heap_segments[i].first.buf[j]);
+//        }
+//        fprintf(fptr, "\n");
+//    }
+//    fclose(fptr);
 }
 
 
