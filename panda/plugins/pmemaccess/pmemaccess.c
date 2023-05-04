@@ -13,6 +13,7 @@
 
 #include "panda/plugin.h"
 #include "memory-access.h"
+#include <sys/select.h>
 
 // Definitions
 #define PLUGIN_NAME "pmemaccess"
@@ -119,6 +120,18 @@ connection_handler (int connection_fd)
     struct request req;
     while (1){
         // client request should match the struct request format
+        //printf("Reading?\n");
+        /*fd_set set;
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 10000;
+        FD_ZERO(&set);
+        FD_SET(connection_fd, &set);
+        int rv = select(connection_fd, &set, NULL, NULL, &timeout);
+        if(rv == -1 || rv == 0) {
+          send_fail_ack(connection_fd);
+          continue;
+        }*/
         nbytes = read(connection_fd, &req, sizeof(struct request));
         
         if (nbytes != sizeof(struct request)){
@@ -127,7 +140,7 @@ connection_handler (int connection_fd)
             continue;
         }
         else if (req.type == 0){
-            //printf("Quit requested\n");
+            printf("Quit requested\n");
             // request to quit, goodbye
             break;
         }
@@ -135,6 +148,7 @@ connection_handler (int connection_fd)
             // request to read
             char *buf = malloc(req.length + 1);
             nbytes = connection_read_memory(req.address, buf, req.length);
+            //printf("Reading addr %lx\n", req.address);
             if (nbytes != req.length){
                 // read failure, return failure message
                 //printf("Failed to read %lx, sending 0\n", req.address);
@@ -150,6 +164,7 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 2){
             // request to write
+            printf("Writing?\n");
             void *write_buf = malloc(req.length);
             nbytes = read(connection_fd, write_buf, req.length);
             if (nbytes != req.length){
@@ -174,7 +189,7 @@ connection_handler (int connection_fd)
           for(int i = sizeof(ram_size); i > 0; i--) {
             bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
           }
-          //printf("RAMSIZE: %lx\n", ram_size);
+          printf("RAMSIZE: %lx\n", ram_size);
           //for(int b = 0; b<sizeof(ram_size); b++) {
           //  printf("%x", (int)bytes[b]);
           //}
@@ -183,13 +198,14 @@ connection_handler (int connection_fd)
         }
         else{
             // unknown command
-            //printf("QemuMemoryAccess: ignoring unknown command (%d)\n", req.type);
+            printf("QemuMemoryAccess: ignoring unknown command (%d)\n", req.type);
             char *buf = malloc(1);
             buf[0] = 0;
             nbytes = write(connection_fd, buf, 1);
             free(buf);
         }
     }
+    printf("Closing connection\n");
     close(connection_fd);
 }
 
@@ -229,11 +245,12 @@ memory_access_thread (void *path)
     }
     while (true) {
       connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
-      //printf("QemuMemoryAccess: Connection accepted on %d.\n", connection_fd);
+      printf("QemuMemoryAccess: Connection accepted on %d.\n", connection_fd);
       tmp_fd = (int *) calloc(1, sizeof(int));
       *tmp_fd = connection_fd;
       pthread_create(&thread, NULL, connection_handler_gate, tmp_fd);
     }
+    printf("Closing socket and unlinking path\n");
     close(socket_fd);
     unlink(path);
 error_exit:
