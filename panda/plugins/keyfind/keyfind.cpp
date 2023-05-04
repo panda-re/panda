@@ -26,6 +26,7 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
+#include <iostream>
 #include <unordered_set>
 #include <vector>
 #include <set>
@@ -37,11 +38,12 @@ PANDAENDCOMMENT */
 #include <math.h>
 #include <stdio.h>
 
-#define NPAGES(n) ((uint32_t)((n) >> 12))
+#include <pcap.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/ether.h>
 
-//#include "../common/prog_point.h"
-//#include "pandalog.h"
-//#include "../callstack_instr/callstack_instr_ext.h"
+
     
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -53,16 +55,11 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-//int before_block_translate_cb(CPUState *env, target_ulong pc);
-//int after_block_translate_cb(CPUState *env, TranslationBlock *tb);
 
 }
 
-bool in_openssl;
+//bool in_openssl;
 
-#define KEYSIZE 48
-#define ENTROPY_THRESHOLD_48 5.0044
-#define ENTROPY_THRESHOLD_32 4.394
 
 //int keysize = 48;
 
@@ -70,17 +67,14 @@ typedef struct Memchunk {
     target_ptr_t start;
     target_ptr_t end;
     target_ulong size;
-    uint8_t buf[KEYSIZE];
+    uint8_t buf[48];
 } Memchunk;
 
 
 std::vector<std::pair<Memchunk, double> > heap_segments;
-//std::vector<std::pair<Memchunk, double> > non_heap_segments;
 
 std::vector<std::pair<Memchunk, double> > deduplicated_heap;
-//std::vector<std::pair<Memchunk, double> > deduplicated_non_heap;
 
-//std::vector<std::pair<Memchunk, Memchunk> > heap_pairs;
 Memchunk last_write;
 //typedef struct cand_prog_point_struct {
 
@@ -120,6 +114,10 @@ bool seen_first_byte = false;
 int count = 0;
 int writes_interval = 0;
 
+uint16_t ciphersuite_id = 0;
+uint8_t keysize = 0;
+double entropy_threshold = 0.0;
+
 typedef std::tuple<target_ulong, target_ulong, target_ulong> candidate_prog_point;
 std::set <candidate_prog_point> candidates;
 
@@ -139,20 +137,137 @@ typedef std::tuple <target_ulong, target_ulong, std::string> match;
 std::set<match> matches;
 //std::map<prog_point,key_buf> key_tracker;
 
-bool check_key(StringInfo *master_secret, StringInfo *client_random, StringInfo *server_random,
-               StringInfo *enc_msg, StringInfo *version, StringInfo *content_type,
-               const EVP_MD *md, const EVP_CIPHER *ciph)
-{
+int handle_IP (u_char *args,const struct pcap_pkthdr* pkthdr,const u_char* packet) {
+    const struct iphdr* ip;
+    u_int length = pkthdr->len;
+    u_int ip_hlen;
 
-    printf("CHECKING KEY\n");
-    return false;
+    int ether_hlen = sizeof(struct ether_header);
+
+    /* jump past the ethernet header */
+    ip = (struct iphdr*)(packet + sizeof(struct ether_header));
+    length -= sizeof(struct ether_header); 
+
+    /* check to see we have a packet of valid length */
+    if (length < sizeof(struct iphdr))
+    {
+        printf("truncated ip %d",length);
+        return 0;
+    }
+
+    ip_hlen    =  ip->ihl * 4; /* header length */
+
+    if(ip->protocol != 6) { //end early if it's not a tcp packet
+        return 0;
+    }
+
+    const struct tcphdr* tcp;
+    tcp = (struct tcphdr*) (packet + ether_hlen + ip_hlen);
+
+    if (ntohs(tcp->th_sport) != 443) {      //only consider packets sent from the server
+        return 0;
+    }
+
+    int tcp_hlen = tcp->th_off * 4;
+    int tls_start_idx = ether_hlen + ip_hlen + tcp_hlen;
+
+    //parse tls record
+    //byte 0    : record type   - we want handshake records (22)
+    //bytes 1-2 : ssl version
+    //bytes 3-4 : data length
+
+    if (packet[tls_start_idx] == 22) {
+        int record_data_idx = tls_start_idx + 5;
+
+        if (packet[record_data_idx] == 2) {
+
+            int ciphersuite_idx = record_data_idx + 71;
+            //printf("%02x\n", packet[ciphersuite_idx]);
+            uint16_t ciphersuite_id = ntohs(*((uint16_t*) &packet[ciphersuite_idx]));
+            printf("ciphersuite id: %x\n", ciphersuite_id);
+            return ciphersuite_id;
+        }
+    }
+
+    else {
+    //TODO check if there are more records
+    }
 
 
+    return 0;
 }
+
+
+u_int16_t handle_ethernet (u_char *args,const struct pcap_pkthdr* pkthdr,const u_char* packet) {
+    struct ether_header *eptr;  /* net/ethernet.h */
+
+    eptr = (struct ether_header *) packet;
+
+    /* check to see if we have an ip packet, disregard everything else */
+    if (ntohs (eptr->ether_type) == ETHERTYPE_IP)   //ETHERTYPE_IP == 8
+    {
+        return eptr->ether_type;
+    }
+
+    return 0;
+}
+
+void packetHandler(unsigned char* userData, const struct pcap_pkthdr* pkthdr, const unsigned char* packet) {
+//    const struct ip* ipHeader;
+//    const struct tcphdr* tcpHeader;
+//    const unsigned char* tlsHeader;
+//    const unsigned char* cipherSuite;
+//    unsigned int ipHeaderLength;
+//    unsigned int tcpHeaderLength;
+//    unsigned int offset;
+    uint16_t result;
+
+    //printf("HANDLING PACKET!\n");
+    u_int16_t type = handle_ethernet(NULL,pkthdr,packet);
+
+    if(type == 8) {     /* handle IP packet */
+        result = handle_IP(NULL, pkthdr, packet);       
+
+        if (result != 0) {
+            ciphersuite_id = result;
+        }
+    }
+}
+
+uint16_t get_ciphersuite_id(const char* pcap_file) {
+    pcap_t* pcapHandle;
+    char errbuf[PCAP_ERRBUF_SIZE];
+
+    // Open the pcap file
+    pcapHandle = pcap_open_offline(pcap_file, errbuf);
+    if (pcapHandle == NULL) {
+        std::cerr << "Error opening pcap file: " << errbuf << std::endl;
+        return 1;
+    }
+
+    // Set a packet callback function
+    pcap_loop(pcapHandle, 0, packetHandler, NULL);
+
+    // Close the pcap file
+    pcap_close(pcapHandle);
+
+    return 0;
+}
+
+//bool check_key(StringInfo *master_secret, StringInfo *client_random, StringInfo *server_random,
+//               StringInfo *enc_msg, StringInfo *version, StringInfo *content_type,
+//               const EVP_MD *md, const EVP_CIPHER *ciph)
+//{
+//
+//    printf("CHECKING KEY\n");
+//    return false;
+//
+//
+//}
 
 //helper function for sorting by buffer value
 bool buffer_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
-    return (memcmp(a.first.buf, b.first.buf, KEYSIZE) < 0);
+    return (memcmp(a.first.buf, b.first.buf, keysize) < 0);
 }
 
 //helper function for sorting by highest entropy
@@ -160,10 +275,9 @@ bool entropy_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double>
     return a.second > b.second;
 }
 
-
 //heper function for checking equality of memchunks by buffer value
 bool memchunk_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
-    return (memcmp(a.first.buf, b.first.buf, KEYSIZE) == 0);
+    return (memcmp(a.first.buf, b.first.buf, keysize) == 0);
 }
 
 double shannon_entropy(uint8_t* buf, size_t size) {
@@ -181,27 +295,20 @@ double shannon_entropy(uint8_t* buf, size_t size) {
     }
 
     return entropy;
-
 }
 
-void print_memchunk(Memchunk* m) {
-    printf("\tstart: " TARGET_PTR_FMT "\n", m->start);
-    printf("\tend  : " TARGET_PTR_FMT "\n", m->end);
-    printf("\tsize : " TARGET_FMT_ld "\n", m->size);
-    printf("\tbuf  : ");
-
-    for(int i = 0; i < KEYSIZE; i++) {
-        printf("%02x", m->buf[i]);
-    }
-    printf("\n");
-}
-
-void print_heap_segments() {
-    printf("%ld heap_segments stored\n", heap_segments.size());
-//    for(int i = 0; i < heap_segments.size(); i++) {
-//        print_memchunk(&heap_segments[i]);
+//void print_memchunk(Memchunk* m) {
+//    printf("\tstart: " TARGET_PTR_FMT "\n", m->start);
+//    printf("\tend  : " TARGET_PTR_FMT "\n", m->end);
+//    printf("\tsize : " TARGET_FMT_ld "\n", m->size);
+//    printf("\tbuf  : ");
+//
+//    for(int i = 0; i < keysize; i++) {
+//        printf("%02x", m->buf[i]);
 //    }
-}
+//    printf("\n");
+//}
+
 
 void get_heap_bounds(CPUState* env, target_ptr_t* start, target_ptr_t* end) {
     OsiProc *current;
@@ -225,251 +332,63 @@ void get_heap_bounds(CPUState* env, target_ptr_t* start, target_ptr_t* end) {
 }
 
 
-// after mem write, that is.
+// after mem write, that is
 void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
 
-    //uint8_t first_8[8] = {0xc6, 0xb7, 0x8b, 0x42, 0x10, 0xbe, 0xfb, 0xe5};
-    //uint8_t last_8[8] = {0xa8, 0xd8, 0x17, 0x21, 0x03, 0x95, 0x68, 0xbc};
 
-    OsiProc *current;
-    current = get_current_process(env);
+//    OsiProc *current;
+//    current = get_current_process(env);
 
-    if(strcmp(current->name, "openssl") != 0) {
-        return;
-    }
+//    if(strcmp(current->name, "openssl") != 0) {
+//        return;
+//    }
 
-    if(in_openssl) {
+    //check if the write is happening right after the end of the last write
+    //if it's not, reset the last_write
+    if(addr != last_write.end){
+        //if the next write isn't adjacent to the last AND the last write buffer had KEYSIZE bytes written to it, add it to the vec, then reset last_write
 
-        //if(seen_first_byte && count < 12) {
-        //    printf("writing %ld bytes to " TARGET_PTR_FMT " --> ", size, addr);
-        //    for(int i = 0; i < size; i++) {
-        //        printf("%02x", buf[i]);
-        //    }
-        //    printf("\n");
-        //    count++;
-        //    uint8_t out[64] = {0};
-        //    int res = panda_virtual_memory_read(env, last_write.start, out, 64);
+        if(last_write.size == keysize) {
+            //store in vec, reset last_write
+            double e = shannon_entropy(last_write.buf, keysize);
+            target_ptr_t heap_start;
+            target_ptr_t heap_end;
+            get_heap_bounds(env, &heap_start, &heap_end);
 
-        //    printf(TARGET_PTR_FMT " --> ", addr);
-        //    if(res != -1) {
-        //        for(int i = 0; i < 64; i++) {
-        //            printf("%02x", out[i]);
-        //        }
-        //        printf("\n");
-        //    }
-
-        //}
-        //if(!seen_first_byte && memcmp(first_8, buf, 8) == 0) {
-        //    printf("THERE ARE %ld heap_segments\n", heap_segments.size());
-        //    printf("matches first_8!\n");
-        //    printf("writing %ld bytes to " TARGET_PTR_FMT " --> ", size, addr);
-        //    for(int i = 0; i < size; i++) {
-        //        printf("%02x", buf[i]);
-        //    }
-        //    printf("\n");
-        //    count = 0;
-        //    if(addr == (target_ulong) 0x0000000000c1dd90) {
-        //        seen_first_byte = true;
-        //        uint8_t out[64] = {0};
-        //        int res = panda_virtual_memory_read(env, addr, out, 64);
-
-        //        printf(TARGET_PTR_FMT " --> ", addr);
-        //        if(res != -1) {
-        //            for(int i = 0; i < 64; i++) {
-        //                printf("%02x", out[i]);
-        //            }
-        //            printf("\n");
-        //        }
-        //    }
-        //    GArray *ms = NULL;
-        //    ms = get_mappings(env, current);
-        //    if (ms != NULL) {
-        //        for (uint32_t j = 0; j < ms->len; j++) {
-        //            OsiModule *m = &g_array_index(ms, OsiModule, j);
-        //            printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
-        //        }
-        //        g_array_free(ms, true);
-        //    }
-
-
-
-
-        //}
-
-        //check if the write is happening right after the end of the last write
-        //if it's not, reset the last_write
-        if(addr != last_write.end){
-            //if the next write isn't adjacent to the last AND the last write buffer had KEYSIZE bytes written to it, add it to the vec, then reset last_write
-
-            if(last_write.size == KEYSIZE) {
-                //store in vec, reset last_write
-                double e = shannon_entropy(last_write.buf, KEYSIZE);
-                target_ptr_t heap_start;
-                target_ptr_t heap_end;
-                get_heap_bounds(env, &heap_start, &heap_end);
-
-                //if(e >= ENTROPY_THRESHOLD_48 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
-                if(e >= ENTROPY_THRESHOLD_48 && last_write.start < heap_end && last_write.start >= heap_start) {
-                //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
-                    heap_segments.push_back(std::make_pair(last_write, e));
-                } else if (e >= ENTROPY_THRESHOLD_48) {
-                    //non_heap_segments.push_back(std::make_pair(last_write, e));
-                }
- 
+            //if(e >= ENTROPY_THRESHOLD_48 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
+            if(e >= entropy_threshold && last_write.start < heap_end && last_write.start >= heap_start) {
+            //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
+                heap_segments.push_back(std::make_pair(last_write, e));
+            } else if (e >= entropy_threshold) {
+                //non_heap_segments.push_back(std::make_pair(last_write, e));
             }
 
-
-            last_write.start = addr;
-            last_write.end = addr + size;
-            memset(last_write.buf, 0, KEYSIZE);
-            memcpy(last_write.buf, buf, size);
-            last_write.size = size;
-
-        //if it is, add it to the last_write chunk
-        } else if (addr == last_write.end && last_write.size < KEYSIZE) { 
-            last_write.end += size;
-            memcpy(&last_write.buf[last_write.size], buf, size);
-            last_write.size += size;
-
-            //if the last_write chunk reaches the keysize, store it in the vec, and then reset the last_write
-
-            //if(last_write.size == KEYSIZE) {
-            //    //store in vec, reset last_write
-            //    double e = shannon_entropy(last_write.buf, KEYSIZE);
-
-            //    if(e >= 5.0 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
-            //    //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
-            //        heap_segments.push_back(std::make_pair(last_write, e));
-            //    } else if (e >= 5.0) {
-            //        non_heap_segments.push_back(std::make_pair(last_write, e));
-            //    }
-            //    
-            //}
         }
 
-        if(seen_first_byte && count < 12) {
-            print_memchunk(&last_write);
-            print_heap_segments();
-        }
-    }
 
-//    Memchunk *segment_ptr = find_segment_for_addr(addr);
-//
-//    if(segment == NULL) {
-//        Memchunk new_chunk;
-//        new_chunk.start = addr;
-//        new_chunk.end = addr - size;
-//        new_chunk.size = size;
-//        memcpy(new_chunk.buf, buf, size);
-//        heap_segments.push_back(new_chunk);
-//    }
-//
-//    return;
+        last_write.start = addr;
+        last_write.end = addr + size;
+        memset(last_write.buf, 0, keysize);
+        memcpy(last_write.buf, buf, size);
+        last_write.size = size;
 
+    //if it is, add it to the last_write chunk
+    } else if (addr == last_write.end && last_write.size < keysize) { 
+        last_write.end += size;
+        memcpy(&last_write.buf[last_write.size], buf, size);
+        last_write.size += size;
 
-
-
-//    count++;
-//    double seconds;
-//    time(&current);
-//    seconds = difftime(current, start);
-//    int hours, minutes, secs;
-//
-//    if (count % 100000 == 0) {
-//        hours = (int)seconds / 3600;
-//        minutes = ((int)seconds % 3600) / 60;
-//        secs = ((int)seconds % 3600) % 60;
-//        printf("%02d:%02d:%02d - got %d mem write callbacks\n", hours, minutes, secs, count);
-//    }
-}
-
-#define ASSUMED_TB_SIZE 256
-
-bool enabled_memcb = false;
-int instrumented, total;
-
-
-
-
-//void before_block_translate_cb(CPUState *env, target_ulong pc) {
-//    // Don't bother with any of this if we don't have any canidates;
-//    // in this case precise pc and memcb will always be on.
-//    if (!have_candidates) 
-//        return;
-//    
-//    target_ulong cr3 = panda_current_asid(env);
-//
-//    if (asids.find(cr3) == asids.end()) 
-//        return;
-//
-//    // Slightly tricky: we ask for the lower bound of the TB start and
-//    // the lower bound of the (assumed) TB end in our sorted list of tap
-//    // EIPs. If that interval is nonempty then at least one of our taps
-//    // is in the upcoming TB, so we need to instrument it.
-//    std::vector<target_ulong>::iterator beg, end, it;
-//    beg = std::lower_bound(eips.begin(), eips.end(), pc);
-//    end = std::lower_bound(eips.begin(), eips.end(), pc+ASSUMED_TB_SIZE);
-//
-//    if (std::distance(beg, end) != 0) {
-//        panda_enable_memcb();
-//        panda_enable_precise_pc();
-//        enabled_memcb = true;
-//        //printf("Enabling callbacks for TB " TARGET_FMT_lx " Interval:(%ld,%ld)\n", pc, beg-eips.begin(), end-eips.begin());
-//        //printf("Encompassed EIPs:");
-//        //for (it = beg; it != end; it++) {
-//        //    printf(" " TARGET_FMT_lx, *it);
-//        //}
-//        //printf("\n");
-//        instrumented++;
-//    }
-//    total++;
-//
-//    return;
-//}
-
-bool asid_changed_cb(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    printf("got asid changed callback!\n");
-    
-    OsiProc *current;
-    current = get_current_process(env);
-
-    if(strcmp(current->name, "openssl") == 0) {
-        in_openssl = true;
-    } else {
-        in_openssl = true;
     }
 
 
-//    GArray *ms = NULL;
-//    ms = get_mappings(env, current);
-//    if (ms != NULL) {
-//        for (uint32_t j = 0; j < ms->len; j++) {
-//            OsiModule *m = &g_array_index(ms, OsiModule, j);
-//            printf("\t" TARGET_PTR_FMT " " TARGET_PTR_FMT "  %s:%s\n", m->base, m->base + m->size, m->name, m->file);
-//        }
-//        g_array_free(ms, true);
-//    }
-
-
-    return false;
 }
 
-void  after_block_translate_cb(CPUState *env, TranslationBlock *tb) {
-    if (!have_candidates) return;
 
-    if (enabled_memcb) {
-        // Check our assumption
-        if (tb->size > ASSUMED_TB_SIZE) {
-            printf("WARN: TB " TARGET_FMT_lx " is larger than we thought (%d bytes)\n", tb->pc, tb->size);
-        }
-        panda_disable_memcb();
-        panda_disable_precise_pc();
-        enabled_memcb = false;
-        //printf("Disabling callbacks for TB " TARGET_FMT_lx "\n", tb->pc);
-    }
-    return;
-}
+
+
+
+
 
 bool init_plugin(void *self) {
     // General PANDA stuff
@@ -484,26 +403,43 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin keyfind\n");
 
-    in_openssl = true;
+    //in_openssl = true;
 
     // Enable our callbacks
     panda_enable_memcb();
     panda_enable_precise_pc();
-    enabled_memcb = true;
+    //enabled_memcb = true;
 
     printf("enabling mem write callback\n");
     pcb.virt_mem_after_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_AFTER_WRITE, pcb);
 
 
-    pcb.asid_changed = asid_changed_cb;
-    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+//    pcb.asid_changed = asid_changed_cb;
+//    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 
+    //get the pcap name
+    panda_arg_list *args = panda_get_args("keyfind");
+    const char* pcap_file = panda_parse_string_req(args, "pcap", "required: path to pcap file");
 
-//    pcb.before_block_translate = before_block_translate_cb;
-//    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
-//    pcb.after_block_translate = after_block_translate_cb;
-//    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
+    get_ciphersuite_id(pcap_file);
+
+    if (ciphersuite_id == 0) {
+        printf("unable to find the ciphersuite id\n");
+        exit(1);
+    }
+
+    //if it's AES_256_GCM_SHA384
+    if (ciphersuite_id == 0x1302) {                     
+        keysize = 48;
+        entropy_threshold = 5.0044;
+
+    //if it's CHACHA20_POLY1305_SHA256 or AES_128_GCM_SHA256
+    } else if (ciphersuite_id == 0x1301 || ciphersuite_id == 0x1303) {
+        keysize = 32;
+        entropy_threshold = 4.394;
+    }
+
 
     return true;
 }
@@ -511,34 +447,6 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 
     printf("collected %ld heap_segments:\n", heap_segments.size());
-    //printf("collected %ld non_heap_segments:\n", non_heap_segments.size());
-
-//    int num_pairs = 0;
-//    for(int i = 0; i < heap_segments.size(); i++) {
-//        for(int j = 0; j < heap_segments.size(); j++) {
-//            if(j != i && ((heap_segments[i].first.start - heap_segments[j].first.start) == 64 || (heap_segments[j].first.start - heap_segments[i].first.start) == 64)) {
-////                printf("found pair:\n");
-////                printf("\t" TARGET_PTR_FMT ": ", heap_segments[i].first.start);
-////                for(int k = 0; k < KEYSIZE; k++) {
-////                    printf("%02x", heap_segments[i].first.buf[k]);
-////                }
-////                printf("\n");
-////                printf("\t" TARGET_PTR_FMT ": ", heap_segments[j].first.start);
-////                for(int k = 0; k < KEYSIZE; k++) {
-////                    printf("%02x", heap_segments[j].first.buf[k]);
-////                }
-////                printf("\n");
-//                if(heap_segments[i].first.start < heap_segments[j].first.start) {
-//                    heap_pairs.push_back(std::make_pair(heap_segments[i].first, heap_segments[j].first));
-//                } else {
-//                    heap_pairs.push_back(std::make_pair(heap_segments[j].first, heap_segments[i].first));
-//                }
-//                num_pairs++;
-//            }
-//        }
-//    }
-//    printf("found %ld pairs in the heap\n", heap_pairs.size());
-
 
     printf("deduplicating the heap segments...\n");
     std::sort(heap_segments.begin(), heap_segments.end(), buffer_compare);
@@ -546,56 +454,20 @@ void uninit_plugin(void *self) {
     printf("there are %ld heap segments after deduplication\n", heap_segments.size());
 
 
-//    printf("deduplicating the non-heap segments...\n");
-//    std::sort(non_heap_segments.begin(), non_heap_segments.end(), buffer_compare);
-//    non_heap_segments.erase(std::unique(non_heap_segments.begin(), non_heap_segments.end(), memchunk_compare), non_heap_segments.end());
-//    printf("there are %ld non-heap segments after deduplication\n", non_heap_segments.size());
-
-
     printf("sorting heap_segments by entropy...\n");
     std::sort(heap_segments.begin(), heap_segments.end(), entropy_compare);
-    //std::sort(non_heap_segments.begin(), non_heap_segments.end(), entropy_compare);
-
-//    printf("writing heap pairs to file heap_pairs.txt\n");
-//
-//    fptr = fopen("heap_pairs.txt", "w");
-//    for(int i = 0; i < heap_pairs.size(); i++) {
-//        for(int j = 0; j < KEYSIZE; j++) {
-//            fprintf(fptr, "%02x", heap_pairs[i].first.buf[j]);           
-//        }
-//        fprintf(fptr, ":");
-//        for(int j = 0; j < KEYSIZE; j++) {
-//            fprintf(fptr, "%02x", heap_pairs[i].second.buf[j]);
-//        }
-//        fprintf(fptr, "\n");
-//    }
-//    fclose(fptr);
     
-    printf("writing heap writes to heap_writes.txt\n");
 
+    printf("writing heap writes to key_candidates.txt\n");
     FILE *fptr;
-    fptr = fopen("heap_writes.txt", "w");
+    fptr = fopen("key_candidates.txt", "w");
     for(int i = 0; i < heap_segments.size(); i++) {
-        for(int j = 0; j < KEYSIZE; j++) {
+        for(int j = 0; j < keysize; j++) {
             fprintf(fptr, "%02x", heap_segments[i].first.buf[j]);
         }
         fprintf(fptr, "\n");
     }
     fclose(fptr);
-
-//    printf("writing deduplicated non-heap writes to non_heap_writes.txt\n");
-//    fptr = fopen("non_heap_writes.txt", "w");
-//    for(int i = 0; i < non_heap_segments.size(); i++) {
-//        for(int j = 0; j < KEYSIZE; j++) {
-//            fprintf(fptr, "%02x", non_heap_segments[i].first.buf[j]);
-//        }
-//        fprintf(fptr, "\n");
-//    }
-//    fclose(fptr);
 }
 
 
-
-//server handshake: 0000000000c1dd90
-//server traffic  : 0000000000c00c4c
-//client traffic  : 0000000000c00c0c
