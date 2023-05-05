@@ -555,7 +555,7 @@ bool init_plugin(void *self)
     printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_PATH_KEY);
     return false;
   }
-  if (pmemaccess_mode == -1) {
+  if (pmemaccess_mode == -1 && pargs->nargs > 1) {
     printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_MODE_KEY);
     return false;
   }
@@ -567,10 +567,7 @@ bool init_plugin(void *self)
     printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_COMMAND_KEY);
     return false;
   }
-  else {
-    printf("Creating dumpfile %s\n", dump_file);
-  }
-
+  
   // Start the memory access socket
   memory_access_start(socket_path);
 
