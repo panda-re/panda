@@ -74,7 +74,6 @@ connection_read_memory (uint64_t user_paddr, void *buf, uint64_t user_len)
     }
     memcpy(buf, guestmem, len);
     cpu_physical_memory_unmap(guestmem, len, 0, len);
-
     return len;
 }
 
@@ -129,9 +128,13 @@ connection_handler (int connection_fd)
         FD_SET(connection_fd, &set);
         int rv = select(connection_fd, &set, NULL, NULL, &timeout);
         if(rv == -1 || rv == 0) {
-          send_fail_ack(connection_fd);
+          time_count++;
+          //send_fail_ack(connection_fd);
+          printf("Timed out, retrying\n");
+          nbytes = write(connection_fd, "\x00", req.length + 1);
           continue;
         }*/
+        
         nbytes = read(connection_fd, &req, sizeof(struct request));
         
         if (nbytes != sizeof(struct request)){
@@ -140,7 +143,7 @@ connection_handler (int connection_fd)
             continue;
         }
         else if (req.type == 0){
-            printf("Quit requested\n");
+            //printf("Quit requested\n");
             // request to quit, goodbye
             break;
         }
@@ -164,7 +167,7 @@ connection_handler (int connection_fd)
         }
         else if (req.type == 2){
             // request to write
-            printf("Writing?\n");
+            //printf("Writing?\n");
             void *write_buf = malloc(req.length);
             nbytes = read(connection_fd, write_buf, req.length);
             if (nbytes != req.length){
@@ -189,12 +192,13 @@ connection_handler (int connection_fd)
           for(int i = sizeof(ram_size); i > 0; i--) {
             bytes[sizeof(ram_size) - i] = (ram_size) >> i * 8 & 0xff;
           }
-          printf("RAMSIZE: %lx\n", ram_size);
+          //printf("RAMSIZE: %lx\n", ram_size);
           //for(int b = 0; b<sizeof(ram_size); b++) {
           //  printf("%x", (int)bytes[b]);
           //}
           //printf("\n");
           nbytes = write(connection_fd, bytes, sizeof(ram_size));
+          exit(-1);
         }
         else{
             // unknown command
@@ -204,6 +208,7 @@ connection_handler (int connection_fd)
             nbytes = write(connection_fd, buf, 1);
             free(buf);
         }
+
     }
     printf("Closing connection\n");
     close(connection_fd);
@@ -343,18 +348,13 @@ void *read_all(void *arg)
     printf("Error opening file\n");
     exit(1);
   }
-  int count = 0;
+  
   while (addr < ram_size) {
-    if(!count% 1000) { 
-      printf("Reading addr %d\n", count);
-    }
-    count++;
     req.type = REQ_READ;
     req.length = block_len;
     req.address = addr;
     num_bytes = write(sock, &req, sizeof(struct request));
     if (num_bytes != sizeof(struct request)){
-          printf("Failed\n");
           goto read_fail;
     }
     num_bytes = read(sock, buf, block_len+1);
@@ -362,7 +362,6 @@ void *read_all(void *arg)
       fwrite(&buf[0], 1, block_len, f);
       }
     else {
-      printf("Failed2\n");
       read_fail:
       addr+= block_len;
       continue;
