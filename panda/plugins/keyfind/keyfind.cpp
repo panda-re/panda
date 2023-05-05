@@ -122,15 +122,8 @@ typedef std::tuple<target_ulong, target_ulong, target_ulong> candidate_prog_poin
 std::set <candidate_prog_point> candidates;
 
 // Optimization
-std::unordered_set <target_ulong> asids;
-std::vector <target_ulong> eips;
-
-// Ringbuf-like structure
-//struct key_buf {
-//    uint8_t key[MASTER_SECRET_SIZE];
-//    int start;
-//    bool filled;
-//};
+//std::unordered_set <target_ulong> asids;
+//std::vector <target_ulong> eips;
 
 
 typedef std::tuple <target_ulong, target_ulong, std::string> match;
@@ -213,13 +206,6 @@ u_int16_t handle_ethernet (u_char *args,const struct pcap_pkthdr* pkthdr,const u
 }
 
 void packetHandler(unsigned char* userData, const struct pcap_pkthdr* pkthdr, const unsigned char* packet) {
-//    const struct ip* ipHeader;
-//    const struct tcphdr* tcpHeader;
-//    const unsigned char* tlsHeader;
-//    const unsigned char* cipherSuite;
-//    unsigned int ipHeaderLength;
-//    unsigned int tcpHeaderLength;
-//    unsigned int offset;
     uint16_t result;
 
     //printf("HANDLING PACKET!\n");
@@ -253,17 +239,6 @@ uint16_t get_ciphersuite_id(const char* pcap_file) {
 
     return 0;
 }
-
-//bool check_key(StringInfo *master_secret, StringInfo *client_random, StringInfo *server_random,
-//               StringInfo *enc_msg, StringInfo *version, StringInfo *content_type,
-//               const EVP_MD *md, const EVP_CIPHER *ciph)
-//{
-//
-//    printf("CHECKING KEY\n");
-//    return false;
-//
-//
-//}
 
 //helper function for sorting by buffer value
 bool buffer_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
@@ -357,7 +332,7 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
             get_heap_bounds(env, &heap_start, &heap_end);
 
             //if(e >= ENTROPY_THRESHOLD_48 && last_write.start < 0x0000000000c22000 && last_write.start >= 0x0000000000b95000) {
-            if(e >= entropy_threshold && last_write.start < heap_end && last_write.start >= heap_start) {
+            if(e >= entropy_threshold /*&& last_write.start < heap_end && last_write.start >= heap_start*/) {
             //if(e >= 5.0 && last_write.start < (target_ptr_t) 0x00007ffffffff000 && last_write.start >= (target_ptr_t) 0x00007ffffffde000) {
                 heap_segments.push_back(std::make_pair(last_write, e));
             } else if (e >= entropy_threshold) {
@@ -374,9 +349,14 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         last_write.size = size;
 
     //if it is, add it to the last_write chunk
-    } else if (addr == last_write.end && last_write.size < keysize) { 
+    } else if (addr == last_write.end /*&& last_write.size < keysize*/) { 
         last_write.end += size;
-        memcpy(&last_write.buf[last_write.size], buf, size);
+
+        //no need to keep track of anything written if the amount of data exceeds keysize bytes
+        if (last_write.size + size <= keysize) {
+            memcpy(&last_write.buf[last_write.size], buf, size);
+        }
+
         last_write.size += size;
 
     }
