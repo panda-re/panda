@@ -28,11 +28,20 @@ typedef struct {
 } string_pos;
 
 GHashTable *matches = NULL;
+
+/* table of recent reads that contained a substring of a match */
 GHashTable *read_text_tracker = NULL;
+
+/* table of recent writes that contained a substring of a match */
 GHashTable *write_text_tracker = NULL;
 
+/* list of strings to search for */
 char tofind[MAX_STRINGS][MAX_STRLEN];
+
+/* how long each string in tofind is */
 uint32_t strlens[MAX_STRINGS];
+
+/* number of strings in tofind */
 size_t num_strings = 0;
 
 static guint u64_hash(gconstpointer key)
@@ -85,6 +94,7 @@ static void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
             if (sp->val[str_idx] == strlens[str_idx]) {
                 /* Victory! */
                 if (verbose) {
+                    /* Log the discovery of a match */
                     size_t output_len = snprintf(NULL, 0, "%s Match of str %li at pc=0x%lx\n", is_write ? "WRITE" : "READ", str_idx, pc);
                     char *output = (char*)g_malloc0(output_len + 1);
 
@@ -94,6 +104,7 @@ static void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
                     g_free((gpointer)output);
                 }
 
+                /* Keep track of what matches have been found and where */
                 match_strings *match = (match_strings*)g_hash_table_lookup(matches, (gconstpointer)p);
                 if(match == NULL) {
                     match = g_malloc0(sizeof(match_strings));
@@ -111,9 +122,12 @@ static void mem_callback(uint64_t pc, uint64_t addr, size_t size, bool is_write,
                 }
 
                 uint64_t match_addr = (addr + i) - (sl - 1);
+
+                /* Check if the entire string is currently present in memory */
                 qemu_plugin_read_guest_virt_mem(match_addr, big_buf, sl);
 
                 if (memcmp(big_buf, tofind[str_idx], sl) == 0) {
+                    /* Run the callback only if the entire string is present */
                     qemu_plugin_run_callback(plugin_id, "on_string_found", &match_addr, NULL);
                     qemu_plugin_outs("... its in memory\n");
                 } else {
@@ -170,7 +184,6 @@ QEMU_PLUGIN_EXPORT bool stringsearch_add_string(const char* arg_str)
   return true;
 }
 
-/* TODO: export */
 /* Remove the first match from our list */
 QEMU_PLUGIN_EXPORT bool stringsearch_remove_string(const char* arg_str)
 {
@@ -187,7 +200,7 @@ QEMU_PLUGIN_EXPORT bool stringsearch_remove_string(const char* arg_str)
     return false;
 }
 
-/* TODO: export */
+/* Remove all strings from search list */
 QEMU_PLUGIN_EXPORT void stringsearch_reset_strings(void)
 {
     num_strings = 0;
@@ -235,6 +248,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
     read_text_tracker = g_hash_table_new_full(u64_hash, u64_equality, NULL, g_free);
     write_text_tracker = g_hash_table_new_full(u64_hash, u64_equality, NULL, g_free);
     
+    /* parse arguments for passing strings to look for */
     for (int i = 0; i < argc; i++) {
         char *opt = argv[i];
         g_autofree char **tokens = g_strsplit(opt, "=", 2);
