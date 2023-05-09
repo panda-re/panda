@@ -291,6 +291,10 @@ endif
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(qemu_confdir)/$$p"; \
 		done; \
 	done
+	for f in $$(find panda/plugins/ -type f -name 'syscalls2_dso_info_*.so'); do \
+		echo $$f; \
+		$(INSTALL_LIB) $$f "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
+	done
 
 GENERATED_FILES += config-target.h plog_pb2.py
 Makefile: $(GENERATED_FILES)
