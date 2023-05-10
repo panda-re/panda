@@ -9,7 +9,7 @@
 
 # If you need custom CFLAGS or LIBS, set them up here
 QEMU_CXXFLAGS+=-std=c++11
-LIBS+=-lssl -lcrypto
+LIBS+=-lpcap
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
