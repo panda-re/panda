@@ -4,35 +4,25 @@ Plugin: keyfind
 Summary
 -------
 
-The `keyfind` plugin attempts to locate the point within a replay where TLS master secrets are generated. It does so by watching every memory read and write, and then using this data as a possible key to decrypt some sample data.
+The `keyfind` plugin attempts to extract TLS keys from a replay in which a TLS 1.3 connection is established. It does so by watching every memory write, and checking if the data written could be a potential key, and then logging this data to a file. Once the replay is complete, the actual keys can be identified using `keychecker.py`. 
 
-The plugin is described in greater detail in PANDA's [SSL Tutorial](docs/panda_ssltut.md).
+The input to the plugin is a recording where the guest establishes a TLS 1.3 connection, and a packet capture of that TLS session. The input to `keychecker.py` is the same packet capture, and the list of potential keys identified by `keyfind` (`key_candidates.txt` by default). If successful, `keychecker` produces a keyfile (`verified_keys.txt` by default) in the same format as the OpenSSL keylogfile, so that these keys can be used by external programs.  
 
-The input to the plugin is a configuration file that contains information about the encryption algorithms in use, the sample data to decrypt, and the connection ID. The `keyfind_config.txt` must contain, at minimum:
 
-* Client-Random: The random nonce sent by the client.
-* Server-Random: The random nonce sent by the server.
-* Content-Type: The content-type field (used in calculating the HMAC, for verification)
-* Version: The version of the TLS protocol, e.g. `0302`
-* Enc-Msg: The encrypted message that we should try to decrypt.
-* Cipher: The cipher used for the session, in the form OpenSSL expects (e.g., `AES-128-CBC`)
-* MAC: The algorithm used for the TLS MAC (e.g., `SHA1`).
-
-You can generate a configuration file given a PCAP file with TLS data you want to decrypt using the `list_enc.py` script (available in PANDA's `scripts` directory). 
-
-You may also, optionally, supply a list of candidate tap points in a file named `keytap_candidates.txt`. For example, one might exclude all tap points that read or wrote very little data (less than one key's worth -- 48 bytes) or whose content had low entropy (since encryption keys are expected to be random). This can greatly speed up the search.
-
-The key found (if any) will be printed to stderr, and all matching tap points will be saved to the file `key_matches.txt` for later perusal.
 
 Arguments
 ---------
 
-None.
+`keyfind` is designed to be run on a recording in which a TLS session is established. It requires a .pcap file of the TLS session. 
+
+`keychecker.py` requires that same .pcap file, and a list of potential keys to check (produced by `keyfind`).
 
 Dependencies
 ------------
 
-`keyfind` uses the `callstack_instr` plugin to split memory accesses up into individual tap points.
+`keyfind` depends on libpcap, which can be installed with `apt-get install libpcap-dev ` or equivalent.
+
+`keychecker.py` depends on pyshark, which can be installed with `pip install pyshark`.
 
 APIs and Callbacks
 ------------------
@@ -42,19 +32,30 @@ None.
 Example
 -------
 
-An example configuration file:
+First, create a recording in which the guest establishes a TLS connection, and create a .pcap file at the same time. Start PANDA with normal arguments, and set a filename for the recorded packet capture
 
-    # ==== 127.0.0.1:443 <-> 127.0.0.1:52103 ====
-    Client-Random: 508db4fea3925d766805a41f918350b9dc8822253d490d85bfa3d25763bf220a
-    Server-Random: 508db4fe6d3fa3fa913427f5fd8cbf3213211249acccff598d47fc0a0049143f
-    Content-Type:  16
-    Version:       0302
-    Enc-Msg:       7c90069ae372aba7e91c51a91db7a1d73e282ed44178bb2ec87b7535240a9b394db93219c4227fae48ebcaf40f7a49298ea91849157ed24f83733616ef4bdd68
-    Cipher:        AES-128-CBC
-    MAC:           SHA1
+    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 \
+        -net dump,file=tls_session.pcap
+        
+Once the guest is running, open the QEMU monitor (Ctrl-a) and run `begin_record [tls_recording_name]` to start the record. Close the monitor, then run commands which will establish a TLS connection. Then, open the monitor again and run `end_record` to save the recording. 
 
-Then, run PANDA with `keyfind`:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-        -panda callstack_instr -panda keyfind
+Once a recording is created, run PANDA with `keyfind` and provide the .pcap file as an argument:
 
+    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 \
+        -replay tls_recording_name \
+        -panda keyfind:pcap=tls_session.pcap
+
+The information in the .pcap file allows keyfind to identify the ciphersuite that was used, and by extension, the size of the keys used to encrypt data. After successful execution, keyfind will produce a list of values that may be cryptographic keys, and write them to `key_candidates.txt`. 
+
+Lastly, run `keychecker.py` to identify which values in `key_candidates.txt` are actually TLS keys:
+
+    python keychecker.py tls_session.pcap key_candidates.txt
+    
+`keychecker` conducts a search for four keys:
+- SERVER_HANDSHAKE_TRAFFIC_SECRET
+- SERVER_TRAFFIC_SECRET_0
+- CLIENT_HANDSHAKE_TRAFFIC_SECRET
+- CLIENT_TRAFFIC_SECRET_0
+
+if all four are found, they are written to `verified_keys.txt`. They are written using the OpenSSL's standard keylogfile format, and can be easily used by other programs (e.g. Wireshark, see https://wiki.wireshark.org/TLS for details). 
