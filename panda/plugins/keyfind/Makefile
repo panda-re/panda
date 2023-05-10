@@ -29,8 +29,8 @@ LIBS+=-lpcap
 
 
 
-$(PLUGIN_TARGET_DIR)/tls_prf.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/tls_prf.cpp
+#$(PLUGIN_TARGET_DIR)/tls_prf.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/tls_prf.cpp
 
-$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
-    $(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o $(PLUGIN_OBJ_DIR)/tls_prf.o
+#$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
+#    $(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o $(PLUGIN_OBJ_DIR)/tls_prf.o
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
