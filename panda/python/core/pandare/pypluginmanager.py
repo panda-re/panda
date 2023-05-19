@@ -35,7 +35,7 @@ class _PppPlugins(_DotGetter):
     def __getattr__(self, name):
         plugin = self.data.get(name, None)
         if plugin is None:
-            raise AttributeError(f"No plugin named {plugin}")
+            raise AttributeError(f"No plugin named {name}")
         return plugin
 
     def add(self, plugin_name, func_name, func):
