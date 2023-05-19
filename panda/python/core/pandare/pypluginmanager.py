@@ -25,6 +25,13 @@ class _DotGetter(object):
         raise NotImplementedError("Subclass must implement this virtual method")
 
 class _PppFuncs(_DotGetter):
+    def __enter__(self):
+        self.data['__enter__']()
+        return self
+
+    def __exit__(self, *exc):
+        return self.data['__exit__'](*exc)
+
     def __getattr__(self, name):
         method = self.data.get(name, None)
         if method is None:
@@ -46,7 +53,11 @@ class _PppPlugins(_DotGetter):
             self.set(plugin_name, _PppFuncs())
             plugin = self.data.get(plugin_name, None)
 
-        plugin.set(func_name, func)
+        # If the function is a context manager, store the original method
+        if func_name in ("__enter__", "__exit__") and hasattr(func, "__original_method"):
+            plugin.set(func_name, func.__original_method)
+        else:
+            plugin.set(func_name, func)
 
 class PyPluginManager:
     def __init__(self, panda, flask=False, host='127.0.0.1', port=8080, silence_warning=False):

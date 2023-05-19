@@ -80,6 +80,7 @@ class PyPlugin:
         def f(*args, **kwargs):
             return method(*args, **kwargs)
         f.__is_pyplugin_ppp = True
+        f.__original_method = method
         return f
 
     # Argument loading
