@@ -24,14 +24,14 @@ malloc_ran = False
 calloc_ran = False
 
 @panda.hook_symbol_resolution(None, "calloc")
-def calloc_resolve(cpu, sh, s, m):
+def calloc_resolve(sh, s, m):
     print(f"Calloc resolved to 0x{s.address:x}")
     global calloc_resolved
     calloc_resolved = True
     sh.enabled = False # got result. no reason to continue
 
 @panda.hook_symbol_resolution(None, "malloc")
-def malloc_resolve(cpu, sh, s, m):
+def malloc_resolve(sh, s, m):
     print(f"Malloc resolved to 0x{s.address:x}")
     global malloc_resolved
     malloc_resolved = True

@@ -4,6 +4,7 @@
 #include "syscalls2.h"
 #include "syscalls2_info.h"
 #include "hooks/hooks_int_fns.h"
+#include "hw_proc_id/hw_proc_id_ext.h"
 
 extern const syscall_info_t *syscall_info;
 extern const syscall_meta_t *syscall_meta;
@@ -31,7 +32,7 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	} else {
 	  ctx.no = static_callno;
 	}
-	ctx.asid = panda_current_asid(cpu);
+	ctx.asid = get_id(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
 	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
@@ -4431,8 +4432,6 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 		struct hook h;
 		h.addr = ctx.retaddr;
 		h.asid = ctx.asid;
-		//h.cb.start_block_exec = hook_syscall_return;
-		//h.type = PANDA_CB_START_BLOCK_EXEC;
 		h.cb.before_tcg_codegen = hook_syscall_return;
 		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
 		h.enabled = true;

@@ -3107,7 +3107,7 @@ class Panda():
                             raise e
                         return None
 
-            sr_hook_cb_type = self.ffi.callback("void (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m)")
+            sr_hook_cb_type = self.ffi.callback("void (struct hook_symbol_resolve *sh, struct symbol s, target_ulong asid)")
             sr_hook_cb_ptr = sr_hook_cb_type(_run_and_catch)
             sh.cb = sr_hook_cb_ptr
             hook_ptr = self.plugins['dynamic_symbols'].hook_symbol_resolution(sh)

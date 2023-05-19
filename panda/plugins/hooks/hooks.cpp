@@ -10,6 +10,7 @@
  * 
 PANDAENDCOMMENT */
 
+
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
@@ -23,6 +24,7 @@ PANDAENDCOMMENT */
 #include <set>
 #include <queue>
 #include <vector>
+#include "hw_proc_id/hw_proc_id_ext.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -100,13 +102,13 @@ void disable_hooking() {
 vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 
 
-void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
+void handle_hook_return (struct hook_symbol_resolve *sh, struct symbol s, target_ulong asid){
     int id = sh->id;
     pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
-    //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu), (long long unsigned int) s.address - m->base);
+    // printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) get_id(cpu), (long long unsigned int) s.address - m->base);
     struct hook new_hook;
     new_hook.addr = s.address;
-    new_hook.asid = panda_current_asid(cpu);
+    new_hook.asid = asid;
     new_hook.type = resolved.second; 
     new_hook.km = MODE_USER_ONLY;
     new_hook.cb = resolved.first;
@@ -214,7 +216,7 @@ void add_hook(struct hook* h) {
         panda_disable_callback(self, PANDA_CB_ ## UPPER_CB_NAME, NAME ## _callback); \
         return VALUE; \
     } \
-    target_ulong asid = panda_current_asid(cpu); \
+    target_ulong asid = get_id(cpu); \
     bool in_kernel = panda_in_kernel(cpu); \
     struct hook hook_container; \
     memset(&hook_container, 0, sizeof(hook_container)); \
@@ -358,6 +360,8 @@ bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
     self = _self;
     panda_enable_precise_pc();
+    panda_require("hw_proc_id");
+    assert(init_hw_proc_id_api());
 
     REGISTER_AND_DISABLE_CALLBACK(_self, before_tcg_codegen, BEFORE_TCG_CODEGEN)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_translate, BEFORE_BLOCK_TRANSLATE)
