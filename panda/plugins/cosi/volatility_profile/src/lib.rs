@@ -59,7 +59,7 @@ pub enum VolatilityType {
     },
 
     Bitfield {
-        bit_position: u64,
+        bit_position: i64,
         bit_length: u64,
 
         #[serde(rename = "type")]
@@ -89,7 +89,7 @@ impl fmt::Display for VolatilityType {
                 "(bitfield {}[{}..{}])",
                 base_type,
                 bit_position,
-                bit_position + bit_length
+                (*bit_position as u64) + bit_length
             ),
             VolatilityType::Function => write!(f, "func_ptr"),
         }
