@@ -31,6 +31,9 @@ public:
 
     void task_changed(const std::string& process_name, target_pid_t pid, target_pid_t tid) override;
 
+protected:
+    void insert_block_callback(TranslationBlock *tb);
+
 private:
     std::shared_ptr<RecordProcessor<Edge>> edge_processor;
     std::unique_ptr<EdgeState> edge_state;
