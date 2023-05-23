@@ -560,12 +560,6 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
 #endif
 #endif
 
-    // Insert the block callback.
-    TCGOp *insert_point = find_first_guest_insn();
-    assert(NULL != insert_point);
-    insert_call(&insert_point, &block_callback, edge_state.get(),
-        edge_processor.get(), tb);
-
     // Instrument the control flow instructions.
     // watch it - i386 may be running either 16- or 32-bit code
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -581,10 +575,12 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
     size_t insn_count = cs_disasm(handle, block.data(), block.size(), tb->pc,
                                   0, &insn);
     if (!insn_count) {
+        // still need to insert check for this block being a destination
+        insert_block_callback(tb);
         return;
     }
 
-    for (int i = insn_count - 1; i > 0; i--) {
+    for (int i = insn_count - 1; i >= 0; i--) {
         auto it = INSN_HANDLERS.find(insn[i].id);
         if (INSN_HANDLERS.end() != it) {
 #ifdef EDGE_INST_DEBUG
@@ -600,6 +596,14 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
     }
 
     cs_free(insn, insn_count);
+
+    // insert the check to see if this block is a destination
+    // has to be done AFTER insert the save-possible-destinations callback
+    // because if the block consists of exactly one instruction, and it is a
+    // flow control instruction, both callbacks get inserted immediately after
+    // that instruction and we need to check to see if this block is a
+    // destination before changing the destinations to look for
+    insert_block_callback(tb);
 }
 
 void EdgeInstrumentationDelegate::handle_enable(const std::string&)
@@ -628,6 +632,16 @@ void EdgeInstrumentationDelegate::task_changed(const std::string&,
     // previous block
     auto pb_ins_res = edge_state->prev_blocks.insert({ tid, {} });
     edge_state->prev_block = &pb_ins_res.first->second;
+}
+
+void EdgeInstrumentationDelegate::insert_block_callback(TranslationBlock *tb)
+{
+    // insert callback that checks to see if this block is the destination of
+    // a change-of-flow-control instruction, and if so log the edge
+    TCGOp *insert_point = find_first_guest_insn();
+    assert(NULL != insert_point);
+    insert_call(&insert_point, &block_callback, edge_state.get(),
+        edge_processor.get(), tb);
 }
 
 }
