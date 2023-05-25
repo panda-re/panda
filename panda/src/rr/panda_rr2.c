@@ -14,7 +14,6 @@
 // Forward decels for helper functions
 bool write_file_to_archive(struct rr_file_state* rstate, const char* fname,
                            const uint8_t* contents, size_t len);
-void write_metadata_file(struct rr_file_state* rstate);
 void write_magic_file(struct rr_file_state* rstate);
 void write_hash_to_log(struct rr_file_state* rstate, const char* fname, SHA_CTX* ctx);
 bool is_valid_rrv2_file(const char* state);
@@ -375,7 +374,6 @@ void rrfile_finalize(struct rr_file_state* rstate)
         rstate->hash_fpath = 0;
     }
     // Don't store the hash of the metadata file
-    write_metadata_file(rstate);
     archive_write_free(rstate->archive);
     rstate->archive = 0;
 }
@@ -387,7 +385,7 @@ bool write_file_to_archive(struct rr_file_state* rstate, const char* fname,
     struct archive* a = rstate->archive;
     struct archive_entry* entry = NULL;
     entry = archive_entry_new();
-    archive_entry_set_pathname(entry, MAGIC_FILE);
+    archive_entry_set_pathname(entry, fname);
     archive_entry_set_filetype(entry, AE_IFREG);
     archive_entry_set_perm(entry, 0644);
     archive_entry_set_size(entry, len);
@@ -475,9 +473,8 @@ cleanup:
     }
 }
 
-void write_metadata_file(struct rr_file_state* rstate)
+void rrfile_write_metadata_file(struct rr_file_state* rstate, const char* contents)
 {
-    const char* contents = "{}\n";
     if (!write_file_to_archive(rstate, METADATA_FILE, (const uint8_t*)contents,
                                strlen(contents))) {
         fprintf(stderr, "Failed to write metadata file to archive!\n");
@@ -486,7 +483,7 @@ void write_metadata_file(struct rr_file_state* rstate)
 
 void write_magic_file(struct rr_file_state* rstate)
 {
-    const char* contents = "Created with " QEMU_VERSION "!\n";
+    const char* contents = "Created with QEMU version " QEMU_VERSION "!\n";
     const char* rr_v2_fname = MAGIC_FILE;
     if (!write_file_to_archive(rstate, rr_v2_fname, (const uint8_t*)contents,
                                strlen(contents))) {
