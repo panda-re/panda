@@ -1579,7 +1579,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         FILE *fp = fopen(name_buf, "w");
         int i;
         for (i=0; i<gargc; i++) {
-             fprintf(fp, "%s ", gargv[i]);
+            fprintf(fp, "%s ", gargv[i]);
         }
         fprintf (fp, "\n");
         fclose(fp);
