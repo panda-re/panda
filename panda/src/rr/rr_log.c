@@ -84,7 +84,6 @@ volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
-const char* memory_size;
 
 // for holding info to create rr2 compressed file
 struct rr_file_info*  recording_info = NULL;
@@ -1452,10 +1451,12 @@ int rr2_add_recording_files(char* rr_name, char* rr_path){
     }
 
     printf("    writing metadata to %s/metadata.json\n", rr2_path);
-    const char * os_name = (panda_os_name == NULL || strlen(panda_os_name) == 0) ? "" : panda_os_name;
-    size_t needed = snprintf(NULL, 0, "{\"profile\": \"%s\", \"memory_size\": \"%s\"}", os_name, memory_size);
+    const char* os_name = (panda_os_name == NULL || strlen(panda_os_name) == 0) ? "" : panda_os_name;
+    int  memory_size = ram_size/1048576; // 1024^2 = 1048576
+    printf("ram_size: %ld memory_size:%d", ram_size, memory_size);
+    size_t needed = snprintf(NULL, 0, "{\"profile\": \"%s\", \"memory_size\": %d}", os_name, memory_size);
     char* metadata_contents = malloc(needed+1);
-    snprintf(metadata_contents, needed+1, "{\"profile\": \"%s\", \"memory_size\": \"%s\"}", os_name, memory_size);
+    snprintf(metadata_contents, needed+1, "{\"profile\": \"%s\", \"memory_size\": %d}", os_name, memory_size);
     rrfile_write_metadata_file(rr_archive, metadata_contents);
     free(metadata_contents);
 
@@ -1577,14 +1578,9 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         printf("writing cmdline to file:\t%s\n", name_buf);
         FILE *fp = fopen(name_buf, "w");
         int i;
-        char* ram = NULL;
         for (i=0; i<gargc; i++) {
-             if (strcmp(gargv[i], "-m")==0){
-                 ram = gargv[i+1];
-             }
              fprintf(fp, "%s ", gargv[i]);
         }
-        memory_size = (ram == NULL) ? "" : ram;
         fprintf (fp, "\n");
         fclose(fp);
     }
