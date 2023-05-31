@@ -385,6 +385,26 @@ static void ret_callback(EdgeState *edge_state,
     });
 }
 
+/*
+ * Called right before a rep (rep movs, repz cmps, etc) instruction.
+ */
+static void rep_callback(EdgeState *edge_state,
+                         target_ulong prev_block_addr,
+                         target_ulong prev_block_size,
+                         target_ulong next_insn_addr,
+                         target_ulong rep_insn_addr)
+{
+    if (!edge_state->cov_enabled) {
+        return;
+    }
+    update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = next_insn_addr,
+        .has_dst2 = true,
+        .dst2 = rep_insn_addr
+    });
+}
+
 static void instrument_jcc(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
                            TranslationBlock *tb, cs_insn *insn)
 {
@@ -482,6 +502,16 @@ static void instrument_ret(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
                            TranslationBlock *tb, cs_insn *insn)
 {
     insert_call(&op, ret_callback, edge_state, cpu, tb->pc, tb->size);
+}
+
+static void instrument_rep(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
+                           TranslationBlock *tb, cs_insn *insn)
+{
+    // if the instruction is repeated, the rep instruction is the next block
+    target_ulong rit = static_cast<target_ulong>(insn->address);
+    // if the instruction is not repeated, control goes to the next instruction
+    target_ulong nit = static_cast<target_ulong>(insn->address + insn->size);
+    insert_call(&op, &rep_callback, edge_state, tb->pc, tb->size, nit, rit);
 }
 #endif
 
@@ -593,6 +623,23 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
             it->second(edge_state.get(), cpu, op, tb, &insn[i]);
             break;
         }
+#ifdef TARGET_I386
+        else {
+            // maybe it's a rep instruction?
+            if ((X86_PREFIX_REP == insn[i].detail->x86.prefix[0]) ||
+                    (X86_PREFIX_REPNE == insn[i].detail->x86.prefix[0])) {
+#ifdef EDGE_INST_DEBUG
+            printf("0x%" PRIx64 ":\t%s\t\t%s\n", insn[i].address,
+                                                 insn[i].mnemonic,
+                                                 insn[i].op_str);
+#endif
+                TCGOp *op = find_guest_insn_by_addr(insn[i].address);
+                assert(op);
+                instrument_rep(edge_state.get(), cpu, op, tb, &insn[i]);
+                break;
+            }
+        }
+#endif
     }
 
     cs_free(insn, insn_count);
