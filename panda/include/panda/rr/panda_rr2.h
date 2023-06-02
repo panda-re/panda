@@ -76,6 +76,7 @@ struct rr_file_state* rrfile_open_write(const char* fpath);
 bool rrfile_add_recording_file(struct rr_file_state* rstate, const char* type,
                                const char* fpath);
 
+void rrfile_write_metadata_file(struct rr_file_state* rstate, const char* contents);
 /**
  * copy a file file from one recording archive to another recording archive
  */

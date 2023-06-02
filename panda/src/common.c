@@ -193,7 +193,6 @@ void panda_set_os_name(char *os_name) {
             os_supported = true;
             break;
         }
-        //fprintf(stderr, "%s does not match regex %s\n", os_name, *os_re);
     }
     assert(os_supported);
 
