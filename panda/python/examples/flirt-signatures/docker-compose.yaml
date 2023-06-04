@@ -1,0 +1,17 @@
+---
+
+services:
+  panda:
+    image: "pandare/panda"
+    working_dir: "/data/"
+    command: >
+      bash -c "python -m pip install --no-cache-dir python-flirt 
+      && python /data/run.py"
+    volumes:
+      - "${PWD}/binaries/hello-stripped:/data/binaries/hello-stripped"
+      - "${PWD}/recordings/:/data/recordings/"
+      - "${PWD}/signatures/:/data/signatures/"
+      - "${PWD}/run.py:/data/run.py"
+
+      # Qcow2 images cache
+      - "${PWD}/images/:/root/.panda/"
