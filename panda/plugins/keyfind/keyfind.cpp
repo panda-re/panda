@@ -23,10 +23,6 @@ PANDAENDCOMMENT */
 #include <math.h>
 #include <stdio.h>
 
-#include <pcap.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/ether.h>
 
 
     
@@ -34,14 +30,11 @@ PANDAENDCOMMENT */
 // QEMU/PANDA, which is written in C
 extern "C" {
 
-//time_t start, current;
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 }
-
 
 typedef struct Memchunk {
     target_ptr_t start;
@@ -51,18 +44,15 @@ typedef struct Memchunk {
 } Memchunk;
 
 
-
-
 // Globals
 
 Memchunk last_write;
 
 std::vector<std::pair<Memchunk, double> > memory_segments;
 
-uint16_t ciphersuite_id = 0;
+//uint16_t ciphersuite_id = 0;
 uint8_t keysize = 0;
 double entropy_threshold = 0.0;
-
 
 
 //helper function for sorting by buffer value
@@ -78,119 +68,6 @@ bool entropy_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double>
 //heper function for checking equality of memchunks by buffer value
 bool memchunk_compare(std::pair<Memchunk, double> &a, std::pair<Memchunk, double> &b) {
     return (memcmp(a.first.buf, b.first.buf, keysize) == 0);
-}
-
-
-
-int handle_IP (u_char *args,const struct pcap_pkthdr* pkthdr,const u_char* packet) {
-    const struct iphdr* ip;
-    u_int length = pkthdr->len;
-    u_int ip_hlen;
-
-    int ether_hlen = sizeof(struct ether_header);
-
-    /* jump past the ethernet header */
-    ip = (struct iphdr*)(packet + sizeof(struct ether_header));
-    length -= sizeof(struct ether_header); 
-
-    /* check to see we have a packet of valid length */
-    if (length < sizeof(struct iphdr))
-    {
-        printf("truncated ip %d",length);
-        return 0;
-    }
-
-    ip_hlen    =  ip->ihl * 4; /* header length */
-
-    if(ip->protocol != 6) { //end early if it's not a tcp packet
-        return 0;
-    }
-
-    const struct tcphdr* tcp;
-    tcp = (struct tcphdr*) (packet + ether_hlen + ip_hlen);
-
-    if (ntohs(tcp->th_sport) != 443) {      //only consider packets sent from the server
-        return 0;
-    }
-
-    int tcp_hlen = tcp->th_off * 4;
-    int tls_start_idx = ether_hlen + ip_hlen + tcp_hlen;
-
-    //parse tls record
-    //byte 0    : record type   - we want handshake records (22)
-    //bytes 1-2 : ssl version
-    //bytes 3-4 : data length
-
-    if (packet[tls_start_idx] == 22) {
-        int record_data_idx = tls_start_idx + 5;
-
-        // 2 is server handshake
-        if (packet[record_data_idx] == 2) {
-
-            int ciphersuite_idx = record_data_idx + 71;
-            //printf("%02x\n", packet[ciphersuite_idx]);
-            uint16_t ciphersuite_id = ntohs(*((uint16_t*) &packet[ciphersuite_idx]));
-            printf("ciphersuite id: %x\n", ciphersuite_id);
-            return ciphersuite_id;
-        }
-    }
-
-    else {
-    //TODO check if there are more records
-    }
-
-
-    return 0;
-}
-
-
-u_int16_t handle_ethernet (u_char *args,const struct pcap_pkthdr* pkthdr,const u_char* packet) {
-    struct ether_header *eptr;  /* net/ethernet.h */
-
-    eptr = (struct ether_header *) packet;
-
-    /* check to see if we have an ip packet, disregard everything else */
-    if (ntohs (eptr->ether_type) == ETHERTYPE_IP)   //ETHERTYPE_IP == 8
-    {
-        return eptr->ether_type;
-    }
-
-    return 0;
-}
-
-void packetHandler(unsigned char* userData, const struct pcap_pkthdr* pkthdr, const unsigned char* packet) {
-    uint16_t result;
-
-    //printf("HANDLING PACKET!\n");
-    u_int16_t type = handle_ethernet(NULL,pkthdr,packet);
-
-    if(type == 8) {     /* handle IP packet */
-        result = handle_IP(NULL, pkthdr, packet);       
-
-        if (result != 0) {
-            ciphersuite_id = result;
-        }
-    }
-}
-
-uint16_t get_ciphersuite_id(const char* pcap_file) {
-    pcap_t* pcapHandle;
-    char errbuf[PCAP_ERRBUF_SIZE];
-
-    // Open the pcap file
-    pcapHandle = pcap_open_offline(pcap_file, errbuf);
-    if (pcapHandle == NULL) {
-        std::cerr << "Error opening pcap file: " << errbuf << std::endl;
-        return 1;
-    }
-
-    // Set a packet callback function
-    pcap_loop(pcapHandle, 0, packetHandler, NULL);
-
-    // Close the pcap file
-    pcap_close(pcapHandle);
-
-    return 0;
 }
 
 
@@ -272,25 +149,33 @@ bool init_plugin(void *self) {
 
     //get the pcap name
     panda_arg_list *args = panda_get_args("keyfind");
-    const char* pcap_file = panda_parse_string_req(args, "pcap", "required: path to pcap file");
+//    const char* pcap_file = panda_parse_string_req(args, "pcap", "required: path to pcap file");
 
-    get_ciphersuite_id(pcap_file);
+    //get_ciphersuite_id(pcap_file);
 
-    if (ciphersuite_id == 0) {
-        printf("unable to find the ciphersuite id\n");
-        exit(1);
-    }
+    const uint32_t ciphersuite_id = panda_parse_uint32_opt(args, "ciphersuite_id", 0, "The id of the ciphersuite used. See readme for instructions on how to obtain");
+    const char* ciphersuite_name = panda_parse_string_opt(args, "ciphersuite_name", "\0", "One of TLS_CHACHA20_POLY1305_SHA256, TLS_AES_256_GCM_SHA384, or TLS_AES_128_GCM_SHA256");
+
 
     //if it's AES_256_GCM_SHA384 (1302)
-    if (ciphersuite_id == 0x1302) {                     
+    if (ciphersuite_id == 0x1302 || strcmp(ciphersuite_name, "TLS_AES_256_GCM_SHA384") == 0) {                     
         keysize = 48;
         entropy_threshold = 5.0044;
+    }
 
     //if it's AES_128_GCM_SHA256 (1301) or CHACHA20_POLY1305_SHA256 (1303)
-    } else if (ciphersuite_id == 0x1301 || ciphersuite_id == 0x1303) {
+    else if (ciphersuite_id == 0x1301 || strcmp(ciphersuite_name, "TLS_AES_128_GCM_SHA256") == 0 ||
+                ciphersuite_id == 0x1303 || strcmp(ciphersuite_name, "TLS_CHACHA20_POLY1305_SHA256") == 0) {
+
         keysize = 32;
         entropy_threshold = 4.394;
     }
+
+    if (keysize == 0 || entropy_threshold == 0.0) {
+        printf("Ciphersuite has not been specified. Start keyfind and specify either ciphersuite_id or ciphersuite_name as parameters. See the README for example usage.\n");
+        exit(1);
+    }
+
 
 
     return true;

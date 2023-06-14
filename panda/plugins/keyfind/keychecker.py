@@ -18,6 +18,7 @@ pcap_filename = sys.argv[1]
 key_candidates_filename = sys.argv[2]
 
 key_candidates = []
+total_keys = 0
 names = ["SERVER_HANDSHAKE_TRAFFIC_SECRET", "SERVER_TRAFFIC_SECRET_0", "CLIENT_HANDSHAKE_TRAFFIC_SECRET", "CLIENT_TRAFFIC_SECRET_0"]
 
 def get_client_random():
@@ -138,6 +139,7 @@ def find_server_handshake_key():
 
     print("\nsearching for server handshake key...")
     count = 0
+    
     for server_handshake_secret in key_candidates:
         file_data = f"{names[0]} {client_random} {server_handshake_secret}\n"
 
@@ -149,8 +151,7 @@ def find_server_handshake_key():
             return server_handshake_secret
 
         count += 1
-        if count % 100 == 0:
-            print(f"tried {count} keys...")
+        print(f"\rtried {count}/{total_keys} possible keys...", end="")
 
 
 
@@ -171,8 +172,7 @@ def find_client_handshake_key():
             return client_handshake_secret
 
         count += 1
-        if count % 100 == 0:
-            print(f"tried {count} keys...")
+        print(f"\rtried {count}/{total_keys} possible keys...", end="")
 
 
 
@@ -192,13 +192,12 @@ def find_client_traffic_key():
         f.close()
 
         if pyshark_find_client_traffic_secret():
-            print(f"found client traffic secret: {client_traffic_key}")
+            print(f"\nfound client traffic secret: {client_traffic_key}")
             ctk = client_traffic_key
             break
 
         count += 1
-        if count % 100 == 0:
-            print(f"tried {count} keys...")
+        print(f"\rtried {count}/{total_keys} possible keys...", end="")
 
 
     print("\nsearching for server traffic key...")
@@ -211,13 +210,12 @@ def find_client_traffic_key():
         f.close()
 
         if pyshark_find_server_traffic_secret():
-            print(f"found server traffic secret: {server_traffic_key}")
+            print(f"\nfound server traffic secret: {server_traffic_key}")
             stk = server_traffic_key
             break
 
         count += 1
-        if count % 100 == 0:
-            print(f"tried {count} keys...")
+        print(f"\rtried {count}/{total_keys} possible keys...", end="")
 
 
     return (ctk, stk)
@@ -227,6 +225,7 @@ def find_client_traffic_key():
 f = open(key_candidates_filename, "r")
 key_candidates = f.read().strip().split("\n")
 f.close()
+total_keys = len(key_candidates)
 
 
 
@@ -238,14 +237,14 @@ SERVER_HANDSHAKE_SECRET = find_server_handshake_key()
 if SERVER_HANDSHAKE_SECRET == None:
     print("failed to find server handshake secret")
     exit(1)
-print(f"found server handshake secret: {SERVER_HANDSHAKE_SECRET}")
+print(f"\nfound server handshake secret: {SERVER_HANDSHAKE_SECRET}")
 
 
 CLIENT_HANDSHAKE_SECRET = find_client_handshake_key()
 if CLIENT_HANDSHAKE_SECRET == None: 
     print("failed to find client handshake secret")
     exit(1)
-print(f"found client handshake secret: {CLIENT_HANDSHAKE_SECRET}")
+print(f"\nfound client handshake secret: {CLIENT_HANDSHAKE_SECRET}")
 
 
 CLIENT_TRAFFIC_SECRET_0, SERVER_TRAFFIC_SECRET_0 = find_client_traffic_key()
