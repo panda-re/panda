@@ -1,0 +1,11 @@
+---
+
+services:
+  panda:
+    build: "."
+    volumes:
+      - "${PWD}/recordings/:/data/recordings/"
+      - "${PWD}/matches/:/data/matches/"
+
+      # Qcow2 images cache
+      - "${PWD}/images/:/root/.panda/"
