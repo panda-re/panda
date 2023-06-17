@@ -44,11 +44,18 @@ class SearchFlirtPlugin(PyPlugin):
 
     def on_call_search_flirt(self, env, addr_func: int) -> None:
         """
-        https://github.com/panda-re/panda/tree/dev/panda/plugins/callstack_instr
+        Checks every call inside a given process against F.L.I.R.T. signatures.
 
-        :param env: t
-        :param addr_func:
-        :return:
+        Based on the PANDA callstack_instr plugin.
+
+        When the callstack_instr detects a call, we read 0x100 bytes of the callee.
+        We then match these bytes against the loaded signatures.
+
+        When a match is found it is printend and if show_function_instructions is set,
+        the first five instructions of the callee are also printed.
+
+        :param env: The current state during the execution.
+        :param addr_func: The address of the callee.
         """
 
         if addr_func in self._seen_function_addresses or self._panda.get_process_name(env) != self._process_name:
