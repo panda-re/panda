@@ -18,6 +18,7 @@ gdb
 hooks
 hooks2
 hw_proc_id
+keyfind
 libfi
 lighthouse_coverage
 loaded
