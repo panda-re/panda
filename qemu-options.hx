@@ -4188,6 +4188,10 @@ DEF("os", HAS_ARG, QEMU_OPTION_panda_os_name,
     "-os os_name\n"
     "               inform panda about guest operating system\n", QEMU_ARCH_ALL)
 
+DEF("complete-rr-snapshot", 0, QEMU_OPTION_complete_rr_snapshot,
+    "-complete-rr-snapshot\n"
+    "       record all SaveStateEntry in the snapshot when a new recording is created\n", QEMU_ARCH_ALL)
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table

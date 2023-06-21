@@ -1178,7 +1178,7 @@ void qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only)
     json_start_array(vmdesc, "devices");
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
 
-        if (panda_is_in_record && !idstr_is_important(se->idstr)) {
+        if (panda_is_in_record && !panda_complete_rr_snapshot && !idstr_is_important(se->idstr)) {
             continue;
         }
 

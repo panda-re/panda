@@ -144,6 +144,7 @@ int main(int argc, char **argv)
 #include "sysemu/replay.h"
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
+#include "migration/savevm.h"
 
 #include "vl.h"
 
@@ -163,6 +164,7 @@ int panda_in_main_loop = 0;
 extern bool panda_abort_requested; // When set, we exit in after printing a help message
 bool panda_break_vl_loop_req = false; // When set, we break the main loop in vl.c
 bool panda_aborted = false; // Set if panda was terminated abnormally (e.g., Ctrl-C)
+int panda_complete_rr_snapshot = 0;
 
 char *panda_snap_name = NULL;
 const char* replay_name = NULL;
@@ -4313,6 +4315,10 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                 // NB: this will complain if we provide an os name that panda doesnt know about
                 panda_set_os_name(os_name);
                 break;
+            }
+            case QEMU_OPTION_complete_rr_snapshot:
+            {
+                panda_complete_rr_snapshot = 1;
             }
             default:
                 os_parse_cmd_args(popt->index, optarg);
