@@ -1453,7 +1453,6 @@ int rr2_add_recording_files(char* rr_name, char* rr_path){
     printf("    writing metadata to %s/metadata.json\n", rr2_path);
     const char* os_name = (panda_os_name == NULL || strlen(panda_os_name) == 0) ? "" : panda_os_name;
     int  memory_size = ram_size/1048576; // 1024^2 = 1048576
-    printf("ram_size: %ld memory_size:%d", ram_size, memory_size);
     size_t needed = snprintf(NULL, 0, "{\"profile\": \"%s\", \"memory_size\": %d}", os_name, memory_size);
     char* metadata_contents = malloc(needed+1);
     snprintf(metadata_contents, needed+1, "{\"profile\": \"%s\", \"memory_size\": %d}", os_name, memory_size);
