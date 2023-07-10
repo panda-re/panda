@@ -472,7 +472,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         }
 
         if (pcomp_length > PATH_MAX){
-            printf("Error: OSI_linux pcomp length %d exceeds PATH_MAX. Check endianness.\n", pcomp_length);
+            OG_printf("Error: OSI_linux pcomp length %d exceeds PATH_MAX. Check endianness.\n", pcomp_length);
             break;
         }
         pcomp_length += 1; // space for string terminator
