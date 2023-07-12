@@ -20,6 +20,9 @@
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
+#include "hooks/hooks_int_fns.h"
+#include "proc_start_linux/proc_start_linux.h"
+#include "proc_start_linux/proc_start_linux_ppp.h"
 
 #include "default_profile.h"
 #include "kernel_2_4_x_profile.h"
@@ -718,54 +721,6 @@ void restore_after_snapshot(CPUState* cpu) {
     PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
 }
 
-#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
-
-// Keep track of which tasks have entered execve. Note that we simply track
-// based on the task struct. This works because the other threads in the thread
-// group will be terminated and the current task will be the only task in the
-// group once execve completes. Even if execve fails, this should still work
-// because the execve call will return to the calling thread.
-static std::unordered_set<target_ptr_t> tasks_in_execve;
-
-static void exec_enter(CPUState *cpu)
-{
-    bool **out=0;
-    if (!osi_guest_is_ready(cpu, (void**)out)) return;
-    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
-    tasks_in_execve.insert(ts);
-}
-
-static void exec_check(CPUState *cpu)
-{
-    // Fast Path: Nothing is in execve, so there's nothing to do.
-    if (0 == tasks_in_execve.size()) {
-        return;
-    }
-    bool** out=0;
-    if (!osi_guest_is_ready(cpu, (void**)out)) return;
-
-    // Slow Path: Something is in execve, so we have to check.
-    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
-    auto it = tasks_in_execve.find(ts);
-    if (tasks_in_execve.end() != it && !panda_in_kernel(cpu)) {
-        notify_task_change(cpu);
-        tasks_in_execve.erase(ts);
-    }
-}
-
-static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
-{
-    TCGOp *op = find_first_guest_insn();
-    assert(NULL != op);
-    insert_call(&op, exec_check, cpu);
-
-    if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {
-        // Instrument the task switch address.
-        insert_call(&op, notify_task_change, cpu);
-    }
-}
-#endif
-
 /**
  * @brief Initializes plugin.
  */
@@ -786,8 +741,6 @@ bool init_plugin(void *self) {
 
         // Register hooks in the kernel to provide task switch notifications.
         assert(init_osi_api());
-        pcb.before_tcg_codegen = before_tcg_codegen_callback;
-        panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
     }
 
 #if defined(TARGET_MIPS)
@@ -889,19 +842,35 @@ bool init_plugin(void *self) {
     // By default, we'll request syscalls2 to load on first syscall
     panda_require("syscalls2");
 
+    
+    if (0x0 != ki.task.switch_task_hook_addr) {
+        void* hooks = panda_get_plugin_by_name("hooks");
+        if (hooks == NULL){
+            panda_require("hooks");
+            hooks = panda_get_plugin_by_name("hooks");
+        }
+        if (hooks != NULL){
+            void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+            if ((void*)dlsym_add_hook == NULL) {
+                printf("couldn't load add_hook from hooks\n");
+                return false;
+            }
+            struct hook h;
+            h.addr = ki.task.switch_task_hook_addr;
+            h.asid = 0;
+            h.type = PANDA_CB_START_BLOCK_EXEC;
+            h.cb.start_block_exec = [](CPUState *cpu, TranslationBlock *tb, hook *)
+            { notify_task_change(cpu); };
+            h.km = MODE_ANY;
+            h.enabled = true;
+            dlsym_add_hook(&h);
+        }
+    }
+
+    panda_require("proc_start_linux");
     // Setup exec task change notifications.
-    PPP_REG_CB("syscalls2", on_sys_execve_enter, [](CPUState *cpu,
-        target_ulong pc, target_ulong fnp, target_ulong ap,
-        target_ulong envp)
-    {
-        exec_enter(cpu);
-    });
-    PPP_REG_CB("syscalls2", on_sys_execveat_enter, [](CPUState *cpu,
-        target_ulong pc, int dirfd, target_ulong pathname_ptr, target_ulong ap,
-        target_ulong envp, int flags)
-    {
-        exec_enter(cpu);
-    });
+    PPP_REG_CB("proc_start_linux", on_rec_auxv, [](CPUState *cpu, TranslationBlock *tb, struct auxv_values *vals)
+               { notify_task_change(cpu); });
 
     return true;
 #else

@@ -40,7 +40,7 @@ struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, targ
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 enum SymUpdateStatus {
-    SUCCESS,        // fully read everything
+    SYM_SUCCESS,        // fully read everything
     PRE_READ_FAIL,  // failed to be in the right state
     READ_FAIL,      // failed to read some symbols
 };

@@ -486,7 +486,7 @@ enum SymUpdateStatus update_symbols_in_space(CPUState* cpu){
     if (!none_missing){
         return READ_FAIL;
     }
-    return SUCCESS;
+    return SYM_SUCCESS;
 }
 
 void bbt(CPUState *env, target_ulong pc){
@@ -496,7 +496,7 @@ void bbt(CPUState *env, target_ulong pc){
         // identify this one needs more scrutiny
         asid_status[asid] = ASID_STATE_FAIL;
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
-    }else if (ret == SUCCESS){
+    }else if (ret == SYM_SUCCESS){
         // failed
         asid_status[asid] = ASID_STATE_SUCCESS;
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
