@@ -246,11 +246,9 @@ extern char *panda_os_variant;        // parsed os variant
 extern uint32_t panda_os_bits;        // parsed os bits
 extern PandaOsFamily panda_os_familyno; // numeric identifier for family
 
-
-
 /* Internal callback functions that plugins shouldn't use. These unset the flag when called so must be handled */
-bool panda_break_exec(void);
-bool panda_flush_tb(void);
+
+
 
 /* Regular functions plugins should use */
 

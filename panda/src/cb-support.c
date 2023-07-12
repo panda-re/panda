@@ -16,6 +16,27 @@
 
 #define PCB(name) panda_callbacks_ ## name
 
+extern bool panda_please_flush_tb;
+extern bool panda_please_break_exec;
+
+inline bool panda_break_exec(void) {
+    if (panda_please_break_exec) {
+        panda_please_break_exec = false;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+inline bool panda_flush_tb(void) {
+    if (panda_please_flush_tb) {
+        panda_please_flush_tb = false;
+        return true;
+    } else {
+        return false;
+    }
+}
+
 // TODO: macro names should be include return type - bools |= all cb fns, voids don't
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_HD_TRANSFER, replay_hd_transfer,
@@ -89,7 +110,7 @@ void PCB(start_block_exec)(CPUState *cpu, TranslationBlock *tb) {
             plist->entry.start_block_exec(plist->context, cpu, tb);
     }
 
-    if (panda_break_exec()) {
+    if (unlikely(panda_break_exec())) {
         cpu_loop_exit_noexc(cpu); // noreturn - lonjmps back to translation logic. Allows you to change pc in an SBE and go
                                   // there immediately. It's like before_block_exec_invalidate_opt, but fast
     }
@@ -206,7 +227,7 @@ void PCB(before_find_fast)(void) {
             }
         }
     }
-    if (panda_flush_tb()) {
+    if (unlikely(panda_flush_tb())) {
         tb_flush(first_cpu);
     }
 }

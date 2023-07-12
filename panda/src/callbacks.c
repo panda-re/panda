@@ -787,7 +787,7 @@ void panda_disable_plugin(void *plugin)
  * @brief Allows to navigate the callback linked list skipping disabled
  * callbacks.
  */
-panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
+inline panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
 {
     for (panda_cb_list *node = plist->next; node != NULL;
          node = node->next) {
@@ -797,27 +797,9 @@ panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
     return NULL;
 }
 
-void panda_do_break_exec(void) {
-  panda_please_break_exec = true;
-}
-
-bool panda_break_exec(void) {
-    if (panda_please_break_exec) {
-        panda_please_break_exec = false;
-        return true;
-    } else {
-        return false;
-    }
-
-}
-
-bool panda_flush_tb(void)
+void panda_do_break_exec(void) 
 {
-    if (panda_please_flush_tb) {
-        panda_please_flush_tb = false;
-        return true;
-    } else
-        return false;
+  panda_please_break_exec = true;
 }
 
 void panda_do_flush_tb(void)
