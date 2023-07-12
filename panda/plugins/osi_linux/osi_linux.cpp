@@ -859,8 +859,12 @@ bool init_plugin(void *self) {
             h.addr = ki.task.switch_task_hook_addr;
             h.asid = 0;
             h.type = PANDA_CB_START_BLOCK_EXEC;
-            h.cb.start_block_exec = [](CPUState *cpu, TranslationBlock *tb, hook *)
-            { notify_task_change(cpu); };
+            h.cb.start_block_exec = [](CPUState *cpu, TranslationBlock *tb, hook *){    
+                bool** out=0;
+                if (osi_guest_is_ready(cpu, (void**)out)){
+                    notify_task_change(cpu); 
+                }
+            };
             h.km = MODE_ANY;
             h.enabled = true;
             dlsym_add_hook(&h);
@@ -869,8 +873,11 @@ bool init_plugin(void *self) {
 
     panda_require("proc_start_linux");
     // Setup exec task change notifications.
-    PPP_REG_CB("proc_start_linux", on_rec_auxv, [](CPUState *cpu, TranslationBlock *tb, struct auxv_values *vals)
-               { notify_task_change(cpu); });
+    PPP_REG_CB("proc_start_linux", on_rec_auxv, [](CPUState *cpu, TranslationBlock *tb, struct auxv_values *vals){
+                bool** out=0;
+                if (osi_guest_is_ready(cpu, (void**)out)){
+                    notify_task_change(cpu); 
+                } });
 
     return true;
 #else
