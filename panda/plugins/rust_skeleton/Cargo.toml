@@ -2,13 +2,13 @@
 name = "rust_skeleton"
 version = "0.1.0"
 authors = ["Luke Craig <Luke.Craig@ll.mit.edu>", "Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-panda-re = { version = "0.14.0", default-features = false }
+panda-re = { version = "0.46.0", default-features = false }
 
 [features]
 default = ["x86_64"]
