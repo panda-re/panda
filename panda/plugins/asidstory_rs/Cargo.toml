@@ -1,0 +1,25 @@
+[package]
+name = "asidstory_rs"
+version = "0.1.0"
+authors = ["Jacques Becker<Jacques.Becker@ll.mit.edu>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+panda-re = { version = "0.46.0", default-features = false }
+lazy_static = { version = "1.4.0" }
+once_cell = { version = "1.18.0" }
+
+[features]
+default = ["x86_64"]
+
+x86_64 = ["panda-re/x86_64"]
+i386 = ["panda-re/i386"]
+arm = ["panda-re/arm"]
+ppc = ["panda-re/ppc"]
+mips = ["panda-re/mips"]
+mipsel = ["panda-re/mipsel"]
+mips64 = ["panda-re/mips64"]
+aarch64 = ["panda-re/aarch64"]

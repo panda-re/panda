@@ -2,6 +2,7 @@
 
 asid_instr_count
 asidstory
+asidstory_rs
 callfunc
 callstack_instr
 checkpoint
