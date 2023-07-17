@@ -19,7 +19,7 @@ The function `inject_syscall` takes 4 arguments
 
 To use the plugin, simply put the call to `inject_syscall` where you want it to be triggered. For `mips`, if you are having it triggered at a certain address, you will need to somehow gate the function call to avoid repeated calls, since for that architecture the PC is backed up one instruction at the end of `inject_syscall`.
 
-The function `sys_access` simply wraps `inject_syscall`, which we expect to be a common use of this plugin. It takes two arguments
+The function `sys_access` simply wraps `inject_syscall` for the `access` syscall, which we expect to be a common use of this plugin. It takes two arguments
     
     1. `cpu`, the cpu state. This is standard for panda plugins.
 
