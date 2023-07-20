@@ -62,22 +62,24 @@ extern "C" {
 #define log(...)
 #endif
 
+template<class T>
+void fixupendian(T& x) {
 #if defined(TARGET_WORDS_BIGENDIAN)
-#if TARGET_LONG_SIZE == 4
-#define fixupendian(x)         {x=bswap32((target_ptr_t)x);}
-#else
-#define fixupendian(x)         {x=bswap64((uint64_t)x);}
+    switch(sizeof(T)) {
+       case 4:
+           x=bswap32(x);
+           break;
+#if TARGET_LONG_BITS == 64
+       case 8:
+           x=bswap64(x);
+           break;
 #endif
-#else
-#define fixupendian(x) {}
+       default:
+           assert(false);
+           break;
+    }
 #endif
-
-
-#if TARGET_LONG_BITS == 32
-#define ELF(r) Elf32_ ## r
-#else
-#define ELF(r) Elf64_ ## r
-#endif
+}
 
 void *self_ptr;
 panda_cb pcb_sbe_execve, pcb_asid;
@@ -137,21 +139,22 @@ string read_str(CPUState* cpu, target_ulong ptr){
  * 
  */ 
 
+template<class T>
 int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
-    target_ulong sp = panda_current_sp(cpu);
-    log("read_aux_vals: sp=" TARGET_FMT_lx "\n",sp);
+    T sp = panda_current_sp(cpu);
+    log("read_aux_vals: sp=" TARGET_FMT_lx "\n", static_cast<target_ulong>(sp));
     
     // keep track of where on the stack we are
     int ptrlistpos = 1;
-    target_ulong ptr;
+    T ptr;
 
     /**
      * Read the argv values to the program.
      */
-    vals->argv_ptr_ptr = sp + (ptrlistpos * sizeof(target_ulong));
+    vals->argv_ptr_ptr = sp + (ptrlistpos * sizeof(T));
     int argc_num = 0;
     while (true){
-        if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(target_ulong)), (uint8_t *)&ptr, sizeof(ptr)) != MEMTX_OK){
+        if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(T)), (uint8_t *)&ptr, sizeof(ptr)) != MEMTX_OK){
             return FAIL_READ_ARGV;
         }
         fixupendian(ptr);
@@ -173,10 +176,10 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
     /**
      * Read the environ values from the stack
      */ 
-    vals->env_ptr_ptr = sp + (ptrlistpos * sizeof(target_ulong));
+    vals->env_ptr_ptr = sp + (ptrlistpos * sizeof(T));
     int envc_num = 0;
     while (true){
-        if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(target_ulong)), (uint8_t *)&ptr, sizeof(ptr)) != MEMTX_OK){
+        if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(T)), (uint8_t *)&ptr, sizeof(ptr)) != MEMTX_OK){
             return FAIL_READ_ENVP;
         }
         fixupendian(ptr);
@@ -197,9 +200,9 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
     /**
      * Read the auxiliary vector
      */ 
-    target_ulong entrynum, entryval;
+    T entrynum, entryval;
     while (true){
-        if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(target_ulong)), (uint8_t *)&entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(cpu, sp + ((ptrlistpos + 1) * sizeof(target_ulong)), (uint8_t *)&entryval, sizeof(entryval))){
+        if (panda_virtual_memory_read(cpu, sp + (ptrlistpos * sizeof(T)), (uint8_t *)&entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(cpu, sp + ((ptrlistpos + 1) * sizeof(T)), (uint8_t *)&entryval, sizeof(entryval))){
             return FAIL_READ_AUXV;
         }
         ptrlistpos += 2;
@@ -215,7 +218,12 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
             // is immediately following the EHDR.
             // we can do a bunch to check this or we can just
             // take the value.
-            vals->program_header = entryval - sizeof(ELF(Ehdr));
+#if TARGET_LONG_BITS == 64
+            if(sizeof(T) == 8) {
+                vals->program_header = entryval - sizeof(Elf64_Ehdr);
+            } else
+#endif
+                vals->program_header = entryval - sizeof(Elf32_Ehdr);
         }else if (entrynum == AT_EXECFN){
             vals->execfn_ptr = entryval;
             string execfn = read_str(cpu, entryval);
@@ -259,23 +267,35 @@ int read_aux_vals(CPUState *cpu, struct auxv_values *vals){
     return 0;
 }
 
+template<class T> 
+bool try_run_auxv(CPUState *cpu, TranslationBlock *tb, T sp){
 
-bool try_run_auxv(CPUState *cpu, TranslationBlock *tb, target_ulong sp){
-    log("checking sp " TARGET_FMT_lx "\n", sp);
-    target_ulong argc;
+#ifdef TARGET_X86_64
+    if(sizeof(T) == 8) {
+        CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
+        if(((env->hflags & (1 << HF_LMA_SHIFT)) && 
+                (env->hflags & (1 << HF_CS64_SHIFT))) == 0) {
+            log("try_run_auxv: 32-bit app detected\n");
+            return try_run_auxv(cpu, tb, static_cast<uint32_t>(sp));
+        }
+    }
+#endif
+
+    log("checking sp " TARGET_FMT_lx "\n", static_cast<target_ulong>(sp));
+    T argc;
     if (panda_virtual_memory_read(cpu, sp, (uint8_t *)&argc, sizeof(argc)) != MEMTX_OK){
-        log("got here and could not read stack " TARGET_FMT_lx "\n", sp);
+        log("got here and could not read stack " TARGET_FMT_lx "\n", static_cast<target_ulong>(sp));
         return false;
     }
     fixupendian(argc);
-    log("sp " TARGET_FMT_lx "\n", sp);
+    log("sp " TARGET_FMT_lx "\n", static_cast<target_ulong>(sp));
     if (argc > ARG_MAX){
-        log("argc is incorrect " TARGET_FMT_lx "\n", argc);
+        log("argc is incorrect " TARGET_FMT_lx "\n", static_cast<target_ulong>(argc));
         return false;
     }
     struct auxv_values *vals = (struct auxv_values*)malloc(sizeof(struct auxv_values));
     memset(vals, 0, sizeof(struct auxv_values));
-    int status = read_aux_vals(cpu, vals);
+    int status = read_aux_vals<T>(cpu, vals);
     if (!status && vals->entry && vals->phdr) {
         PPP_RUN_CB(on_rec_auxv, cpu, tb, vals);
         free(vals);
