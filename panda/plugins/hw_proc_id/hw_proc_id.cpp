@@ -26,35 +26,43 @@ void uninit_plugin(void *);
 #include "hw_proc_id_int_fns.h"
 }
 
+#ifdef TARGET_MIPS64
+uint64_t KERNEL_STACK_SIZE = 8192;  //8KB
+uint64_t STACK_MASK = ~(KERNEL_STACK_SIZE - 1);
+#else
+uint64_t STACK_MASK = (target_ptr_t)-1;
+#endif
 
-#ifdef TARGET_MIPS
+#if defined(TARGET_MIPS)
 target_ulong last_r28 = 0;
 bool initialized = false;
 
 /**
- * @brief Cache the last R28 observed while in kernel for MIPS
- * 
- * On MIPS in kernel mode r28 a pointer to the location of the current
- * task_struct. We need to cache this value for use in usermode. 
+ * @brief Cache the last R28 observed while in kernel for MIPS/MIPS64
+ *
+ * On MIPS/MIPS64 in kernel mode, r28 points to the location of the current
+ * task_struct. We need to cache this value for use in usermode.
  */
-inline void check_cache_r28(CPUState *cpu){
-  if (panda_in_kernel(cpu) && unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28)) {
-      target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
-      // XXX: af: While in kernel mode, r28 may be used to contain non-pointer 
-      // values
-      // make sure we don't cache one of those so we check if r28 contains 
-      // a pointer to kernel memory
-        if (likely(address_in_kernel_code_linux(potential))) {
-            last_r28 = potential;
-            initialized = true;
-        }
+inline void check_cache_r28(CPUState *cpu) {
+  CPUMIPSState *mips_env = (CPUMIPSState *)cpu->env_ptr;
+  target_ulong r28_value = mips_env->active_tc.gpr[28] & STACK_MASK;
+  if (panda_in_kernel(cpu) && unlikely(r28_value != last_r28)) {
+    // XXX: af: While in kernel mode, r28 may be used to contain non-pointer
+    // values
+    // Make sure we don't cache one of those, so we check if r28 contains
+    // a pointer to kernel memory
+    if (likely(address_in_kernel_code_linux(r28_value))) {
+      last_r28 = r28_value;
+      initialized = true;
+    }
   }
 }
 
 void r28_cache(CPUState *cpu, TranslationBlock *tb) {
-  check_cache_r28(cpu);
+    check_cache_r28(cpu);
 }
 #endif
+
 
 /**
  * @brief Returns true if all prerequisite values to determine hwid cached.
