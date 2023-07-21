@@ -181,6 +181,25 @@ CONFIG_LINUX = {
             'cpp_flags': ['-D_MIPS_SIM=1', '-I'+os.path.expanduser("~/git/linux")+'/arch/mips/include'],
         },
     },
+    # Generated with stock linux 5.8
+    'linux:mips64:generic': {
+        'bits': 64,
+        'src': os.path.expanduser('~/git/linux'),
+        'map_function_signature': {
+            'parser': 'parse_signature_files',
+            'locations': {
+                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/mips/kernel/signal.c': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+            },
+            'normalize': True,
+        },
+        'map_function_number': {
+            'parser': 'parse_numbers_tbl',
+            'source': 'arch/mips/kernel/syscalls/syscall_n64.tbl',
+            # Note the 64-bit native ABI starts at 5000, do we need to handle that?
+            # See arch/mips/include/uapi/asm/unistd for various definitions of __NR_Linux that set this offset
+        },
+    },
 }
 
 ##############################################################################
