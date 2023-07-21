@@ -1418,11 +1418,11 @@ static syscall_argtype_t argt_390[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL
 static uint8_t argsz_390[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
 static const char* const argn_390[] = {"start", "len", "flags", 0};
 static const char* const argtn_390[] = {"n/a", "n/a", "n/a", 0};
-/* skipping non generic system call 983041 (ARM_breakpoint) */
-/* skipping non generic system call 983042 (ARM_cacheflush) */
-/* skipping non generic system call 983043 (ARM_user26_mode) */
-/* skipping non generic system call 983044 (ARM_usr32_mode) */
-/* skipping non generic system call 983045 (ARM_set_tls) */
+/* skipping non generic system call ARM_breakpoint: [983041] */
+/* skipping non generic system call ARM_cacheflush: [983042] */
+/* skipping non generic system call ARM_user26_mode: [983043] */
+/* skipping non generic system call ARM_usr32_mode: [983044] */
+/* skipping non generic system call ARM_set_tls: [983045] */
 
 
 syscall_info_t __syscall_info_a[] = {
@@ -4927,11 +4927,11 @@ syscall_info_t __syscall_info_a[] = {
 		.argtn = argtn_390,
 		.noreturn = false
 	},
-	/* skipping non generic system call 983041 (ARM_breakpoint) */
-	/* skipping non generic system call 983042 (ARM_cacheflush) */
-	/* skipping non generic system call 983043 (ARM_user26_mode) */
-	/* skipping non generic system call 983044 (ARM_usr32_mode) */
-	/* skipping non generic system call 983045 (ARM_set_tls) */
+	/* skipping non generic system call ARM_breakpoint: [983041] */
+	/* skipping non generic system call ARM_cacheflush: [983042] */
+	/* skipping non generic system call ARM_user26_mode: [983043] */
+	/* skipping non generic system call ARM_usr32_mode: [983044] */
+	/* skipping non generic system call ARM_set_tls: [983045] */
 	
 };
 
