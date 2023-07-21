@@ -5,6 +5,7 @@
 ./prototype_parser.py -t linux:arm:ubuntu
 ./prototype_parser.py -t linux:arm64:ubuntu
 ./prototype_parser.py -t linux:mips:generic
+./prototype_parser.py -t linux:mips64:generic
 ./prototype_parser.py -t win2000:x86:volatility
 ./prototype_parser.py -t xp_sp2:x86:volatility
 ./prototype_parser.py -t xp_sp3:x86:volatility
