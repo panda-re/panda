@@ -342,8 +342,19 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
             fnums_r.pop(number)
             nnums_r.pop(number, None)   # number may not exist
         else:
-            logging.error('Could not find signature for %s (nr=%d).', function, number)
-            continue
+            # Fallback
+            short_name = function.split("_")[-1] if "_" in function else function
+            for function in fsigs:
+                # Fallback1: end matches e.g., sys_mmap ->  sys_old_mmap
+                if function.endswith('_' + short_name):
+                    numsigs[number] = fsigs[function]
+                    fsigs.pop(function)
+                    fnums_r.pop(number)
+                    nnums_r.pop(number, None)   # number may not exist
+                    break
+            else:
+                logging.error('Could not find signature for %s (nr=%d).', function, number)
+                continue
 
     # attempt to match numbers remaining in nnums_r to signatures
     for number, name in sorted(nnums_r.items()):
