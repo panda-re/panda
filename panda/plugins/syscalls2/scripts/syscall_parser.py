@@ -66,7 +66,7 @@ KNOWN_ARCH = {
         'bits': 32,
         'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime ($v0)
         'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime ($sp)
-        'qemu_target': 'defined(TARGET_MIPS)',    # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_MIPS32)',    # qemu target name for this arch - used in guards
     },
     'mips64': {
         'bits': 64,
