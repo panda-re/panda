@@ -8,6 +8,7 @@
 # *  Michael Zhivich          mzhivich@ll.mit.edu
 # *  Brendan Dolan-Gavitt     brendandg@gatech.edu
 # *  Manolis Stamatogiannakis manolis.stamatogiannakis@vu.nl
+# *  Andrew Fasano            fasano@mit.edu
 # *
 # * This work is licensed under the terms of the GNU GPL, version 2.
 # * See the COPYING file in the top-level directory.
@@ -105,7 +106,7 @@ def parse_signature_files(rootdir, arch, locations, normalize=False):
     logging.info('Parsed %d signatures from %s:', len(signatures_parsed), sigfile)
     return signatures_parsed
 
-def parse_numbers_tbl(rootdir, arch, source):
+def parse_numbers_tbl(rootdir, arch, source, offset=None):
     ''' Creates an [entry function]->[number] mapping for the system
         calls from a .tbl definition file.
         These files are used by Ubuntu to generate the actual system
@@ -125,7 +126,7 @@ def parse_numbers_tbl(rootdir, arch, source):
                 logging.warning('Ignoring system call %s (nr=%d) because no entry point is specified.', name, int(nr))
                 continue
             # use the entry point name instead of the raw call name
-            syscall_numbers[entry] = int(nr)
+            syscall_numbers[entry] = int(nr) + (offset if offset else 0)
     return syscall_numbers
 
 def parse_numbers_calltable(rootdir, arch, source, regex, syscalls_skip):
@@ -294,12 +295,17 @@ def run_parser(config, parser_name):
     args = (config['src'], config['arch'])
     kwargs = {}
 
-    for kwarg in inspect.getfullargspec(parser).args[2:]:
+    arg_spec = inspect.getfullargspec(parser)
+    # Create a dictionary mapping argument names to their default values (if any)
+    defaults = dict(zip(reversed(arg_spec.args), reversed(arg_spec.defaults))) if arg_spec.defaults else {}
+
+    kwargs = {}
+    for kwarg in arg_spec.args[2:]:
         if kwarg in config[parser_name]:
             kwargs[kwarg] = config[parser_name][kwarg]
         elif kwarg in config:
             kwargs[kwarg] = config[kwarg]
-        else:
+        elif kwarg not in defaults:
             raise TypeError('Missing keyword argument \'%s\' for %s().' % (kwarg, parser.__name__))
 
     logging.debug('%s(args=%s, kwargs=%s)', config[parser_name]['parser'], args, kwargs)
@@ -328,8 +334,7 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
     # directly match numbers from fnums_r to signatures
     for number, function in sorted(fnums_r.items()):
         # sidestep ptregs issue
-        foo = re.search("(.*)/ptregs", function)
-        if foo:
+        if foo := re.search("(.*)/ptregs", function):
             function = foo.groups()[0]            
         if function in fsigs:
             numsigs[number] = fsigs[function]
