@@ -24,7 +24,7 @@ extern "C" {
  * system call return callbacks.
  */
 void syscall_enter_switch_linux_mips(CPUState *cpu, target_ptr_t pc, int static_callno) {
-#if defined(TARGET_MIPS)
+#if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
 	if (static_callno == -1) {

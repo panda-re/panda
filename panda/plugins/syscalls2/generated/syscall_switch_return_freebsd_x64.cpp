@@ -24,8 +24,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 	  }
 	}
 	switch (ctx->no) {
-		// 0 int nosys ['void']
-		case 0: {
+		// 0, 198 int nosys ['void']
+		case 0:case 198: {
 			if (PPP_CHECK_CB(on_nosys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_nosys_return, cpu, pc) ;
@@ -180,8 +180,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_chown_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 18 int getfsstat ['struct ostatfs *buf', 'long bufsize', 'int mode']
-		case 18: {
+		// 18, 395, 557 int getfsstat ['struct ostatfs *buf', 'long bufsize', 'int mode'] OR ['struct freebsd11_statfs *buf', 'long bufsize', 'int mode'] OR ['struct statfs *buf', 'long bufsize', 'int mode']
+		case 18:case 395:case 557: {
 			uint64_t arg0 = 0;
 			int64_t arg1 = 0;
 			int32_t arg2 = 0;
@@ -256,8 +256,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_ptrace_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 27 int recvmsg ['int s', 'struct msghdr *msg', 'int flags']
-		case 27: {
+		// 27, 113 int recvmsg ['int s', 'struct msghdr *msg', 'int flags'] OR ['int s', 'struct omsghdr *msg', 'int flags']
+		case 27:case 113: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			int32_t arg2 = 0;
@@ -268,8 +268,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_recvmsg_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 28 int sendmsg ['int s', 'struct msghdr *msg', 'int flags']
-		case 28: {
+		// 28, 114 int sendmsg ['int s', 'struct msghdr *msg', 'int flags'] OR ['int s', 'const void *msg', 'int flags']
+		case 28:case 114: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			int32_t arg2 = 0;
@@ -280,8 +280,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_sendmsg_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 29 int recvfrom ['int s', 'void *buf', 'size_t len', 'int flags', 'struct sockaddr *from', '__socklen_t *fromlenaddr']
-		case 29: {
+		// 29, 125 int recvfrom ['int s', 'void *buf', 'size_t len', 'int flags', 'struct sockaddr *from', '__socklen_t *fromlenaddr'] OR ['int s', 'void *buf', 'size_t len', 'int flags', 'struct sockaddr *from', 'int *fromlenaddr']
+		case 29:case 125: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			uint32_t arg2 = 0;
@@ -298,8 +298,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_recvfrom_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 30 int accept ['int s', 'struct sockaddr *name', '__socklen_t *anamelen']
-		case 30: {
+		// 30, 99 int accept ['int s', 'struct sockaddr *name', '__socklen_t *anamelen'] OR ['int s', 'struct sockaddr *name', 'int *anamelen']
+		case 30:case 99: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -310,8 +310,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_accept_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 31 int getpeername ['int fdes', 'struct sockaddr *asa', '__socklen_t *alen']
-		case 31: {
+		// 31, 141 int getpeername ['int fdes', 'struct sockaddr *asa', '__socklen_t *alen'] OR ['int fdes', 'struct sockaddr *asa', 'int *alen']
+		case 31:case 141: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -380,8 +380,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_kill_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 38 int stat ['const char *path', 'struct ostat *ub']
-		case 38: {
+		// 38, 188 int stat ['const char *path', 'struct ostat *ub'] OR ['const char *path', 'struct freebsd11_stat *ub']
+		case 38:case 188: {
 			uint64_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_stat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -396,8 +396,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_getppid_return, cpu, pc) ;
 		}; break;
-		// 40 int lstat ['const char *path', 'struct ostat *ub']
-		case 40: {
+		// 40, 190 int lstat ['const char *path', 'struct ostat *ub'] OR ['const char *path', 'struct freebsd11_stat *ub']
+		case 40:case 190: {
 			uint64_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_lstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -586,8 +586,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_chroot_return, cpu, pc, arg0) ;
 		}; break;
-		// 62 int fstat ['int fd', 'struct ostat *sb']
-		case 62: {
+		// 62, 189, 551 int fstat ['int fd', 'struct ostat *sb'] OR ['int fd', 'struct freebsd11_stat *sb'] OR ['int fd', 'struct stat *sb']
+		case 62:case 189:case 551: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_fstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -884,18 +884,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_connect_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 99 int accept ['int s', 'struct sockaddr *name', 'int *anamelen']
-		case 99: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint64_t arg2 = 0;
-			if (PPP_CHECK_CB(on_accept_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_accept_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
 		// 100 int getpriority ['int which', 'int who']
 		case 100: {
 			int32_t arg0 = 0;
@@ -934,8 +922,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_recv_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 103 int sigreturn ['struct osigcontext *sigcntxp']
-		case 103: {
+		// 103, 344, 417 int sigreturn ['struct osigcontext *sigcntxp'] OR ['const struct ucontext4 *sigcntxp'] OR ['const struct __ucontext *sigcntxp']
+		case 103:case 344:case 417: {
 			uint64_t arg0 = 0;
 			if (PPP_CHECK_CB(on_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
@@ -1025,30 +1013,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on_sigstack_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 113 int recvmsg ['int s', 'struct omsghdr *msg', 'int flags']
-		case 113: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			int32_t arg2 = 0;
-			if (PPP_CHECK_CB(on_recvmsg_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_recvmsg_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 114 int sendmsg ['int s', 'const void *msg', 'int flags']
-		case 114: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			int32_t arg2 = 0;
-			if (PPP_CHECK_CB(on_sendmsg_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_sendmsg_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 116 int gettimeofday ['struct timeval *tp', 'struct timezone *tzp']
 		case 116: {
@@ -1141,24 +1105,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_fchmod_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 125 int recvfrom ['int s', 'void *buf', 'size_t len', 'int flags', 'struct sockaddr *from', 'int *fromlenaddr']
-		case 125: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint32_t arg2 = 0;
-			int32_t arg3 = 0;
-			uint64_t arg4 = 0;
-			uint64_t arg5 = 0;
-			if (PPP_CHECK_CB(on_recvfrom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
-				memcpy(&arg4, ctx->args[4], sizeof(uint64_t));
-				memcpy(&arg5, ctx->args[5], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_recvfrom_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
 		// 126 int setreuid ['int ruid', 'int euid']
 		case 126: {
@@ -1290,18 +1236,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_adjtime_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 141 int getpeername ['int fdes', 'struct sockaddr *asa', 'int *alen']
-		case 141: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint64_t arg2 = 0;
-			if (PPP_CHECK_CB(on_getpeername_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_getpeername_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
 		// 142 long gethostid ['void']
 		case 142: {
 			if (PPP_CHECK_CB(on_gethostid_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -1316,8 +1250,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_sethostid_return, cpu, pc, arg0) ;
 		}; break;
-		// 144 int getrlimit ['unsigned which', 'struct orlimit *rlp']
-		case 144: {
+		// 144, 194 int getrlimit ['unsigned which', 'struct orlimit *rlp'] OR ['unsigned which', 'struct rlimit *rlp']
+		case 144:case 194: {
 			uint32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_getrlimit_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -1326,8 +1260,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_getrlimit_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 145 int setrlimit ['unsigned which', 'struct orlimit *rlp']
-		case 145: {
+		// 145, 195 int setrlimit ['unsigned which', 'struct orlimit *rlp'] OR ['unsigned which', 'struct rlimit *rlp']
+		case 145:case 195: {
 			uint32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_setrlimit_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -1408,8 +1342,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_nfssvc_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 156 int getdirentries ['int fd', 'char *buf', 'unsigned count', 'long *basep']
-		case 156: {
+		// 156, 196, 554 int getdirentries ['int fd', 'char *buf', 'unsigned count', 'long *basep'] OR ['int fd', 'char *buf', 'size_t count', 'off_t *basep']
+		case 156:case 196:case 554: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			uint32_t arg2 = 0;
@@ -1422,8 +1356,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_getdirentries_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 157 int statfs ['const char *path', 'struct ostatfs *buf']
-		case 157: {
+		// 157, 396, 555 int statfs ['const char *path', 'struct ostatfs *buf'] OR ['const char *path', 'struct freebsd11_statfs *buf'] OR ['const char *path', 'struct statfs *buf']
+		case 157:case 396:case 555: {
 			uint64_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_statfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -1432,8 +1366,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_statfs_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 158 int fstatfs ['int fd', 'struct ostatfs *buf']
-		case 158: {
+		// 158, 397, 556 int fstatfs ['int fd', 'struct ostatfs *buf'] OR ['int fd', 'struct freebsd11_statfs *buf'] OR ['int fd', 'struct statfs *buf']
+		case 158:case 397:case 556: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_fstatfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -1568,36 +1502,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_seteuid_return, cpu, pc, arg0) ;
 		}; break;
-		// 188 int stat ['const char *path', 'struct freebsd11_stat *ub']
-		case 188: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_stat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_stat_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 189 int fstat ['int fd', 'struct freebsd11_stat *sb']
-		case 189: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fstat_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 190 int lstat ['const char *path', 'struct freebsd11_stat *ub']
-		case 190: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_lstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_lstat_return, cpu, pc, arg0, arg1) ;
-		}; break;
 		// 191 int pathconf ['const char *path', 'int name']
 		case 191: {
 			uint64_t arg0 = 0;
@@ -1617,46 +1521,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
 			}
 			PPP_RUN_CB(on_fpathconf_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 194 int getrlimit ['unsigned which', 'struct rlimit *rlp']
-		case 194: {
-			uint32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_getrlimit_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_getrlimit_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 195 int setrlimit ['unsigned which', 'struct rlimit *rlp']
-		case 195: {
-			uint32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_setrlimit_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_setrlimit_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 196 int getdirentries ['int fd', 'char *buf', 'unsigned count', 'long *basep']
-		case 196: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint32_t arg2 = 0;
-			uint64_t arg3 = 0;
-			if (PPP_CHECK_CB(on_getdirentries_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_getdirentries_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 198 int nosys ['void']
-		case 198: {
-			if (PPP_CHECK_CB(on_nosys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-			}
-			PPP_RUN_CB(on_nosys_return, cpu, pc) ;
 		}; break;
 		// 202 int __sysctl ['int *name', 'unsigned namelen', 'void *old', 'size_t *oldlenp', 'const void *new', 'size_t newlen']
 		case 202: {
@@ -1734,8 +1598,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_poll_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 220 int __semctl ['int semid', 'int semnum', 'int cmd', 'union semun_old *arg']
-		case 220: {
+		// 220, 510 int __semctl ['int semid', 'int semnum', 'int cmd', 'union semun_old *arg'] OR ['int semid', 'int semnum', 'int cmd', 'union semun *arg']
+		case 220:case 510: {
 			int32_t arg0 = 0;
 			int32_t arg1 = 0;
 			int32_t arg2 = 0;
@@ -1772,8 +1636,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_semop_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 224 int msgctl ['int msqid', 'int cmd', 'struct msqid_ds_old *buf']
-		case 224: {
+		// 224, 511 int msgctl ['int msqid', 'int cmd', 'struct msqid_ds_old *buf'] OR ['int msqid', 'int cmd', 'struct msqid_ds *buf']
+		case 224:case 511: {
 			int32_t arg0 = 0;
 			int32_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -1824,8 +1688,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_msgrcv_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 229 int shmctl ['int shmid', 'int cmd', 'struct shmid_ds_old *buf']
-		case 229: {
+		// 229, 512 int shmctl ['int shmid', 'int cmd', 'struct shmid_ds_old *buf'] OR ['int shmid', 'int cmd', 'struct shmid_ds *buf']
+		case 229:case 512: {
 			int32_t arg0 = 0;
 			int32_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -2044,24 +1908,24 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_lchown_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 255 int aio_read ['struct aiocb *aiocbp']
-		case 255: {
+		// 255, 318 int aio_read ['struct aiocb *aiocbp'] OR ['struct oaiocb *aiocbp']
+		case 255:case 318: {
 			uint64_t arg0 = 0;
 			if (PPP_CHECK_CB(on_aio_read_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on_aio_read_return, cpu, pc, arg0) ;
 		}; break;
-		// 256 int aio_write ['struct aiocb *aiocbp']
-		case 256: {
+		// 256, 319 int aio_write ['struct aiocb *aiocbp'] OR ['struct oaiocb *aiocbp']
+		case 256:case 319: {
 			uint64_t arg0 = 0;
 			if (PPP_CHECK_CB(on_aio_write_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on_aio_write_return, cpu, pc, arg0) ;
 		}; break;
-		// 257 int lio_listio ['int mode', 'struct aiocb * const *acb_list', 'int nent', 'struct sigevent *sig']
-		case 257: {
+		// 257, 320 int lio_listio ['int mode', 'struct aiocb * const *acb_list', 'int nent', 'struct sigevent *sig'] OR ['int mode', 'struct oaiocb * const *acb_list', 'int nent', 'struct osigevent *sig']
+		case 257:case 320: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			int32_t arg2 = 0;
@@ -2164,8 +2028,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_pwritev_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 297 int fhstatfs ['const struct fhandle *u_fhp', 'struct ostatfs *buf']
-		case 297: {
+		// 297, 398, 558 int fhstatfs ['const struct fhandle *u_fhp', 'struct ostatfs *buf'] OR ['const struct fhandle *u_fhp', 'struct freebsd11_statfs *buf'] OR ['const struct fhandle *u_fhp', 'struct statfs *buf']
+		case 297:case 398:case 558: {
 			uint64_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_fhstatfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -2184,8 +2048,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_fhopen_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 299 int fhstat ['const struct fhandle *u_fhp', 'struct freebsd11_stat *sb']
-		case 299: {
+		// 299, 553 int fhstat ['const struct fhandle *u_fhp', 'struct freebsd11_stat *sb'] OR ['const struct fhandle *u_fhp', 'struct stat *sb']
+		case 299:case 553: {
 			uint64_t arg0 = 0;
 			uint64_t arg1 = 0;
 			if (PPP_CHECK_CB(on_fhstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -2348,36 +2212,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_aio_error_return, cpu, pc, arg0) ;
 		}; break;
-		// 318 int aio_read ['struct oaiocb *aiocbp']
-		case 318: {
-			uint64_t arg0 = 0;
-			if (PPP_CHECK_CB(on_aio_read_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_aio_read_return, cpu, pc, arg0) ;
-		}; break;
-		// 319 int aio_write ['struct oaiocb *aiocbp']
-		case 319: {
-			uint64_t arg0 = 0;
-			if (PPP_CHECK_CB(on_aio_write_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_aio_write_return, cpu, pc, arg0) ;
-		}; break;
-		// 320 int lio_listio ['int mode', 'struct oaiocb * const *acb_list', 'int nent', 'struct osigevent *sig']
-		case 320: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			int32_t arg2 = 0;
-			uint64_t arg3 = 0;
-			if (PPP_CHECK_CB(on_lio_listio_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_lio_listio_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
 		// 321 int yield ['void']
 		case 321: {
 			if (PPP_CHECK_CB(on_yield_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -2484,8 +2318,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_utrace_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 336 int sendfile ['int fd', 'int s', 'off_t offset', 'size_t nbytes', 'struct sf_hdtr *hdtr', 'off_t *sbytes', 'int flags']
-		case 336: {
+		// 336, 393 int sendfile ['int fd', 'int s', 'off_t offset', 'size_t nbytes', 'struct sf_hdtr *hdtr', 'off_t *sbytes', 'int flags']
+		case 336:case 393: {
 			int32_t arg0 = 0;
 			int32_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -2560,8 +2394,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_sigsuspend_return, cpu, pc, arg0) ;
 		}; break;
-		// 342 int sigaction ['int sig', 'const struct sigaction *act', 'struct sigaction *oact']
-		case 342: {
+		// 342, 416 int sigaction ['int sig', 'const struct sigaction *act', 'struct sigaction *oact']
+		case 342:case 416: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -2579,14 +2413,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on_sigpending_return, cpu, pc, arg0) ;
-		}; break;
-		// 344 int sigreturn ['const struct ucontext4 *sigcntxp']
-		case 344: {
-			uint64_t arg0 = 0;
-			if (PPP_CHECK_CB(on_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_sigreturn_return, cpu, pc, arg0) ;
 		}; break;
 		// 345 int sigtimedwait ['const sigset_t *set', 'siginfo_t *info', 'const struct timespec *timeout']
 		case 345: {
@@ -2802,8 +2628,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_kqueue_return, cpu, pc) ;
 		}; break;
-		// 363 int kevent ['int fd', 'struct kevent_freebsd11 *changelist', 'int nchanges', 'struct kevent_freebsd11 *eventlist', 'int nevents', 'const struct timespec *timeout']
-		case 363: {
+		// 363, 560 int kevent ['int fd', 'struct kevent_freebsd11 *changelist', 'int nchanges', 'struct kevent_freebsd11 *eventlist', 'int nevents', 'const struct timespec *timeout'] OR ['int fd', 'struct kevent *changelist', 'int nchanges', 'struct kevent *eventlist', 'int nevents', 'const struct timespec *timeout']
+		case 363:case 560: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			int32_t arg2 = 0;
@@ -3004,26 +2830,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_uuidgen_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 393 int sendfile ['int fd', 'int s', 'off_t offset', 'size_t nbytes', 'struct sf_hdtr *hdtr', 'off_t *sbytes', 'int flags']
-		case 393: {
-			int32_t arg0 = 0;
-			int32_t arg1 = 0;
-			uint64_t arg2 = 0;
-			uint32_t arg3 = 0;
-			uint64_t arg4 = 0;
-			uint64_t arg5 = 0;
-			int32_t arg6 = 0;
-			if (PPP_CHECK_CB(on_sendfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
-				memcpy(&arg4, ctx->args[4], sizeof(uint64_t));
-				memcpy(&arg5, ctx->args[5], sizeof(uint64_t));
-				memcpy(&arg6, ctx->args[6], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_sendfile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
-		}; break;
 		// 394 int mac_syscall ['const char *policy', 'int call', 'void *arg']
 		case 394: {
 			uint64_t arg0 = 0;
@@ -3035,48 +2841,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on_mac_syscall_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 395 int getfsstat ['struct freebsd11_statfs *buf', 'long bufsize', 'int mode']
-		case 395: {
-			uint64_t arg0 = 0;
-			int64_t arg1 = 0;
-			int32_t arg2 = 0;
-			if (PPP_CHECK_CB(on_getfsstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_getfsstat_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 396 int statfs ['const char *path', 'struct freebsd11_statfs *buf']
-		case 396: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_statfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_statfs_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 397 int fstatfs ['int fd', 'struct freebsd11_statfs *buf']
-		case 397: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fstatfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fstatfs_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 398 int fhstatfs ['const struct fhandle *u_fhp', 'struct freebsd11_statfs *buf']
-		case 398: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fhstatfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fhstatfs_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 400 int ksem_close ['semid_t id']
 		case 400: {
@@ -3249,26 +3013,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg3, ctx->args[3], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on___mac_execve_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 416 int sigaction ['int sig', 'const struct sigaction *act', 'struct sigaction *oact']
-		case 416: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint64_t arg2 = 0;
-			if (PPP_CHECK_CB(on_sigaction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_sigaction_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 417 int sigreturn ['const struct __ucontext *sigcntxp']
-		case 417: {
-			uint64_t arg0 = 0;
-			if (PPP_CHECK_CB(on_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_sigreturn_return, cpu, pc, arg0) ;
 		}; break;
 		// 421 int getcontext ['struct __ucontext *ucp']
 		case 421: {
@@ -4008,8 +3752,8 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_fexecve_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 493 int fstatat ['int fd', 'const char *path', 'struct freebsd11_stat *buf', 'int flag']
-		case 493: {
+		// 493, 552 int fstatat ['int fd', 'const char *path', 'struct freebsd11_stat *buf', 'int flag'] OR ['int fd', 'const char *path', 'struct stat *buf', 'int flag']
+		case 493:case 552: {
 			int32_t arg0 = 0;
 			uint64_t arg1 = 0;
 			uint64_t arg2 = 0;
@@ -4209,44 +3953,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
 			}
 			PPP_RUN_CB(on_closefrom_return, cpu, pc, arg0) ;
-		}; break;
-		// 510 int __semctl ['int semid', 'int semnum', 'int cmd', 'union semun *arg']
-		case 510: {
-			int32_t arg0 = 0;
-			int32_t arg1 = 0;
-			int32_t arg2 = 0;
-			uint64_t arg3 = 0;
-			if (PPP_CHECK_CB(on___semctl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on___semctl_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 511 int msgctl ['int msqid', 'int cmd', 'struct msqid_ds *buf']
-		case 511: {
-			int32_t arg0 = 0;
-			int32_t arg1 = 0;
-			uint64_t arg2 = 0;
-			if (PPP_CHECK_CB(on_msgctl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_msgctl_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 512 int shmctl ['int shmid', 'int cmd', 'struct shmid_ds *buf']
-		case 512: {
-			int32_t arg0 = 0;
-			int32_t arg1 = 0;
-			uint64_t arg2 = 0;
-			if (PPP_CHECK_CB(on_shmctl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_shmctl_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 513 int lpathconf ['const char *path', 'int name']
 		case 513: {
@@ -4652,96 +4358,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_fdatasync_return, cpu, pc, arg0) ;
 		}; break;
-		// 551 int fstat ['int fd', 'struct stat *sb']
-		case 551: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fstat_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 552 int fstatat ['int fd', 'const char *path', 'struct stat *buf', 'int flag']
-		case 552: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint64_t arg2 = 0;
-			int32_t arg3 = 0;
-			if (PPP_CHECK_CB(on_fstatat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_fstatat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 553 int fhstat ['const struct fhandle *u_fhp', 'struct stat *sb']
-		case 553: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fhstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fhstat_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 554 ssize_t getdirentries ['int fd', 'char *buf', 'size_t count', 'off_t *basep']
-		case 554: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			uint32_t arg2 = 0;
-			uint64_t arg3 = 0;
-			if (PPP_CHECK_CB(on_getdirentries_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_getdirentries_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 555 int statfs ['const char *path', 'struct statfs *buf']
-		case 555: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_statfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_statfs_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 556 int fstatfs ['int fd', 'struct statfs *buf']
-		case 556: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fstatfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fstatfs_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 557 int getfsstat ['struct statfs *buf', 'long bufsize', 'int mode']
-		case 557: {
-			uint64_t arg0 = 0;
-			int64_t arg1 = 0;
-			int32_t arg2 = 0;
-			if (PPP_CHECK_CB(on_getfsstat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_getfsstat_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 558 int fhstatfs ['const struct fhandle *u_fhp', 'struct statfs *buf']
-		case 558: {
-			uint64_t arg0 = 0;
-			uint64_t arg1 = 0;
-			if (PPP_CHECK_CB(on_fhstatfs_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_fhstatfs_return, cpu, pc, arg0, arg1) ;
-		}; break;
 		// 559 int mknodat ['int fd', 'const char *path', 'mode_t mode', 'dev_t dev']
 		case 559: {
 			int32_t arg0 = 0;
@@ -4755,24 +4371,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_mknodat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 560 int kevent ['int fd', 'struct kevent *changelist', 'int nchanges', 'struct kevent *eventlist', 'int nevents', 'const struct timespec *timeout']
-		case 560: {
-			int32_t arg0 = 0;
-			uint64_t arg1 = 0;
-			int32_t arg2 = 0;
-			uint64_t arg3 = 0;
-			int32_t arg4 = 0;
-			uint64_t arg5 = 0;
-			if (PPP_CHECK_CB(on_kevent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(uint64_t));
-				memcpy(&arg4, ctx->args[4], sizeof(int32_t));
-				memcpy(&arg5, ctx->args[5], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_kevent_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
 		// 561 int cpuset_getdomain ['cpulevel_t level', 'cpuwhich_t which', 'id_t id', 'size_t domainsetsize', 'domainset_t *mask', 'int *policy']
 		case 561: {
