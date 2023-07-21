@@ -726,12 +726,7 @@ void restore_after_snapshot(CPUState* cpu) {
  */
 bool init_plugin(void *self) {
     // Register callbacks to the PANDA core.
-#if defined(TARGET_MIPS64)
-        printf("No OSI for mips64\n");
-        return false;
-#endif
-
-#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     {
         // Whenever we load a snapshot, we need to find cpu offsets again
         // (particularly if KASLR is enabled) and we also may need to re-initialize
@@ -743,7 +738,7 @@ bool init_plugin(void *self) {
         assert(init_osi_api());
     }
 
-#if defined(TARGET_MIPS)
+#if defined(TARGET_MIPS) // 32 or 64 bit
         panda_require("hw_proc_id");
         assert(init_hw_proc_id_api());
 #endif
