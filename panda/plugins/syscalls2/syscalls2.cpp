@@ -96,7 +96,8 @@ enum ProfileType {
     PROFILE_LINUX_X86,
     PROFILE_LINUX_ARM,
     PROFILE_LINUX_AARCH64,
-    PROFILE_LINUX_MIPS,
+    PROFILE_LINUX_MIPS32,
+    PROFILE_LINUX_MIPS64,
     PROFILE_WINDOWS_2000_X86,
     PROFILE_WINDOWS_XPSP2_X86,
     PROFILE_WINDOWS_XPSP3_X86,
@@ -189,11 +190,30 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = -1,
         .syscall_interrupt_number = 0x80,
     },
-    {   /* Linux MIPS */
+    {   /* Linux MIPS32 */
         .enter_switch = syscall_enter_switch_linux_mips,
         .return_switch = syscall_return_switch_linux_mips,
         .get_return_val = get_return_val_mips,
         .calc_retaddr = calc_retaddr_linux_mips,
+        .get_32 = get_32_linux_mips,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_mips,
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_32_linux_mips,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_mips,
+        .get_return_s64 = get_return_s64_generic,
+        .windows_return_addr_register = -1,
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
+    },
+    {   /* Linux MIPS64 */
+        .enter_switch = syscall_enter_switch_linux_mips64,
+        .return_switch = syscall_return_switch_linux_mips64,
+        .get_return_val = get_return_val_mips,
+        .calc_retaddr = calc_retaddr_linux_mips,
+
+        // TODO: args 5-6 are in a4 and a5 in mips64 instead of being on the stack like in mips32
         .get_32 = get_32_linux_mips,
         .get_s32 = get_s32_generic,
         .get_64 = get_64_linux_mips,
@@ -1199,9 +1219,13 @@ bool init_plugin(void *self) {
         syscalls_profile = &profiles[PROFILE_LINUX_AARCH64];
 #endif
 #endif
-#if defined(TARGET_MIPS)
-        std::cerr << PANDA_MSG "using profile for linux mips" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_MIPS];
+#if defined(TARGET_MIPS32)
+        std::cerr << PANDA_MSG "using profile for linux mips32" << std::endl;
+        syscalls_profile = &profiles[PROFILE_LINUX_MIPS32];
+#endif
+#if defined(TARGET_MIPS64)
+        std::cerr << PANDA_MSG "using profile for linux mips64" << std::endl;
+        syscalls_profile = &profiles[PROFILE_LINUX_MIPS64];
 #endif
     }
     else if (panda_os_familyno == OS_WINDOWS) {
