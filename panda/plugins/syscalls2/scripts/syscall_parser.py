@@ -354,22 +354,16 @@ class SysCallDefError(SysCallError):
 class SysCall(object):
     ''' Wraps a system call.
     '''
-    # Fields: <no> <return-type> <name><signature with spaces>
-    linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
 
-    def __init__(self, line, target_context={}):
-        fields = SysCall.linere.match(line)
-        if fields is None:
-            raise SysCallDefError()
-
+    def __init__(self, fields, target_context={}):
         max_generic_syscall = MAX_GENERIC_SYSCALL_ALT if target_context['arch'] in ['mips', 'mips64'] else MAX_GENERIC_SYSCALL
 
         # set properties inferred from prototype
-        self.no = int(fields.group(1))
-        self.generic = False if self.no > max_generic_syscall else True
+        self.nos = [int(fields.group(1))] # "nos' is a list of syscall numbers, often 1 element
+        self.generic = False if max(self.nos) > max_generic_syscall else True
         self.rettype = fields.group(2)
         self.name = fields.group(3)
-        self.args_raw = [arg.strip() for arg in fields.group(4).split(',')]
+        self.args_raw = [[arg.strip() for arg in fields.group(4).split(',')]]
 
         # set properties inferred from target context
         self.arch_bits = target_context['arch_conf']['bits']
@@ -378,9 +372,9 @@ class SysCall(object):
         panda_doublereturn_names = target_context.get('panda_doublereturn', {})
         self.panda_double_return = True if self.name in panda_doublereturn_names else False
 
-        # process raw args
+        # process raw args at construction
         self.args = []
-        for arg in self.args_raw:
+        for arg in self.args_raw[0]:
             try:
                 self.args.append(Argument(arg, argno=len(self.args), arch_bits=self.arch_bits))
             except EmptyArgumentError:
@@ -424,6 +418,9 @@ if __name__ == '__main__':
     assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
     assert os.path.isdir(args.prototypes), 'Output directory %s does not exist.' % args.prototypes
     assert os.path.isdir(args.templates), 'Template directory %s does not exist.' % args.templates
+    
+    # Fields: <no> <return-type> <name><signature with spaces>
+    prototype_linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
 
     # Create a Jinja2 environment for rendering templates.
     # Setting undefined to StrictUndefined will raise an error if a variable
@@ -481,20 +478,52 @@ if __name__ == '__main__':
 
         # Parse prototype file contents. Extra context is passed to set
         # properties that are not defined by the prototype definition.
+
+        new_scs = {} # We use (name,args): syscall object with 1 or more nos
+
         with open(protofile_name) as protofile:
             for lineno, line in enumerate(protofile, 1):
-                try:
-                    syscall = SysCall(line, target_context)
-                    syscalls.append(syscall)
-                    syscalls_arch[syscall.name] = syscall
-                except SysCallDefError:
+
+                # HACK: we want to support multiple ABIs for the same arch. For MIPS
+                # N32 + N64 we've seen distinct callnos with the same name and args.
+                # As such, we expand this interface to support a many-to-one mapping
+                # where multiple syscall numbers map to the same syscall object
+
+                # If we ever encounter an arch with multiple ABIs that have distinct
+                # arguments, we'll need to refactor this better.
+
+                # First we parse the prototype line to get the callno and name
+                fields = prototype_linere.match(line)
+                if fields is None:
                     logging.debug('Bad prototype line in %s:%d: %s', protofile.name, lineno, line.rstrip())
+                    continue
+                sc_name = fields.group(3)
+
+                new_syscall = SysCall(fields, target_context)
+                new_args = str(new_syscall.args)
+
+                if (new_syscall.name, new_args) not in new_scs:
+                    new_scs[(new_syscall.name, new_args)] = new_syscall
+                    syscalls.append(new_syscall)
+                    syscalls_arch[sc_name] = new_syscall
+                else:
+                    # Already have a syscall object with this name and args, just add to nos
+                    new_scs[(new_syscall.name, new_args)].nos.append(new_syscall.nos[0])
+                    # And add args in case they're different, just for good soucre comments
+                    this_args = new_syscall.args_raw[0]
+                    if this_args not in new_scs[(new_syscall.name, new_args)].args_raw:
+                        new_scs[(new_syscall.name, new_args)].args_raw.append(this_args)
+
+        # Reformat into name: syscall mappings
+        syscalls_to_write = {sc.name: sc for sc in syscalls}
+        # Sort by smallest sc.nos values
+        syscalls.sort(key=lambda sc: min(sc.nos))
         logging.info('Loaded %d system calls from %s.', len(syscalls), protofile_name)
 
         # Calculate the maximum number of arguments and system call number for this os/arch.
         target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
-        target_context['max_syscall_no'] = max([s.no for s in syscalls])
-        target_context['max_syscall_generic_no'] = max([s.no for s in syscalls if s.generic])
+        target_context['max_syscall_no'] = max([max(s.nos) for s in syscalls])
+        target_context['max_syscall_generic_no'] = max([max(s.nos) for s in syscalls if s.generic])
 
         # Update the global maximum number of arguments and system call number.
         global_context['global_max_syscall_args'] = max(
@@ -526,7 +555,7 @@ if __name__ == '__main__':
         of_name = '%s%s' % (args.prefix, 'syscalls_ext_typedefs_' + _arch + '.h')
         with open(os.path.join(args.outdir, of_name), 'w+') as of:
             logging.info("Writing %s", of.name)
-            of.write(j2tpl.render(syscalls=syscalls_arch))
+            of.write(j2tpl.render(syscalls=syscalls_to_write))
 
     # Render big files.
     for tpl, ext in GENERATED_FILES:

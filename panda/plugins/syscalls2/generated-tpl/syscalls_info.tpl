@@ -20,28 +20,30 @@
 
 {% for syscall in syscalls -%}
 {% if syscall.generic -%}
-static syscall_argtype_t argt_{{syscall.no}}[] = {
+{% for no in syscall.nos -%}
+static syscall_argtype_t argt_{{no}}[] = {
 	{%- for arg in syscall.args -%}
 	SYSCALL_ARG_{{arg.type}}{{ ', ' if not loop.last else ''}}
 	{%- endfor -%}
 };
-static uint8_t argsz_{{syscall.no}}[] = {
+static uint8_t argsz_{{no}}[] = {
 	{%- for arg in syscall.args -%}
 	sizeof({{arg.ctype}}){{ ', ' if not loop.last else ''}}
 	{%- endfor -%}
 };
-static const char* const argn_{{syscall.no}}[] = {
+static const char* const argn_{{no}}[] = {
 	{%- for arg in syscall.args -%}
 	"{{arg.name}}"{{ ', ' if not loop.last else ', 0'}}
 	{%- endfor -%}
 };
-static const char* const argtn_{{syscall.no}}[] = {
+static const char* const argtn_{{no}}[] = {
 	{%- for arg in syscall.args -%}
 	"{{arg.struct_name}}"{{ ', ' if not loop.last else ', 0'}}
 	{%- endfor -%}
 };
+{% endfor -%}
 {% else -%}
-/* skipping non generic system call {{syscall.no}} ({{syscall.name}}) */
+/* skipping non generic system call {{syscall.name}}: {{syscall.nos}} */
 {% endif %}
 {%- endfor %}
 
@@ -49,18 +51,20 @@ syscall_info_t __syscall_info_a[] = {
 	/* note that uninitialized values will be zeroed-out */
 	{% for syscall in syscalls -%}
 	{% if syscall.generic -%}
-	[{{syscall.no}}] = {
-		.no = {{syscall.no}},
+	{% for no in syscall.nos -%}
+	[{{no}}] = {
+		.no = {{no}},
 		.name = "{{syscall.name}}",
 		.nargs = {{syscall.args|length}},
-		.argt = argt_{{syscall.no}},
-		.argsz = argsz_{{syscall.no}},
-		.argn = argn_{{syscall.no}},
-		.argtn = argtn_{{syscall.no}},
+		.argt = argt_{{no}},
+		.argsz = argsz_{{no}},
+		.argn = argn_{{no}},
+		.argtn = argtn_{{no}},
 		.noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }}
 	},
+	{% endfor -%}
 	{% else -%}
-	/* skipping non generic system call {{syscall.no}} ({{syscall.name}}) */
+	/* skipping non generic system call {{syscall.name}}: {{syscall.nos}} */
 	{% endif %}
 	{%- endfor %}
 };

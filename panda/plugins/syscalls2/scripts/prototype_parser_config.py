@@ -196,10 +196,11 @@ CONFIG_LINUX = {
             'normalize': True,
         },
         'map_function_number': {
-            'parser': 'parse_numbers_tbl',
-            'source': 'arch/mips/kernel/syscalls/syscall_n64.tbl',
-            'offset': 5000,
-            # Note the 64-bit native ABI starts at 5000
+            'parser': 'parse_numbers_tbl_multi',
+            'abi_offset_file_map': {
+                ('n64', 5000,): 'arch/mips/kernel/syscalls/syscall_n64.tbl',
+                ('n32', 6000,): 'arch/mips/kernel/syscalls/syscall_n32.tbl',
+            }
             # See arch/mips/include/uapi/asm/unistd for various definitions of __NR_Linux that set this offset
         },
     },

@@ -106,8 +106,8 @@ def parse_signature_files(rootdir, arch, locations, normalize=False):
     logging.info('Parsed %d signatures from %s:', len(signatures_parsed), sigfile)
     return signatures_parsed
 
-def parse_numbers_tbl(rootdir, arch, source, offset=None):
-    ''' Creates an [entry function]->[number] mapping for the system
+def parse_numbers_tbl(rootdir, arch, source, abi=None, offset=None):
+    ''' Creates an ([number],abi)->[entry function] mapping for the system
         calls from a .tbl definition file.
         These files are used by Ubuntu to generate the actual system
         call headers at compile-time. When available, this is the
@@ -121,16 +121,29 @@ def parse_numbers_tbl(rootdir, arch, source, offset=None):
     with open(tblfile) as f:
         for ln, line in enumerate(f):
             if not re.match('^\d', line): continue
-            nr, abi, name, entry, compat = pad_list(line.split(), 5)
+            nr, found_abi, name, entry, compat = pad_list(line.split(), 5)
+            if abi and abi != found_abi:
+                logging.debug('Skipping syscall %s (nr=%d) because ABI %s does not match %s.',
+                              name, int(nr), found_abi, abi)
+                continue
             if entry is None:
                 logging.warning('Ignoring system call %s (nr=%d) because no entry point is specified.', name, int(nr))
                 continue
             # use the entry point name instead of the raw call name
-            syscall_numbers[entry] = int(nr) + (offset if offset else 0)
+            syscall_numbers[(int(nr) + (offset if offset else 0), found_abi)] = entry
+    return syscall_numbers
+
+def parse_numbers_tbl_multi(rootdir, arch, abi_offset_file_map):
+    syscall_numbers = {}
+    for (abi, offset), source in abi_offset_file_map.items():
+        new_sc_nums = parse_numbers_tbl(rootdir, arch, source, abi, offset)
+        print(f"For ABI {abi} we found {len(new_sc_nums)} syscalls")
+        syscall_numbers.update(new_sc_nums)
+
     return syscall_numbers
 
 def parse_numbers_calltable(rootdir, arch, source, regex, syscalls_skip):
-    ''' Creates a [entry function]->[number] mapping for the system
+    ''' Creates a ([number],abi)->[entry_name] mapping for the system
         calls from a system call table file.
         Some entry functions may bot be listed in the system call
         table file. So additional sources may need to be used in
@@ -154,7 +167,7 @@ def parse_numbers_calltable(rootdir, arch, source, regex, syscalls_skip):
             if call_m:
                 d = call_m.groupdict()
                 syscall = d.get('syscall')
-                is_abi = d.get('abi') is not None
+                abi = d.get('abi', None)
                 is_obsolete = d.get('obsolete') is not None
                 is_compat = d.get('compat') is not None
             else:
@@ -185,7 +198,7 @@ def parse_numbers_calltable(rootdir, arch, source, regex, syscalls_skip):
                 #logging.debug('Call number set to %d on line %d.', callnr, ln)
 
             # add to dictionary
-            syscall_numbers[syscall] = callnr
+            syscall_numbers[(callnr, abi)] = syscall
             callnr += 1
     return syscall_numbers
 
@@ -291,7 +304,7 @@ def run_parser(config, parser_name):
         the configuration dictionary.
     '''
     assert config[parser_name]['parser'] in globals()
-    parser = globals()[config[parser_name]['parser']]
+    parser = globals()[config[parser_name]['parser']] # parse_numbers_tbl, etc
     args = (config['src'], config['arch'])
     kwargs = {}
 
@@ -325,32 +338,36 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
 
     # work on a copy of fsigs, and reverse number mappings
     fsigs = fsigs.copy()
-    fnums_r = reverse_dict(fnums)
+    fnums_r = fnums # XXX changed so input is now in the format we want, no need to reverse
     nnums_r = reverse_dict(nnums) if nnums is not None else {}
+
+    matched_functions = {} # abi -> [function]
 
     # store results here
     numsigs = {}
 
     # directly match numbers from fnums_r to signatures
-    for number, function in sorted(fnums_r.items()):
+    # Sort by number so that we can match the lowest numbers first
+    for (number, abi), function in sorted(fnums_r.items(), key=lambda x: x[0][0]):
         # sidestep ptregs issue
         if foo := re.search("(.*)/ptregs", function):
-            function = foo.groups()[0]            
+            function = foo.groups()[0]
+
+        if abi not in matched_functions:
+            matched_functions[abi] = []
+        
+        # If the function cleanly matches, take it
         if function in fsigs:
             numsigs[number] = fsigs[function]
-            fsigs.pop(function)
-            fnums_r.pop(number)
-            nnums_r.pop(number, None)   # number may not exist
+            matched_functions[abi].append(function)
         else:
-            # Fallback
+            # Fallback. For each function we know of but haven't seen for this ABI...
             short_name = function.split("_")[-1] if "_" in function else function
-            for function in fsigs:
+            for function in [x for x in fsigs if x not in matched_functions[abi]]:
                 # Fallback1: end matches e.g., sys_mmap ->  sys_old_mmap
                 if function.endswith('_' + short_name):
                     numsigs[number] = fsigs[function]
-                    fsigs.pop(function)
-                    fnums_r.pop(number)
-                    nnums_r.pop(number, None)   # number may not exist
+                    matched_functions[abi].append(function)
                     break
             else:
                 logging.error('Could not find signature for %s (nr=%d).', function, number)
@@ -363,9 +380,6 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
             function = '%s%s' % (p, name)
             if function in fsigs:
                 numsigs[number] = fsigs[function]
-                fsigs.pop(function)
-                fnums_r.pop(number, None)   # number may not exist
-                nnums_r.pop(number)
                 break
 
     logging.debug(pformat({'fnums_r': fnums_r, 'nnums_r': nnums_r, 'fsigs': fsigs}, indent=2))
@@ -400,15 +414,25 @@ if __name__ == '__main__':
 
     # sanity checks
     logging.debug('args: %s', args)
-    logging.debug('config: %s', config)
+    logging.info('config: %s', config)
     assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
 
     logging.info('Generating prototypes for {os}:{arch} using {variant} as source.'.format(**config))
 
-    # run base parsers
-    syscall_fsigs, syscall_fnums, syscall_nnums = (
-            run_parser(config, p) if p in config else None
-            for p in ['map_function_signature', 'map_function_number', 'map_name_number'])
+    syscall_fsigs, syscall_fnums, syscall_nnums = None, None, None
+
+    # run 3 base parsers
+    if 'map_function_signature' in config:
+        syscall_fsigs = run_parser(config, 'map_function_signature') # parse_signature_files
+        print("Found %d signatures" % len(syscall_fsigs))
+    
+    if 'map_function_number' in config:
+        syscall_fnums = run_parser(config, 'map_function_number') # parse_numbers_tbl, parse_numbers_tbl_multi
+        print("Found %d functions" % len(syscall_fnums))
+
+    if 'map_name_number' in config:
+        syscall_nnums = run_parser(config, 'map_name_number') # parse_numbers_unistd
+        print("Found %d names" % len(syscall_nnums))
 
     # load extra signatures
     if 'extrasigs' in config:

@@ -48,8 +48,8 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 
 	switch (ctx.no) {
 	{%- for syscall in syscalls %}
-	// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
-	case {{syscall.no}}: {
+	// {{syscall.nos|join(', ')}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw|join(' OR ')}}
+	{% for no in syscall.nos -%} case {{no}}: {% endfor -%} {
 		panda_noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }};
 		ctx.double_return = {{ 'true' if syscall.panda_double_return else 'false' }};
 		{%- if syscall.args|length > 0 %}
