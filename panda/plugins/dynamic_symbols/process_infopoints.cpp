@@ -61,11 +61,7 @@ void sys_mmap2_return()
     enable_analysis(ANALYSIS_SPECIFIC);
 }
 
-#ifdef TARGET_MIPS64
-void sys_mprotect_return(CPUState *cpu, target_ulong pc, uint32_t arg0, uint32_t arg1, uint32_t arg2)
-#else
 void sys_mprotect_return(CPUState *cpu, target_ulong pc, target_ulong arg0, uint32_t arg1, target_ulong arg2)
-#endif
 {
     enable_analysis(ANALYSIS_SPECIFIC);
 }
@@ -132,7 +128,8 @@ bool initialize_process_infopoints(void* self){
         PPP_REG_CB("syscalls2", on_sys_old_mmap_return, sys_old_mmap_return);
     #elif defined(TARGET_ARM)
         PPP_REG_CB("syscalls2", on_do_mmap2_return, sys_mmap_return);
-    #elif defined(TARGET_MIPS)
+    #elif defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+        // XXX No mips64 support since we don't have these syscalls
         PPP_REG_CB("syscalls2", on_sys_mmap_return, sys_mmap_return);
         PPP_REG_CB("syscalls2", on_mmap2_return, sys_mmap2_return);
     #endif
