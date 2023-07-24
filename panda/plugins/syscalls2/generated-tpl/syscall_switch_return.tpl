@@ -25,8 +25,8 @@ void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, const
 	}
 	switch (ctx->no) {
 		{%- for syscall in syscalls %}
-		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
-		case {{syscall.no}}: {
+		// {{syscall.nos|join(', ')}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw|join(' OR ')}}
+		{% for no in syscall.nos %}case {{no}}: {%- endfor %} {
 			{%- for arg in syscall.args %}
 			{{arg.emit_temp_declaration()}}
 			{%- endfor %}
