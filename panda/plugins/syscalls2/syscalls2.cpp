@@ -1203,7 +1203,9 @@ bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
-    const char *abi = panda_parse_string_opt(plugin_args, "abi", NULL, "Syscall ABI if a nonstandard value is used. Currently supported for mips(64) with values: n64, n32, and o32");
+
+    // Unused in some architectures
+    const char *UNUSED(abi) = panda_parse_string_opt(plugin_args, "abi", NULL, "Syscall ABI if a nonstandard value is used. Currently supported for mips(64) with values: n64, n32, and o32");
 
     if(panda_os_familyno == OS_UNKNOWN){
         std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7sp[01]' " << std::endl;
