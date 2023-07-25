@@ -695,6 +695,10 @@ uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
     } else if (syscall_abi == ABI_MIPS_N32) {
         // Args 1-8 in $a0-$a7 which are regs 4-11 in gpr
         return (uint32_t) env->active_tc.gpr[argnum+4];
+    } else if (syscall_abi == ABI_MIPS_N64) {
+      // We're on the N64 ABI for a 64-bit guest but we want a 32 bit value
+      // E.g., mips sys_inotify_add_watch has a u32 argument even on 64-bit guests. I guess
+      return get_64_linux_mips(cpu, argnum) & 0xffffffff;
     } else {
         assert(0); // Unknown ABI. Should be unreachable
     }
