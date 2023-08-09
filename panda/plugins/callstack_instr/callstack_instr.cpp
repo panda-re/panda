@@ -321,8 +321,9 @@ void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
 }
 
 void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-  std::vector<stack_entry> &v = callstacks[get_stackid(cpu)];
-  std::vector<target_ulong> &w = function_stacks[get_stackid(cpu)];
+  auto stackid = get_stackid(cpu);
+  std::vector<stack_entry> &v = callstacks[stackid];
+  std::vector<target_ulong> &w = function_stacks[stackid];
   if (v.empty()) {
     return;
   }
@@ -372,15 +373,20 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
 }
 
 
-/**
- * @brief Fills preallocated buffer \p callers with up to \p n call addresses.
- */
-uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
-    std::vector<stack_entry> &v = callstacks[get_stackid(cpu)];
+static uint32_t get_callers_priv(target_ulong callers[], uint32_t n,
+        CPUState* cpu, stackid stackid) {
+    std::vector<stack_entry> &v = callstacks[stackid];
 
     n = std::min((uint32_t)v.size(), n);
     for (uint32_t i=0; i<n; i++) { callers[i] = v[v.size()-1-i].pc; }
     return n;
+}
+
+/**
+ * @brief Fills preallocated buffer \p callers with up to \p n call addresses.
+ */
+uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
+    return get_callers_priv(callers, n, cpu, get_stackid(cpu));
 }
 
 
@@ -442,7 +448,7 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 
     // Try to get the caller
     int n_callers = 0;
-    n_callers = get_callers(&p->caller, 1, cpu);
+    n_callers = get_callers_priv(&p->caller, 1, cpu, curStackid);
 
     if (n_callers == 0) {
 #if defined(TARGET_I386)
