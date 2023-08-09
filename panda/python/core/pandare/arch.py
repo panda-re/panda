@@ -353,7 +353,7 @@ class ArmArch(PandaArch):
         '''
         Looks up where ret will go
         '''
-        return self.get_reg(cpu, "LR")
+        return self.get_reg(cpu, "LR") & 0xFFFF_FFFE
 
 class Aarch64Arch(PandaArch):
     '''
