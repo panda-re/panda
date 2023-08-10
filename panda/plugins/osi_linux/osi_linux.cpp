@@ -313,7 +313,7 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
             // If we're on MIPS, we need to wait until r28 is set before
             // moving to a syscall strategy
             if (!id_is_initialized()){
-                ret = NULL;
+                *ret = NULL;
                 return false;
             }
         }
@@ -339,7 +339,7 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
         PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
     // Not yet initialized, just set the caller's result buffer to NULL
-    ret = NULL;
+    *ret = NULL;
     return false;
 }
 
