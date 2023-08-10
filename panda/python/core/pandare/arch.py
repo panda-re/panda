@@ -262,6 +262,8 @@ class PandaArch():
         '''
         Print (telescoping) each register and its values
         '''
+        print(f"PC: {self.get_pc(cpu):x}")
+
         for (regname, reg) in self.registers.items():
             val = self.get_reg(cpu, reg)
             print("{}: 0x{:x}".format(regname, val), end="\t")
@@ -294,10 +296,7 @@ class PandaArch():
         """
         Print registers and stack
         """
-        print("Registers:")
-        print(len(self.registers))
         self.dump_regs(cpu)
-        print("Stack:")
         self.dump_stack(cpu)
 
     def get_args(self, cpu, num, convention='default'):
