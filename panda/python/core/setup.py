@@ -139,18 +139,8 @@ class custom_install(install_orig):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-# Determine system version of protoc - we'll need python protobuf of matching version
-from subprocess import check_output, CalledProcessError
-try:
-    pc_version = check_output(["protoc", "--version"]).decode()
-    pc_version = pc_version.split(" ")[1]
-    print(f"Detected protoc version {pc_version}")
-except CalledProcessError:
-    print("ERROR: protoc not installed. Install with sudo apt install protoc")
-    raise
-
 setup(name='pandare',
-      version='0.1.1.5',
+      version='0.1.1.6',
       description='Python Interface to PANDA',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -168,7 +158,7 @@ setup(name='pandare',
           'data/pc-bios/**/*',                # Keymaps
           'qcows.json'                        # Generic Images
           ]},
-      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf=='+pc_version],
+      install_requires=[ 'cffi>=1.14.3', 'colorama'],
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
      )
