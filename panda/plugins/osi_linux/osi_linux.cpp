@@ -211,12 +211,16 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
     m->modd = vma_addr;
     m->base = vma_start;
     m->size = vma_end - vma_start;
+    m->offset = 0;
 
     if (vma_vm_file !=
         (target_ptr_t)NULL) {  // Memory area is mapped from a file.
         vma_dentry = get_vma_dentry(env, vma_addr);
         m->file = read_dentry_name(env, vma_dentry);
         m->name = g_strrstr(m->file, "/");
+        // Get offset in pages, then *= with PAGE_SIZE to translate into bytes
+        get_vma_pgoff(env, vma_addr, &m->offset);
+        m->offset *= 4096; // PAGE_SIZE XXX should specify this size in OSI profiles.
         if (m->name != NULL) m->name = g_strdup(m->name + 1);
     } else {  // Other memory areas.
         mm_addr = get_vma_vm_mm(env, vma_addr);

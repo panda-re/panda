@@ -310,6 +310,13 @@ IMPLEMENT_OFFSET_GET(get_vma_vm_file, vma_struct, target_ptr_t, ki.vma.vm_file_o
 IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, target_ptr_t, ki.vma.vm_file_offset, target_ptr_t, ki.fs.f_path_dentry_offset, 0)
 
 /**
+ * @brief Retrieves the pgoff field from a VMA. This contains the offset in pages from the file start for this mapping.
+ * XXX We're basing this on the file_offset and grabbing a pointer before. Linux 2-6 all keep these fields adjacent.
+ * This is not guaranteed to be the case in the future. https://elixir.bootlin.com/linux/v6.5-rc5/source/include/linux/mm_types.h#L562
+ */
+IMPLEMENT_OFFSET_GETN(get_vma_pgoff, vma_struct, target_ulong, page_offset, OG_AUTOSIZE, ki.vma.vm_file_offset-sizeof(target_ptr_t))
+
+/**
  * @brief Retrieves the vfsmount dentry associated with a vma_struct.
  *
  * XXX: Reading the vfsmount dentry is required to get the full pathname of files not located in the root fs.
