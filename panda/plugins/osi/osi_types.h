@@ -52,6 +52,7 @@ typedef struct osi_module_struct {
     target_ptr_t size;
     char *file;
     char *name;
+    target_ulong offset; // XXX only set by osi_linux for now
 } OsiModule;
 
 /**
