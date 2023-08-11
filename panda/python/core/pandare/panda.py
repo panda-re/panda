@@ -339,7 +339,9 @@ class Panda():
         because you don't know when it finishes. You should be using revert_sync
         from a blocking function instead
         '''
-        print("WARNING: panda.revert_async may be deprecated in the near future")
+        if not hasattr(self, 'warned_async'):
+            self.warned_async = True
+            print("WARNING: panda.revert_async may be deprecated in the near future")
         if debug:
             progress ("Loading snapshot " + snapshot_name)
 
