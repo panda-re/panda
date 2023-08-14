@@ -593,7 +593,7 @@ class X86Arch(PandaArch):
         self.reg_retval = {"default":    "EAX",
                            "syscall":    "EAX",
                            "linux_kernel":    "EAX"}
-        
+
         self.call_conventions = {"cdecl": [f"stack_{x}" for x in range(20)], # 20: arbitrary but big
                                  "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
                                  "linux_kernel": ["EAX", "EDX", "ECX", "stack_3", "stack_4", "stack_5", "stack_6"]}
@@ -639,7 +639,7 @@ class X86Arch(PandaArch):
         '''
         esp = self.get_reg(cpu,"ESP")
         return self.panda.virtual_memory_read(cpu,esp,4,fmt='int')
-    
+
 class X86_64Arch(PandaArch):
     '''
     Register names and accessors for x86_64
@@ -665,6 +665,27 @@ class X86_64Arch(PandaArch):
         self.reg_retval['default'] = self.reg_retval['sysv']
 
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
+
+        # Internal state to support some of the weird x86-64 registers
+        self.reg_names_general = ['EAX', 'ECX', 'EDX', 'EBX', 'ESP', 'EBP', 'ESI', 'EDI']
+        self.reg_names_short = ['AX', 'CX', 'DX', 'BX', 'SP', 'BP', 'SI', 'DI']
+        self.reg_names_byte = ['AL', 'CL', 'DL', 'BL', 'AH', 'CH', 'DH', 'BH']
+        self.seg_names = ['ES', 'CS', 'SS', 'DS', 'FS', 'GS']
+
+    def _get_segment_register(self, env, seg_name):
+        seg_idx = self.seg_names.index(seg_name)
+        return env.segs[seg_idx].base
+
+    def _get_general_purpose_register(self, env, reg_name, mask):
+        return env.regs[self.reg_names_general.index(reg_name)] & mask
+
+    def _set_segment_register(self, env, seg_name, value):
+        seg_idx = self.seg_names.index(seg_name)
+        env.segs[seg_idx].base = value
+
+    def _set_general_purpose_register(self, env, reg_name, value, mask):
+        reg_idx = self.reg_names_general.index(reg_name)
+        env.regs[reg_idx] = (env.regs[reg_idx] & ~mask) | (value & mask)
 
     def get_pc(self, cpu):
         '''
@@ -717,3 +738,104 @@ class X86_64Arch(PandaArch):
         '''
         esp = self.get_reg(cpu, "RSP")
         return self.panda.virtual_memory_read(cpu, esp, 8, fmt='int')
+
+    def get_reg(self, cpu, reg):
+        '''
+        X86_64 has a bunch of different ways to access registers. We support
+        the regular names, the 32 and 16 bit varations (e.g., EAX, AX, AL),
+        segment registers, and D/W/B style accesses to R8-R15
+        '''
+        if isinstance(reg, int):
+            # If reg is an int, it should be an offset into our register array
+            return self._get_reg_val(cpu, reg)
+
+        reg = reg.upper()
+        env = cpu.env_ptr
+        if reg in self.seg_names:
+            return self._get_segment_register(env, reg)
+        elif reg in ['RIP', 'PC', 'EIP']:
+            pc = self.get_pc(cpu) # changes reg to 'IP' and re-calls this
+            if reg == 'EIP':
+                pc &= 0xFFFFFFFF
+            return pc
+        elif reg.startswith('XMM'):
+            raw_arr = env.xmm_regs[int(reg[3:].rstrip('HLQX'))]
+            _, endianness, _ = self._determine_bits()
+
+            if reg.endswith('lq'):
+                value_bytes = raw_arr[0:8] # Lower 64 bits
+            elif reg.endswith('hq'):
+                value_bytes = raw_arr[8:16] # Higher 64 bits
+            elif reg.endswith('hx'):
+                value_bytes = raw_arr[4:8] # Higher 32 bits of the lower 64 bits
+            else:
+                value_bytes = raw_arr[0:16] # Full 128 bits
+            return int.from_bytes(bytes(value_bytes), byteorder=endianness)
+
+        elif reg.startswith('MM'):
+            raise ValueError("MM registers unsupported")
+        elif reg.startswith('YMM'):
+            raise ValueError("YMM registers unsupported")
+        elif reg.startswith('CR'):
+            return env.cr[int(reg[2:])]
+        elif reg.startswith('R') and any([reg.endswith(x) for x in 'DWB']) and reg.strip('RDWB').isnumeric():
+            # R8-R15 can be accessed with D (double word), W (word) and B (byte)
+            # to select the lowest 32-bits, the lowest 16 bits, or the lowest 8 bits.
+            reg_idx = int(reg.strip('RDWB')) - 8
+            reg_suffix = reg[-1]
+            mask = {'D': 0xFFFFFFFF,
+                    'W': 0xFFFF,
+                    'B': 0xFF}[reg_suffix]
+            return env.regs[reg_idx] & mask
+        elif reg in self.reg_names_general:
+            return self._get_general_purpose_register(env, reg, 0xFFFFFFFF)
+        elif reg in self.reg_names_short:
+            return env.regs[self.reg_names_short.index(reg)] & 0xFFFF
+        elif reg in self.reg_names_byte:
+            reg_idx = self.reg_names_byte.index(reg)
+            if reg_idx > 3:
+                reg_idx -= 4
+                return (env.regs[reg_idx] >> 8) & 0xFF
+            else:
+                return env.regs[reg_idx] & 0xFF
+        else:
+            return super().get_reg(cpu, reg)
+
+    def set_reg(self, cpu, reg, val):
+        reg = reg.upper()
+        env = cpu.env_ptr
+
+        if reg in ['ES', 'CS', 'SS', 'DS', 'FS', 'GS']:
+            self._set_segment_register(env, reg, val)
+        elif reg in ['RIP', 'PC']:
+            return self.set_pc(cpu, val) # changes reg to 'IP' and re-calls this
+        elif reg.startswith('XMM'):
+            #env.xmm_regs[int(reg[3:])] = val
+            raise NotImplementedError("XMM registers unsupported")
+        elif reg.startswith('MM'):
+            raise NotImplementedError("MM registers unsupported")
+        elif reg.startswith('YMM'):
+            raise NotImplementedError("YMM registers unsupported")
+        elif reg.startswith('CR'):
+            env.cr[int(reg[2:])] = val
+        elif reg.startswith('R') and any([reg.endswith(x) for x in 'DWB']):
+            # R8-R15 can be accessed with D (double word), W (word) and B (byte)
+            # to select the lowest 32-bits, the lowest 16 bits, or the lowest 8 bits.
+            reg_idx = int(reg.strip('RDWB')) - 8
+            reg_suffix = reg[-1]
+            mask = {'D': 0xFFFFFFFF,
+                    'W': 0xFFFF,
+                    'B': 0xFF}[reg_suffix]
+            env.regs[reg_idx] & mask
+            env.regs[reg_idx] = (env.regs[reg_idx] & ~mask) | (val & mask)
+        elif reg in self.reg_names_general:
+            self._set_general_purpose_register(env, reg, val, 0xFFFFFFFF)
+        elif reg in self.reg_names_short:
+            self._set_general_purpose_register(env, reg, val, 0xFFFF)
+        elif reg in self.reg_names_byte:
+            reg_idx = self.reg_names_byte.index(reg)
+            mask = 0xFF << (8 * (reg_idx > 3))
+            reg_idx %= 4
+            self._set_general_purpose_register(env, reg, val, mask)
+        else:
+            super().set_reg(cpu, reg, val)
