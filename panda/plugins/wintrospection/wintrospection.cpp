@@ -69,6 +69,9 @@ void on_get_process(CPUState *cpu, const OsiProcHandle *h, OsiProc **out);
 void on_get_processes(CPUState *cpu, GArray **out);
 void on_get_modules(CPUState *cpu, GArray **out);
 void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
+void on_get_mapping_by_addr(CPUState *cpu, OsiProc *p, const target_ptr_t addr, OsiModule **out);
+void on_get_mapping_base_address_by_name(CPUState *cpu, OsiProc *p, const char *name, target_ptr_t *base_address);
+void on_has_mapping_prefix(CPUState *cpu, OsiProc *p, const char *prefix, bool *found);
 
 void initialize_introspection(CPUState *cpu);
 void task_change(CPUState *cpu);
@@ -524,6 +527,7 @@ void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out) {
   }
 
   if (p == NULL) {
+    *out = nullptr;
     return;
   }
 
@@ -554,6 +558,70 @@ void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out) {
 
   // this is guarded from nullptr, so safe here
   free_module_list(mlist);
+}
+
+void on_get_mapping_by_addr(CPUState *cpu, OsiProc *p, const target_ptr_t addr,
+        OsiModule **out) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+  
+  if (p == NULL) {
+    *out = nullptr;
+    return;
+  }
+
+  auto kernel = g_kernel_manager->get_kernel_object();
+
+  auto proc = create_process(kernel, p->taskd);
+  auto mentry = get_module_by_addr(kernel, p->taskd, process_is_wow64(proc),
+      addr);
+  free_process(proc);
+
+  if (mentry) {
+    *out = (OsiModule *)g_malloc(sizeof(**out));
+    fill_module(*out, mentry);
+    free_module_entry(mentry);
+  } else {
+    *out = nullptr;
+  }
+}
+
+void on_get_mapping_base_address_by_name(CPUState *cpu, OsiProc *p,
+        const char *name, target_ptr_t *base_address) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+  
+  if (p == NULL) {
+    *base_address = 0;
+    return;
+  }
+
+  auto kernel = g_kernel_manager->get_kernel_object();
+
+  auto proc = create_process(kernel, p->taskd);
+  *base_address = static_cast<target_ptr_t>(get_module_base_address_by_name(
+      kernel, p->taskd, process_is_wow64(proc), name));
+  free_process(proc);
+}
+
+void on_has_mapping_prefix(CPUState *cpu, OsiProc *p, const char *prefix,
+    bool *found) {
+  if (!g_initialized_kernel) {
+    initialize_introspection(cpu);
+  }
+  
+  if (p == NULL) {
+    *found = false;
+    return;
+  }
+
+  auto kernel = g_kernel_manager->get_kernel_object();
+
+  auto proc = create_process(kernel, p->taskd);
+  *found = has_module_prefix(kernel, p->taskd, process_is_wow64(proc), prefix);
+  free_process(proc);
 }
 
 /* ******************************************************************
@@ -772,6 +840,11 @@ bool init_plugin(void *_self) {
   PPP_REG_CB("osi", on_get_processes, on_get_processes);
   PPP_REG_CB("osi", on_get_modules, on_get_modules);
   PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
+  PPP_REG_CB("osi", on_get_file_mappings, on_get_mappings);
+  PPP_REG_CB("osi", on_get_mapping_by_addr, on_get_mapping_by_addr);
+  PPP_REG_CB("osi", on_get_mapping_base_address_by_name,
+             on_get_mapping_base_address_by_name);
+  PPP_REG_CB("osi", on_has_mapping_prefix, on_has_mapping_prefix);
 
   // globals
   g_kernel_manager = std::unique_ptr<WindowsKernelManager>(
