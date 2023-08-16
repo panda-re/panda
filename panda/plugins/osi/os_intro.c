@@ -42,6 +42,13 @@ PPP_PROT_REG_CB(on_get_current_process_handle)
 PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_mappings)
+PPP_PROT_REG_CB(on_get_file_mappings)
+PPP_PROT_REG_CB(on_get_heap_mappings)
+PPP_PROT_REG_CB(on_get_stack_mappings)
+PPP_PROT_REG_CB(on_get_unknown_mappings)
+PPP_PROT_REG_CB(on_get_mapping_by_addr)
+PPP_PROT_REG_CB(on_get_mapping_base_address_by_name)
+PPP_PROT_REG_CB(on_has_mapping_prefix)
 PPP_PROT_REG_CB(on_get_current_thread)
 PPP_PROT_REG_CB(on_get_process_pid)
 PPP_PROT_REG_CB(on_get_process_ppid)
@@ -55,6 +62,13 @@ PPP_CB_BOILERPLATE(on_get_current_process_handle)
 PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_mappings)
+PPP_CB_BOILERPLATE(on_get_file_mappings)
+PPP_CB_BOILERPLATE(on_get_heap_mappings)
+PPP_CB_BOILERPLATE(on_get_stack_mappings)
+PPP_CB_BOILERPLATE(on_get_unknown_mappings)
+PPP_CB_BOILERPLATE(on_get_mapping_by_addr)
+PPP_CB_BOILERPLATE(on_get_mapping_base_address_by_name)
+PPP_CB_BOILERPLATE(on_has_mapping_prefix)
 PPP_CB_BOILERPLATE(on_get_current_thread)
 PPP_CB_BOILERPLATE(on_get_process_pid)
 PPP_CB_BOILERPLATE(on_get_process_ppid)
@@ -105,6 +119,50 @@ GArray *get_mappings(CPUState *cpu, OsiProc *p) {
     GArray *m = NULL;
     PPP_RUN_CB(on_get_mappings, cpu, p, &m);
     return m;
+}
+
+GArray *get_file_mappings(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
+    PPP_RUN_CB(on_get_file_mappings, cpu, p, &m);
+    return m;
+}
+
+GArray *get_heap_mappings(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
+    PPP_RUN_CB(on_get_heap_mappings, cpu, p, &m);
+    return m;
+}
+
+GArray *get_stack_mappings(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
+    PPP_RUN_CB(on_get_stack_mappings, cpu, p, &m);
+    return m;
+}
+
+GArray *get_unknown_mappings(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
+    PPP_RUN_CB(on_get_unknown_mappings, cpu, p, &m);
+    return m;
+}
+
+OsiModule *get_mapping_by_addr(CPUState *cpu, OsiProc *p,
+        const target_ptr_t addr) {
+    OsiModule *osiModule = NULL;
+    PPP_RUN_CB(on_get_mapping_by_addr, cpu, p, addr, &osiModule);
+    return osiModule;
+}
+
+target_ptr_t get_mapping_base_address_by_name(CPUState *cpu, OsiProc *p,
+        const char *name) {
+    target_ptr_t baseAddress = 0;
+    PPP_RUN_CB(on_get_mapping_base_address_by_name, cpu, p, name, &baseAddress);
+    return baseAddress;
+}
+
+bool has_mapping_prefix(CPUState *cpu, OsiProc *p, const char *prefix) {
+    bool found = false;
+    PPP_RUN_CB(on_has_mapping_prefix, cpu, p, prefix, &found);
+    return found;
 }
 
 OsiThread *get_current_thread(CPUState *cpu) {
