@@ -321,24 +321,45 @@ void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
 }
 
 void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-  auto stackid = get_stackid(cpu);
-  std::vector<stack_entry> &v = callstacks[stackid];
-  std::vector<target_ulong> &w = function_stacks[stackid];
-  if (v.empty()) {
-    return;
+  // if the block a call returns to was interrupted before it completed, this
+  // function will be called twice - only want to remove the return value from
+  // the stack once
+  // the return value will have been removed before the attept to run which was
+  // stopped (as we didn't know it would be stopped then), so skip it on the
+  // retry
+  bool need_to_check = true;
+  auto cur_stackid = get_stackid(cpu);
+  std::map<stackid, target_ulong>::const_iterator it;
+  it = stoppedInfo.find(cur_stackid);
+  if (it != stoppedInfo.end()) {
+    target_ulong stopped_pc = stoppedInfo[cur_stackid];
+    if (stopped_pc == tb->pc) {
+      stoppedInfo.erase(it);
+      need_to_check = false;
+      verbose_log("callstack_instr skipping return check", tb, cur_stackid,
+              false);
+    }
   }
 
-  // Search up to 10 down
-  for (int i = v.size() - 1; i > ((int)(v.size() - 10)) && i >= 0; i--) {
-    if (tb->pc == v[i].pc) {
-      // printf("Matched at depth %d\n", v.size()-i);
-      // v.erase(v.begin()+i, v.end());
+  if (need_to_check) {
+    std::vector<stack_entry> &v = callstacks[cur_stackid];
+    std::vector<target_ulong> &w = function_stacks[cur_stackid];
+    if (v.empty()) {
+        return;
+    }
 
-      PPP_RUN_CB(on_ret, cpu, w[i]);
-      v.erase(v.begin() + i, v.end());
-      w.erase(w.begin() + i, w.end());
+    // Search up to 10 down
+    for (int i = v.size() - 1; i > ((int)(v.size() - 10)) && i >= 0; i--) {
+      if (tb->pc == v[i].pc) {
+        // printf("Matched at depth %d\n", v.size()-i);
+        // v.erase(v.begin()+i, v.end());
 
-      break;
+        PPP_RUN_CB(on_ret, cpu, w[i]);
+        v.erase(v.begin() + i, v.end());
+        w.erase(w.begin() + i, w.end());
+
+        break;
+      }
     }
   }
 }
@@ -348,27 +369,41 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
     target_ulong cs_base = 0x0;
     uint32_t flags = 0x0;
 
-    if (TB_EXIT_IDX1 < exitCode) {
-        return;
-    }
-
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     instr_type tb_type = call_cache[tb->pc];
     stackid curStackid = get_stackid(cpu);
 
-    if (tb_type == INSTR_CALL) {
-        stack_entry se = {tb->pc + tb->size, tb_type};
-        callstacks[curStackid].push_back(se);
+    // sometimes an attempt to run a block is interrupted, but this callback is
+    // still made - only update the callstack if the block has run to completion
+    if (exitCode <= TB_EXIT_IDX1) {
+        if (tb_type == INSTR_CALL) {
+            stack_entry se = {tb->pc + tb->size, tb_type};
+            callstacks[curStackid].push_back(se);
 
-        // Also track the function that gets called
-        // This retrieves the pc in an architecture-neutral way
+            // Also track the function that gets called
+            // This retrieves the pc in an architecture-neutral way
+            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+            function_stacks[curStackid].push_back(pc);
+
+            PPP_RUN_CB(on_call, cpu, pc);
+        } else if (tb_type == INSTR_RET) {
+            //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
+            //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+        }
+    }
+    // in case this block is one that a call returns to, need to node that its
+    // execution was interrupted, so don't try to remove it from the callstack
+    // when try (as already removed before this attempt)
+    else {
+        // verbose output is helpful in regression testing
+        if (tb_type == INSTR_CALL) {
+            verbose_log("callstack_instr not adding Stopped caller to stack",
+                    tb, curStackid, true);
+        }
         cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-        function_stacks[curStackid].push_back(pc);
-
-        PPP_RUN_CB(on_call, cpu, pc);
-    } else if (tb_type == INSTR_RET) {
-        //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
-        //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+        // erase nicely does nothing if key DNE
+        stoppedInfo.erase(curStackid);
+        stoppedInfo[curStackid] = pc;
     }
 }
 
