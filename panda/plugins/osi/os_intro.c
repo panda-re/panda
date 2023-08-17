@@ -167,7 +167,17 @@ bool has_mapping_prefix(CPUState *cpu, OsiProc *p, const char *prefix) {
 
 OsiThread *get_current_thread(CPUState *cpu) {
     OsiThread *thread = NULL;
-    PPP_RUN_CB(on_get_current_thread, cpu, &thread);
+    static OsiThread cachedThread;
+    static uint64_t cachedInstructionCount;
+    if((cachedInstructionCount != 0) &&
+            (cachedInstructionCount == cpu->rr_guest_instr_count)) {
+        thread=(OsiThread *) g_malloc(sizeof(*thread));
+        memcpy(thread, &cachedThread, sizeof(*thread));
+    } else {
+        PPP_RUN_CB(on_get_current_thread, cpu, &thread);
+        cachedInstructionCount = cpu->rr_guest_instr_count;
+        memcpy(&cachedThread, thread, sizeof(cachedThread));
+    }
     return thread;
 }
 
