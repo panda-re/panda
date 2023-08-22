@@ -72,6 +72,8 @@ class PandaArch():
         '''
         if isinstance(reg, str):
             reg = reg.upper()
+            if reg == 'PC':
+                return self.get_pc(cpu)
             if reg not in self.registers.keys():
                 raise ValueError(f"Invalid register name {reg}")
             else:
@@ -450,13 +452,13 @@ class MipsArch(PandaArch):
 
     def __init__(self, panda):
         super().__init__(panda)
-        regnames = ['zero', 'at', 'v0', 'v1', 'a0', 'a1', 'a2', 'a3',
-                    't0', 't1', 't2', 't3', 't4', 't5', 't6', 't7',
-                    's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7',
-                    't8', 't9', 'k0', 'k1', 'gp', 'sp', 'fp', 'ra']
+        regnames = ['ZERO', 'AT', 'V0', 'V1', 'A0', 'A1', 'A2', 'A3',
+                    'T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7',
+                    'S0', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7',
+                    'T8', 'T9', 'K0', 'K1', 'GP', 'SP', 'FP', 'RA']
 
-        self.reg_sp = regnames.index('sp')
-        self.reg_retaddr = regnames.index("ra")
+        self.reg_sp = regnames.index('SP')
+        self.reg_retaddr = regnames.index('RA')
         # Default syscall/args are for mips o32
         self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"],
                 "syscall": ["V0", "A0", "A1", "A2", "A3", "stack_3", "stack_4", "stack_5", "stack_6"]} # XXX: Note it's not 0-indexed for stack args, I guess the syscall pushes stuff too
@@ -470,6 +472,33 @@ class MipsArch(PandaArch):
 
         # note names must be stored uppercase for get/set reg to work case-insensitively
         self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
+        self.registers['R30'] = 30
+
+    def get_reg(self, cpu, reg):
+        '''
+        Overloaded function for a few mips specific registers
+        '''
+
+        if isinstance(reg, str):
+            env = cpu.env_ptr
+            reg = reg.upper()
+            if reg == 'HI':
+                return env.CP0_EntryHi
+            elif reg == 'LO':
+                return env.CP0_EntryLo0
+            elif reg.startswith('F') and reg[1:].isnumeric():
+                num = int(reg[1:])
+                _, endianness, _ = self._determine_bits()
+                return int.from_bytes(bytes(env.fpus[0].fpr[num]), byteorder=endianness)
+            elif reg == 'FCCR':
+                return env.fpus[0].fcr0
+            elif reg == 'DSPCONTROL':
+                return env.active_tc.DSPControl
+            elif reg == 'CP0_STATUS':
+                return env.CP0_Status
+
+
+        return super().get_reg(cpu, reg)
 
     def get_pc(self, cpu):
         '''
