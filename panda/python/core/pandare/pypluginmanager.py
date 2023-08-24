@@ -5,6 +5,8 @@ Class to manage loading Panda PyPlugins. See docs/pyplugins.md for details.
 """
 from pathlib import Path
 from pandare import PyPlugin
+import inspect
+import importlib.util
 
 class _DotGetter(object):
     '''
@@ -126,7 +128,6 @@ class PyPluginManager:
         This avoids the `NameError: name 'PyPlugin' is not defined` which
         you would get from directly doing `import [class_name] from [plugin_file]`
         '''
-        import importlib.util
         spec = importlib.util.spec_from_file_location(plugin_file.split("/")[-1], plugin_file)
         if spec is None:
             raise ValueError(f"Unable to resolve plugin {plugin_file}")
@@ -230,7 +231,6 @@ class PyPluginManager:
         Returns:
             String list of PyPlugin class names loaded from the plugin_file
         '''
-        import inspect, importlib
         spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
         if spec is None:
             # Likely an invalid path
