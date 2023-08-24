@@ -13,6 +13,8 @@
 PANDAENDCOMMENT */
 DEF_HELPER_1(panda_insn_exec, void, tl)
 DEF_HELPER_1(panda_after_insn_exec, void, tl)
+DEF_HELPER_2(panda_callbacks_start_block_exec, void, env, ptr)
+DEF_HELPER_2(panda_callbacks_end_block_exec, void, env, ptr)
 
 #if defined(TARGET_ARM) || defined(TARGET_MIPS)
 DEF_HELPER_1(panda_guest_hypercall, void, env)

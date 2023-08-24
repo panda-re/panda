@@ -35,6 +35,15 @@ void HELPER(panda_after_insn_exec)(target_ulong pc) {
     }
 }
 
+void HELPER(panda_callbacks_start_block_exec)(CPUArchState *cpu_env, void *tb) {
+    panda_callbacks_start_block_exec(ENV_GET_CPU(cpu_env), (TranslationBlock*) tb);
+}
+
+void HELPER(panda_callbacks_end_block_exec)(CPUArchState *cpu_env, void *tb) {
+    panda_callbacks_end_block_exec(ENV_GET_CPU(cpu_env), (TranslationBlock*) tb);
+}
+
+
 #if defined(TARGET_ARM) || defined(TARGET_MIPS)
 void HELPER(panda_guest_hypercall)(CPUArchState *cpu_env) {
     panda_callbacks_guest_hypercall(ENV_GET_CPU(cpu_env));

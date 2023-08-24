@@ -48,6 +48,7 @@ static inline void gen_tb_start(TranslationBlock *tb)
 static void gen_tb_end(TranslationBlock *tb, int num_insns)
 {
     gen_set_label(exitreq_label);
+    gen_helper_panda_callbacks_end_block_exec(cpu_env, tcg_const_ptr(tb));
     tcg_gen_exit_tb((uintptr_t)tb + TB_EXIT_REQUESTED);
 
     if (tb->cflags & CF_USE_ICOUNT) {
@@ -55,6 +56,7 @@ static void gen_tb_end(TranslationBlock *tb, int num_insns)
          * the actual insn count.  */
         tcg_set_insn_param(icount_start_insn_idx, 1, num_insns);
         gen_set_label(icount_label);
+        gen_helper_panda_callbacks_end_block_exec(cpu_env, tcg_const_ptr(tb));
         tcg_gen_exit_tb((uintptr_t)tb + TB_EXIT_ICOUNT_EXPIRED);
     }
 

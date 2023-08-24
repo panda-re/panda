@@ -2161,6 +2161,7 @@ static inline void gen_goto_tb(DisasContext *s, int tb_num, target_ulong eip)
         /* jump to same page: we can use a direct jump */
         tcg_gen_goto_tb(tb_num);
         gen_jmp_im(eip);
+        gen_helper_panda_callbacks_end_block_exec(cpu_env, tcg_const_ptr(s->tb));
         tcg_gen_exit_tb((uintptr_t)s->tb + tb_num);
     } else {
         /* jump to another page: currently not optimized */
@@ -2537,10 +2538,12 @@ static void gen_eob_worker(DisasContext *s, bool inhibit, bool recheck_tf)
         gen_helper_debug(cpu_env);
     } else if (recheck_tf) {
         gen_helper_rechecking_single_step(cpu_env);
+        gen_helper_panda_callbacks_end_block_exec(cpu_env, tcg_const_ptr(s->tb));
         tcg_gen_exit_tb(0);
     } else if (s->tf) {
         gen_helper_single_step(cpu_env);
     } else {
+        gen_helper_panda_callbacks_end_block_exec(cpu_env, tcg_const_ptr(s->tb));
         tcg_gen_exit_tb(0);
     }
     s->is_jmp = DISAS_TB_JUMP;
@@ -7354,6 +7357,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_jmp_im(pc_start - s->cs_base);
             gen_helper_vmrun(cpu_env, tcg_const_i32(s->aflag - 1),
                              tcg_const_i32(s->pc - pc_start));
+            gen_helper_panda_callbacks_end_block_exec(cpu_env, tcg_const_ptr(s->tb));
             tcg_gen_exit_tb(0);
             s->is_jmp = DISAS_TB_JUMP;
             break;
@@ -8479,6 +8483,8 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     gen_tb_start(tb);
     for(;;) {
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
+        if (num_insns == 0)
+            gen_helper_panda_callbacks_start_block_exec(cpu_env, tcg_const_ptr(tb));
         num_insns++;
 
         // Check reverse-continue status and conditions
