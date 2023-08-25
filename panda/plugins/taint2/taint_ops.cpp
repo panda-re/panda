@@ -844,6 +844,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         uint64_t src_size, uint64_t concrete, uint64_t pred, uint64_t opcode,
         uint64_t instruction_flags, uint64_t num_operands, ...)
 {
+    static uint32_t shift_warned_count = 0;
     TaintData td = mixed_labels(shad, src, src_size, true);
     bool change = bulk_set(shad, dest, dest_size, td);
     taint_log("mix: %s[%lx+%lx] <- %lx+%lx ",
@@ -856,8 +857,37 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         ap);
     va_end(ap);
 
-    update_cb(shad, dest, shad, src, dest_size, opcode, instruction_flags,
-        operands);
+    bool update_masks = true;
+    if ((opcode == llvm::Instruction::Shl) ||
+            (opcode == llvm::Instruction::LShr) ||
+            (opcode == llvm::Instruction::AShr)) {
+        // taint_mix is only called for the LLVM shift instructions if one
+        // operand is an LLVM variable and the other is a constant
+        // if the shift amount is the constant, can update the masks
+        // if the item being shifted is the constant, it's hard to figure out
+        // what to do with the masks as it depends on what bits in the shift
+        // amount are controlled, so give up - don't let update_cb do
+        // something crazy, nor assert (when TAINT2_DEBUG is on) if the item
+        // being shifted happens to be -1
+        if (operands.at(1) == nullptr) {
+            shift_warned_count++;
+            if (shift_warned_count <= 10) {
+                fprintf(stderr, "%sWARNING: Variable shift amount for opcode "
+                        "%ld; control bits may be incorrect.\n", PANDA_MSG,
+                        opcode);
+            }
+            if (shift_warned_count == 10) {
+                fprintf(stderr, "%sVariable shift amount warning emitted %d "
+                        "times, suppressing warning.\n", PANDA_MSG,
+                        shift_warned_count);
+            }
+            update_masks = false;
+        }
+    }
+    if (update_masks) {
+        update_cb(shad, dest, shad, src, dest_size, opcode, instruction_flags,
+            operands);
+    }
 
     // Taint propagation notifications.
     Addr src_addr = get_addr_from_shad(shad, src);
