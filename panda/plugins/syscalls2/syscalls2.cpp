@@ -784,7 +784,9 @@ uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum) {
         // Mask off the upper 32 bits
         result &= 0xFFFFFFFF;
     }else if (syscall_abi == ABI_MIPS_O32) {
-        assert(0);
+        //assert(0); // XXX this happens: see panda issues 1337, 1338
+        printf("WARNING: no support for reading 64-bit arguments on 32-bit guest\n");
+        return 0;
     }
     return result;
 #else
