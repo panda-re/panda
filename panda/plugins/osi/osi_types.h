@@ -53,6 +53,7 @@ typedef struct osi_module_struct {
     char *file;
     char *name;
     target_ulong offset; // XXX only set by osi_linux for now
+    target_ulong flags; // XXX only set by osi_linux for now
 } OsiModule;
 
 /**

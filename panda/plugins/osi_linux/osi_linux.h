@@ -291,7 +291,8 @@ IMPLEMENT_OFFSET_GET(get_vma_start, vma_struct, target_ulong, ki.vma.vm_start_of
 IMPLEMENT_OFFSET_GET(get_vma_end, vma_struct, target_ulong, ki.vma.vm_end_offset, 0)
 
 /**
- * @todo Retrieves the address of the following vm_area_struct.
+ * @brief Retrieves the flags of the following vm_area_struct.
+ * https://elixir.bootlin.com/linux/v6.5/source/include/linux/mm.h#L260
  */
 IMPLEMENT_OFFSET_GET(get_vma_flags, vma_struct, target_ulong, ki.vma.vm_flags_offset, 0)
 

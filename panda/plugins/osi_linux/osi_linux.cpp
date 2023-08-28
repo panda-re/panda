@@ -286,6 +286,7 @@ static bool fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr,
         m->modd = vma_addr;
         m->base = vma_start;
         m->size = vma_end - vma_start;
+        m->flags = get_vma_flags(env, vma_addr);
     }
 
     return populated;
