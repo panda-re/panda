@@ -40,6 +40,7 @@ PPP_PROT_REG_CB(on_get_process_handles)
 PPP_PROT_REG_CB(on_get_current_process)
 PPP_PROT_REG_CB(on_get_current_process_handle)
 PPP_PROT_REG_CB(on_get_process)
+PPP_PROT_REG_CB(on_get_proc_mem)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_mappings)
 PPP_PROT_REG_CB(on_get_file_mappings)
@@ -60,6 +61,7 @@ PPP_CB_BOILERPLATE(on_get_process_handles)
 PPP_CB_BOILERPLATE(on_get_current_process)
 PPP_CB_BOILERPLATE(on_get_current_process_handle)
 PPP_CB_BOILERPLATE(on_get_process)
+PPP_CB_BOILERPLATE(on_get_proc_mem)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_mappings)
 PPP_CB_BOILERPLATE(on_get_file_mappings)
@@ -107,6 +109,12 @@ OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {
     OsiProc *p = NULL;
     PPP_RUN_CB(on_get_process, cpu, h, &p);
     return p;
+}
+
+OsiProcMem *get_proc_mem(CPUState *cpu, const OsiProc *p) {
+    OsiProcMem *pm = NULL;
+    PPP_RUN_CB(on_get_proc_mem, cpu, p, &pm);
+    return pm;
 }
 
 GArray *get_modules(CPUState *cpu) {

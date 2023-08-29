@@ -504,6 +504,36 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
 }
 
 /**
+ * @brief PPP callback to retrieve memory details about a running process.
+ * Return value is a pointer to a static memory address, which will be
+ * overwritten the next time this function is called.
+ */
+void on_get_proc_mem(CPUState *env, const OsiProc *p, OsiProcMem **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
+    static OsiProcMem pm;
+
+    if ((p != nullptr) && (p->taskd != 0)) {
+        target_ptr_t vma_addr = get_vma_first(env, p->taskd);
+        if(vma_addr != 0) {
+            target_ptr_t mm_addr = get_vma_vm_mm(env, vma_addr);
+            if(mm_addr != 0) {
+                pm.start_brk = get_mm_start_brk(env, mm_addr);
+                if(pm.start_brk != 0) {
+                    pm.brk = get_mm_brk(env, mm_addr);
+                    if(pm.brk != 0) {
+                        *out = &pm;
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    *out = nullptr;
+}
+
+/**
  * @brief Get all mappings that match one of the specified mapping types.
  */
 static void get_mappings(CPUState *env, OsiProc *p, GArray **out,
@@ -1045,6 +1075,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_process, on_get_process);
+    PPP_REG_CB("osi", on_get_proc_mem, on_get_proc_mem);
     PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
     PPP_REG_CB("osi", on_get_file_mappings, on_get_file_mappings);
     PPP_REG_CB("osi", on_get_heap_mappings, on_get_heap_mappings);

@@ -11,6 +11,16 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
+/**
+ * @brief start_brk (end of bss) and brk (program break) for a process.
+ *
+ * @note Only meaningful for linux guests.
+ */
+
+typedef struct osi_proc_mem {
+    target_ptr_t start_brk;
+    target_ptr_t brk;
+} OsiProcMem;
 
 /**
  * @brief Minimal handle for a process. Contains a unique identifier \p asid
