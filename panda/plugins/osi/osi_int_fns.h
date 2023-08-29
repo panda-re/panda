@@ -19,6 +19,10 @@ GArray *get_modules(CPUState *cpu);
 // returns information about the memory mappings of libraries loaded by a guest OS process
 GArray *get_mappings(CPUState *cpu, OsiProc *p);
 
+// returns process specific memory parameters (start_brk/brk)
+// supported in osi_linux only
+OsiProcMem *get_proc_mem(CPUState *cpu, const OsiProc *p);
+
 // like get_mappings, but only return segments backed by files
 // for wintrospection, this is the same as get_mappings
 GArray *get_file_mappings(CPUState *cpu, OsiProc *p);

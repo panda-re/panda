@@ -82,6 +82,12 @@ The following data structures are defined in the [`osi_types.h` header][osi_type
         OsiPage *pages;     // TODO in osi_linux
     } OsiProc;
 
+    // Represents process memory details
+    typedef struct osi_proc_mem {
+        target_ptr_t start_brk;
+        target_ptr_t brk;
+    } OsiProcMem;
+
 ```
 
 ### Data allocation
@@ -188,6 +194,18 @@ typedef void (*on_get_process_t)(CPUState *, OsiProcHandle *, OsiProc **)
 ```
 
 Description: Called to retrieve full process information about the process pointed to by `OsiProcHandle`. Implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `free_osiproc`.
+
+---
+
+Name: **on\_get\_proc\_mem**
+
+Signature:
+
+```C
+typedef void (*on_get_proc_mem_t)(CPUState *, OsiProc *, OsiProcMem **)
+```
+
+Description: Called to retrieve process memory details.  Currently only implemented in osi\_linux.  Returns a pointer to a static memory address, which will be overwritten on the next call to this function.
 
 ---
 
