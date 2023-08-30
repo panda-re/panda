@@ -23,6 +23,7 @@ typedef void OsiProc;
 typedef void OsiModule;
 typedef void GArray;
 typedef void target_pid_t;
+typedef void target_ptr_t;
 
 #include "osi_int_fns.h"
 
