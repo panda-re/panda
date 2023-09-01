@@ -460,7 +460,7 @@ class MipsArch(PandaArch):
         self.reg_sp = regnames.index('SP')
         self.reg_retaddr = regnames.index('RA')
         # Default syscall/args are for mips o32
-        self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"],
+        self.call_conventions = {"mips":["A0", "A1", "A2", "A3", "stack_3", "stack_4", "stack_5", "stack_6"],
                 "syscall": ["V0", "A0", "A1", "A2", "A3", "stack_3", "stack_4", "stack_5", "stack_6"]} # XXX: Note it's not 0-indexed for stack args, I guess the syscall pushes stuff too
         self.call_conventions['default'] = self.call_conventions['mips']
         self.call_conventions['linux_kernel'] = self.call_conventions['mips']
