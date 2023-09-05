@@ -1,6 +1,6 @@
 /* PANDABEGINCOMMENT
  * 
- * Authors:
+ * Authors: FlyingRagnar (Jim Knapp)
  * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
@@ -14,7 +14,9 @@ bool translate_callback(CPUState* env, target_ulong pc);
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int num_of_input_pcs = 0;
-uint64_t* input_pcs;
+uint64_t* input_pcs = NULL;
+bool range_passed = false;
+uint64_t input_pc_range[2];
 uint64_t* first_instr;
 uint64_t* last_instr;
 static bool first_last_only = false;
@@ -38,6 +40,15 @@ int insn_exec_callback(CPUState *env, target_ulong pc) {
                 }
             }   
         }
+        
+        if (range_passed) {
+            if (first_instr[0] == 0) {
+                first_instr[0] = curinstr;
+                last_instr[0] = curinstr;
+            } else {
+                last_instr[0] = curinstr;
+            }
+        }
     } else {
         fprintf(counterslog, "PC:0x%" PRIx64 " Guest Instr:%" PRIu64 "\n", (uint64_t)pc, curinstr);
     }     
@@ -49,6 +60,11 @@ bool translate_callback(CPUState* env, target_ulong pc) {
         if (pc == input_pcs[i]) {
             return true;
         }
+    }
+    
+    if (range_passed) {
+        if (pc >= input_pc_range[0] && pc <= input_pc_range[1])
+            return true;
     }
     return false; 
 }
@@ -64,9 +80,22 @@ bool init_plugin(void *self) {
                 "filename of the text file containing pc values");
         const char* out_filename = panda_parse_string_opt(args, "out_file", "pc_matches.txt",
                 "filename of the output text file");
+        const char* pc_range = panda_parse_string_opt(args, "pc_range", "",
+                "range of pc values to search for");
+                
         
-        if (strlen(pc_filename) != 0 && pc != 0) {
-          fprintf(stderr, "error: cannot specify both pc and pc_file parameters\n");
+        int in_count = 0;
+        if (strlen(pc_filename) != 0)
+          in_count += 1;
+        if (pc != 0)
+          in_count += 1;
+        if (strlen(pc_range) != 0)
+          in_count += 1;
+        if (in_count == 0) {
+          fprintf(stderr, "error: must specify one input parameter (pc, pc_file, or pc_range)\n");
+          return false;
+        } else if (in_count > 1) {
+          fprintf(stderr, "error: only one input (pc, pc_file, or pc_range) can be specified\n");
           return false;
         }
         
@@ -101,7 +130,33 @@ bool init_plugin(void *self) {
                 input_pcs[j] = (uint64_t) strtoul(str,NULL,0);                             
                 j++;
             }
-            fclose(pc_input_file);            
+            fclose(pc_input_file);  
+        } else if (strlen(pc_range) != 0) {
+            
+            // verify input contains a hyphen and no spaces
+            char* check = strstr(pc_range,"-");
+            if (!check) {
+                fprintf(stderr, "error: pc_range must contain a hyphen between two pc values\n");
+                return false;
+            }
+            check = strstr(pc_range," ");
+            if (check) {
+                fprintf(stderr, "error: pc_range should contain two pc values separated by a hyphen with no spaces\n");
+                return false;
+            }
+        
+            range_passed = true;
+            char* range_cpy = strdup(pc_range);
+            char* token = strtok(range_cpy,"-");
+            input_pc_range[0] = (uint64_t) strtoul(token,NULL,0);
+            token = strtok(NULL,"-");
+            input_pc_range[1] = (uint64_t) strtoul(token,NULL,0);
+            
+            if (input_pc_range[0] >= input_pc_range[1]) {
+                fprintf(stderr, "error: pc_range not a valid range, left value must be less than right value\n");
+                return false;
+            }
+            
         } else {
             // use single pc value passed, which defaults to 0
             num_of_input_pcs = 1;
@@ -111,8 +166,13 @@ bool init_plugin(void *self) {
         
         // if first last only, create arrays to store/track instructions
         if (first_last_only) {
-            first_instr = (uint64_t*)calloc(num_of_input_pcs, sizeof(uint64_t));
-            last_instr = (uint64_t*)calloc(num_of_input_pcs, sizeof(uint64_t));
+            if (num_of_input_pcs > 0) {
+                first_instr = (uint64_t*)calloc(num_of_input_pcs, sizeof(uint64_t));
+                last_instr = (uint64_t*)calloc(num_of_input_pcs, sizeof(uint64_t));
+            } else if (range_passed) {
+                first_instr = (uint64_t*)calloc(1, sizeof(uint64_t));
+                last_instr = (uint64_t*)calloc(1, sizeof(uint64_t));
+            }
         }
         
         // open file for output
@@ -123,9 +183,11 @@ bool init_plugin(void *self) {
         for (int l=0; l < num_of_input_pcs; l++) {
             fprintf(stderr, "%sinput pc %i = 0x%" PRIx64 "\n", PANDA_MSG, l, input_pcs[l]);
         }
+        
+        if (range_passed) {
+            fprintf(stderr, "%spc start range 0x%" PRIx64 " pc end range 0x%" PRIx64 "\n", PANDA_MSG, input_pc_range[0], input_pc_range[1]);
+        }
     }
-
-    panda_enable_precise_pc();
 
     panda_cb pcb;
     pcb.insn_translate = translate_callback;
@@ -139,14 +201,20 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 
     // if first last only, print out instructions
-    if ( first_last_only ) {
+    if (first_last_only) {
         for (int i=0; i < num_of_input_pcs; i++) {
             fprintf(counterslog, "PC:0x%" PRIx64 " First Guest Instr:%" PRIu64 " Last Guest Instr:%" PRIu64 "\n", input_pcs[i], first_instr[i], last_instr[i]);
         }
+        
+        if (range_passed) {
+            fprintf(counterslog, "PC Range:0x%" PRIx64 "-0x%" PRIx64 " First Guest Instr:%" PRIu64 " Last Guest Instr:%" PRIu64 "\n", input_pc_range[0], input_pc_range[1], first_instr[0], last_instr[0]);
+        }
+        free(first_instr);
         free(last_instr);
     }
     
-    free(input_pcs);
+    if (num_of_input_pcs > 0)
+        free(input_pcs);
     
     if (counterslog != NULL) {
         fclose(counterslog);
