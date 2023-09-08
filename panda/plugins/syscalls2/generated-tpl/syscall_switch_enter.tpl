@@ -53,9 +53,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 		panda_noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }};
 		ctx.double_return = {{ 'true' if syscall.panda_double_return else 'false' }};
 		{%- if syscall.args|length > 0 %}
-		{%- for arg in syscall.args %}
-		{{arg.emit_temp_assignment()}}
-		{%- endfor %}
+		{{syscall.temp_assignments()}}
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_{{syscall.name}}_return)))) {
