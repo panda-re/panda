@@ -18,6 +18,8 @@ int load_syscall_info(void) {
     const gchar *arch = "arm";
 #elif defined(TARGET_ARM) &&defined(TARGET_AARCH64)
     const gchar *arch = "arm64";
+#elif defined(TARGET_MIPS) && defined(TARGET_MIPS64)
+    const gchar *arch = "mips64";
 #elif defined(TARGET_MIPS)
     const gchar *arch = "mips";
 #elif defined(TARGET_X86_64)
