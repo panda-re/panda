@@ -1654,8 +1654,8 @@ PPP_CB_TYPEDEF(void, on_sys_execve_enter, CPUState* cpu, target_ulong pc, uint64
 PPP_CB_TYPEDEF(void, on_sys_execve_return, CPUState* cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp);
 PPP_CB_TYPEDEF(void, on_sys_execveat_enter, CPUState* cpu, target_ulong pc, int32_t dfd, uint64_t filename, uint64_t argv, uint64_t envp, int32_t flags);
 PPP_CB_TYPEDEF(void, on_sys_execveat_return, CPUState* cpu, target_ulong pc, int32_t dfd, uint64_t filename, uint64_t argv, uint64_t envp, int32_t flags);
-PPP_CB_TYPEDEF(void, on_sys_exit_enter, CPUState* cpu, target_ulong pc, int32_t rval);
-PPP_CB_TYPEDEF(void, on_sys_exit_return, CPUState* cpu, target_ulong pc, int32_t rval);
+PPP_CB_TYPEDEF(void, on_sys_exit_enter, CPUState* cpu, target_ulong pc, int32_t error_code);
+PPP_CB_TYPEDEF(void, on_sys_exit_return, CPUState* cpu, target_ulong pc, int32_t error_code);
 PPP_CB_TYPEDEF(void, on_sys_exit_group_enter, CPUState* cpu, target_ulong pc, int32_t error_code);
 PPP_CB_TYPEDEF(void, on_sys_exit_group_return, CPUState* cpu, target_ulong pc, int32_t error_code);
 PPP_CB_TYPEDEF(void, on_sys_faccessat_enter, CPUState* cpu, target_ulong pc, int32_t dfd, uint64_t filename, int32_t mode);

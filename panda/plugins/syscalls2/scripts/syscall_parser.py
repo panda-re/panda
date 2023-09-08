@@ -453,6 +453,8 @@ if __name__ == '__main__':
             context_target_extra = json.load(args.context_target_file)
     else:
         context_target_extra = {}
+    
+    arch_scs = {arch: {} for arch in KNOWN_ARCH}
 
     # parse system call definitions for all targets
     for _target in args.target:
@@ -550,12 +552,21 @@ if __name__ == '__main__':
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))
 
+        arch_scs[_arch][_os] = syscalls_to_write
+    
+    for _arch in arch_scs:
+        oss = sorted(arch_scs[_arch].keys())
+        outvals = {}
+        for _os in oss:
+            for ov in arch_scs[_arch][_os]:
+                outvals[ov] = arch_scs[_arch][_os][ov]
+        
         # Make syscalls_ext_typedefs_[arch] files
         j2tpl = j2env.get_template('syscalls_ext_typedefs_arch.tpl')
         of_name = '%s%s' % (args.prefix, 'syscalls_ext_typedefs_' + _arch + '.h')
         with open(os.path.join(args.outdir, of_name), 'w+') as of:
             logging.info("Writing %s", of.name)
-            of.write(j2tpl.render(syscalls=syscalls_to_write))
+            of.write(j2tpl.render(syscalls=outvals))
 
     # Render big files.
     for tpl, ext in GENERATED_FILES:
