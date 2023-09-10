@@ -5174,193 +5174,1192 @@ namespace syscalls2 {
 	namespace linux {
 		namespace mips64 {
 			
-			const int sys_read = 5000;
+			const int sys_exit = 4001;
 			
 			
-			const int sys_write = 5001;
+			const int sys_fork = 4002;
 			
 			
-			const int sys_open = 5002;
+			const int sys_read = 4003;
 			
 			
-			const int sys_close = 5003;
+			const int sys_write = 4004;
 			
 			
-			const int sys_newstat = 5004;
+			const int sys_open = 4005;
 			
 			
-			const int sys_newfstat = 5005;
+			const int sys_close = 4006;
 			
 			
-			const int sys_newlstat = 5006;
+			const int sys_waitpid = 4007;
 			
 			
-			const int sys_poll = 5007;
+			const int sys_creat = 4008;
 			
 			
-			const int sys_lseek = 5008;
+			const int sys_link = 4009;
+			
+			
+			const int sys_unlink = 4010;
+			
+			
+			const int sys_execve = 4011;
+			
+			
+			const int sys_chdir = 4012;
+			
+			
+			const int sys_time32 = 4013;
+			
+			
+			const int sys_mknod = 4014;
+			
+			
+			const int sys_chmod = 4015;
+			
+			
+			const int sys_lchown = 4016;
+			
+			
+			const int sys_stat = 4018;
+			
+			
+			const int sys_lseek = 4019;
+			
+			
+			const int sys_getpid = 4020;
+			
+			
+			const int sys_mount = 4021;
+			
+			
+			const int sys_oldumount = 4022;
+			
+			
+			const int sys_setuid = 4023;
+			
+			
+			const int sys_getuid = 4024;
+			
+			
+			const int sys_stime32 = 4025;
+			
+			
+			const int sys_ptrace = 4026;
+			
+			
+			const int sys_alarm = 4027;
+			
+			
+			const int sys_fstat = 4028;
+			
+			
+			const int sys_pause = 4029;
+			
+			
+			const int sys_utime32 = 4030;
+			
+			
+			const int sys_access = 4033;
+			
+			
+			const int sys_nice = 4034;
+			
+			
+			const int sys_sync = 4036;
+			
+			
+			const int sys_kill = 4037;
+			
+			
+			const int sys_rename = 4038;
+			
+			
+			const int sys_mkdir = 4039;
+			
+			
+			const int sys_rmdir = 4040;
+			
+			
+			const int sys_dup = 4041;
+			
+			
+			const int sys_pipe = 4042;
+			
+			
+			const int sys_times = 4043;
+			
+			
+			const int sys_brk = 4045;
+			
+			
+			const int sys_setgid = 4046;
+			
+			
+			const int sys_getgid = 4047;
+			
+			
+			const int sys_signal = 4048;
+			
+			
+			const int sys_geteuid = 4049;
+			
+			
+			const int sys_getegid = 4050;
+			
+			
+			const int sys_acct = 4051;
+			
+			
+			const int sys_umount = 4052;
+			
+			
+			const int sys_ioctl = 4054;
+			
+			
+			const int sys_fcntl = 4055;
+			
+			
+			const int sys_setpgid = 4057;
+			
+			
+			const int sys_olduname = 4059;
+			
+			
+			const int sys_umask = 4060;
+			
+			
+			const int sys_chroot = 4061;
+			
+			
+			const int sys_ustat = 4062;
+			
+			
+			const int sys_dup2 = 4063;
+			
+			
+			const int sys_getppid = 4064;
+			
+			
+			const int sys_getpgrp = 4065;
+			
+			
+			const int sys_setsid = 4066;
+			
+			
+			const int sys_sigaction = 4067;
+			
+			
+			const int sys_sgetmask = 4068;
+			
+			
+			const int sys_ssetmask = 4069;
+			
+			
+			const int sys_setreuid = 4070;
+			
+			
+			const int sys_setregid = 4071;
+			
+			
+			const int sys_sigsuspend = 4072;
+			
+			
+			const int sys_sigpending = 4073;
+			
+			
+			const int sys_sethostname = 4074;
+			
+			
+			const int sys_setrlimit = 4075;
+			
+			
+			const int sys_getrlimit = 4076;
+			
+			
+			const int sys_getrusage = 4077;
+			
+			
+			const int sys_gettimeofday = 4078;
+			
+			
+			const int sys_settimeofday = 4079;
+			
+			
+			const int sys_getgroups = 4080;
+			
+			
+			const int sys_setgroups = 4081;
+			
+			
+			const int sys_symlink = 4083;
+			
+			
+			const int sys_lstat = 4084;
+			
+			
+			const int sys_readlink = 4085;
+			
+			
+			const int sys_uselib = 4086;
+			
+			
+			const int sys_swapon = 4087;
+			
+			
+			const int sys_reboot = 4088;
+			
+			
+			const int sys_old_readdir = 4089;
+			
+			
+			const int sys_mmap = 4090;
+			
+			
+			const int sys_munmap = 4091;
+			
+			
+			const int sys_truncate = 4092;
+			
+			
+			const int sys_ftruncate = 4093;
+			
+			
+			const int sys_fchmod = 4094;
+			
+			
+			const int sys_fchown = 4095;
+			
+			
+			const int sys_getpriority = 4096;
+			
+			
+			const int sys_setpriority = 4097;
+			
+			
+			const int sys_statfs = 4099;
+			
+			
+			const int sys_fstatfs = 4100;
+			
+			
+			const int sys_ioperm = 4101;
+			
+			
+			const int sys_socketcall = 4102;
+			
+			
+			const int sys_syslog = 4103;
+			
+			
+			const int sys_setitimer = 4104;
+			
+			
+			const int sys_getitimer = 4105;
+			
+			
+			const int sys_newstat = 4106;
+			
+			
+			const int sys_newlstat = 4107;
+			
+			
+			const int sys_newfstat = 4108;
+			
+			
+			const int sys_uname = 4109;
+			
+			
+			const int sys_iopl = 4110;
+			
+			
+			const int sys_vhangup = 4111;
+			
+			
+			const int sys_idle = 4112;
+			
+			
+			const int sys_wait4 = 4114;
+			
+			
+			const int sys_swapoff = 4115;
+			
+			
+			const int sys_sysinfo = 4116;
+			
+			
+			const int sys_ipc = 4117;
+			
+			
+			const int sys_fsync = 4118;
+			
+			
+			const int sys_sigreturn = 4119;
+			
+			
+			const int sys_clone = 4120;
+			
+			
+			const int sys_setdomainname = 4121;
+			
+			
+			const int sys_newuname = 4122;
+			
+			
+			const int modify_ldt = 4123;
+			
+			
+			const int sys_adjtimex_time32 = 4124;
+			
+			
+			const int sys_mprotect = 4125;
+			
+			
+			const int sys_sigprocmask = 4126;
+			
+			
+			const int create_module = 4127;
+			
+			
+			const int sys_init_module = 4128;
+			
+			
+			const int sys_delete_module = 4129;
+			
+			
+			const int get_kernel_syms = 4130;
+			
+			
+			const int sys_quotactl = 4131;
+			
+			
+			const int sys_getpgid = 4132;
+			
+			
+			const int sys_fchdir = 4133;
+			
+			
+			const int sys_bdflush = 4134;
+			
+			
+			const int sys_sysfs = 4135;
+			
+			
+			const int sys_personality = 4136;
+			
+			
+			const int sys_setfsuid = 4138;
+			
+			
+			const int sys_setfsgid = 4139;
+			
+			
+			const int sys_llseek = 4140;
+			
+			
+			const int sys_getdents = 4141;
+			
+			
+			const int sys_select = 4142;
+			
+			
+			const int sys_flock = 4143;
+			
+			
+			const int sys_msync = 4144;
+			
+			
+			const int sys_readv = 4145;
+			
+			
+			const int sys_writev = 4146;
+			
+			
+			const int sys_cacheflush = 4147;
+			
+			
+			const int sys_setup = 4150;
+			
+			
+			const int sys_getsid = 4151;
+			
+			
+			const int sys_fdatasync = 4152;
+			
+			
+			const int sys_sysctl = 4153;
+			
+			
+			const int sys_mlock = 4154;
+			
+			
+			const int sys_munlock = 4155;
+			
+			
+			const int sys_mlockall = 4156;
+			
+			
+			const int sys_munlockall = 4157;
+			
+			
+			const int sys_sched_setparam = 4158;
+			
+			
+			const int sys_sched_getparam = 4159;
+			
+			
+			const int sys_sched_setscheduler = 4160;
+			
+			
+			const int sys_sched_getscheduler = 4161;
+			
+			
+			const int sys_sched_yield = 4162;
+			
+			
+			const int sys_sched_get_priority_max = 4163;
+			
+			
+			const int sys_sched_get_priority_min = 4164;
+			
+			
+			const int sys_sched_rr_get_interval_time32 = 4165;
+			
+			
+			const int sys_nanosleep_time32 = 4166;
+			
+			
+			const int sys_mremap = 4167;
+			
+			
+			const int sys_accept = 4168;
+			
+			
+			const int sys_bind = 4169;
+			
+			
+			const int sys_connect = 4170;
+			
+			
+			const int sys_getpeername = 4171;
+			
+			
+			const int sys_getsockname = 4172;
+			
+			
+			const int sys_getsockopt = 4173;
+			
+			
+			const int sys_listen = 4174;
+			
+			
+			const int sys_recv = 4175;
+			
+			
+			const int sys_recvfrom = 4176;
+			
+			
+			const int sys_recvmsg = 4177;
+			
+			
+			const int sys_send = 4178;
+			
+			
+			const int sys_sendmsg = 4179;
+			
+			
+			const int sys_sendto = 4180;
+			
+			
+			const int sys_setsockopt = 4181;
+			
+			
+			const int sys_shutdown = 4182;
+			
+			
+			const int sys_socket = 4183;
+			
+			
+			const int sys_socketpair = 4184;
+			
+			
+			const int sys_setresuid = 4185;
+			
+			
+			const int sys_getresuid = 4186;
+			
+			
+			const int sys_query_module = 4187;
+			
+			
+			const int sys_poll = 4188;
+			
+			
+			const int sys_nfsservctl = 4189;
+			
+			
+			const int sys_setresgid = 4190;
+			
+			
+			const int sys_getresgid = 4191;
+			
+			
+			const int sys_prctl = 4192;
+			
+			
+			const int sys_rt_sigreturn = 4193;
+			
+			
+			const int sys_rt_sigaction = 4194;
+			
+			
+			const int sys_rt_sigprocmask = 4195;
+			
+			
+			const int sys_rt_sigpending = 4196;
+			
+			
+			const int sys_rt_sigtimedwait_time32 = 4197;
+			
+			
+			const int sys_rt_sigqueueinfo = 4198;
+			
+			
+			const int sys_rt_sigsuspend = 4199;
+			
+			
+			const int sys_pread64 = 4200;
+			
+			
+			const int sys_pwrite64 = 4201;
+			
+			
+			const int sys_chown = 4202;
+			
+			
+			const int sys_getcwd = 4203;
+			
+			
+			const int sys_capget = 4204;
+			
+			
+			const int sys_capset = 4205;
+			
+			
+			const int sys_sigaltstack = 4206;
+			
+			
+			const int sys_sendfile = 4207;
+			
+			
+			const int mmap2 = 4210;
+			
+			
+			const int sys_truncate64 = 4211;
+			
+			
+			const int sys_ftruncate64 = 4212;
+			
+			
+			const int sys_stat64 = 4213;
+			
+			
+			const int sys_lstat64 = 4214;
+			
+			
+			const int sys_fstat64 = 4215;
+			
+			
+			const int sys_pivot_root = 4216;
+			
+			
+			const int sys_mincore = 4217;
+			
+			
+			const int sys_madvise = 4218;
+			
+			
+			const int sys_getdents64 = 4219;
+			
+			
+			const int sys_fcntl64 = 4220;
+			
+			
+			const int sys_gettid = 4222;
+			
+			
+			const int sys_readahead = 4223;
+			
+			
+			const int sys_setxattr = 4224;
+			
+			
+			const int sys_lsetxattr = 4225;
+			
+			
+			const int sys_fsetxattr = 4226;
+			
+			
+			const int sys_getxattr = 4227;
+			
+			
+			const int sys_lgetxattr = 4228;
+			
+			
+			const int sys_fgetxattr = 4229;
+			
+			
+			const int sys_listxattr = 4230;
+			
+			
+			const int sys_llistxattr = 4231;
+			
+			
+			const int sys_flistxattr = 4232;
+			
+			
+			const int sys_removexattr = 4233;
+			
+			
+			const int sys_lremovexattr = 4234;
+			
+			
+			const int sys_fremovexattr = 4235;
+			
+			
+			const int sys_tkill = 4236;
+			
+			
+			const int sys_sendfile64 = 4237;
+			
+			
+			const int sys_futex_time32 = 4238;
+			
+			
+			const int sys_sched_setaffinity = 4239;
+			
+			
+			const int sys_sched_getaffinity = 4240;
+			
+			
+			const int sys_io_setup = 4241;
+			
+			
+			const int sys_io_destroy = 4242;
+			
+			
+			const int sys_io_getevents_time32 = 4243;
+			
+			
+			const int sys_io_submit = 4244;
+			
+			
+			const int sys_io_cancel = 4245;
+			
+			
+			const int sys_exit_group = 4246;
+			
+			
+			const int sys_lookup_dcookie = 4247;
+			
+			
+			const int sys_epoll_create = 4248;
+			
+			
+			const int sys_epoll_ctl = 4249;
+			
+			
+			const int sys_epoll_wait = 4250;
+			
+			
+			const int sys_remap_file_pages = 4251;
+			
+			
+			const int sys_set_tid_address = 4252;
+			
+			
+			const int sys_restart_syscall = 4253;
+			
+			
+			const int sys_fadvise64_64 = 4254;
+			
+			
+			const int sys_statfs64 = 4255;
+			
+			
+			const int sys_fstatfs64 = 4256;
+			
+			
+			const int sys_timer_create = 4257;
+			
+			
+			const int sys_timer_settime32 = 4258;
+			
+			
+			const int sys_timer_gettime32 = 4259;
+			
+			
+			const int sys_timer_getoverrun = 4260;
+			
+			
+			const int sys_timer_delete = 4261;
+			
+			
+			const int sys_clock_settime32 = 4262;
+			
+			
+			const int sys_clock_gettime32 = 4263;
+			
+			
+			const int sys_clock_getres_time32 = 4264;
+			
+			
+			const int sys_clock_nanosleep_time32 = 4265;
+			
+			
+			const int sys_tgkill = 4266;
+			
+			
+			const int sys_utimes_time32 = 4267;
+			
+			
+			const int sys_mbind = 4268;
+			
+			
+			const int sys_get_mempolicy = 4269;
+			
+			
+			const int sys_set_mempolicy = 4270;
+			
+			
+			const int sys_mq_open = 4271;
+			
+			
+			const int sys_mq_unlink = 4272;
+			
+			
+			const int sys_mq_timedsend_time32 = 4273;
+			
+			
+			const int sys_mq_timedreceive_time32 = 4274;
+			
+			
+			const int sys_mq_notify = 4275;
+			
+			
+			const int sys_mq_getsetattr = 4276;
+			
+			
+			const int sys_waitid = 4278;
+			
+			
+			const int sys_add_key = 4280;
+			
+			
+			const int sys_request_key = 4281;
+			
+			
+			const int sys_keyctl = 4282;
+			
+			
+			const int set_thread_area = 4283;
+			
+			
+			const int sys_inotify_init = 4284;
+			
+			
+			const int sys_inotify_add_watch = 4285;
+			
+			
+			const int sys_inotify_rm_watch = 4286;
+			
+			
+			const int sys_migrate_pages = 4287;
+			
+			
+			const int sys_openat = 4288;
+			
+			
+			const int sys_mkdirat = 4289;
+			
+			
+			const int sys_mknodat = 4290;
+			
+			
+			const int sys_fchownat = 4291;
+			
+			
+			const int sys_futimesat_time32 = 4292;
+			
+			
+			const int sys_fstatat64 = 4293;
+			
+			
+			const int sys_unlinkat = 4294;
+			
+			
+			const int sys_renameat = 4295;
+			
+			
+			const int sys_linkat = 4296;
+			
+			
+			const int sys_symlinkat = 4297;
+			
+			
+			const int sys_readlinkat = 4298;
+			
+			
+			const int sys_fchmodat = 4299;
+			
+			
+			const int sys_faccessat = 4300;
+			
+			
+			const int sys_pselect6_time32 = 4301;
+			
+			
+			const int sys_ppoll_time32 = 4302;
+			
+			
+			const int sys_unshare = 4303;
+			
+			
+			const int sys_splice = 4304;
+			
+			
+			const int sys_sync_file_range = 4305;
+			
+			
+			const int sys_tee = 4306;
+			
+			
+			const int sys_vmsplice = 4307;
+			
+			
+			const int sys_move_pages = 4308;
+			
+			
+			const int sys_set_robust_list = 4309;
+			
+			
+			const int sys_get_robust_list = 4310;
+			
+			
+			const int sys_kexec_load = 4311;
+			
+			
+			const int sys_getcpu = 4312;
+			
+			
+			const int sys_epoll_pwait = 4313;
+			
+			
+			const int sys_ioprio_set = 4314;
+			
+			
+			const int sys_ioprio_get = 4315;
+			
+			
+			const int sys_utimensat_time32 = 4316;
+			
+			
+			const int sys_signalfd = 4317;
+			
+			
+			const int sys_ni_syscall = 4318;
+			
+			
+			const int sys_eventfd = 4319;
+			
+			
+			const int sys_fallocate = 4320;
+			
+			
+			const int sys_timerfd_create = 4321;
+			
+			
+			const int sys_timerfd_gettime32 = 4322;
+			
+			
+			const int sys_timerfd_settime32 = 4323;
+			
+			
+			const int sys_signalfd4 = 4324;
+			
+			
+			const int sys_eventfd2 = 4325;
+			
+			
+			const int sys_epoll_create1 = 4326;
+			
+			
+			const int sys_dup3 = 4327;
+			
+			
+			const int sys_pipe2 = 4328;
+			
+			
+			const int sys_inotify_init1 = 4329;
+			
+			
+			const int sys_preadv = 4330;
+			
+			
+			const int sys_pwritev = 4331;
+			
+			
+			const int sys_rt_tgsigqueueinfo = 4332;
+			
+			
+			const int sys_perf_event_open = 4333;
+			
+			
+			const int sys_accept4 = 4334;
+			
+			
+			const int sys_recvmmsg_time32 = 4335;
+			
+			
+			const int sys_fanotify_init = 4336;
+			
+			
+			const int sys_fanotify_mark = 4337;
+			
+			
+			const int sys_prlimit64 = 4338;
+			
+			
+			const int sys_name_to_handle_at = 4339;
+			
+			
+			const int sys_open_by_handle_at = 4340;
+			
+			
+			const int sys_clock_adjtime32 = 4341;
+			
+			
+			const int sys_syncfs = 4342;
+			
+			
+			const int sys_sendmmsg = 4343;
+			
+			
+			const int sys_setns = 4344;
+			
+			
+			const int sys_process_vm_readv = 4345;
+			
+			
+			const int sys_process_vm_writev = 4346;
+			
+			
+			const int sys_kcmp = 4347;
+			
+			
+			const int sys_finit_module = 4348;
+			
+			
+			const int sys_sched_setattr = 4349;
+			
+			
+			const int sys_sched_getattr = 4350;
+			
+			
+			const int sys_renameat2 = 4351;
+			
+			
+			const int sys_seccomp = 4352;
+			
+			
+			const int sys_getrandom = 4353;
+			
+			
+			const int sys_memfd_create = 4354;
+			
+			
+			const int sys_bpf = 4355;
+			
+			
+			const int sys_execveat = 4356;
+			
+			
+			const int sys_userfaultfd = 4357;
+			
+			
+			const int sys_membarrier = 4358;
+			
+			
+			const int sys_mlock2 = 4359;
+			
+			
+			const int sys_copy_file_range = 4360;
+			
+			
+			const int sys_preadv2 = 4361;
+			
+			
+			const int sys_pwritev2 = 4362;
+			
+			
+			const int sys_pkey_mprotect = 4363;
+			
+			
+			const int sys_pkey_alloc = 4364;
+			
+			
+			const int sys_pkey_free = 4365;
+			
+			
+			const int sys_statx = 4366;
+			
+			
+			const int sys_rseq = 4367;
+			
+			
+			const int sys_io_pgetevents_time32 = 4368;
+			
+			
+			const int sys_semget = 4393;
+			
+			
+			const int sys_semctl = 4394;
+			
+			
+			const int sys_shmget = 4395;
+			
+			
+			const int sys_shmctl = 4396;
+			
+			
+			const int sys_shmat = 4397;
+			
+			
+			const int sys_shmdt = 4398;
+			
+			
+			const int sys_msgget = 4399;
+			
+			
+			const int sys_msgsnd = 4400;
+			
+			
+			const int sys_msgrcv = 4401;
+			
+			
+			const int sys_msgctl = 4402;
+			
+			
+			const int sys_clock_gettime = 4403;
+			
+			
+			const int sys_clock_settime = 4404;
+			
+			
+			const int sys_clock_adjtime = 4405;
+			
+			
+			const int sys_clock_getres = 4406;
+			
+			
+			const int sys_clock_nanosleep = 4407;
+			
+			
+			const int sys_timer_gettime = 4408;
+			
+			
+			const int sys_timer_settime = 4409;
+			
+			
+			const int sys_timerfd_gettime = 4410;
+			
+			
+			const int sys_timerfd_settime = 4411;
+			
+			
+			const int sys_utimensat = 4412;
+			
+			
+			const int sys_pselect6 = 4413;
+			
+			
+			const int sys_ppoll = 4414;
+			
+			
+			const int sys_io_pgetevents = 4416;
+			
+			
+			const int sys_recvmmsg = 4417;
+			
+			
+			const int sys_mq_timedsend = 4418;
+			
+			
+			const int sys_mq_timedreceive = 4419;
+			
+			
+			const int sys_semtimedop = 4420;
+			
+			
+			const int sys_rt_sigtimedwait = 4421;
+			
+			
+			const int sys_futex = 4422;
+			
+			
+			const int sys_sched_rr_get_interval = 4423;
+			
+			
+			const int sys_pidfd_send_signal = 4424;
+			
+			
+			const int sys_io_uring_setup = 4425;
+			
+			
+			const int sys_io_uring_enter = 4426;
+			
+			
+			const int sys_io_uring_register = 4427;
+			
+			
+			const int sys_open_tree = 4428;
+			
+			
+			const int sys_move_mount = 4429;
+			
+			
+			const int sys_fsopen = 4430;
+			
+			
+			const int sys_fsconfig = 4431;
+			
+			
+			const int sys_fsmount = 4432;
+			
+			
+			const int sys_fspick = 4433;
+			
+			
+			const int sys_pidfd_open = 4434;
+			
+			
+			const int sys_openat2 = 4437;
+			
+			
+			const int sys_pidfd_getfd = 4438;
+			
+			
+			const int sys_faccessat2 = 4439;
 			
 			
 			const int sys_old_mmap = 5009;
 			
 			
-			const int sys_mprotect = 5010;
-			
-			
-			const int sys_munmap = 5011;
-			
-			
-			const int sys_brk = 5012;
-			
-			
-			const int sys_rt_sigaction = 5013;
-			
-			
-			const int sys_rt_sigprocmask = 5014;
-			
-			
-			const int sys_ioctl = 5015;
-			
-			
-			const int sys_pread64 = 5016;
-			
-			
-			const int sys_pwrite64 = 5017;
-			
-			
-			const int sys_readv = 5018;
-			
-			
-			const int sys_writev = 5019;
-			
-			
-			const int sys_access = 5020;
-			
-			
-			const int sys_pipe = 5021;
-			
-			
-			const int sys_select = 5022;
-			
-			
-			const int sys_sched_yield = 5023;
-			
-			
-			const int sys_mremap = 5024;
-			
-			
-			const int sys_msync = 5025;
-			
-			
-			const int sys_mincore = 5026;
-			
-			
-			const int sys_madvise = 5027;
-			
-			
-			const int sys_shmget = 5028;
-			
-			
-			const int sys_shmat = 5029;
-			
-			
 			const int sys_old_shmctl = 5030;
 			
 			
-			const int sys_dup = 5031;
-			
-			
-			const int sys_dup2 = 5032;
-			
-			
-			const int sys_pause = 5033;
-			
-			
 			const int sys_nanosleep = 5034;
-			
-			
-			const int sys_getitimer = 5035;
-			
-			
-			const int sys_setitimer = 5036;
-			
-			
-			const int sys_alarm = 5037;
-			
-			
-			const int sys_getpid = 5038;
-			
-			
-			const int sys_sendfile64 = 5039;
-			
-			
-			const int sys_socket = 5040;
-			
-			
-			const int sys_connect = 5041;
-			
-			
-			const int sys_accept = 5042;
-			
-			
-			const int sys_sendto = 5043;
-			
-			
-			const int sys_recvfrom = 5044;
-			
-			
-			const int sys_sendmsg = 5045;
-			
-			
-			const int sys_recvmsg = 5046;
-			
-			
-			const int sys_shutdown = 5047;
-			
-			
-			const int sys_bind = 5048;
-			
-			
-			const int sys_listen = 5049;
-			
-			
-			const int sys_getsockname = 5050;
-			
-			
-			const int sys_getpeername = 5051;
-			
-			
-			const int sys_socketpair = 5052;
-			
-			
-			const int sys_setsockopt = 5053;
-			
-			
-			const int sys_getsockopt = 5054;
-			
-			
-			const int sys_clone = 5055;
-			
-			
-			const int sys_fork = 5056;
-			
-			
-			const int sys_execve = 5057;
-			
-			
-			const int sys_exit = 5058;
-			
-			
-			const int sys_wait4 = 5059;
-			
-			
-			const int sys_kill = 5060;
-			
-			
-			const int sys_newuname = 5061;
-			
-			
-			const int sys_semget = 5062;
 			
 			
 			const int sys_semop = 5063;
@@ -5369,520 +6368,19 @@ namespace syscalls2 {
 			const int sys_old_semctl = 5064;
 			
 			
-			const int sys_shmdt = 5065;
-			
-			
-			const int sys_msgget = 5066;
-			
-			
-			const int sys_msgsnd = 5067;
-			
-			
-			const int sys_msgrcv = 5068;
-			
-			
 			const int sys_old_msgctl = 5069;
-			
-			
-			const int sys_fcntl = 5070;
-			
-			
-			const int sys_flock = 5071;
-			
-			
-			const int sys_fsync = 5072;
-			
-			
-			const int sys_fdatasync = 5073;
-			
-			
-			const int sys_truncate = 5074;
-			
-			
-			const int sys_ftruncate = 5075;
-			
-			
-			const int sys_getdents = 5076;
-			
-			
-			const int sys_getcwd = 5077;
-			
-			
-			const int sys_chdir = 5078;
-			
-			
-			const int sys_fchdir = 5079;
-			
-			
-			const int sys_rename = 5080;
-			
-			
-			const int sys_mkdir = 5081;
-			
-			
-			const int sys_rmdir = 5082;
-			
-			
-			const int sys_creat = 5083;
-			
-			
-			const int sys_link = 5084;
-			
-			
-			const int sys_unlink = 5085;
-			
-			
-			const int sys_symlink = 5086;
-			
-			
-			const int sys_readlink = 5087;
-			
-			
-			const int sys_chmod = 5088;
-			
-			
-			const int sys_fchmod = 5089;
-			
-			
-			const int sys_chown = 5090;
-			
-			
-			const int sys_fchown = 5091;
-			
-			
-			const int sys_lchown = 5092;
-			
-			
-			const int sys_umask = 5093;
-			
-			
-			const int sys_gettimeofday = 5094;
-			
-			
-			const int sys_getrlimit = 5095;
-			
-			
-			const int sys_getrusage = 5096;
-			
-			
-			const int sys_sysinfo = 5097;
-			
-			
-			const int sys_times = 5098;
-			
-			
-			const int sys_ptrace = 5099;
-			
-			
-			const int sys_getuid = 5100;
-			
-			
-			const int sys_syslog = 5101;
-			
-			
-			const int sys_getgid = 5102;
-			
-			
-			const int sys_setuid = 5103;
-			
-			
-			const int sys_setgid = 5104;
-			
-			
-			const int sys_geteuid = 5105;
-			
-			
-			const int sys_getegid = 5106;
-			
-			
-			const int sys_setpgid = 5107;
-			
-			
-			const int sys_getppid = 5108;
-			
-			
-			const int sys_getpgrp = 5109;
-			
-			
-			const int sys_setsid = 5110;
-			
-			
-			const int sys_setreuid = 5111;
-			
-			
-			const int sys_setregid = 5112;
-			
-			
-			const int sys_getgroups = 5113;
-			
-			
-			const int sys_setgroups = 5114;
-			
-			
-			const int sys_setresuid = 5115;
-			
-			
-			const int sys_getresuid = 5116;
-			
-			
-			const int sys_setresgid = 5117;
-			
-			
-			const int sys_getresgid = 5118;
-			
-			
-			const int sys_getpgid = 5119;
-			
-			
-			const int sys_setfsuid = 5120;
-			
-			
-			const int sys_setfsgid = 5121;
-			
-			
-			const int sys_getsid = 5122;
-			
-			
-			const int sys_capget = 5123;
-			
-			
-			const int sys_capset = 5124;
-			
-			
-			const int sys_rt_sigpending = 5125;
-			
-			
-			const int sys_rt_sigtimedwait = 5126;
-			
-			
-			const int sys_rt_sigqueueinfo = 5127;
-			
-			
-			const int sys_rt_sigsuspend = 5128;
-			
-			
-			const int sys_sigaltstack = 5129;
 			
 			
 			const int sys_utime = 5130;
 			
 			
-			const int sys_mknod = 5131;
-			
-			
-			const int sys_personality = 5132;
-			
-			
-			const int sys_ustat = 5133;
-			
-			
-			const int sys_statfs = 5134;
-			
-			
-			const int sys_fstatfs = 5135;
-			
-			
-			const int sys_sysfs = 5136;
-			
-			
-			const int sys_getpriority = 5137;
-			
-			
-			const int sys_setpriority = 5138;
-			
-			
-			const int sys_sched_setparam = 5139;
-			
-			
-			const int sys_sched_getparam = 5140;
-			
-			
-			const int sys_sched_setscheduler = 5141;
-			
-			
-			const int sys_sched_getscheduler = 5142;
-			
-			
-			const int sys_sched_get_priority_max = 5143;
-			
-			
-			const int sys_sched_get_priority_min = 5144;
-			
-			
-			const int sys_sched_rr_get_interval = 5145;
-			
-			
-			const int sys_mlock = 5146;
-			
-			
-			const int sys_munlock = 5147;
-			
-			
-			const int sys_mlockall = 5148;
-			
-			
-			const int sys_munlockall = 5149;
-			
-			
-			const int sys_vhangup = 5150;
-			
-			
-			const int sys_pivot_root = 5151;
-			
-			
-			const int sys_sysctl = 5152;
-			
-			
-			const int sys_prctl = 5153;
-			
-			
 			const int sys_adjtimex = 5154;
-			
-			
-			const int sys_setrlimit = 5155;
-			
-			
-			const int sys_chroot = 5156;
-			
-			
-			const int sys_sync = 5157;
-			
-			
-			const int sys_acct = 5158;
-			
-			
-			const int sys_settimeofday = 5159;
-			
-			
-			const int sys_mount = 5160;
-			
-			
-			const int sys_umount = 5161;
-			
-			
-			const int sys_swapon = 5162;
-			
-			
-			const int sys_swapoff = 5163;
-			
-			
-			const int sys_reboot = 5164;
-			
-			
-			const int sys_sethostname = 5165;
-			
-			
-			const int sys_setdomainname = 5166;
-			
-			
-			const int sys_ni_syscall = 5167;
-			
-			
-			const int sys_init_module = 5168;
-			
-			
-			const int sys_delete_module = 5169;
-			
-			
-			const int sys_quotactl = 5172;
-			
-			
-			const int sys_gettid = 5178;
-			
-			
-			const int sys_readahead = 5179;
-			
-			
-			const int sys_setxattr = 5180;
-			
-			
-			const int sys_lsetxattr = 5181;
-			
-			
-			const int sys_fsetxattr = 5182;
-			
-			
-			const int sys_getxattr = 5183;
-			
-			
-			const int sys_lgetxattr = 5184;
-			
-			
-			const int sys_fgetxattr = 5185;
-			
-			
-			const int sys_listxattr = 5186;
-			
-			
-			const int sys_llistxattr = 5187;
-			
-			
-			const int sys_flistxattr = 5188;
-			
-			
-			const int sys_removexattr = 5189;
-			
-			
-			const int sys_lremovexattr = 5190;
-			
-			
-			const int sys_fremovexattr = 5191;
-			
-			
-			const int sys_tkill = 5192;
-			
-			
-			const int sys_futex = 5194;
-			
-			
-			const int sys_sched_setaffinity = 5195;
-			
-			
-			const int sys_sched_getaffinity = 5196;
-			
-			
-			const int sys_io_setup = 5200;
-			
-			
-			const int sys_io_destroy = 5201;
 			
 			
 			const int sys_io_getevents = 5202;
 			
 			
-			const int sys_io_submit = 5203;
-			
-			
-			const int sys_io_cancel = 5204;
-			
-			
-			const int sys_exit_group = 5205;
-			
-			
-			const int sys_lookup_dcookie = 5206;
-			
-			
-			const int sys_epoll_create = 5207;
-			
-			
-			const int sys_epoll_ctl = 5208;
-			
-			
-			const int sys_epoll_wait = 5209;
-			
-			
-			const int sys_remap_file_pages = 5210;
-			
-			
-			const int sys_rt_sigreturn = 5211;
-			
-			
-			const int sys_set_tid_address = 5212;
-			
-			
-			const int sys_restart_syscall = 5213;
-			
-			
-			const int sys_semtimedop = 5214;
-			
-			
-			const int sys_fadvise64_64 = 5215;
-			
-			
-			const int sys_timer_create = 5216;
-			
-			
-			const int sys_timer_settime = 5217;
-			
-			
-			const int sys_timer_gettime = 5218;
-			
-			
-			const int sys_timer_getoverrun = 5219;
-			
-			
-			const int sys_timer_delete = 5220;
-			
-			
-			const int sys_clock_settime = 5221;
-			
-			
-			const int sys_clock_gettime = 5222;
-			
-			
-			const int sys_clock_getres = 5223;
-			
-			
-			const int sys_clock_nanosleep = 5224;
-			
-			
-			const int sys_tgkill = 5225;
-			
-			
 			const int sys_utimes = 5226;
-			
-			
-			const int sys_mbind = 5227;
-			
-			
-			const int sys_get_mempolicy = 5228;
-			
-			
-			const int sys_set_mempolicy = 5229;
-			
-			
-			const int sys_mq_open = 5230;
-			
-			
-			const int sys_mq_unlink = 5231;
-			
-			
-			const int sys_mq_timedsend = 5232;
-			
-			
-			const int sys_mq_timedreceive = 5233;
-			
-			
-			const int sys_mq_notify = 5234;
-			
-			
-			const int sys_mq_getsetattr = 5235;
-			
-			
-			const int sys_waitid = 5237;
-			
-			
-			const int sys_add_key = 5239;
-			
-			
-			const int sys_request_key = 5240;
-			
-			
-			const int sys_keyctl = 5241;
-			
-			
-			const int sys_inotify_init = 5243;
-			
-			
-			const int sys_inotify_add_watch = 5244;
-			
-			
-			const int sys_inotify_rm_watch = 5245;
-			
-			
-			const int sys_migrate_pages = 5246;
-			
-			
-			const int sys_openat = 5247;
-			
-			
-			const int sys_mkdirat = 5248;
-			
-			
-			const int sys_mknodat = 5249;
-			
-			
-			const int sys_fchownat = 5250;
 			
 			
 			const int sys_futimesat = 5251;
@@ -5891,364 +6389,10 @@ namespace syscalls2 {
 			const int sys_newfstatat = 5252;
 			
 			
-			const int sys_unlinkat = 5253;
-			
-			
-			const int sys_renameat = 5254;
-			
-			
-			const int sys_linkat = 5255;
-			
-			
-			const int sys_symlinkat = 5256;
-			
-			
-			const int sys_readlinkat = 5257;
-			
-			
-			const int sys_fchmodat = 5258;
-			
-			
-			const int sys_faccessat = 5259;
-			
-			
-			const int sys_pselect6 = 5260;
-			
-			
-			const int sys_ppoll = 5261;
-			
-			
-			const int sys_unshare = 5262;
-			
-			
-			const int sys_splice = 5263;
-			
-			
-			const int sys_sync_file_range = 5264;
-			
-			
-			const int sys_tee = 5265;
-			
-			
-			const int sys_vmsplice = 5266;
-			
-			
-			const int sys_move_pages = 5267;
-			
-			
-			const int sys_set_robust_list = 5268;
-			
-			
-			const int sys_get_robust_list = 5269;
-			
-			
-			const int sys_kexec_load = 5270;
-			
-			
-			const int sys_getcpu = 5271;
-			
-			
-			const int sys_epoll_pwait = 5272;
-			
-			
-			const int sys_ioprio_set = 5273;
-			
-			
-			const int sys_ioprio_get = 5274;
-			
-			
-			const int sys_utimensat = 5275;
-			
-			
-			const int sys_signalfd = 5276;
-			
-			
-			const int sys_eventfd = 5278;
-			
-			
-			const int sys_fallocate = 5279;
-			
-			
-			const int sys_timerfd_create = 5280;
-			
-			
-			const int sys_timerfd_gettime = 5281;
-			
-			
-			const int sys_timerfd_settime = 5282;
-			
-			
-			const int sys_signalfd4 = 5283;
-			
-			
-			const int sys_eventfd2 = 5284;
-			
-			
-			const int sys_epoll_create1 = 5285;
-			
-			
-			const int sys_dup3 = 5286;
-			
-			
-			const int sys_pipe2 = 5287;
-			
-			
-			const int sys_inotify_init1 = 5288;
-			
-			
-			const int sys_preadv = 5289;
-			
-			
-			const int sys_pwritev = 5290;
-			
-			
-			const int sys_rt_tgsigqueueinfo = 5291;
-			
-			
-			const int sys_perf_event_open = 5292;
-			
-			
-			const int sys_accept4 = 5293;
-			
-			
-			const int sys_recvmmsg = 5294;
-			
-			
-			const int sys_fanotify_init = 5295;
-			
-			
-			const int sys_fanotify_mark = 5296;
-			
-			
-			const int sys_prlimit64 = 5297;
-			
-			
-			const int sys_name_to_handle_at = 5298;
-			
-			
-			const int sys_open_by_handle_at = 5299;
-			
-			
-			const int sys_clock_adjtime = 5300;
-			
-			
-			const int sys_syncfs = 5301;
-			
-			
-			const int sys_sendmmsg = 5302;
-			
-			
-			const int sys_setns = 5303;
-			
-			
-			const int sys_process_vm_readv = 5304;
-			
-			
-			const int sys_process_vm_writev = 5305;
-			
-			
-			const int sys_kcmp = 5306;
-			
-			
-			const int sys_finit_module = 5307;
-			
-			
-			const int sys_getdents64 = 5308;
-			
-			
-			const int sys_sched_setattr = 5309;
-			
-			
-			const int sys_sched_getattr = 5310;
-			
-			
-			const int sys_renameat2 = 5311;
-			
-			
-			const int sys_seccomp = 5312;
-			
-			
-			const int sys_getrandom = 5313;
-			
-			
-			const int sys_memfd_create = 5314;
-			
-			
-			const int sys_bpf = 5315;
-			
-			
-			const int sys_execveat = 5316;
-			
-			
-			const int sys_userfaultfd = 5317;
-			
-			
-			const int sys_membarrier = 5318;
-			
-			
-			const int sys_mlock2 = 5319;
-			
-			
-			const int sys_copy_file_range = 5320;
-			
-			
-			const int sys_preadv2 = 5321;
-			
-			
-			const int sys_pwritev2 = 5322;
-			
-			
-			const int sys_pkey_mprotect = 5323;
-			
-			
-			const int sys_pkey_alloc = 5324;
-			
-			
-			const int sys_pkey_free = 5325;
-			
-			
-			const int sys_statx = 5326;
-			
-			
-			const int sys_rseq = 5327;
-			
-			
-			const int sys_io_pgetevents = 5328;
-			
-			
-			const int sys_pidfd_send_signal = 5424;
-			
-			
-			const int sys_io_uring_setup = 5425;
-			
-			
-			const int sys_io_uring_enter = 5426;
-			
-			
-			const int sys_io_uring_register = 5427;
-			
-			
-			const int sys_open_tree = 5428;
-			
-			
-			const int sys_move_mount = 5429;
-			
-			
-			const int sys_fsopen = 5430;
-			
-			
-			const int sys_fsconfig = 5431;
-			
-			
-			const int sys_fsmount = 5432;
-			
-			
-			const int sys_fspick = 5433;
-			
-			
-			const int sys_pidfd_open = 5434;
-			
-			
 			const int sys_clone3 = 5435;
 			
 			
-			const int sys_openat2 = 5437;
-			
-			
-			const int sys_pidfd_getfd = 5438;
-			
-			
-			const int sys_faccessat2 = 5439;
-			
-			
-			const int sys_nanosleep_time32 = 6034;
-			
-			
-			const int sys_sendfile = 6039;
-			
-			
-			const int sys_semctl = 6064;
-			
-			
-			const int sys_io_getevents_time32 = 6126;
-			
-			
-			const int sys_utime32 = 6130;
-			
-			
-			const int sys_sched_rr_get_interval_time32 = 6145;
-			
-			
-			const int sys_adjtimex_time32 = 6154;
-			
-			
-			const int sys_futex_time32 = 6194;
-			
-			
-			const int sys_sigreturn = 6211;
-			
-			
-			const int sys_fcntl64 = 6212;
-			
-			
 			const int sys_semtimedop_time32 = 6215;
-			
-			
-			const int sys_statfs64 = 6217;
-			
-			
-			const int sys_fstatfs64 = 6218;
-			
-			
-			const int sys_timer_settime32 = 6221;
-			
-			
-			const int sys_timer_gettime32 = 6222;
-			
-			
-			const int sys_clock_settime32 = 6225;
-			
-			
-			const int sys_clock_gettime32 = 6226;
-			
-			
-			const int sys_clock_getres_time32 = 6227;
-			
-			
-			const int sys_clock_nanosleep_time32 = 6228;
-			
-			
-			const int sys_utimes_time32 = 6230;
-			
-			
-			const int sys_mq_timedsend_time32 = 6236;
-			
-			
-			const int sys_mq_timedreceive_time32 = 6237;
-			
-			
-			const int sys_futimesat_time32 = 6255;
-			
-			
-			const int sys_io_pgetevents_time32 = 6264;
-			
-			
-			const int sys_pselect6_time32 = 6265;
-			
-			
-			const int sys_utimensat_time32 = 6279;
-			
-			
-			const int sys_timerfd_gettime32 = 6285;
-			
-			
-			const int sys_timerfd_settime32 = 6286;
-			
-			
-			const int sys_ppoll_time32 = 6298;
-			
-			
-			const int sys_clock_adjtime32 = 6305;
 			
 		}
 	}
