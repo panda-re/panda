@@ -128,7 +128,7 @@ static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct,
     if (err != struct_get_ret_t::SUCCESS) {
       LOG_ERROR("Unable to load file descriptor details");
     }
-    fixupendian(fd_file);
+    fixupendian2(fd_file);
     return fd_file;
 }
 
