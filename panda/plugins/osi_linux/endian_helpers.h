@@ -17,18 +17,14 @@ static inline void fixupendian_impl(void* px, size_t size) {
 #define fixupendian(x)         {x=bswap32((target_ptr_t)x);}
 #define fixupendian64(x)       {x=bswap64((uint64_t)x);}
 // of flipbadendian will flip a dword
+#if TARGET_LONG_BITS == 64
+#define flipbadendian(x)       bswap64((target_ptr_t)x)
+#else
 #define flipbadendian(x)       bswap32((target_ptr_t)x)
+#endif
+
 #define flipbadendian64(x)     bswap64((uint64_t)x)
-
 #define fixupendian2(x) fixupendian_impl(&(x), sizeof(x))
-
-#define flipbadendian2(x) _Generic((x), \
-    uint32_t: bswap32((target_ptr_t)x), \
-    target_ptr_t: bswap32((target_ptr_t)x), \
-    uint64_t: bswap64((uint64_t)x) \
-)
-
-
 #else
 #define fixupendian(x)         {}
 #define fixupendian64(x)       {}
@@ -36,6 +32,5 @@ static inline void fixupendian_impl(void* px, size_t size) {
 #define flipbadendian64(x)     x
 
 #define fixupendian2(x)         {}
-#define flipbadendian2(x)         {}
 #endif
 
