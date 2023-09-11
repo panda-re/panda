@@ -61,7 +61,9 @@ class Panda():
             raw_monitor=False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
             extra_args=None,
             catch_exceptions=True, # Should we catch and end_analysis() when python code raises an exception?
-            libpanda_path=None):
+            libpanda_path=None,
+            biospath=None,
+            plugin_path=None):
         '''
         Construct a new `Panda` object.  Note that multiple Panda objects cannot coexist in the same Python instance.
         Args:
@@ -83,6 +85,9 @@ class Panda():
                     -nographic in args with ctrl-A+C for interactive qemu prompt. Experts only!
             extra_args: extra arguments to pass to PANDA as either a string or an
                     array. (e.g. "-nographic" or ["-nographic", "-net", "none"])
+            libpanda_path: path to panda shared object to load
+            biospath: directory that contains "pc-bios" files
+            plugin_path: directory that contains panda plugins
         Returns:
             Panda: the created panda object
         '''
@@ -99,6 +104,8 @@ class Panda():
         self.cdrom = None
         self.catch_exceptions=catch_exceptions
         self.qlog = QEMU_Log_Manager(self)
+        self.build_dir = None
+        self.plugin_path = plugin_path
 
         self.serial_unconsumed_data = b''
 
@@ -147,13 +154,10 @@ class Panda():
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
 
-        self.build_dir  = find_build_dir(self.arch_name)
-        environ["PANDA_DIR"] = self.build_dir
-
         if libpanda_path:
-            self.libpanda_path = libpanda_path
+            environ["PANDA_LIB"] = self.libpanda_path = libpanda_path
         else:
-            self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch_name))
+            self.libpanda_path = pjoin(self.get_build_dir(), "{0}-softmmu/libpanda-{0}.so".format(self.arch_name))
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
 
         self.ffi = self._do_types_import()
@@ -167,7 +171,9 @@ class Panda():
 
         # Setup argv for panda
         self.panda_args = [self.panda]
-        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm/mips, so 'pc-bios' is a misleading name
+
+        if biospath is None:
+            biospath = realpath(pjoin(self.get_build_dir(), "pc-bios")) # XXX: necessary for network drivers for arm/mips, so 'pc-bios' is a misleading name
         self.panda_args.append("-L")
         self.panda_args.append(biospath)
 
@@ -243,6 +249,17 @@ class Panda():
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
         progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
     # /__init__
+
+    def get_plugin_path(self):
+        if self.plugin_path is None:
+            self.plugin_path = pjoin(*[self.get_build_dir(), self.arch_name+"-softmmu", "panda", "plugins"])
+        return self.plugin_path
+
+    def get_build_dir(self):
+        if self.build_dir is None:
+            self.build_dir  = find_build_dir(self.arch_name)
+            environ["PANDA_DIR"] = self.build_dir
+        return self.build_dir
 
     def _do_types_import(self):
         '''
@@ -908,9 +925,9 @@ class Panda():
             libpanda_path_chr = self.ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         if not name in self.plugins.keys():
-            assert(isfile(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
-            library = self.ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
-            self.plugins[name] = library
+            plugin = pjoin(*[self.get_plugin_path(), f"panda_{name}.so"])
+            assert(isfile(plugin))
+            self.plugins[name] = self.ffi.dlopen(plugin)
 
     def queue_async(self, f, internal=False):
         '''
