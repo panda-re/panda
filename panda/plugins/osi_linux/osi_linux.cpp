@@ -159,10 +159,12 @@ static void fill_osiprochandle(CPUState *cpu, OsiProcHandle *h,
     struct_get_ret_t UNUSED(err);
 
     // h->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
+    // Note osiprochandle doesn't make the physical pgd available!
     err = struct_get(cpu, &h->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
     h->asid = panda_virt_to_phys(cpu, h->asid);
+
     h->taskd = kernel_profile->get_group_leader(cpu, task_addr);
 }
 
@@ -173,15 +175,17 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     struct_get_ret_t UNUSED(err);
     memset(p, 0, sizeof(OsiProc));
 
-    // p->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
-    err = struct_get(cpu, &p->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
+    // p->pgd = taskd->mm->pgd (some kernel tasks are expected to return error)
+    // Note pgd is physicl address vs asid is virtual (may be -1)
+    err = struct_get(cpu, &p->pgd, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
 
     // p->ppid = taskd->real_parent->pid
     err = struct_get(cpu, &p->ppid, task_addr,
                      {ki.task.real_parent_offset, ki.task.tgid_offset});
 
-    // Convert asid to physical to be able to compare it with the pgd register.
-    p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
+    // Convert pasid to physical to be able to compare it with the pgd register.
+    p->asid = panda_virt_to_phys(cpu, p->pgd);
+
     p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
 
     p->name = get_name(cpu, task_addr, p->name);
@@ -798,6 +802,63 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 /* ******************************************************************
  osi_linux extra API
 ****************************************************************** */
+
+unsigned long walk_page_tables(CPUState *cpu, OsiProc *p, target_ptr_t virtual_address) {
+#ifndef TARGET_ARM
+    return 0;
+#endif
+
+    bool changed = enter_priv(cpu);
+
+    printf("Walk page table for %lx\n", virtual_address);
+    uint32_t pgd = p->pgd;
+    
+    printf("PGD is %x\n", pgd);
+    if (pgd == (unsigned int)-1) {
+        printf("BAD PGD\n");
+        return 0;
+    }
+
+    uint32_t l1_index = (virtual_address >> 20);
+    uint32_t l2_index = (virtual_address >> 12) & 0xFF;
+    uint32_t offset   = virtual_address & 0xFFF;
+    printf("l1_index: %x, l2_index: %x, offset: %x\n", l1_index, l2_index, offset);
+
+    uint32_t l1_entry;
+    if (panda_virtual_memory_read(cpu, pgd+l1_index * 4, (uint8_t*)&l1_entry, 4) != 0) {
+        printf("Failed to read L1 entry\n");
+        return 0;
+    }
+    printf("l1_entry: %x\n", l1_entry);
+
+    if ((l1_entry & 0x3) != 0x1) {
+        printf("Invalid or unsupported L1 descriptor type\n");
+        return 0;
+    }
+
+    uint32_t l2_table = l1_entry & ~0x3FF;  
+    printf("l2_table: %x\n", l2_table);
+
+    uint32_t l2_entry;
+    if (panda_virtual_memory_read(cpu, l2_table + l2_index * 4, (uint8_t*)&l2_entry, 4) != 0) {
+        printf("Failed to read L2 entry\n");
+        return 0;
+    }
+    printf("l2_entry: %x\n", l2_entry);
+
+    if ((l2_entry & 0x3) != 0x2) {
+        printf("Invalid or unsupported L2 descriptor type\n");
+        return 0;
+    }
+
+    hwaddr physical_address = (l2_entry & ~0xFFF) + offset;
+    printf("physical_address: %x\n", (uint32_t)physical_address);
+
+    if (changed) exit_priv(cpu);
+
+    return (unsigned long)physical_address;
+}
+
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     char *filename = NULL;
