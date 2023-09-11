@@ -8,7 +8,6 @@
 
 extern const syscall_info_t *syscall_info;
 extern const syscall_meta_t *syscall_meta;
-extern PluginReg plugin_reg_num;
 
 extern "C" {
 #include "syscalls_ext_typedefs.h"
