@@ -41,7 +41,6 @@ pub fn tcg_codegen(cpu: &mut CPUState, tb: &mut TranslationBlock) {
     HMANAGER.new_hooks_add();
     HMANAGER.clear_tbs(cpu, Some(tb));
     HMANAGER.insert_on_matches(cpu, tb);
-    // println!("tcg_codegen end");
 }
 
 extern "C" {

@@ -21,7 +21,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 extern "C" {
     fn qemu_in_vcpu_thread() -> bool;
-    fn panda_do_exit_cpu();
+    fn panda_break_exec();
     fn tb_trylock() -> i32;
     fn tb_lock_reset();
 }
@@ -108,7 +108,7 @@ pub extern "C" fn add_hook3(
                 let tb = cpu.tb_jmp_cache[index as usize];
                 if pc_in_tb(cpu, pc, tb) {
                     tb_phys_invalidate(tb, u64::MAX);
-                    panda_do_exit_cpu();
+                    panda_break_exec();
                 }
                 // if we got a TB lock explicitly go ahead and clear some
                 // TBs. Otherwise enable bbeio to do it for us on the next

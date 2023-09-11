@@ -18,7 +18,7 @@ use crate::api::PluginReg;
 use crate::{middle_filter, tcg_codegen};
 use std::cmp::{Ord, Ordering};
 use std::collections::HashSet;
-use std::ffi::c_void;
+// use std::ffi::c_void;
 use std::sync::{Mutex, RwLock};
 
 use ord_by_set::{OrdBySet, Order};
@@ -29,20 +29,18 @@ use panda::sys::{tb_phys_invalidate, TCGOp};
 // middle callback type
 pub(crate) type MCB = extern "C" fn(&mut CPUState, &mut TranslationBlock, pc: target_ulong);
 // check_cpu_exit callback type
-pub(crate) type CCE = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void);
+// pub(crate) type CCE = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void);
 // hooks callback type
 pub(crate) type FnCb = extern "C" fn(&mut CPUState, &mut TranslationBlock, &Hook) -> bool;
 // wrapper function
-pub(crate) type WFN = unsafe extern "C" fn(CCE, a1: *mut c_void, a2: *mut c_void, a3: *mut c_void);
+// pub(crate) type WFN = unsafe extern "C" fn(CCE, a1: *mut c_void, a2: *mut c_void, a3: *mut c_void);
 
 extern "C" {
     fn find_first_guest_insn() -> *mut TCGOp;
     fn find_guest_insn_by_addr(pc: target_ulong) -> *mut TCGOp;
-    fn call_3p_check_cpu_exit(f: CCE, a1: *mut c_void, a2: *mut c_void, a3: *mut c_void);
     #[allow(improper_ctypes)]
-    fn insert_call_4p(
+    fn insert_call_3p(
         after_op: *mut *mut TCGOp,
-        wrapper_fn: WFN,
         fun: MCB,
         cpu: &mut CPUState,
         tb: &mut TranslationBlock,
@@ -289,9 +287,8 @@ impl HookManager {
                 if !op.is_null() {
                     // println!("inserting call {:x}", elem.pc);
                     unsafe {
-                        insert_call_4p(
+                        insert_call_3p(
                             &mut op,
-                            call_3p_check_cpu_exit,
                             middle_filter,
                             cpu,
                             tb,
