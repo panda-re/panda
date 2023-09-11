@@ -1951,6 +1951,14 @@ uint32_t rr_checksum_regs(void) {
 #endif
     return crc;
 }
+uint32_t rr_checksum_timers(int index) {
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    #if defined(TARGET_ARM)
+    CPUARMState *env = (CPUArchState *)first_cpu->env_ptr;
+    crc = crc32(crc, (unsigned char *)&env->cp15.c14_timer[index], sizeof(env->cp15.c14_timer[index]));
+    #endif
+    return crc;
+}
 
 uint8_t rr_debug_readb(target_ulong addr);
 uint8_t rr_debug_readb(target_ulong addr) {
