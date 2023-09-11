@@ -201,23 +201,33 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
       assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
 	  printf("Library dir not set");
 #endif
-      const char *lib_dir = g_getenv("PANDA_DIR");
-      char *library_path;
-      if (lib_dir != NULL) {
-        library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
-      }else{
-        fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
-        library_path = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
-      }
+      const char *panda_lib = g_getenv("PANDA_LIB");
+      if(panda_lib != NULL) {
+        void *libpanda = dlopen(panda_lib, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
 
-      void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
+        if (!libpanda) {
+          fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), panda_lib);
+          return false;
+        }
+      } else {
+        const char *lib_dir = g_getenv("PANDA_DIR");
+        char *library_path;
+        if (lib_dir != NULL) {
+          library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
+        }else{
+          fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
+          library_path = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
+        }
 
-      if (!libpanda) {
-        fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), library_path);
+        void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
+
+        if (!libpanda) {
+          fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), library_path);
+          g_free(library_path);
+          return false;
+        }
         g_free(library_path);
-        return false;
       }
-      g_free(library_path);
     }
 
     void *plugin = dlopen(filename, RTLD_NOW);
