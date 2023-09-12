@@ -4,10 +4,10 @@ Plugin: `proc_trace`
 Summary
 -------
 
-The `proc_trace` plugin uses OSI to determine whenever the guest has switched to a new process. With this information, two modes are available:
+The `proc_trace` plugin uses OSI to determine whenever the guest has switched to a new process and record this information in a pandalog file.
+This plugin also contains a PyPANDA script, `graph.py` that can then be used visualize the output from the pandalog.
 
-1) Dump data about the now-running process to a pandalog (through the C++ plugin in this directory)
-2) Generate a visual representation of which processes ran over time (through the graph.py script in this directory).
+Alternatively, the `graph.py` script can be run directly with a live or recorded guest to collect the necessary information and visualize it. This is slower than collecting data with the C++ plugin, but it's easier to use!
 
 To use the plugin in the first mode, you'll load it as a standard panda plugin: `-panda proc_trace`.
 To load the plugin in  the second mode, you'll just load the `graph.py` script using snake_hook: `-panda snake_hook:files=/path/to/graph.py`
@@ -30,24 +30,27 @@ None. This plugin simply uses OSI's `on_task_change` callback.
 Example
 -------
 
-To run the `proc_trace` C++ plugin on an Ubuntu x64 recording:
-
+To run on a live PANDA guest with python-based data collection + visualization, use the snake_hook plugin to load graph.py
 ```
-panda-system-x86_64 -m 1G \
-  -os linux-64-ubuntu:4.15.0-72-generic-noaslr-nokaslr \
-  -pandalog out.plog -replay trace_test -panda proc_trace
-```
-
-To generate a graph of which processes ran over time, use the `snake_hook` plugin to load graph.py:
-
-```
-panda-system-x86_64 -m 1G \
-  -os linux-64-ubuntu:4.15.0-72-generic-noaslr-nokaslr \
-  -replay trace_test -panda snake_hook:files=graph.py
+    user@host:~/panda/panda/plugins/proc_trace$ $(python3 -m pandare.qcows x86_64) -panda snak_hook:files=graph.py
+    root@guest:~# whoami
+    root@guest:~# ls
+    (qemu) quit
 ```
 
+To run on a PANDA recording with python-based data collection + visualization, use the snake_hook plugin to load graph.py
+```
+    user@host:~/panda/panda/plugins/proc_trace$ $(python3 -m pandare.qcows x86_64) -panda snak_hook:files=graph.py -replay /path/to/recording
+```
 
-This will generate output like:
+To run on a live/recorded PANDA guest C++ data collection (fast!) and then render your graph with Python
+```
+    user@host:~$ $(python3 -m pandare.qcows x86_64) -panda proc_trace -plog /tmp/graph.plog [-replay ...]
+    user@host:~$ python3 ~/panda/panda/plugins/proc_trace/graph.py /tmp/graph.plog
+```
+
+
+Any of these approaches should give you output like:
 ```
  Ins.Count PID   TID  First       Last     Names
    8244033 7     7    39191    -> 8283224  ksoftirqd/0

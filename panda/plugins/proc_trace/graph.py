@@ -1,13 +1,112 @@
 #!/usr/bin/env python3
 '''
 Create a graph of which processes run/ran over time.
-Supports live systems or recordings
 
-Example usage with a recording of the generic x86 qcow, run from the local directory:
-    panda-system-x86_64 -m 1g -os linux-64-ubuntu:4.15.0-72-generic-noaslr-nokaslr -replay trace_test -panda snake_hook:files=graph.py
+Multiple modes supported:
+
+1) Run on a live PANDA guest with python-based analysis - use the snake_hook plugin
+    user@host:~/panda/panda/plugins/proc_trace$ $(python3 -m pandare.qcows x86_64) -panda snak_hook:files=graph.py
+    root@guest:~# whoami
+    root@guest:~# ls
+    (qemu) quit
+2) Run on a PANDA recording with python-based analysis
+    user@host:~/panda/panda/plugins/proc_trace$ $(python3 -m pandare.qcows x86_64) -panda snak_hook:files=graph.py -replay /path/to/recording
+
+3) Run on a live/recorded PANDA guest with C++ data collection, then render graph with python
+    user@host:~/panda/panda/plugins/proc_trace$ $(python3 -m pandare.qcows x86_64) -panda proc_trace -plog /tmp/graph.plog [-replay ...]
+    user@host:~/panda/panda/plugins/proc_trace$ python3 graph.py /tmp/graph.plog
 '''
 
 from pandare import PyPlugin
+
+def render_graph(procinfo, time_data, total_insns, n_cols=120):
+    col_size = total_insns / n_cols
+    pids = set([x for x,y in time_data]) # really a list of (pid, tid) tuples
+    merged = {} # pid: [(True, 100), False, 9999)
+
+    for pid in pids:
+        on_off_times = []
+
+        off_count = 0
+
+        for (pid2, block_c) in time_data:
+            if pid2 == pid:
+                # On!
+                on_off_times.append((True, block_c))
+            else:
+                # Off
+                on_off_times.append((False, block_c))
+
+        merged[pid] = on_off_times
+
+    # Render output: Stage 1 - PID -> procname details
+    #   Count   Pid              Name/tid              Asid    First         Last
+    #    297  1355   [bash find  / 1355]          3b14e000   963083  ->  7829616
+
+    print(" Ins.Count PID   TID  First       Last     Names")
+
+    for (pid, tid) in sorted(procinfo, key=lambda v: procinfo[v]['count'], reverse=True):
+        details = procinfo[(pid, tid)]
+        names = ", ".join([x.decode() for x in details['names']])
+
+        end = f"{details['last']:<8}" if details['last'] is not None else "N/A"
+        print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {end} {names}")
+
+
+    # Render output: Stage 2: ascii art
+    ascii_art = {} # (pid, tid): art
+    for (pid, tid), times in merged.items():
+        row = ""
+        pending = None
+        queue = merged[(pid, tid)]
+        # Consume data from pending+merged in chunks of col_size
+        # e.g. col_size=10 (True, 8), (False, 1), (True, 10)
+        # simplifies to {True:9, False:1} and adds (True:9) to pending
+
+        for cur_col in range(n_cols):
+            counted = 0
+            on_count = 0
+            off_count = 0
+            #import ipdb
+            while (counted < col_size and len(queue)): #or pending is not None:
+                if pending is not None:
+                    (on_bool, cnt) = pending
+                    pending = None
+                else:
+                    old_len = len(queue)
+                    (on_bool, cnt) = queue.pop(0)
+                    assert(len(queue) < old_len), "pop don't happen"
+
+                if cnt > col_size-counted: #Hard case: count part, move remainder to pending
+                    remainder = cnt - (col_size-counted)
+                    cnt = col_size-counted # Maximum allowed now
+                    pending = (on_bool, remainder)
+
+                assert(cnt <= col_size-counted) # Now it's (always) the easy case for what's left
+                if on_bool:
+                    on_count += cnt
+                else:
+                    off_count += cnt
+                counted += cnt
+
+            # /while
+            # Use on_count and off_count to determine how to label this cell
+            density_map = " ▂▃▄▅▆▇"
+            on_count / col_size
+
+            idx = round((on_count/col_size)*(len(density_map)-1))
+            c = density_map[idx]
+            row += c
+
+        ascii_art[(pid, tid)] = row
+
+    # Render art
+    print("PID  TID  | "+ "-"*(n_cols//2-4) + "HISTORY" + "-"*(n_cols//2-4) + "| NAMES")
+    for (pid, tid) in sorted(ascii_art, key=lambda x: x[0]):
+        row = ascii_art[(pid, tid)]
+        details = procinfo[(pid, tid)]
+        names = ", ".join([x.decode() for x in details['names']])
+        print(f"{pid: <4} {tid: <4} |{row}| {names}")
 
 class ProcGraph(PyPlugin):
     def __init__(self, panda):
@@ -18,11 +117,11 @@ class ProcGraph(PyPlugin):
         self.n_insns = 0
         self.last_pid = None
 
-        # config options - TODO can we take these as an arg?
-        self.n_cols = 120
+        # config option: number of columns
+        self.n_cols = self.get_arg("cols") or 120
 
-        @panda.cb_before_block_exec
-        def bbe(cpu, tb):
+        @panda.cb_start_block_exec
+        def sbe(cpu, tb):
             self.n_insns += tb.icount
             self.total_insns += tb.icount
 
@@ -61,90 +160,50 @@ class ProcGraph(PyPlugin):
             self.n_insns = 0
 
     def uninit(self):
-        col_size = self.total_insns / self.n_cols
-        pids = set([x for x,y in self.time_data]) # really a list of (pid, tid) tuples
-        merged = {} # pid: [(True, 100), False, 9999)
+        render_graph(self.procinfo, self.time_data, self.total_insns, n_cols=self.n_cols)
 
-        for pid in pids:
-            on_off_times = []
+if __name__ == '__main__':
+    import sys
+    import os
+    from pandare.plog_reader import PLogReader
+    
+    if len(sys.argv) != 2:
+        raise ValueError("Usage: graph.py [pandalog]")
+    
+    pandalog_path = sys.argv[1]
 
-            off_count = 0
+    if not os.path.isfile(pandalog_path):
+        raise ValueError(f"Pandalog not found: {pandalog_path}")
 
-            for (pid2, block_c) in self.time_data:
-                if pid2 == pid:
-                    # On!
-                    on_off_times.append((True, block_c))
-                else:
-                    # Off
-                    on_off_times.append((False, block_c))
+    procinfo = {}
+    time_data = []
+    total_insns = None
+    last_pid = None
 
-            merged[pid] = on_off_times
+    with PLogReader(pandalog_path) as plr:
+        for msg in plr:
+            if msg.HasField('proc_trace'):
+                pt = msg.proc_trace
+                proc_key = (pt.pid, pt.tid)
+                if proc_key not in procinfo:
+                    procinfo[proc_key] = {
+                        "names": set(),
+                        "first": pt.start_instr,
+                        "last": None,
+                        "count": 1 # Ensure last value shows up, even though we don't know when it ends
+                    }
+                name = pt.name.encode()
+                procinfo[proc_key]["names"].add(name)
 
-        # Render output: Stage 1 - PID -> procname details
-        #   Count   Pid              Name/tid              Asid    First         Last
-        #    297  1355   [bash find  / 1355]          3b14e000   963083  ->  7829616
+                if last_pid:
+                    procinfo[last_pid]["count"] += pt.start_instr - (procinfo[last_pid]["last"] if procinfo[last_pid]["last"] is not None else 0)
+                    procinfo[last_pid]["last"] = pt.start_instr
+                    if not total_insns or pt.start_instr > total_insns:
+                        total_insns = pt.start_instr
 
-        print(" Ins.Count PID   TID  First       Last     Names")
+                last_pid = proc_key
 
-        for (pid, tid) in sorted(self.procinfo, key=lambda v: self.procinfo[v]['count'], reverse=True):
-            details = self.procinfo[(pid, tid)]
-            names = ", ".join([x.decode() for x in details['names']])
+                time_data.append((proc_key, pt.start_instr))
 
-            end = f"{details['last']:<8}" if details['last'] is not None else "N/A"
-            print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {end} {names}")
-
-
-        # Render output: Stage 2: ascii art
-        ascii_art = {} # (pid, tid): art
-        for (pid, tid), times in merged.items():
-            row = ""
-            pending = None
-            queue = merged[(pid, tid)]
-            # Consume data from pending+merged in chunks of col_size
-            # e.g. col_size=10 (True, 8), (False, 1), (True, 10)
-            # simplifies to {True:9, False:1} and adds (True:9) to pending
-
-            for cur_col in range(self.n_cols):
-                counted = 0
-                on_count = 0
-                off_count = 0
-                #import ipdb
-                while (counted < col_size and len(queue)): #or pending is not None:
-                    if pending is not None:
-                        (on_bool, cnt) = pending
-                        pending = None
-                    else:
-                        old_len = len(queue)
-                        (on_bool, cnt) = queue.pop(0)
-                        assert(len(queue) < old_len), "pop don't happen"
-
-                    if cnt > col_size-counted: #Hard case: count part, move remainder to pending
-                        remainder = cnt - (col_size-counted)
-                        cnt = col_size-counted # Maximum allowed now
-                        pending = (on_bool, remainder)
-
-                    assert(cnt <= col_size-counted) # Now it's (always) the easy case for what's left
-                    if on_bool:
-                        on_count += cnt
-                    else:
-                        off_count += cnt
-                    counted += cnt
-
-                # /while
-                # Use on_count and off_count to determine how to label this cell
-                density_map = " ▂▃▄▅▆▇"
-                on_count / col_size
-
-                idx = round((on_count/col_size)*(len(density_map)-1))
-                c = density_map[idx]
-                row += c
-
-            ascii_art[(pid, tid)] = row
-
-        # Render art
-        print("PID  TID  | "+ "-"*(self.n_cols//2-4) + "HISTORY" + "-"*(self.n_cols//2-4) + "| NAMES")
-        for (pid, tid) in sorted(ascii_art, key=lambda x: x[0]):
-            row = ascii_art[(pid, tid)]
-            details = self.procinfo[(pid, tid)]
-            names = ", ".join([x.decode() for x in details['names']])
-            print(f"{pid: <4} {tid: <4} |{row}| {names}")
+    # Now procinfo and time_data populated, can call original graph render logic
+    render_graph(procinfo, time_data, total_insns, n_cols=120)
