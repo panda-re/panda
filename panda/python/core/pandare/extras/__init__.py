@@ -10,7 +10,8 @@ from .fileHook import FileHook
 from .ioctlFaker import IoctlFaker
 from .modeFilter import ModeFilter
 from .procWriteCapture import ProcWriteCapture
+from .procTrace import ProcGraph
 
 
 __all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture',
-           'Snake']
+           'Snake', 'ProcGraph']
