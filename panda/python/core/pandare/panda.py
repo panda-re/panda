@@ -2870,6 +2870,10 @@ class Panda():
         while len(self.registered_callbacks.keys()) > 0:
             self.delete_callback(list(self.registered_callbacks.keys())[0])
 
+        # Disable PPP callbacks
+        for name in list(self.ppp_registered_cbs) if hasattr(self, 'ppp_registered_cbs') else []:
+            self.disable_ppp(name)
+
     ###########################
     ### PPP-style callbacks ###
     ###########################
