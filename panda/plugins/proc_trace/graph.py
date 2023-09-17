@@ -19,7 +19,7 @@ Multiple modes supported:
 
 from pandare import PyPlugin
 
-def render_graph(procinfo, time_data, total_insns, n_cols=120):
+def render_graph(procinfo, time_data, total_insns, n_cols=120, show_ranges=True, show_graph=True):
     col_size = total_insns / n_cols
     pids = set([x for x,y in time_data]) # really a list of (pid, tid) tuples
     merged = {} # pid: [(True, 100), False, 9999)
@@ -43,70 +43,75 @@ def render_graph(procinfo, time_data, total_insns, n_cols=120):
     #   Count   Pid              Name/tid              Asid    First         Last
     #    297  1355   [bash find  / 1355]          3b14e000   963083  ->  7829616
 
-    print(" Ins.Count PID   TID  First       Last     Names")
+    if show_ranges:
+        print(" Ins.Count PID   TID  First       Last     Names")
 
-    for (pid, tid) in sorted(procinfo, key=lambda v: procinfo[v]['count'], reverse=True):
-        details = procinfo[(pid, tid)]
-        names = ", ".join([x.decode() for x in details['names']])
+        for (pid, tid) in sorted(procinfo, key=lambda v: procinfo[v]['count'], reverse=True):
+            details = procinfo[(pid, tid)]
+            names = ", ".join([x.decode() for x in details['names']])
 
-        end = f"{details['last']:<8}" if details['last'] is not None else "N/A"
-        print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {end} {names}")
+            end = f"{details['last']:<8}" if details['last'] is not None else "N/A"
+            print(f"{details['count']: >10} {pid:<5} {tid:<5}{details['first']:<8} -> {end} {names}")
 
 
     # Render output: Stage 2: ascii art
-    ascii_art = {} # (pid, tid): art
-    for (pid, tid), times in merged.items():
-        row = ""
-        pending = None
-        queue = merged[(pid, tid)]
-        # Consume data from pending+merged in chunks of col_size
-        # e.g. col_size=10 (True, 8), (False, 1), (True, 10)
-        # simplifies to {True:9, False:1} and adds (True:9) to pending
+    if show_graph:
+        ascii_art = {} # (pid, tid): art
+        for (pid, tid), times in merged.items():
+            row = ""
+            pending = None
+            queue = merged[(pid, tid)]
+            # Consume data from pending+merged in chunks of col_size
+            # e.g. col_size=10 (True, 8), (False, 1), (True, 10)
+            # simplifies to {True:9, False:1} and adds (True:9) to pending
 
-        for cur_col in range(n_cols):
-            counted = 0
-            on_count = 0
-            off_count = 0
-            #import ipdb
-            while (counted < col_size and len(queue)): #or pending is not None:
-                if pending is not None:
-                    (on_bool, cnt) = pending
-                    pending = None
+            for cur_col in range(n_cols):
+                counted = 0
+                on_count = 0
+                off_count = 0
+                #import ipdb
+                while (counted < col_size and len(queue)): #or pending is not None:
+                    if pending is not None:
+                        (on_bool, cnt) = pending
+                        pending = None
+                    else:
+                        old_len = len(queue)
+                        (on_bool, cnt) = queue.pop(0)
+                        assert(len(queue) < old_len), "pop don't happen"
+
+                    if cnt > col_size-counted: #Hard case: count part, move remainder to pending
+                        remainder = cnt - (col_size-counted)
+                        cnt = col_size-counted # Maximum allowed now
+                        pending = (on_bool, remainder)
+
+                    assert(cnt <= col_size-counted) # Now it's (always) the easy case for what's left
+                    if on_bool:
+                        on_count += cnt
+                    else:
+                        off_count += cnt
+                    counted += cnt
+
+                # /while
+                # Use on_count and off_count to determine how to label this cell
+                density_map = " ▂▃▄▅▆▇"
+                on_count / col_size
+
+                idx = round((on_count/col_size)*(len(density_map)-1))
+                if idx == 0 and on_count > 0:
+                    c = '.' # If any code executed, mark it
                 else:
-                    old_len = len(queue)
-                    (on_bool, cnt) = queue.pop(0)
-                    assert(len(queue) < old_len), "pop don't happen"
+                    c = density_map[idx]
+                row += c
 
-                if cnt > col_size-counted: #Hard case: count part, move remainder to pending
-                    remainder = cnt - (col_size-counted)
-                    cnt = col_size-counted # Maximum allowed now
-                    pending = (on_bool, remainder)
+            ascii_art[(pid, tid)] = row
 
-                assert(cnt <= col_size-counted) # Now it's (always) the easy case for what's left
-                if on_bool:
-                    on_count += cnt
-                else:
-                    off_count += cnt
-                counted += cnt
-
-            # /while
-            # Use on_count and off_count to determine how to label this cell
-            density_map = " ▂▃▄▅▆▇"
-            on_count / col_size
-
-            idx = round((on_count/col_size)*(len(density_map)-1))
-            c = density_map[idx]
-            row += c
-
-        ascii_art[(pid, tid)] = row
-
-    # Render art
-    print("PID  TID  | "+ "-"*(n_cols//2-4) + "HISTORY" + "-"*(n_cols//2-4) + "| NAMES")
-    for (pid, tid) in sorted(ascii_art, key=lambda x: x[0]):
-        row = ascii_art[(pid, tid)]
-        details = procinfo[(pid, tid)]
-        names = ", ".join([x.decode() for x in details['names']])
-        print(f"{pid: <4} {tid: <4} |{row}| {names}")
+        # Render art
+        print("PID  TID  | "+ "-"*(n_cols//2-4) + "HISTORY" + "-"*(n_cols//2-4) + "| NAMES")
+        for (pid, tid) in sorted(ascii_art, key=lambda x: x[0]):
+            row = ascii_art[(pid, tid)]
+            details = procinfo[(pid, tid)]
+            names = ", ".join([x.decode() for x in details['names']])
+            print(f"{pid: <4} {tid: <4} |{row}| {names}")
 
 class ProcGraph(PyPlugin):
     def __init__(self, panda):
@@ -116,6 +121,9 @@ class ProcGraph(PyPlugin):
         self.total_insns = 0
         self.n_insns = 0
         self.last_pid = None
+        self.show_ranges = not self.get_arg("hide_ranges")
+        self.show_graph = not self.get_arg("hide_graph")
+        self.panda = panda
 
         # config option: number of columns
         self.n_cols = self.get_arg("cols") or 120
@@ -160,16 +168,24 @@ class ProcGraph(PyPlugin):
             self.n_insns = 0
 
     def uninit(self):
-        render_graph(self.procinfo, self.time_data, self.total_insns, n_cols=self.n_cols)
+        render_graph(self.procinfo, self.time_data, self.total_insns, n_cols=self.n_cols, show_ranges=self.show_ranges, show_graph=self.show_graph)
+
+        # Fully reset state
+        self.panda.disable_ppp("task_change")
+        self.procinfo = {} # PID: info
+        self.time_data = [] # [(PID, #blocks)]
+        self.total_insns = 0
+        self.n_insns = 0
+        self.last_pid = None
 
 if __name__ == '__main__':
     import sys
     import os
     from pandare.plog_reader import PLogReader
-    
+
     if len(sys.argv) != 2:
         raise ValueError("Usage: graph.py [pandalog]")
-    
+
     pandalog_path = sys.argv[1]
 
     if not os.path.isfile(pandalog_path):
@@ -206,4 +222,5 @@ if __name__ == '__main__':
                 time_data.append((proc_key, pt.start_instr))
 
     # Now procinfo and time_data populated, can call original graph render logic
+    total_insns += 1 # Ensure we count the last insn
     render_graph(procinfo, time_data, total_insns, n_cols=120)
