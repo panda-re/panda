@@ -249,24 +249,41 @@ class PyPluginManager:
         return names
 
     def unload(self, pluginclass, do_del=True):
-        name = pluginclass if isinstance(pluginclass, str) else pluginclass.__name__
-        if callable(getattr(self.plugins[name], "uninit", None)):
-            self.plugins[name].uninit()
+        '''
+        Given an instance of a PyPlugin or its name, unload it
+        '''
 
+        if isinstance(pluginclass, str) and pluginclass in self.plugins:
+            pluginclass = self.plugins[pluginclass]
+
+        if not isinstance(pluginclass, PyPlugin):
+            raise ValueError(f"Unload expects a name of a loaded pyplugin or a PyPlugin instance. Got {pluginclass} with plugin list: {self.plugins}")
+
+        # Call uninit method if it's present
+        if callable(getattr(pluginclass, "uninit", None)):
+            pluginclass.uninit()
+
+        # Remove by name
         if do_del:
+            name = pluginclass.__class__.__name__
             del self.plugins[name]
 
     def unload_all(self):
+        '''
+        Unload all PyPlugins
+        '''
         while self.plugins:
-            name, _ = self.plugins.popitem()
-            self.unload(name, do_del=False)
+            name, cls = self.plugins.popitem()
+            self.unload(cls, do_del=False)
 
     def is_loaded(self, pluginclass):
+        # XXX should this end with .class.__name__?
         name = pluginclass if isinstance(pluginclass, str) else pluginclass.__name__
         return name in self.plugins
 
     def get_plugin(self, pluginclass):
         # Lookup name
+        # XXX should this end with .class.__name__?
         name = pluginclass if isinstance(pluginclass, str) else pluginclass.__name__
         if not self.is_loaded(pluginclass, name):
             raise ValueError(f"Plugin {name} is not loaded")
