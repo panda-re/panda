@@ -291,6 +291,12 @@ int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
  */
 target_ulong panda_get_retval_external(const CPUState *cpu);
 
+/**
+ * PandaPhysicalAddressToRamOffset_external() - Translate guest physical to ram offset.
+ * 
+*/
+MemTxResult PandaPhysicalAddressToRamOffset_external(ram_addr_t* out, hwaddr addr, bool is_write);
+
 
 /**
  * panda_in_kernel_external() - Determine if guest is in kernel.
