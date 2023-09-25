@@ -24,7 +24,7 @@ extern "C" {
  * system call return callbacks.
  */
 void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int static_callno) {
-#if {{arch_conf.qemu_target}}
+#if {{ arch_conf.get('runner_target', arch_conf.qemu_target) }}
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
 	if (static_callno == -1) {

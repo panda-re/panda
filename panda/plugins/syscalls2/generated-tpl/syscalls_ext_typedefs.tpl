@@ -6,21 +6,6 @@
 #include "panda/types.h"
 #include "../syscalls2_info.h"
 
-/* Functions used to populate syscall_ctx_t structs. */
-target_long get_return_val(CPUState *env);
-target_ptr_t mask_retaddr_to_pc(target_ptr_t retaddr);
-target_ptr_t calc_retaddr(CPUState *env, target_ptr_t pc);
-uint32_t get_32(CPUState *env, uint32_t argnum);
-int32_t get_s32(CPUState *env, uint32_t argnum);
-uint64_t get_64(CPUState *env, uint32_t argnum);
-int64_t get_s64(CPUState *env, uint32_t argnum);
-target_ptr_t get_pointer(CPUState *env, uint32_t argnum);
-uint32_t get_return_32(CPUState *env, uint32_t argnum);
-int32_t get_return_s32(CPUState *env, uint32_t argnum);
-uint64_t get_return_64(CPUState *env, uint32_t argnum);
-int64_t get_return_s64(CPUState *env, uint32_t argnum);
-target_ptr_t get_return_pointer(CPUState *env, uint32_t argnum);
-
 /**
  * @brief Maximum number of arguments for a system call across
  * all supported platforms.
@@ -46,6 +31,19 @@ struct syscall_ctx {
     bool double_return;
 };
 typedef struct syscall_ctx syscall_ctx_t;
+
+/* Functions used to populate syscall_ctx_t structs. */
+target_long get_return_val(CPUState *env);
+target_ptr_t mask_retaddr_to_pc(target_ptr_t retaddr);
+target_ptr_t calc_retaddr(CPUState *env, target_ptr_t pc);
+uint32_t get_32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+int32_t get_s32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+uint64_t get_64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+int64_t get_s64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+uint32_t get_return_32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+int32_t get_return_s32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+uint64_t get_return_64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+int64_t get_return_s64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
 #if {{architectures[arch].qemu_target}}

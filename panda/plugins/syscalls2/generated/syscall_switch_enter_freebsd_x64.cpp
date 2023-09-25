@@ -57,7 +57,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 1: {
 		panda_noreturn = true;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sys_exit_return)))) {
@@ -75,9 +75,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 3: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_read_return)))) {
@@ -91,9 +91,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 4: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_write_return)))) {
@@ -107,9 +107,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 5: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_open_return)))) {
@@ -123,7 +123,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 6: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_close_return)))) {
@@ -135,10 +135,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 7: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_wait4_return)))) {
@@ -153,8 +153,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 8: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_creat_return)))) {
@@ -167,8 +167,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 9: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_link_return)))) {
@@ -181,7 +181,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 10: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_unlink_return)))) {
@@ -193,7 +193,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 12: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_chdir_return)))) {
@@ -205,7 +205,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 13: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fchdir_return)))) {
@@ -217,9 +217,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 14: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mknod_return)))) {
@@ -233,8 +233,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 15: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_chmod_return)))) {
@@ -247,9 +247,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 16: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_chown_return)))) {
@@ -263,9 +263,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 18: case 395: case 557: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getfsstat_return)))) {
@@ -285,10 +285,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 21: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mount_return)))) {
@@ -303,8 +303,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 22: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_unmount_return)))) {
@@ -317,7 +317,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 23: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setuid_return)))) {
@@ -341,10 +341,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 26: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ptrace_return)))) {
@@ -359,9 +359,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 27: case 113: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_recvmsg_return)))) {
@@ -375,9 +375,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 28: case 114: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sendmsg_return)))) {
@@ -391,12 +391,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 29: case 125: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_recvfrom_return)))) {
@@ -413,9 +413,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 30: case 99: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_accept_return)))) {
@@ -429,9 +429,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 31: case 141: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getpeername_return)))) {
@@ -445,9 +445,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 32: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getsockname_return)))) {
@@ -461,8 +461,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 33: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_access_return)))) {
@@ -475,8 +475,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 34: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_chflags_return)))) {
@@ -489,8 +489,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 35: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fchflags_return)))) {
@@ -509,8 +509,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 37: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kill_return)))) {
@@ -523,8 +523,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 38: case 188: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_stat_return)))) {
@@ -543,8 +543,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 40: case 190: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lstat_return)))) {
@@ -557,7 +557,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 41: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_dup_return)))) {
@@ -581,10 +581,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 44: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_profil_return)))) {
@@ -599,10 +599,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 45: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ktrace_return)))) {
@@ -617,9 +617,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 46: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigaction_return)))) {
@@ -639,8 +639,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 49: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getlogin_return)))) {
@@ -653,7 +653,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 50: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setlogin_return)))) {
@@ -665,7 +665,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 51: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_acct_return)))) {
@@ -677,8 +677,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 53: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigaltstack_return)))) {
@@ -691,9 +691,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 54: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ioctl_return)))) {
@@ -707,7 +707,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 55: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_reboot_return)))) {
@@ -719,7 +719,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 56: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_revoke_return)))) {
@@ -731,8 +731,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 57: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_symlink_return)))) {
@@ -745,9 +745,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 58: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_readlink_return)))) {
@@ -761,9 +761,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 59: {
 		panda_noreturn = true;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_execve_return)))) {
@@ -777,7 +777,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 60: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_umask_return)))) {
@@ -789,7 +789,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 61: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_chroot_return)))) {
@@ -801,8 +801,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 62: case 189: case 551: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fstat_return)))) {
@@ -815,10 +815,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 63: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getkerninfo_return)))) {
@@ -839,9 +839,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 65: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_msync_return)))) {
@@ -861,7 +861,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 69: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sbrk_return)))) {
@@ -873,7 +873,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 70: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sstk_return)))) {
@@ -885,7 +885,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 72: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_vadvise_return)))) {
@@ -897,8 +897,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 73: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_munmap_return)))) {
@@ -911,9 +911,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 74: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mprotect_return)))) {
@@ -927,9 +927,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 75: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_madvise_return)))) {
@@ -943,9 +943,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 78: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mincore_return)))) {
@@ -959,8 +959,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 79: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getgroups_return)))) {
@@ -973,8 +973,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 80: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setgroups_return)))) {
@@ -993,8 +993,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 82: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setpgid_return)))) {
@@ -1007,9 +1007,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 83: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setitimer_return)))) {
@@ -1029,7 +1029,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 85: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_swapon_return)))) {
@@ -1041,8 +1041,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 86: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getitimer_return)))) {
@@ -1055,8 +1055,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 87: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_gethostname_return)))) {
@@ -1069,8 +1069,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 88: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sethostname_return)))) {
@@ -1089,8 +1089,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 90: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_dup2_return)))) {
@@ -1103,9 +1103,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 92: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int64_t arg2 = get_s64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int64_t arg2 = get_s64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fcntl_return)))) {
@@ -1119,11 +1119,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 93: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_select_return)))) {
@@ -1139,7 +1139,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 95: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fsync_return)))) {
@@ -1151,9 +1151,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 96: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setpriority_return)))) {
@@ -1167,9 +1167,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 97: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_socket_return)))) {
@@ -1183,9 +1183,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 98: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_connect_return)))) {
@@ -1199,8 +1199,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 100: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getpriority_return)))) {
@@ -1213,10 +1213,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 101: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_send_return)))) {
@@ -1231,10 +1231,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 102: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_recv_return)))) {
@@ -1249,7 +1249,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 103: case 344: case 417: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigreturn_return)))) {
@@ -1261,9 +1261,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 104: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_bind_return)))) {
@@ -1277,11 +1277,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 105: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setsockopt_return)))) {
@@ -1297,8 +1297,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 106: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_listen_return)))) {
@@ -1311,9 +1311,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 108: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigvec_return)))) {
@@ -1327,7 +1327,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 109: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigblock_return)))) {
@@ -1339,7 +1339,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 110: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigsetmask_return)))) {
@@ -1351,7 +1351,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 111: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigsuspend_return)))) {
@@ -1363,8 +1363,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 112: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigstack_return)))) {
@@ -1377,8 +1377,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 116: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_gettimeofday_return)))) {
@@ -1391,8 +1391,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 117: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getrusage_return)))) {
@@ -1405,11 +1405,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 118: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getsockopt_return)))) {
@@ -1425,9 +1425,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 120: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_readv_return)))) {
@@ -1441,9 +1441,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 121: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_writev_return)))) {
@@ -1457,8 +1457,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 122: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_settimeofday_return)))) {
@@ -1471,9 +1471,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 123: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fchown_return)))) {
@@ -1487,8 +1487,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 124: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fchmod_return)))) {
@@ -1501,8 +1501,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 126: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setreuid_return)))) {
@@ -1515,8 +1515,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 127: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setregid_return)))) {
@@ -1529,8 +1529,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 128: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rename_return)))) {
@@ -1543,8 +1543,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 131: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_flock_return)))) {
@@ -1557,8 +1557,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 132: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mkfifo_return)))) {
@@ -1571,12 +1571,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 133: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		int32_t arg5 = get_s32(cpu, 5);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		int32_t arg5 = get_s32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sendto_return)))) {
@@ -1593,8 +1593,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 134: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shutdown_return)))) {
@@ -1607,10 +1607,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 135: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_socketpair_return)))) {
@@ -1625,8 +1625,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 136: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mkdir_return)))) {
@@ -1639,7 +1639,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 137: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rmdir_return)))) {
@@ -1651,8 +1651,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 138: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_utimes_return)))) {
@@ -1665,8 +1665,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 140: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_adjtime_return)))) {
@@ -1685,7 +1685,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 143: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int64_t arg0 = get_s64(cpu, 0);
+		int64_t arg0 = get_s64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sethostid_return)))) {
@@ -1697,8 +1697,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 144: case 194: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getrlimit_return)))) {
@@ -1711,8 +1711,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 145: case 195: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setrlimit_return)))) {
@@ -1725,8 +1725,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 146: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_killpg_return)))) {
@@ -1745,10 +1745,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 148: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_quotactl_return)))) {
@@ -1769,9 +1769,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 150: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getsockname_return)))) {
@@ -1785,10 +1785,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 154: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nlm_syscall_return)))) {
@@ -1803,8 +1803,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 155: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nfssvc_return)))) {
@@ -1817,10 +1817,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 156: case 196: case 554: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getdirentries_return)))) {
@@ -1835,8 +1835,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 157: case 396: case 555: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_statfs_return)))) {
@@ -1849,8 +1849,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 158: case 397: case 556: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fstatfs_return)))) {
@@ -1863,8 +1863,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 160: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lgetfh_return)))) {
@@ -1877,8 +1877,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 161: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getfh_return)))) {
@@ -1891,8 +1891,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 162: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getdomainname_return)))) {
@@ -1905,8 +1905,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 163: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setdomainname_return)))) {
@@ -1919,7 +1919,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 164: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_uname_return)))) {
@@ -1931,8 +1931,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 165: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sysarch_return)))) {
@@ -1945,9 +1945,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 166: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rtprio_return)))) {
@@ -1961,11 +1961,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 169: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_semsys_return)))) {
@@ -1981,7 +1981,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 175: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setfib_return)))) {
@@ -1993,7 +1993,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 176: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ntp_adjtime_return)))) {
@@ -2005,7 +2005,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 181: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setgid_return)))) {
@@ -2017,7 +2017,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 182: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setegid_return)))) {
@@ -2029,7 +2029,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 183: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_seteuid_return)))) {
@@ -2041,8 +2041,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 191: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pathconf_return)))) {
@@ -2055,8 +2055,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 192: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fpathconf_return)))) {
@@ -2069,12 +2069,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 202: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___sysctl_return)))) {
@@ -2091,8 +2091,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 203: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mlock_return)))) {
@@ -2105,8 +2105,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 204: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_munlock_return)))) {
@@ -2119,7 +2119,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 205: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_undelete_return)))) {
@@ -2131,8 +2131,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 206: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_futimes_return)))) {
@@ -2145,7 +2145,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 207: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getpgid_return)))) {
@@ -2157,9 +2157,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 209: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_poll_return)))) {
@@ -2173,10 +2173,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 220: case 510: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___semctl_return)))) {
@@ -2191,9 +2191,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 221: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_semget_return)))) {
@@ -2207,9 +2207,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 222: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_semop_return)))) {
@@ -2223,9 +2223,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 224: case 511: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_msgctl_return)))) {
@@ -2239,8 +2239,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 225: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_msgget_return)))) {
@@ -2253,10 +2253,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 226: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_msgsnd_return)))) {
@@ -2271,11 +2271,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 227: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int64_t arg3 = get_s64(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int64_t arg3 = get_s64(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_msgrcv_return)))) {
@@ -2291,9 +2291,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 229: case 512: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shmctl_return)))) {
@@ -2307,7 +2307,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 230: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shmdt_return)))) {
@@ -2319,9 +2319,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 231: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shmget_return)))) {
@@ -2335,8 +2335,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 232: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_clock_gettime_return)))) {
@@ -2349,8 +2349,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 233: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_clock_settime_return)))) {
@@ -2363,8 +2363,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 234: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_clock_getres_return)))) {
@@ -2377,9 +2377,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 235: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ktimer_create_return)))) {
@@ -2393,7 +2393,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 236: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ktimer_delete_return)))) {
@@ -2405,10 +2405,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 237: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ktimer_settime_return)))) {
@@ -2423,8 +2423,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 238: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ktimer_gettime_return)))) {
@@ -2437,7 +2437,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 239: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ktimer_getoverrun_return)))) {
@@ -2449,8 +2449,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 240: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nanosleep_return)))) {
@@ -2463,7 +2463,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 241: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ffclock_getcounter_return)))) {
@@ -2475,7 +2475,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 242: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ffclock_setestimate_return)))) {
@@ -2487,7 +2487,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 243: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ffclock_getestimate_return)))) {
@@ -2499,10 +2499,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 244: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_clock_nanosleep_return)))) {
@@ -2517,9 +2517,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 247: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_clock_getcpuclockid2_return)))) {
@@ -2533,7 +2533,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 248: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ntp_gettime_return)))) {
@@ -2545,9 +2545,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 250: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_minherit_return)))) {
@@ -2561,7 +2561,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 251: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rfork_return)))) {
@@ -2579,9 +2579,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 254: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lchown_return)))) {
@@ -2595,7 +2595,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 255: case 318: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_read_return)))) {
@@ -2607,7 +2607,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 256: case 319: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_write_return)))) {
@@ -2619,10 +2619,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 257: case 320: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lio_listio_return)))) {
@@ -2637,9 +2637,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 272: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getdents_return)))) {
@@ -2653,8 +2653,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 274: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lchmod_return)))) {
@@ -2667,8 +2667,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 276: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lutimes_return)))) {
@@ -2681,8 +2681,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 278: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nstat_return)))) {
@@ -2695,8 +2695,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 279: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nfstat_return)))) {
@@ -2709,8 +2709,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 280: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nlstat_return)))) {
@@ -2723,10 +2723,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 289: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_preadv_return)))) {
@@ -2741,10 +2741,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 290: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pwritev_return)))) {
@@ -2759,8 +2759,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 297: case 398: case 558: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fhstatfs_return)))) {
@@ -2773,8 +2773,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 298: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fhopen_return)))) {
@@ -2787,8 +2787,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 299: case 553: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fhstat_return)))) {
@@ -2801,7 +2801,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 300: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_modnext_return)))) {
@@ -2813,8 +2813,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 301: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_modstat_return)))) {
@@ -2827,7 +2827,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 302: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_modfnext_return)))) {
@@ -2839,7 +2839,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 303: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_modfind_return)))) {
@@ -2851,7 +2851,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 304: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldload_return)))) {
@@ -2863,7 +2863,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 305: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldunload_return)))) {
@@ -2875,7 +2875,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 306: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldfind_return)))) {
@@ -2887,7 +2887,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 307: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldnext_return)))) {
@@ -2899,8 +2899,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 308: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldstat_return)))) {
@@ -2913,7 +2913,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 309: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldfirstmod_return)))) {
@@ -2925,7 +2925,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 310: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getsid_return)))) {
@@ -2937,9 +2937,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 311: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setresuid_return)))) {
@@ -2953,9 +2953,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 312: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setresgid_return)))) {
@@ -2969,7 +2969,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 314: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_return_return)))) {
@@ -2981,9 +2981,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 315: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_suspend_return)))) {
@@ -2997,8 +2997,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 316: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_cancel_return)))) {
@@ -3011,7 +3011,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 317: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_error_return)))) {
@@ -3029,7 +3029,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 324: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mlockall_return)))) {
@@ -3041,8 +3041,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 325: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___getcwd_return)))) {
@@ -3055,8 +3055,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 327: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_setparam_return)))) {
@@ -3069,8 +3069,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 328: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_getparam_return)))) {
@@ -3083,9 +3083,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 329: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_setscheduler_return)))) {
@@ -3099,7 +3099,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 330: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_getscheduler_return)))) {
@@ -3117,7 +3117,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 332: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_get_priority_max_return)))) {
@@ -3129,7 +3129,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 333: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_get_priority_min_return)))) {
@@ -3141,8 +3141,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 334: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sched_rr_get_interval_return)))) {
@@ -3155,8 +3155,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 335: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_utrace_return)))) {
@@ -3169,13 +3169,13 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 336: case 393: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		int32_t arg6 = get_s32(cpu, 6);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		int32_t arg6 = get_s32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sendfile_return)))) {
@@ -3193,9 +3193,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 337: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldsym_return)))) {
@@ -3209,7 +3209,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 338: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_jail_return)))) {
@@ -3221,11 +3221,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 339: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nnpfs_syscall_return)))) {
@@ -3241,9 +3241,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 340: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigprocmask_return)))) {
@@ -3257,7 +3257,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 341: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigsuspend_return)))) {
@@ -3269,9 +3269,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 342: case 416: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigaction_return)))) {
@@ -3285,7 +3285,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 343: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigpending_return)))) {
@@ -3297,9 +3297,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 345: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigtimedwait_return)))) {
@@ -3313,8 +3313,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 346: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigwaitinfo_return)))) {
@@ -3327,9 +3327,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 347: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_get_file_return)))) {
@@ -3343,9 +3343,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 348: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_set_file_return)))) {
@@ -3359,9 +3359,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 349: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_get_fd_return)))) {
@@ -3375,9 +3375,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 350: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_set_fd_return)))) {
@@ -3391,8 +3391,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 351: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_delete_file_return)))) {
@@ -3405,8 +3405,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 352: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_delete_fd_return)))) {
@@ -3419,9 +3419,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 353: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_aclcheck_file_return)))) {
@@ -3435,9 +3435,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 354: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_aclcheck_fd_return)))) {
@@ -3451,11 +3451,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 355: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattrctl_return)))) {
@@ -3471,11 +3471,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 356: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_set_file_return)))) {
@@ -3491,11 +3491,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 357: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_get_file_return)))) {
@@ -3511,9 +3511,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 358: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_delete_file_return)))) {
@@ -3527,8 +3527,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 359: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_waitcomplete_return)))) {
@@ -3541,9 +3541,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 360: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getresuid_return)))) {
@@ -3557,9 +3557,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 361: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getresgid_return)))) {
@@ -3579,12 +3579,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 363: case 560: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kevent_return)))) {
@@ -3601,11 +3601,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 371: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_set_fd_return)))) {
@@ -3621,11 +3621,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 372: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_get_fd_return)))) {
@@ -3641,9 +3641,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 373: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_delete_fd_return)))) {
@@ -3657,7 +3657,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 374: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___setugid_return)))) {
@@ -3669,8 +3669,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 376: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_eaccess_return)))) {
@@ -3683,13 +3683,13 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 377: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int64_t arg0 = get_s64(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
-		int64_t arg2 = get_s64(cpu, 2);
-		int64_t arg3 = get_s64(cpu, 3);
-		int64_t arg4 = get_s64(cpu, 4);
-		int64_t arg5 = get_s64(cpu, 5);
-		int64_t arg6 = get_s64(cpu, 6);
+		int64_t arg0 = get_s64(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
+		int64_t arg2 = get_s64(cpu, &ctx, 2);
+		int64_t arg3 = get_s64(cpu, &ctx, 3);
+		int64_t arg4 = get_s64(cpu, &ctx, 4);
+		int64_t arg5 = get_s64(cpu, &ctx, 5);
+		int64_t arg6 = get_s64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_afs3_syscall_return)))) {
@@ -3707,9 +3707,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 378: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_nmount_return)))) {
@@ -3723,7 +3723,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 384: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_get_proc_return)))) {
@@ -3735,7 +3735,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 385: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_set_proc_return)))) {
@@ -3747,8 +3747,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 386: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_get_fd_return)))) {
@@ -3761,8 +3761,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 387: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_get_file_return)))) {
@@ -3775,8 +3775,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 388: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_set_fd_return)))) {
@@ -3789,8 +3789,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 389: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_set_file_return)))) {
@@ -3803,10 +3803,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 390: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kenv_return)))) {
@@ -3821,8 +3821,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 391: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lchflags_return)))) {
@@ -3835,8 +3835,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 392: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_uuidgen_return)))) {
@@ -3849,9 +3849,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 394: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mac_syscall_return)))) {
@@ -3865,7 +3865,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 400: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_close_return)))) {
@@ -3877,7 +3877,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 401: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_post_return)))) {
@@ -3889,7 +3889,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 402: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_wait_return)))) {
@@ -3901,7 +3901,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 403: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_trywait_return)))) {
@@ -3913,8 +3913,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 404: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_init_return)))) {
@@ -3927,11 +3927,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 405: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_open_return)))) {
@@ -3947,7 +3947,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 406: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_unlink_return)))) {
@@ -3959,8 +3959,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 407: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_getvalue_return)))) {
@@ -3973,7 +3973,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 408: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_destroy_return)))) {
@@ -3985,8 +3985,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 409: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_get_pid_return)))) {
@@ -3999,8 +3999,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 410: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_get_link_return)))) {
@@ -4013,8 +4013,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 411: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_set_link_return)))) {
@@ -4027,11 +4027,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 412: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_set_link_return)))) {
@@ -4047,11 +4047,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 413: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_get_link_return)))) {
@@ -4067,9 +4067,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 414: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_delete_link_return)))) {
@@ -4083,10 +4083,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 415: {
 		panda_noreturn = true;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___mac_execve_return)))) {
@@ -4101,7 +4101,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 421: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getcontext_return)))) {
@@ -4113,7 +4113,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 422: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setcontext_return)))) {
@@ -4125,8 +4125,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 423: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_swapcontext_return)))) {
@@ -4139,7 +4139,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 424: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_swapoff_return)))) {
@@ -4151,9 +4151,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 425: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_get_link_return)))) {
@@ -4167,9 +4167,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 426: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_set_link_return)))) {
@@ -4183,8 +4183,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 427: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_delete_link_return)))) {
@@ -4197,9 +4197,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 428: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___acl_aclcheck_link_return)))) {
@@ -4213,8 +4213,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 429: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigwait_return)))) {
@@ -4227,9 +4227,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 430: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_create_return)))) {
@@ -4243,7 +4243,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 431: {
 		panda_noreturn = true;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_exit_return)))) {
@@ -4255,7 +4255,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 432: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_self_return)))) {
@@ -4267,8 +4267,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 433: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int64_t arg0 = get_s64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int64_t arg0 = get_s64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_kill_return)))) {
@@ -4281,7 +4281,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 436: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_jail_attach_return)))) {
@@ -4293,10 +4293,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 437: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_list_fd_return)))) {
@@ -4311,10 +4311,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 438: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_list_file_return)))) {
@@ -4329,10 +4329,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 439: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_extattr_list_link_return)))) {
@@ -4347,8 +4347,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 441: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ksem_timedwait_return)))) {
@@ -4361,7 +4361,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 442: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_suspend_return)))) {
@@ -4373,7 +4373,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 443: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int64_t arg0 = get_s64(cpu, 0);
+		int64_t arg0 = get_s64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_wake_return)))) {
@@ -4385,8 +4385,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 444: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kldunloadf_return)))) {
@@ -4399,8 +4399,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 445: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_audit_return)))) {
@@ -4413,9 +4413,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 446: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_auditon_return)))) {
@@ -4429,7 +4429,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 447: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getauid_return)))) {
@@ -4441,7 +4441,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 448: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setauid_return)))) {
@@ -4453,7 +4453,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 449: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getaudit_return)))) {
@@ -4465,7 +4465,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 450: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setaudit_return)))) {
@@ -4477,8 +4477,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 451: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getaudit_addr_return)))) {
@@ -4491,8 +4491,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 452: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setaudit_addr_return)))) {
@@ -4505,7 +4505,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 453: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_auditctl_return)))) {
@@ -4517,11 +4517,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 454: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		int64_t arg2 = get_s64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		int64_t arg2 = get_s64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on__umtx_op_return)))) {
@@ -4537,8 +4537,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 455: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_new_return)))) {
@@ -4551,9 +4551,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 456: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigqueue_return)))) {
@@ -4567,10 +4567,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 457: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kmq_open_return)))) {
@@ -4585,9 +4585,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 458: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kmq_setattr_return)))) {
@@ -4601,11 +4601,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 459: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kmq_timedreceive_return)))) {
@@ -4621,11 +4621,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 460: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kmq_timedsend_return)))) {
@@ -4641,8 +4641,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 461: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kmq_notify_return)))) {
@@ -4655,7 +4655,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 462: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_kmq_unlink_return)))) {
@@ -4667,9 +4667,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 463: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_abort2_return)))) {
@@ -4683,8 +4683,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 464: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int64_t arg0 = get_s64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int64_t arg0 = get_s64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_set_name_return)))) {
@@ -4697,8 +4697,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 465: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_fsync_return)))) {
@@ -4711,9 +4711,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 466: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rtprio_thread_return)))) {
@@ -4727,8 +4727,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 471: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sctp_peeloff_return)))) {
@@ -4741,13 +4741,13 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 472: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		int32_t arg6 = get_s32(cpu, 6);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		int32_t arg6 = get_s32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sctp_generic_sendmsg_return)))) {
@@ -4765,13 +4765,13 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 473: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		int32_t arg6 = get_s32(cpu, 6);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		int32_t arg6 = get_s32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sctp_generic_sendmsg_iov_return)))) {
@@ -4789,13 +4789,13 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 474: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sctp_generic_recvmsg_return)))) {
@@ -4813,10 +4813,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 475: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pread_return)))) {
@@ -4831,10 +4831,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 476: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pwrite_return)))) {
@@ -4849,9 +4849,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 478: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lseek_return)))) {
@@ -4865,8 +4865,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 479: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_truncate_return)))) {
@@ -4879,8 +4879,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 480: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ftruncate_return)))) {
@@ -4893,9 +4893,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 481: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int64_t arg1 = get_s64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int64_t arg1 = get_s64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_thr_kill2_return)))) {
@@ -4909,9 +4909,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 482: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shm_open_return)))) {
@@ -4925,7 +4925,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 483: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shm_unlink_return)))) {
@@ -4937,7 +4937,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 484: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_return)))) {
@@ -4949,9 +4949,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 485: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_setid_return)))) {
@@ -4965,10 +4965,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 486: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_getid_return)))) {
@@ -4983,11 +4983,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 487: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_getaffinity_return)))) {
@@ -5003,11 +5003,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 488: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_setaffinity_return)))) {
@@ -5023,10 +5023,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 489: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_faccessat_return)))) {
@@ -5041,10 +5041,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 490: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fchmodat_return)))) {
@@ -5059,11 +5059,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 491: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fchownat_return)))) {
@@ -5079,9 +5079,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 492: {
 		panda_noreturn = true;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fexecve_return)))) {
@@ -5095,10 +5095,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 493: case 552: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fstatat_return)))) {
@@ -5113,9 +5113,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 494: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_futimesat_return)))) {
@@ -5129,11 +5129,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 495: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_linkat_return)))) {
@@ -5149,9 +5149,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 496: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mkdirat_return)))) {
@@ -5165,9 +5165,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 497: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mkfifoat_return)))) {
@@ -5181,10 +5181,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 498: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mknodat_return)))) {
@@ -5199,10 +5199,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 499: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_openat_return)))) {
@@ -5217,10 +5217,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 500: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_readlinkat_return)))) {
@@ -5235,10 +5235,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 501: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_renameat_return)))) {
@@ -5253,9 +5253,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 502: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_symlinkat_return)))) {
@@ -5269,9 +5269,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 503: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_unlinkat_return)))) {
@@ -5285,7 +5285,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 504: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_posix_openpt_return)))) {
@@ -5297,7 +5297,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 505: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_gssd_syscall_return)))) {
@@ -5309,9 +5309,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 506: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_jail_get_return)))) {
@@ -5325,9 +5325,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 507: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_jail_set_return)))) {
@@ -5341,7 +5341,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 508: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_jail_remove_return)))) {
@@ -5353,7 +5353,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 509: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_closefrom_return)))) {
@@ -5365,8 +5365,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 513: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_lpathconf_return)))) {
@@ -5379,9 +5379,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 515: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___cap_rights_get_return)))) {
@@ -5401,7 +5401,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 517: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cap_getmode_return)))) {
@@ -5413,8 +5413,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 518: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pdfork_return)))) {
@@ -5427,8 +5427,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 519: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pdkill_return)))) {
@@ -5441,8 +5441,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 520: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pdgetpid_return)))) {
@@ -5455,12 +5455,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 522: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pselect_return)))) {
@@ -5477,8 +5477,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 523: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getloginclass_return)))) {
@@ -5491,7 +5491,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 524: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_setloginclass_return)))) {
@@ -5503,10 +5503,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 525: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rctl_get_racct_return)))) {
@@ -5521,10 +5521,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 526: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rctl_get_rules_return)))) {
@@ -5539,10 +5539,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 527: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rctl_get_limits_return)))) {
@@ -5557,10 +5557,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 528: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rctl_add_rule_return)))) {
@@ -5575,10 +5575,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 529: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rctl_remove_rule_return)))) {
@@ -5593,9 +5593,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 530: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_posix_fallocate_return)))) {
@@ -5609,10 +5609,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 531: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_posix_fadvise_return)))) {
@@ -5627,12 +5627,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 532: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_wait6_return)))) {
@@ -5649,8 +5649,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 533: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cap_rights_limit_return)))) {
@@ -5663,9 +5663,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 534: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cap_ioctls_limit_return)))) {
@@ -5679,9 +5679,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 535: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cap_ioctls_get_return)))) {
@@ -5695,8 +5695,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 536: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cap_fcntls_limit_return)))) {
@@ -5709,8 +5709,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 537: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cap_fcntls_get_return)))) {
@@ -5723,10 +5723,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 538: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_bindat_return)))) {
@@ -5741,10 +5741,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 539: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_connectat_return)))) {
@@ -5759,10 +5759,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 540: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int64_t arg2 = get_s64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int64_t arg2 = get_s64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_chflagsat_return)))) {
@@ -5777,10 +5777,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 541: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_accept4_return)))) {
@@ -5795,8 +5795,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 542: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_pipe2_return)))) {
@@ -5809,7 +5809,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 543: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_aio_mlock_return)))) {
@@ -5821,10 +5821,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 544: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_procctl_return)))) {
@@ -5839,10 +5839,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 545: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_ppoll_return)))) {
@@ -5857,8 +5857,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 546: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_futimens_return)))) {
@@ -5871,10 +5871,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 547: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_utimensat_return)))) {
@@ -5889,7 +5889,7 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 550: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fdatasync_return)))) {
@@ -5901,10 +5901,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 559: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_mknodat_return)))) {
@@ -5919,12 +5919,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 561: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_getdomain_return)))) {
@@ -5941,12 +5941,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 562: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		int32_t arg5 = get_s32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		int32_t arg5 = get_s32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_cpuset_setdomain_return)))) {
@@ -5963,9 +5963,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 563: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getrandom_return)))) {
@@ -5979,10 +5979,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 564: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_getfhat_return)))) {
@@ -5997,8 +5997,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 565: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fhlink_return)))) {
@@ -6011,9 +6011,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 566: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fhlinkat_return)))) {
@@ -6027,9 +6027,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 567: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_fhreadlink_return)))) {
@@ -6043,10 +6043,10 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 568: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_funlinkat_return)))) {
@@ -6061,12 +6061,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 569: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_copy_file_range_return)))) {
@@ -6083,12 +6083,12 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 570: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___sysctlbyname_return)))) {
@@ -6105,11 +6105,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 571: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shm_open2_return)))) {
@@ -6125,9 +6125,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 572: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_shm_rename_return)))) {
@@ -6141,8 +6141,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 573: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_sigfastblock_return)))) {
@@ -6155,11 +6155,11 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 574: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on___realpathat_return)))) {
@@ -6175,9 +6175,9 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 575: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		int32_t arg2 = get_s32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		int32_t arg2 = get_s32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_close_range_return)))) {
@@ -6191,8 +6191,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 	case 576: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		int32_t arg0 = get_s32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		int32_t arg0 = get_s32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_rpctls_syscall_return)))) {

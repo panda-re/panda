@@ -51,12 +51,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 0: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAcceptConnectPort_return)))) {
@@ -73,14 +73,14 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 1: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheck_return)))) {
@@ -99,17 +99,17 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 2: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckAndAuditAlarm_return)))) {
@@ -131,17 +131,17 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 3: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByType_return)))) {
@@ -163,22 +163,22 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 4: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint32_t arg13 = get_32(cpu, 13);
-		uint32_t arg14 = get_32(cpu, 14);
-		uint32_t arg15 = get_32(cpu, 15);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint32_t arg13 = get_32(cpu, &ctx, 13);
+		uint32_t arg14 = get_32(cpu, &ctx, 14);
+		uint32_t arg15 = get_32(cpu, &ctx, 15);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeAndAuditAlarm_return)))) {
@@ -205,17 +205,17 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 5: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeResultList_return)))) {
@@ -237,22 +237,22 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 6: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint32_t arg13 = get_32(cpu, 13);
-		uint32_t arg14 = get_32(cpu, 14);
-		uint32_t arg15 = get_32(cpu, 15);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint32_t arg13 = get_32(cpu, &ctx, 13);
+		uint32_t arg14 = get_32(cpu, &ctx, 14);
+		uint32_t arg15 = get_32(cpu, &ctx, 15);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarm_return)))) {
@@ -279,23 +279,23 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 7: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint32_t arg13 = get_32(cpu, 13);
-		uint32_t arg14 = get_32(cpu, 14);
-		uint32_t arg15 = get_32(cpu, 15);
-		uint32_t arg16 = get_32(cpu, 16);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint32_t arg13 = get_32(cpu, &ctx, 13);
+		uint32_t arg14 = get_32(cpu, &ctx, 14);
+		uint32_t arg15 = get_32(cpu, &ctx, 15);
+		uint32_t arg16 = get_32(cpu, &ctx, 16);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_return)))) {
@@ -323,9 +323,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 8: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAddAtom_return)))) {
@@ -339,8 +339,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 9: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAddBootEntry_return)))) {
@@ -353,12 +353,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 10: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAdjustGroupsToken_return)))) {
@@ -375,12 +375,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 11: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAdjustPrivilegesToken_return)))) {
@@ -397,8 +397,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 12: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlertResumeThread_return)))) {
@@ -411,7 +411,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 13: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlertThread_return)))) {
@@ -423,7 +423,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 14: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateLocallyUniqueId_return)))) {
@@ -435,9 +435,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 15: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateUserPhysicalPages_return)))) {
@@ -451,10 +451,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 16: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateUuids_return)))) {
@@ -469,12 +469,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 17: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateVirtualMemory_return)))) {
@@ -491,8 +491,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 18: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAreMappedFilesTheSame_return)))) {
@@ -505,8 +505,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 19: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAssignProcessToJobObject_return)))) {
@@ -519,9 +519,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 20: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCallbackReturn_return)))) {
@@ -535,8 +535,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 22: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCancelIoFile_return)))) {
@@ -549,8 +549,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 23: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCancelTimer_return)))) {
@@ -563,7 +563,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 24: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtClearEvent_return)))) {
@@ -575,7 +575,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 25: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtClose_return)))) {
@@ -587,9 +587,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 26: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCloseObjectAuditAlarm_return)))) {
@@ -603,8 +603,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 27: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompactKeys_return)))) {
@@ -617,9 +617,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 28: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompareTokens_return)))) {
@@ -633,7 +633,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 29: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompleteConnectPort_return)))) {
@@ -645,7 +645,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 30: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompressKey_return)))) {
@@ -657,14 +657,14 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 31: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtConnectPort_return)))) {
@@ -683,8 +683,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 32: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtContinue_return)))) {
@@ -697,10 +697,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 33: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateDebugObject_return)))) {
@@ -715,9 +715,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 34: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateDirectoryObject_return)))) {
@@ -731,11 +731,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 35: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateEvent_return)))) {
@@ -751,9 +751,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 36: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateEventPair_return)))) {
@@ -767,17 +767,17 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 37: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateFile_return)))) {
@@ -799,10 +799,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 38: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateIoCompletion_return)))) {
@@ -817,9 +817,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 39: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateJobObject_return)))) {
@@ -833,9 +833,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 40: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateJobSet_return)))) {
@@ -849,13 +849,13 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 41: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateKey_return)))) {
@@ -873,14 +873,14 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 42: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateMailslotFile_return)))) {
@@ -899,10 +899,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 43: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateMutant_return)))) {
@@ -917,20 +917,20 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 44: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint32_t arg13 = get_32(cpu, 13);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint32_t arg13 = get_32(cpu, &ctx, 13);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateNamedPipeFile_return)))) {
@@ -955,10 +955,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 45: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreatePagingFile_return)))) {
@@ -973,11 +973,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 46: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreatePort_return)))) {
@@ -993,14 +993,14 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 47: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProcess_return)))) {
@@ -1019,15 +1019,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 48: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProcessEx_return)))) {
@@ -1047,15 +1047,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 49: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProfile_return)))) {
@@ -1075,13 +1075,13 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 50: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateSection_return)))) {
@@ -1099,11 +1099,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 51: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateSemaphore_return)))) {
@@ -1119,10 +1119,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 52: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateSymbolicLinkObject_return)))) {
@@ -1137,14 +1137,14 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 53: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateThread_return)))) {
@@ -1163,10 +1163,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 54: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateTimer_return)))) {
@@ -1181,19 +1181,19 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 55: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateToken_return)))) {
@@ -1217,11 +1217,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 56: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateWaitablePort_return)))) {
@@ -1237,8 +1237,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 57: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDebugActiveProcess_return)))) {
@@ -1251,9 +1251,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 58: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDebugContinue_return)))) {
@@ -1267,8 +1267,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 59: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDelayExecution_return)))) {
@@ -1281,7 +1281,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 60: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteAtom_return)))) {
@@ -1293,7 +1293,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 61: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteBootEntry_return)))) {
@@ -1305,7 +1305,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 62: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteFile_return)))) {
@@ -1317,7 +1317,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 63: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteKey_return)))) {
@@ -1329,9 +1329,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 64: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteObjectAuditAlarm_return)))) {
@@ -1345,8 +1345,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 65: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteValueKey_return)))) {
@@ -1359,16 +1359,16 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 66: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeviceIoControlFile_return)))) {
@@ -1389,7 +1389,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 67: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDisplayString_return)))) {
@@ -1401,13 +1401,13 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 68: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDuplicateObject_return)))) {
@@ -1425,12 +1425,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 69: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDuplicateToken_return)))) {
@@ -1447,8 +1447,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 70: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateBootEntries_return)))) {
@@ -1461,12 +1461,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 71: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateKey_return)))) {
@@ -1483,9 +1483,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 72: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateSystemEnvironmentValuesEx_return)))) {
@@ -1499,12 +1499,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 73: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateValueKey_return)))) {
@@ -1521,8 +1521,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 74: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtExtendSection_return)))) {
@@ -1535,12 +1535,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 75: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFilterToken_return)))) {
@@ -1557,9 +1557,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 76: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFindAtom_return)))) {
@@ -1573,8 +1573,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 77: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushBuffersFile_return)))) {
@@ -1587,9 +1587,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 78: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushInstructionCache_return)))) {
@@ -1603,7 +1603,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 79: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushKey_return)))) {
@@ -1615,10 +1615,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 80: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushVirtualMemory_return)))) {
@@ -1639,9 +1639,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 82: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFreeUserPhysicalPages_return)))) {
@@ -1655,10 +1655,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 83: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFreeVirtualMemory_return)))) {
@@ -1673,16 +1673,16 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 84: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFsControlFile_return)))) {
@@ -1703,8 +1703,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 85: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetContextThread_return)))) {
@@ -1717,8 +1717,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 86: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetDevicePowerState_return)))) {
@@ -1731,10 +1731,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 87: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetPlugPlayEvent_return)))) {
@@ -1749,13 +1749,13 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 88: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetWriteWatch_return)))) {
@@ -1773,7 +1773,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 89: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtImpersonateAnonymousToken_return)))) {
@@ -1785,8 +1785,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 90: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtImpersonateClientOfPort_return)))) {
@@ -1799,9 +1799,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 91: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtImpersonateThread_return)))) {
@@ -1815,7 +1815,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 92: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtInitializeRegistry_return)))) {
@@ -1827,10 +1827,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 93: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtInitiatePowerAction_return)))) {
@@ -1845,8 +1845,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 94: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtIsProcessInJob_return)))) {
@@ -1865,8 +1865,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 96: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtListenPort_return)))) {
@@ -1879,7 +1879,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 97: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadDriver_return)))) {
@@ -1891,8 +1891,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 98: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadKey_return)))) {
@@ -1905,9 +1905,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 99: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadKey2_return)))) {
@@ -1921,16 +1921,16 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 100: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockFile_return)))) {
@@ -1951,8 +1951,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 101: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockProductActivationKeys_return)))) {
@@ -1965,7 +1965,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 102: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockRegistryKey_return)))) {
@@ -1977,10 +1977,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 103: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockVirtualMemory_return)))) {
@@ -1995,7 +1995,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 104: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMakePermanentObject_return)))) {
@@ -2007,7 +2007,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 105: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMakeTemporaryObject_return)))) {
@@ -2019,9 +2019,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 106: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapUserPhysicalPages_return)))) {
@@ -2035,9 +2035,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 107: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapUserPhysicalPagesScatter_return)))) {
@@ -2051,16 +2051,16 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 108: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapViewOfSection_return)))) {
@@ -2081,7 +2081,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 109: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtModifyBootEntry_return)))) {
@@ -2093,15 +2093,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 110: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeDirectoryFile_return)))) {
@@ -2121,16 +2121,16 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 111: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeKey_return)))) {
@@ -2151,18 +2151,18 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 112: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeMultipleKeys_return)))) {
@@ -2185,9 +2185,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 113: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenDirectoryObject_return)))) {
@@ -2201,9 +2201,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 114: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenEvent_return)))) {
@@ -2217,9 +2217,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 115: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenEventPair_return)))) {
@@ -2233,12 +2233,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 116: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenFile_return)))) {
@@ -2255,9 +2255,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 117: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenIoCompletion_return)))) {
@@ -2271,9 +2271,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 118: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenJobObject_return)))) {
@@ -2287,9 +2287,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 119: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKey_return)))) {
@@ -2303,9 +2303,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 120: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenMutant_return)))) {
@@ -2319,18 +2319,18 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 121: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenObjectAuditAlarm_return)))) {
@@ -2353,10 +2353,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 122: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenProcess_return)))) {
@@ -2371,9 +2371,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 123: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenProcessToken_return)))) {
@@ -2387,10 +2387,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 124: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenProcessTokenEx_return)))) {
@@ -2405,9 +2405,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 125: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSection_return)))) {
@@ -2421,9 +2421,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 126: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSemaphore_return)))) {
@@ -2437,9 +2437,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 127: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSymbolicLinkObject_return)))) {
@@ -2453,10 +2453,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 128: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenThread_return)))) {
@@ -2471,10 +2471,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 129: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenThreadToken_return)))) {
@@ -2489,11 +2489,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 130: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenThreadTokenEx_return)))) {
@@ -2509,9 +2509,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 131: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenTimer_return)))) {
@@ -2525,9 +2525,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 132: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPlugPlayControl_return)))) {
@@ -2541,11 +2541,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 133: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPowerInformation_return)))) {
@@ -2561,9 +2561,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 134: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrivilegeCheck_return)))) {
@@ -2577,12 +2577,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 135: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrivilegeObjectAuditAlarm_return)))) {
@@ -2599,11 +2599,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 136: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrivilegedServiceAuditAlarm_return)))) {
@@ -2619,11 +2619,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 137: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtProtectVirtualMemory_return)))) {
@@ -2639,8 +2639,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 138: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPulseEvent_return)))) {
@@ -2653,8 +2653,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 139: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryAttributesFile_return)))) {
@@ -2667,8 +2667,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 140: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryBootEntryOrder_return)))) {
@@ -2681,8 +2681,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 141: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryBootOptions_return)))) {
@@ -2695,8 +2695,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 142: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDebugFilterState_return)))) {
@@ -2709,8 +2709,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 143: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDefaultLocale_return)))) {
@@ -2723,7 +2723,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 144: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return)))) {
@@ -2735,17 +2735,17 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 145: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDirectoryFile_return)))) {
@@ -2767,13 +2767,13 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 146: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDirectoryObject_return)))) {
@@ -2791,15 +2791,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 147: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryEaFile_return)))) {
@@ -2819,11 +2819,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 148: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryEvent_return)))) {
@@ -2839,8 +2839,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 149: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryFullAttributesFile_return)))) {
@@ -2853,11 +2853,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 150: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationAtom_return)))) {
@@ -2873,11 +2873,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 151: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationFile_return)))) {
@@ -2893,11 +2893,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 152: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationJobObject_return)))) {
@@ -2913,11 +2913,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 153: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationPort_return)))) {
@@ -2933,11 +2933,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 154: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationProcess_return)))) {
@@ -2953,11 +2953,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 155: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationThread_return)))) {
@@ -2973,11 +2973,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 156: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationToken_return)))) {
@@ -2993,7 +2993,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 157: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInstallUILanguage_return)))) {
@@ -3005,8 +3005,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 158: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryIntervalProfile_return)))) {
@@ -3019,11 +3019,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 159: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryIoCompletion_return)))) {
@@ -3039,11 +3039,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 160: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryKey_return)))) {
@@ -3059,12 +3059,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 161: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryMultipleValueKey_return)))) {
@@ -3081,11 +3081,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 162: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryMutant_return)))) {
@@ -3101,11 +3101,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 163: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryObject_return)))) {
@@ -3121,8 +3121,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 164: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryOpenSubKeys_return)))) {
@@ -3135,8 +3135,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 165: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryPerformanceCounter_return)))) {
@@ -3149,15 +3149,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 166: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryQuotaInformationFile_return)))) {
@@ -3177,11 +3177,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 167: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySection_return)))) {
@@ -3197,11 +3197,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 168: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySecurityObject_return)))) {
@@ -3217,11 +3217,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 169: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySemaphore_return)))) {
@@ -3237,9 +3237,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 170: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySymbolicLinkObject_return)))) {
@@ -3253,10 +3253,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 171: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemEnvironmentValue_return)))) {
@@ -3271,11 +3271,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 172: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemEnvironmentValueEx_return)))) {
@@ -3291,10 +3291,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 173: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemInformation_return)))) {
@@ -3309,7 +3309,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 174: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemTime_return)))) {
@@ -3321,11 +3321,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 175: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryTimer_return)))) {
@@ -3341,9 +3341,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 176: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryTimerResolution_return)))) {
@@ -3357,12 +3357,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 177: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryValueKey_return)))) {
@@ -3379,12 +3379,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 178: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryVirtualMemory_return)))) {
@@ -3401,11 +3401,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 179: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryVolumeInformationFile_return)))) {
@@ -3421,11 +3421,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 180: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueueApcThread_return)))) {
@@ -3441,9 +3441,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 181: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRaiseException_return)))) {
@@ -3457,12 +3457,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 182: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRaiseHardError_return)))) {
@@ -3479,15 +3479,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 183: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadFile_return)))) {
@@ -3507,15 +3507,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 184: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadFileScatter_return)))) {
@@ -3535,12 +3535,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 185: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadRequestData_return)))) {
@@ -3557,11 +3557,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 186: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadVirtualMemory_return)))) {
@@ -3577,7 +3577,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 187: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRegisterThreadTerminatePort_return)))) {
@@ -3589,8 +3589,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 188: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseMutant_return)))) {
@@ -3603,9 +3603,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 189: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseSemaphore_return)))) {
@@ -3619,11 +3619,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 190: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRemoveIoCompletion_return)))) {
@@ -3639,8 +3639,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 191: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRemoveProcessDebug_return)))) {
@@ -3653,8 +3653,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 192: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRenameKey_return)))) {
@@ -3667,9 +3667,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 193: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplaceKey_return)))) {
@@ -3683,8 +3683,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 194: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyPort_return)))) {
@@ -3697,10 +3697,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 195: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyWaitReceivePort_return)))) {
@@ -3715,11 +3715,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 196: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyWaitReceivePortEx_return)))) {
@@ -3735,8 +3735,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 197: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyWaitReplyPort_return)))) {
@@ -3749,8 +3749,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 199: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRequestPort_return)))) {
@@ -3763,9 +3763,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 200: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRequestWaitReplyPort_return)))) {
@@ -3779,8 +3779,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 202: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResetEvent_return)))) {
@@ -3793,9 +3793,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 203: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResetWriteWatch_return)))) {
@@ -3809,9 +3809,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 204: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRestoreKey_return)))) {
@@ -3825,7 +3825,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 205: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResumeProcess_return)))) {
@@ -3837,8 +3837,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 206: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResumeThread_return)))) {
@@ -3851,8 +3851,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 207: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSaveKey_return)))) {
@@ -3865,9 +3865,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 208: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSaveKeyEx_return)))) {
@@ -3881,9 +3881,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 209: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSaveMergedKeys_return)))) {
@@ -3897,15 +3897,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 210: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSecureConnectPort_return)))) {
@@ -3925,8 +3925,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 211: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetBootEntryOrder_return)))) {
@@ -3939,8 +3939,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 212: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetBootOptions_return)))) {
@@ -3953,8 +3953,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 213: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetContextThread_return)))) {
@@ -3967,9 +3967,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 214: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDebugFilterState_return)))) {
@@ -3983,7 +3983,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 215: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDefaultHardErrorPort_return)))) {
@@ -3995,8 +3995,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 216: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDefaultLocale_return)))) {
@@ -4009,7 +4009,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 217: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDefaultUILanguage_return)))) {
@@ -4021,10 +4021,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 218: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetEaFile_return)))) {
@@ -4039,8 +4039,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 219: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetEvent_return)))) {
@@ -4053,7 +4053,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 220: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetEventBoostPriority_return)))) {
@@ -4065,7 +4065,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 221: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetHighEventPair_return)))) {
@@ -4077,7 +4077,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 222: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetHighWaitLowEventPair_return)))) {
@@ -4089,11 +4089,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 223: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationDebugObject_return)))) {
@@ -4109,11 +4109,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 224: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationFile_return)))) {
@@ -4129,10 +4129,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 225: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationJobObject_return)))) {
@@ -4147,10 +4147,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 226: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationKey_return)))) {
@@ -4165,10 +4165,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 227: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationObject_return)))) {
@@ -4183,10 +4183,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 228: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationProcess_return)))) {
@@ -4201,10 +4201,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 229: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationThread_return)))) {
@@ -4219,10 +4219,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 230: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationToken_return)))) {
@@ -4237,8 +4237,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 231: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetIntervalProfile_return)))) {
@@ -4251,11 +4251,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 232: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetIoCompletion_return)))) {
@@ -4271,12 +4271,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 233: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetLdtEntries_return)))) {
@@ -4293,7 +4293,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 234: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetLowEventPair_return)))) {
@@ -4305,7 +4305,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 235: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetLowWaitHighEventPair_return)))) {
@@ -4317,10 +4317,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 236: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetQuotaInformationFile_return)))) {
@@ -4335,9 +4335,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 237: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSecurityObject_return)))) {
@@ -4351,8 +4351,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 238: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemEnvironmentValue_return)))) {
@@ -4365,11 +4365,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 239: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemEnvironmentValueEx_return)))) {
@@ -4385,9 +4385,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 240: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemInformation_return)))) {
@@ -4401,9 +4401,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 241: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemPowerState_return)))) {
@@ -4417,8 +4417,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 242: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemTime_return)))) {
@@ -4431,8 +4431,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 243: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetThreadExecutionState_return)))) {
@@ -4445,13 +4445,13 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 244: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		int32_t arg5 = get_s32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		int32_t arg5 = get_s32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetTimer_return)))) {
@@ -4469,9 +4469,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 245: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetTimerResolution_return)))) {
@@ -4485,7 +4485,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 246: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetUuidSeed_return)))) {
@@ -4497,12 +4497,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 247: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetValueKey_return)))) {
@@ -4519,11 +4519,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 248: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetVolumeInformationFile_return)))) {
@@ -4539,7 +4539,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 249: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtShutdownSystem_return)))) {
@@ -4551,10 +4551,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 250: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSignalAndWaitForSingleObject_return)))) {
@@ -4569,7 +4569,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 251: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtStartProfile_return)))) {
@@ -4581,7 +4581,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 252: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtStopProfile_return)))) {
@@ -4593,7 +4593,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 253: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSuspendProcess_return)))) {
@@ -4605,8 +4605,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 254: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSuspendThread_return)))) {
@@ -4619,12 +4619,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 255: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSystemDebugControl_return)))) {
@@ -4641,8 +4641,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 256: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTerminateJobObject_return)))) {
@@ -4655,8 +4655,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 257: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTerminateProcess_return)))) {
@@ -4669,8 +4669,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 258: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTerminateThread_return)))) {
@@ -4689,10 +4689,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 260: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTraceEvent_return)))) {
@@ -4707,10 +4707,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 261: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTranslateFilePath_return)))) {
@@ -4725,7 +4725,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 262: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadDriver_return)))) {
@@ -4737,7 +4737,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 263: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadKey_return)))) {
@@ -4749,8 +4749,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 264: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadKeyEx_return)))) {
@@ -4763,11 +4763,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 265: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnlockFile_return)))) {
@@ -4783,10 +4783,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 266: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnlockVirtualMemory_return)))) {
@@ -4801,8 +4801,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 267: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnmapViewOfSection_return)))) {
@@ -4815,8 +4815,8 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 268: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtVdmControl_return)))) {
@@ -4829,10 +4829,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 269: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForDebugEvent_return)))) {
@@ -4847,11 +4847,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 270: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForMultipleObjects_return)))) {
@@ -4867,9 +4867,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 271: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForSingleObject_return)))) {
@@ -4883,7 +4883,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 272: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitHighEventPair_return)))) {
@@ -4895,7 +4895,7 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 273: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitLowEventPair_return)))) {
@@ -4907,15 +4907,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 274: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteFile_return)))) {
@@ -4935,15 +4935,15 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 275: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteFileGather_return)))) {
@@ -4963,12 +4963,12 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 276: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteRequestData_return)))) {
@@ -4985,11 +4985,11 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 277: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteVirtualMemory_return)))) {
@@ -5011,10 +5011,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 279: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateKeyedEvent_return)))) {
@@ -5029,9 +5029,9 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 280: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKeyedEvent_return)))) {
@@ -5045,10 +5045,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 281: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseKeyedEvent_return)))) {
@@ -5063,10 +5063,10 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int 
 	case 282: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForKeyedEvent_return)))) {
