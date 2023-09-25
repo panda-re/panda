@@ -51,9 +51,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 0: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapUserPhysicalPagesScatter_return)))) {
@@ -67,9 +67,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 1: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForSingleObject_return)))) {
@@ -83,9 +83,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 2: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCallbackReturn_return)))) {
@@ -99,15 +99,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 3: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadFile_return)))) {
@@ -127,16 +127,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 4: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeviceIoControlFile_return)))) {
@@ -157,15 +157,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 5: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteFile_return)))) {
@@ -185,11 +185,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 6: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRemoveIoCompletion_return)))) {
@@ -205,9 +205,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 7: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		int32_t arg1 = get_s32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		int32_t arg1 = get_s32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseSemaphore_return)))) {
@@ -221,10 +221,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 8: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyWaitReceivePort_return)))) {
@@ -239,8 +239,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 9: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyPort_return)))) {
@@ -253,10 +253,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 10: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationThread_return)))) {
@@ -271,8 +271,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 11: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetEvent_return)))) {
@@ -285,7 +285,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 12: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtClose_return)))) {
@@ -297,11 +297,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 13: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryObject_return)))) {
@@ -317,11 +317,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 14: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationFile_return)))) {
@@ -337,9 +337,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 15: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKey_return)))) {
@@ -353,12 +353,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 16: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateValueKey_return)))) {
@@ -375,9 +375,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 17: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFindAtom_return)))) {
@@ -391,8 +391,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 18: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDefaultLocale_return)))) {
@@ -405,11 +405,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 19: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryKey_return)))) {
@@ -425,12 +425,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 20: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryValueKey_return)))) {
@@ -447,12 +447,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 21: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateVirtualMemory_return)))) {
@@ -469,11 +469,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 22: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationProcess_return)))) {
@@ -489,11 +489,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 23: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForMultipleObjects32_return)))) {
@@ -509,15 +509,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 24: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteFileGather_return)))) {
@@ -537,10 +537,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 25: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationProcess_return)))) {
@@ -555,13 +555,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 26: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateKey_return)))) {
@@ -579,10 +579,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 27: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFreeVirtualMemory_return)))) {
@@ -597,8 +597,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 28: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtImpersonateClientOfPort_return)))) {
@@ -611,8 +611,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 29: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseMutant_return)))) {
@@ -625,11 +625,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 30: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationToken_return)))) {
@@ -645,9 +645,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 31: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRequestWaitReplyPort_return)))) {
@@ -661,12 +661,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 32: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryVirtualMemory_return)))) {
@@ -683,10 +683,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 33: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenThreadToken_return)))) {
@@ -701,11 +701,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 34: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationThread_return)))) {
@@ -721,10 +721,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 35: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenProcess_return)))) {
@@ -739,11 +739,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 36: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationFile_return)))) {
@@ -759,16 +759,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 37: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapViewOfSection_return)))) {
@@ -789,17 +789,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 38: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckAndAuditAlarm_return)))) {
@@ -821,8 +821,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 39: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnmapViewOfSection_return)))) {
@@ -835,11 +835,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 40: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyWaitReceivePortEx_return)))) {
@@ -855,8 +855,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 41: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTerminateProcess_return)))) {
@@ -869,7 +869,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 42: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetEventBoostPriority_return)))) {
@@ -881,15 +881,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 43: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadFileScatter_return)))) {
@@ -909,11 +909,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 44: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenThreadTokenEx_return)))) {
@@ -929,10 +929,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 45: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenProcessTokenEx_return)))) {
@@ -947,8 +947,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 46: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryPerformanceCounter_return)))) {
@@ -961,12 +961,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 47: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateKey_return)))) {
@@ -983,12 +983,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 48: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenFile_return)))) {
@@ -1005,8 +1005,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 49: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDelayExecution_return)))) {
@@ -1019,17 +1019,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 50: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDirectoryFile_return)))) {
@@ -1051,10 +1051,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 51: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemInformation_return)))) {
@@ -1069,9 +1069,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 52: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSection_return)))) {
@@ -1085,11 +1085,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 53: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryTimer_return)))) {
@@ -1105,16 +1105,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 54: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFsControlFile_return)))) {
@@ -1135,11 +1135,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 55: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteVirtualMemory_return)))) {
@@ -1155,9 +1155,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 56: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCloseObjectAuditAlarm_return)))) {
@@ -1171,13 +1171,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 57: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDuplicateObject_return)))) {
@@ -1195,8 +1195,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 58: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryAttributesFile_return)))) {
@@ -1209,7 +1209,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 59: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtClearEvent_return)))) {
@@ -1221,11 +1221,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 60: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadVirtualMemory_return)))) {
@@ -1241,9 +1241,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 61: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenEvent_return)))) {
@@ -1257,12 +1257,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 62: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAdjustPrivilegesToken_return)))) {
@@ -1279,12 +1279,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 63: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDuplicateToken_return)))) {
@@ -1301,8 +1301,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 64: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtContinue_return)))) {
@@ -1315,7 +1315,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 65: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return)))) {
@@ -1327,11 +1327,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 66: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueueApcThread_return)))) {
@@ -1353,9 +1353,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 68: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAddAtom_return)))) {
@@ -1369,11 +1369,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 69: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateEvent_return)))) {
@@ -1389,11 +1389,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 70: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryVolumeInformationFile_return)))) {
@@ -1409,13 +1409,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 71: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateSection_return)))) {
@@ -1433,8 +1433,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 72: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushBuffersFile_return)))) {
@@ -1447,8 +1447,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 73: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtApphelpCacheControl_return)))) {
@@ -1461,15 +1461,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 74: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProcessEx_return)))) {
@@ -1489,14 +1489,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 75: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateThread_return)))) {
@@ -1515,8 +1515,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 76: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtIsProcessInJob_return)))) {
@@ -1529,11 +1529,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 77: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtProtectVirtualMemory_return)))) {
@@ -1549,11 +1549,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 78: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySection_return)))) {
@@ -1569,8 +1569,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 79: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResumeThread_return)))) {
@@ -1583,8 +1583,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 80: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTerminateThread_return)))) {
@@ -1597,12 +1597,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 81: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadRequestData_return)))) {
@@ -1619,17 +1619,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 82: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateFile_return)))) {
@@ -1651,11 +1651,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 83: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryEvent_return)))) {
@@ -1671,12 +1671,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 84: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWriteRequestData_return)))) {
@@ -1693,9 +1693,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 85: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenDirectoryObject_return)))) {
@@ -1709,22 +1709,22 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 86: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint64_t arg11 = get_64(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint64_t arg13 = get_64(cpu, 13);
-		uint64_t arg14 = get_64(cpu, 14);
-		uint64_t arg15 = get_64(cpu, 15);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint64_t arg11 = get_64(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint64_t arg13 = get_64(cpu, &ctx, 13);
+		uint64_t arg14 = get_64(cpu, &ctx, 14);
+		uint64_t arg15 = get_64(cpu, &ctx, 15);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeAndAuditAlarm_return)))) {
@@ -1751,7 +1751,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 87: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemTime_return)))) {
@@ -1763,11 +1763,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 88: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForMultipleObjects_return)))) {
@@ -1783,10 +1783,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 89: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationObject_return)))) {
@@ -1801,8 +1801,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 90: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCancelIoFile_return)))) {
@@ -1815,10 +1815,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 91: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTraceEvent_return)))) {
@@ -1833,11 +1833,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 92: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPowerInformation_return)))) {
@@ -1853,12 +1853,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 93: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetValueKey_return)))) {
@@ -1875,8 +1875,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 94: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCancelTimer_return)))) {
@@ -1889,13 +1889,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 95: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		int32_t arg5 = get_s32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		int32_t arg5 = get_s32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetTimer_return)))) {
@@ -1913,12 +1913,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 96: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAcceptConnectPort_return)))) {
@@ -1935,14 +1935,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 97: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheck_return)))) {
@@ -1961,17 +1961,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 98: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByType_return)))) {
@@ -1993,17 +1993,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 99: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeResultList_return)))) {
@@ -2025,22 +2025,22 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 100: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint64_t arg11 = get_64(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint64_t arg13 = get_64(cpu, 13);
-		uint64_t arg14 = get_64(cpu, 14);
-		uint64_t arg15 = get_64(cpu, 15);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint64_t arg11 = get_64(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint64_t arg13 = get_64(cpu, &ctx, 13);
+		uint64_t arg14 = get_64(cpu, &ctx, 14);
+		uint64_t arg15 = get_64(cpu, &ctx, 15);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarm_return)))) {
@@ -2067,23 +2067,23 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 101: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint64_t arg12 = get_64(cpu, 12);
-		uint32_t arg13 = get_32(cpu, 13);
-		uint64_t arg14 = get_64(cpu, 14);
-		uint64_t arg15 = get_64(cpu, 15);
-		uint64_t arg16 = get_64(cpu, 16);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint64_t arg12 = get_64(cpu, &ctx, 12);
+		uint32_t arg13 = get_32(cpu, &ctx, 13);
+		uint64_t arg14 = get_64(cpu, &ctx, 14);
+		uint64_t arg15 = get_64(cpu, &ctx, 15);
+		uint64_t arg16 = get_64(cpu, &ctx, 16);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_return)))) {
@@ -2111,8 +2111,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 102: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAddBootEntry_return)))) {
@@ -2125,8 +2125,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 103: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAddDriverEntry_return)))) {
@@ -2139,12 +2139,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 104: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAdjustGroupsToken_return)))) {
@@ -2161,8 +2161,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 105: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlertResumeThread_return)))) {
@@ -2175,7 +2175,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 106: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlertThread_return)))) {
@@ -2187,7 +2187,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 107: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateLocallyUniqueId_return)))) {
@@ -2199,9 +2199,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 108: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateReserveObject_return)))) {
@@ -2215,9 +2215,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 109: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateUserPhysicalPages_return)))) {
@@ -2231,10 +2231,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 110: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAllocateUuids_return)))) {
@@ -2249,15 +2249,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 111: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcAcceptConnectPort_return)))) {
@@ -2277,9 +2277,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 112: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcCancelMessage_return)))) {
@@ -2293,17 +2293,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 113: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcConnectPort_return)))) {
@@ -2325,9 +2325,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 114: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcCreatePort_return)))) {
@@ -2341,12 +2341,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 115: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcCreatePortSection_return)))) {
@@ -2363,10 +2363,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 116: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcCreateResourceReserve_return)))) {
@@ -2381,9 +2381,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 117: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcCreateSectionView_return)))) {
@@ -2397,9 +2397,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 118: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcCreateSecurityContext_return)))) {
@@ -2413,9 +2413,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 119: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcDeletePortSection_return)))) {
@@ -2429,9 +2429,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 120: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcDeleteResourceReserve_return)))) {
@@ -2445,9 +2445,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 121: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcDeleteSectionView_return)))) {
@@ -2461,9 +2461,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 122: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcDeleteSecurityContext_return)))) {
@@ -2477,8 +2477,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 123: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcDisconnectPort_return)))) {
@@ -2491,9 +2491,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 124: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcImpersonateClientOfPort_return)))) {
@@ -2507,12 +2507,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 125: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcOpenSenderProcess_return)))) {
@@ -2529,12 +2529,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 126: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcOpenSenderThread_return)))) {
@@ -2551,11 +2551,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 127: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcQueryInformation_return)))) {
@@ -2571,12 +2571,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 128: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcQueryInformationMessage_return)))) {
@@ -2593,9 +2593,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 129: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcRevokeSecurityContext_return)))) {
@@ -2609,14 +2609,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 130: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcSendWaitReceivePort_return)))) {
@@ -2635,10 +2635,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 131: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAlpcSetInformation_return)))) {
@@ -2653,8 +2653,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 132: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAreMappedFilesTheSame_return)))) {
@@ -2667,8 +2667,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 133: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtAssignProcessToJobObject_return)))) {
@@ -2681,9 +2681,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 134: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCancelIoFileEx_return)))) {
@@ -2697,9 +2697,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 135: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCancelSynchronousIoFile_return)))) {
@@ -2713,8 +2713,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 136: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCommitComplete_return)))) {
@@ -2727,8 +2727,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 137: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCommitEnlistment_return)))) {
@@ -2741,8 +2741,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 138: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCommitTransaction_return)))) {
@@ -2755,8 +2755,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 139: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompactKeys_return)))) {
@@ -2769,9 +2769,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 140: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompareTokens_return)))) {
@@ -2785,7 +2785,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 141: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompleteConnectPort_return)))) {
@@ -2797,7 +2797,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 142: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCompressKey_return)))) {
@@ -2809,14 +2809,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 143: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtConnectPort_return)))) {
@@ -2835,10 +2835,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 144: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateDebugObject_return)))) {
@@ -2853,9 +2853,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 145: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateDirectoryObject_return)))) {
@@ -2869,14 +2869,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 146: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateEnlistment_return)))) {
@@ -2895,9 +2895,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 147: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateEventPair_return)))) {
@@ -2911,10 +2911,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 148: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateIoCompletion_return)))) {
@@ -2929,9 +2929,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 149: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateJobObject_return)))) {
@@ -2945,9 +2945,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 150: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateJobSet_return)))) {
@@ -2961,14 +2961,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 151: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateKeyTransacted_return)))) {
@@ -2987,10 +2987,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 152: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateKeyedEvent_return)))) {
@@ -3005,14 +3005,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 153: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateMailslotFile_return)))) {
@@ -3031,10 +3031,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 154: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateMutant_return)))) {
@@ -3049,20 +3049,20 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 155: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
-		uint32_t arg12 = get_32(cpu, 12);
-		uint64_t arg13 = get_64(cpu, 13);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
+		uint32_t arg12 = get_32(cpu, &ctx, 12);
+		uint64_t arg13 = get_64(cpu, &ctx, 13);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateNamedPipeFile_return)))) {
@@ -3087,10 +3087,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 156: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreatePagingFile_return)))) {
@@ -3105,11 +3105,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 157: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreatePort_return)))) {
@@ -3125,10 +3125,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 158: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreatePrivateNamespace_return)))) {
@@ -3143,14 +3143,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 159: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProcess_return)))) {
@@ -3169,15 +3169,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 160: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProfile_return)))) {
@@ -3197,16 +3197,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 161: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateProfileEx_return)))) {
@@ -3227,13 +3227,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 162: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateResourceManager_return)))) {
@@ -3251,11 +3251,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 163: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		int32_t arg3 = get_s32(cpu, 3);
-		int32_t arg4 = get_s32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		int32_t arg3 = get_s32(cpu, &ctx, 3);
+		int32_t arg4 = get_s32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateSemaphore_return)))) {
@@ -3271,10 +3271,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 164: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateSymbolicLinkObject_return)))) {
@@ -3289,17 +3289,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 165: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateThreadEx_return)))) {
@@ -3321,10 +3321,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 166: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateTimer_return)))) {
@@ -3339,19 +3339,19 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 167: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
-		uint64_t arg11 = get_64(cpu, 11);
-		uint64_t arg12 = get_64(cpu, 12);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
+		uint64_t arg11 = get_64(cpu, &ctx, 11);
+		uint64_t arg12 = get_64(cpu, &ctx, 12);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateToken_return)))) {
@@ -3375,16 +3375,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 168: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateTransaction_return)))) {
@@ -3405,12 +3405,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 169: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateTransactionManager_return)))) {
@@ -3427,17 +3427,17 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 170: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint64_t arg10 = get_64(cpu, 10);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint64_t arg10 = get_64(cpu, &ctx, 10);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateUserProcess_return)))) {
@@ -3459,11 +3459,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 171: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateWaitablePort_return)))) {
@@ -3479,16 +3479,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 172: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtCreateWorkerFactory_return)))) {
@@ -3509,8 +3509,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 173: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDebugActiveProcess_return)))) {
@@ -3523,9 +3523,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 174: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDebugContinue_return)))) {
@@ -3539,7 +3539,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 175: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteAtom_return)))) {
@@ -3551,7 +3551,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 176: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteBootEntry_return)))) {
@@ -3563,7 +3563,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 177: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteDriverEntry_return)))) {
@@ -3575,7 +3575,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 178: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteFile_return)))) {
@@ -3587,7 +3587,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 179: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteKey_return)))) {
@@ -3599,9 +3599,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 180: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteObjectAuditAlarm_return)))) {
@@ -3615,7 +3615,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 181: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeletePrivateNamespace_return)))) {
@@ -3627,8 +3627,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 182: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDeleteValueKey_return)))) {
@@ -3647,7 +3647,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 184: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDisplayString_return)))) {
@@ -3659,7 +3659,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 185: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtDrawText_return)))) {
@@ -3677,8 +3677,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 187: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateBootEntries_return)))) {
@@ -3691,8 +3691,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 188: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateDriverEntries_return)))) {
@@ -3705,9 +3705,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 189: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateSystemEnvironmentValuesEx_return)))) {
@@ -3721,11 +3721,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 190: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtEnumerateTransactionObject_return)))) {
@@ -3741,8 +3741,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 191: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtExtendSection_return)))) {
@@ -3755,12 +3755,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 192: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFilterToken_return)))) {
@@ -3777,8 +3777,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 193: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushInstallUILanguage_return)))) {
@@ -3791,9 +3791,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 194: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushInstructionCache_return)))) {
@@ -3807,7 +3807,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 195: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushKey_return)))) {
@@ -3825,10 +3825,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 197: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFlushVirtualMemory_return)))) {
@@ -3849,9 +3849,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 199: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFreeUserPhysicalPages_return)))) {
@@ -3865,7 +3865,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 200: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFreezeRegistry_return)))) {
@@ -3877,8 +3877,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 201: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtFreezeTransactions_return)))) {
@@ -3891,8 +3891,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 202: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetContextThread_return)))) {
@@ -3911,8 +3911,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 204: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetDevicePowerState_return)))) {
@@ -3925,9 +3925,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 205: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetMUIRegistryInfo_return)))) {
@@ -3941,11 +3941,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 206: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetNextProcess_return)))) {
@@ -3961,12 +3961,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 207: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetNextThread_return)))) {
@@ -3983,11 +3983,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 208: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetNlsSectionPtr_return)))) {
@@ -4003,13 +4003,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 209: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetNotificationResourceManager_return)))) {
@@ -4027,10 +4027,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 210: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetPlugPlayEvent_return)))) {
@@ -4045,13 +4045,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 211: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtGetWriteWatch_return)))) {
@@ -4069,7 +4069,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 212: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtImpersonateAnonymousToken_return)))) {
@@ -4081,9 +4081,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 213: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtImpersonateThread_return)))) {
@@ -4097,9 +4097,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 214: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtInitializeNlsFiles_return)))) {
@@ -4113,7 +4113,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 215: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtInitializeRegistry_return)))) {
@@ -4125,10 +4125,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 216: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtInitiatePowerAction_return)))) {
@@ -4155,8 +4155,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 219: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtListenPort_return)))) {
@@ -4169,7 +4169,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 220: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadDriver_return)))) {
@@ -4181,8 +4181,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 221: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadKey_return)))) {
@@ -4195,9 +4195,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 222: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadKey2_return)))) {
@@ -4211,10 +4211,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 223: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLoadKeyEx_return)))) {
@@ -4229,16 +4229,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 224: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockFile_return)))) {
@@ -4259,8 +4259,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 225: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockProductActivationKeys_return)))) {
@@ -4273,7 +4273,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 226: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockRegistryKey_return)))) {
@@ -4285,10 +4285,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 227: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtLockVirtualMemory_return)))) {
@@ -4303,7 +4303,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 228: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMakePermanentObject_return)))) {
@@ -4315,7 +4315,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 229: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMakeTemporaryObject_return)))) {
@@ -4327,12 +4327,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 230: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapCMFModule_return)))) {
@@ -4349,9 +4349,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 231: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtMapUserPhysicalPages_return)))) {
@@ -4365,7 +4365,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 232: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtModifyBootEntry_return)))) {
@@ -4377,7 +4377,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 233: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtModifyDriverEntry_return)))) {
@@ -4389,15 +4389,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 234: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeDirectoryFile_return)))) {
@@ -4417,16 +4417,16 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 235: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeKey_return)))) {
@@ -4447,18 +4447,18 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 236: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
-		uint64_t arg9 = get_64(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint32_t arg11 = get_32(cpu, 11);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
+		uint64_t arg9 = get_64(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint32_t arg11 = get_32(cpu, &ctx, 11);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeMultipleKeys_return)))) {
@@ -4481,14 +4481,14 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 237: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtNotifyChangeSession_return)))) {
@@ -4507,11 +4507,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 238: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenEnlistment_return)))) {
@@ -4527,9 +4527,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 239: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenEventPair_return)))) {
@@ -4543,9 +4543,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 240: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenIoCompletion_return)))) {
@@ -4559,9 +4559,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 241: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenJobObject_return)))) {
@@ -4575,10 +4575,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 242: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKeyEx_return)))) {
@@ -4593,10 +4593,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 243: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKeyTransacted_return)))) {
@@ -4611,11 +4611,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 244: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKeyTransactedEx_return)))) {
@@ -4631,9 +4631,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 245: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenKeyedEvent_return)))) {
@@ -4647,9 +4647,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 246: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenMutant_return)))) {
@@ -4663,18 +4663,18 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 247: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint32_t arg7 = get_32(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
-		uint32_t arg9 = get_32(cpu, 9);
-		uint32_t arg10 = get_32(cpu, 10);
-		uint64_t arg11 = get_64(cpu, 11);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint32_t arg7 = get_32(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
+		uint32_t arg9 = get_32(cpu, &ctx, 9);
+		uint32_t arg10 = get_32(cpu, &ctx, 10);
+		uint64_t arg11 = get_64(cpu, &ctx, 11);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenObjectAuditAlarm_return)))) {
@@ -4697,10 +4697,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 248: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenPrivateNamespace_return)))) {
@@ -4715,9 +4715,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 249: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenProcessToken_return)))) {
@@ -4731,11 +4731,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 250: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenResourceManager_return)))) {
@@ -4751,9 +4751,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 251: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSemaphore_return)))) {
@@ -4767,9 +4767,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 252: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSession_return)))) {
@@ -4783,9 +4783,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 253: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenSymbolicLinkObject_return)))) {
@@ -4799,10 +4799,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 254: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenThread_return)))) {
@@ -4817,9 +4817,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 255: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenTimer_return)))) {
@@ -4833,11 +4833,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 256: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenTransaction_return)))) {
@@ -4853,12 +4853,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 257: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtOpenTransactionManager_return)))) {
@@ -4875,9 +4875,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 258: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPlugPlayControl_return)))) {
@@ -4891,8 +4891,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 259: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrePrepareComplete_return)))) {
@@ -4905,8 +4905,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 260: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrePrepareEnlistment_return)))) {
@@ -4919,8 +4919,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 261: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrepareComplete_return)))) {
@@ -4933,8 +4933,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 262: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrepareEnlistment_return)))) {
@@ -4947,9 +4947,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 263: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrivilegeCheck_return)))) {
@@ -4963,12 +4963,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 264: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrivilegeObjectAuditAlarm_return)))) {
@@ -4985,11 +4985,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 265: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPrivilegedServiceAuditAlarm_return)))) {
@@ -5005,10 +5005,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 266: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPropagationComplete_return)))) {
@@ -5023,9 +5023,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 267: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPropagationFailed_return)))) {
@@ -5039,8 +5039,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 268: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtPulseEvent_return)))) {
@@ -5053,8 +5053,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 269: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryBootEntryOrder_return)))) {
@@ -5067,8 +5067,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 270: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryBootOptions_return)))) {
@@ -5081,8 +5081,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 271: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDebugFilterState_return)))) {
@@ -5095,13 +5095,13 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 272: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDirectoryObject_return)))) {
@@ -5119,8 +5119,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 273: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryDriverEntryOrder_return)))) {
@@ -5133,15 +5133,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 274: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryEaFile_return)))) {
@@ -5161,8 +5161,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 275: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryFullAttributesFile_return)))) {
@@ -5175,11 +5175,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 276: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationAtom_return)))) {
@@ -5195,11 +5195,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 277: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationEnlistment_return)))) {
@@ -5215,11 +5215,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 278: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationJobObject_return)))) {
@@ -5235,11 +5235,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 279: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationPort_return)))) {
@@ -5255,11 +5255,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 280: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationResourceManager_return)))) {
@@ -5275,11 +5275,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 281: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationTransaction_return)))) {
@@ -5295,11 +5295,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 282: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationTransactionManager_return)))) {
@@ -5315,11 +5315,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 283: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInformationWorkerFactory_return)))) {
@@ -5335,7 +5335,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 284: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryInstallUILanguage_return)))) {
@@ -5347,8 +5347,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 285: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryIntervalProfile_return)))) {
@@ -5361,11 +5361,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 286: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryIoCompletion_return)))) {
@@ -5381,11 +5381,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 287: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryLicenseValue_return)))) {
@@ -5401,12 +5401,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 288: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryMultipleValueKey_return)))) {
@@ -5423,11 +5423,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 289: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryMutant_return)))) {
@@ -5443,8 +5443,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 290: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryOpenSubKeys_return)))) {
@@ -5457,10 +5457,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 291: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryOpenSubKeysEx_return)))) {
@@ -5481,15 +5481,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 293: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint32_t arg6 = get_32(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint32_t arg8 = get_32(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint32_t arg6 = get_32(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint32_t arg8 = get_32(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryQuotaInformationFile_return)))) {
@@ -5509,12 +5509,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 294: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySecurityAttributesToken_return)))) {
@@ -5531,11 +5531,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 295: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySecurityObject_return)))) {
@@ -5551,11 +5551,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 296: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySemaphore_return)))) {
@@ -5571,9 +5571,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 297: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySymbolicLinkObject_return)))) {
@@ -5587,10 +5587,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 298: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemEnvironmentValue_return)))) {
@@ -5605,11 +5605,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 299: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemEnvironmentValueEx_return)))) {
@@ -5625,12 +5625,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 300: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQuerySystemInformationEx_return)))) {
@@ -5647,9 +5647,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 301: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueryTimerResolution_return)))) {
@@ -5663,12 +5663,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 302: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtQueueApcThreadEx_return)))) {
@@ -5685,9 +5685,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 303: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRaiseException_return)))) {
@@ -5701,12 +5701,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 304: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRaiseHardError_return)))) {
@@ -5723,8 +5723,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 305: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReadOnlyEnlistment_return)))) {
@@ -5737,8 +5737,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 306: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRecoverEnlistment_return)))) {
@@ -5751,7 +5751,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 307: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRecoverResourceManager_return)))) {
@@ -5763,7 +5763,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 308: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRecoverTransactionManager_return)))) {
@@ -5775,11 +5775,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 309: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRegisterProtocolAddressInformation_return)))) {
@@ -5795,7 +5795,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 310: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRegisterThreadTerminatePort_return)))) {
@@ -5807,10 +5807,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 311: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseKeyedEvent_return)))) {
@@ -5825,7 +5825,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 312: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReleaseWorkerFactoryWorker_return)))) {
@@ -5837,12 +5837,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 313: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRemoveIoCompletionEx_return)))) {
@@ -5859,8 +5859,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 314: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRemoveProcessDebug_return)))) {
@@ -5873,8 +5873,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 315: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRenameKey_return)))) {
@@ -5887,8 +5887,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 316: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRenameTransactionManager_return)))) {
@@ -5901,9 +5901,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 317: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplaceKey_return)))) {
@@ -5917,9 +5917,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 318: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplacePartitionUnit_return)))) {
@@ -5933,8 +5933,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 319: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtReplyWaitReplyPort_return)))) {
@@ -5947,8 +5947,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 320: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRequestPort_return)))) {
@@ -5961,8 +5961,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 321: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResetEvent_return)))) {
@@ -5975,9 +5975,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 322: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResetWriteWatch_return)))) {
@@ -5991,9 +5991,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 323: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRestoreKey_return)))) {
@@ -6007,7 +6007,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 324: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtResumeProcess_return)))) {
@@ -6019,8 +6019,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 325: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRollbackComplete_return)))) {
@@ -6033,8 +6033,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 326: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRollbackEnlistment_return)))) {
@@ -6047,8 +6047,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 327: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRollbackTransaction_return)))) {
@@ -6061,8 +6061,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 328: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtRollforwardTransactionManager_return)))) {
@@ -6075,8 +6075,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 329: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSaveKey_return)))) {
@@ -6089,9 +6089,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 330: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSaveKeyEx_return)))) {
@@ -6105,9 +6105,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 331: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSaveMergedKeys_return)))) {
@@ -6121,15 +6121,15 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 332: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
-		uint64_t arg6 = get_64(cpu, 6);
-		uint64_t arg7 = get_64(cpu, 7);
-		uint64_t arg8 = get_64(cpu, 8);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
+		uint64_t arg6 = get_64(cpu, &ctx, 6);
+		uint64_t arg7 = get_64(cpu, &ctx, 7);
+		uint64_t arg8 = get_64(cpu, &ctx, 8);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSecureConnectPort_return)))) {
@@ -6155,8 +6155,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 334: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetBootEntryOrder_return)))) {
@@ -6169,8 +6169,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 335: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetBootOptions_return)))) {
@@ -6183,8 +6183,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 336: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetContextThread_return)))) {
@@ -6197,9 +6197,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 337: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDebugFilterState_return)))) {
@@ -6213,7 +6213,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 338: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDefaultHardErrorPort_return)))) {
@@ -6225,8 +6225,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 339: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDefaultLocale_return)))) {
@@ -6239,7 +6239,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 340: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDefaultUILanguage_return)))) {
@@ -6251,8 +6251,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 341: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetDriverEntryOrder_return)))) {
@@ -6265,10 +6265,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 342: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetEaFile_return)))) {
@@ -6283,7 +6283,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 343: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetHighEventPair_return)))) {
@@ -6295,7 +6295,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 344: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetHighWaitLowEventPair_return)))) {
@@ -6307,11 +6307,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 345: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationDebugObject_return)))) {
@@ -6327,10 +6327,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 346: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationEnlistment_return)))) {
@@ -6345,10 +6345,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 347: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationJobObject_return)))) {
@@ -6363,10 +6363,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 348: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationKey_return)))) {
@@ -6381,10 +6381,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 349: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationResourceManager_return)))) {
@@ -6399,10 +6399,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 350: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationToken_return)))) {
@@ -6417,10 +6417,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 351: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationTransaction_return)))) {
@@ -6435,10 +6435,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 352: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationTransactionManager_return)))) {
@@ -6453,10 +6453,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 353: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetInformationWorkerFactory_return)))) {
@@ -6471,8 +6471,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 354: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetIntervalProfile_return)))) {
@@ -6485,11 +6485,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 355: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint64_t arg4 = get_64(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint64_t arg4 = get_64(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetIoCompletion_return)))) {
@@ -6505,12 +6505,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 356: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetIoCompletionEx_return)))) {
@@ -6527,12 +6527,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 357: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint32_t arg5 = get_32(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint32_t arg5 = get_32(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetLdtEntries_return)))) {
@@ -6549,7 +6549,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 358: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetLowEventPair_return)))) {
@@ -6561,7 +6561,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 359: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetLowWaitHighEventPair_return)))) {
@@ -6573,10 +6573,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 360: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetQuotaInformationFile_return)))) {
@@ -6591,9 +6591,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 361: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSecurityObject_return)))) {
@@ -6607,8 +6607,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 362: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemEnvironmentValue_return)))) {
@@ -6621,11 +6621,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 363: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemEnvironmentValueEx_return)))) {
@@ -6641,9 +6641,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 364: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemInformation_return)))) {
@@ -6657,9 +6657,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 365: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemPowerState_return)))) {
@@ -6673,8 +6673,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 366: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetSystemTime_return)))) {
@@ -6687,8 +6687,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 367: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetThreadExecutionState_return)))) {
@@ -6701,10 +6701,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 368: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetTimerEx_return)))) {
@@ -6719,9 +6719,9 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 369: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetTimerResolution_return)))) {
@@ -6735,7 +6735,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 370: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetUuidSeed_return)))) {
@@ -6747,11 +6747,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 371: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSetVolumeInformationFile_return)))) {
@@ -6767,7 +6767,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 372: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtShutdownSystem_return)))) {
@@ -6779,8 +6779,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 373: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtShutdownWorkerFactory_return)))) {
@@ -6793,10 +6793,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 374: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSignalAndWaitForSingleObject_return)))) {
@@ -6811,8 +6811,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 375: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSinglePhaseReject_return)))) {
@@ -6825,7 +6825,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 376: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtStartProfile_return)))) {
@@ -6837,7 +6837,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 377: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtStopProfile_return)))) {
@@ -6849,7 +6849,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 378: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSuspendProcess_return)))) {
@@ -6861,8 +6861,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 379: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSuspendThread_return)))) {
@@ -6875,12 +6875,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 380: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtSystemDebugControl_return)))) {
@@ -6897,8 +6897,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 381: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTerminateJobObject_return)))) {
@@ -6929,12 +6929,12 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 385: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
-		uint64_t arg5 = get_64(cpu, 5);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
+		uint64_t arg5 = get_64(cpu, &ctx, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTraceControl_return)))) {
@@ -6951,10 +6951,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 386: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtTranslateFilePath_return)))) {
@@ -6969,7 +6969,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 387: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUmsThreadYield_return)))) {
@@ -6981,7 +6981,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 388: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadDriver_return)))) {
@@ -6993,7 +6993,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 389: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadKey_return)))) {
@@ -7005,8 +7005,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 390: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadKey2_return)))) {
@@ -7019,8 +7019,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 391: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnloadKeyEx_return)))) {
@@ -7033,11 +7033,11 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 392: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
-		uint32_t arg4 = get_32(cpu, 4);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
+		uint32_t arg4 = get_32(cpu, &ctx, 4);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnlockFile_return)))) {
@@ -7053,10 +7053,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 393: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint32_t arg3 = get_32(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint32_t arg3 = get_32(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtUnlockVirtualMemory_return)))) {
@@ -7071,8 +7071,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 394: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint32_t arg0 = get_32(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint32_t arg0 = get_32(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtVdmControl_return)))) {
@@ -7085,10 +7085,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 395: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint32_t arg1 = get_32(cpu, 1);
-		uint64_t arg2 = get_64(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint32_t arg1 = get_32(cpu, &ctx, 1);
+		uint64_t arg2 = get_64(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForDebugEvent_return)))) {
@@ -7103,10 +7103,10 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 396: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
-		uint32_t arg2 = get_32(cpu, 2);
-		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
+		uint32_t arg2 = get_32(cpu, &ctx, 2);
+		uint64_t arg3 = get_64(cpu, &ctx, 3);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForKeyedEvent_return)))) {
@@ -7121,8 +7121,8 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 397: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
-		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
+		uint64_t arg1 = get_64(cpu, &ctx, 1);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitForWorkViaWorkerFactory_return)))) {
@@ -7135,7 +7135,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 398: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitHighEventPair_return)))) {
@@ -7147,7 +7147,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 399: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWaitLowEventPair_return)))) {
@@ -7159,7 +7159,7 @@ void syscall_enter_switch_windows_7_x64(CPUState *cpu, target_ptr_t pc, int stat
 	case 400: {
 		panda_noreturn = false;
 		ctx.double_return = false;
-		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg0 = get_64(cpu, &ctx, 0);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
 					PPP_CHECK_CB(on_NtWorkerFactoryWorkerReady_return)))) {

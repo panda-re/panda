@@ -68,6 +68,15 @@ KNOWN_ARCH = {
         'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime ($v0)
         'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime ($sp)
         'qemu_target': 'defined(TARGET_MIPS) && !defined(TARGET_MIPS64)',    # qemu target name for this arch - used in guards
+        'runner_target': 'defined(TARGET_MIPS)',    # alternative target if another arch could be used
+    },
+    'mips64n32': {
+        'bits': 32,
+        'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime ($v0)
+        'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime ($sp)
+        'qemu_target': 'defined(TARGET_MIPS) && !defined(TARGET_MIPS64)',    # qemu target name for this arch - used in guards
+        'runner_target': 'defined(TARGET_MIPS) && defined(TARGET_MIPS64)',    # alternative target if another arch could be used
+        'boilerplate_target': '0',
     },
     'mips64': {
         'bits': 64,
@@ -358,7 +367,7 @@ class SysCall(object):
     '''
 
     def __init__(self, fields, target_context={}):
-        max_generic_syscall = MAX_GENERIC_SYSCALL_ALT if target_context['arch'] in ['mips', 'mips64'] else MAX_GENERIC_SYSCALL
+        max_generic_syscall = MAX_GENERIC_SYSCALL_ALT if target_context['arch'] in ['mips', 'mips64n32', 'mips64'] else MAX_GENERIC_SYSCALL
 
         # set properties inferred from prototype
         self.nos = [int(fields.group(1))] # "nos' is a list of syscall numbers, often 1 element
@@ -419,11 +428,11 @@ class SysCall(object):
                     # registers
                     argpos += 1
                 values.append(
-                        f'{ctype} arg{argnum} = ({ctype})get_32(cpu, {argpos+1}) << 32 | ({ctype})get_32(cpu, {argpos});'
+                        f'{ctype} arg{argnum} = ({ctype})get_32(cpu, &ctx, {argpos+1}) << 32 | ({ctype})get_32(cpu, &ctx, {argpos});'
                 )
                 argpos += 2
             else:
-                values.append(f'{ctype} arg{argnum} = {ctype_get}(cpu, {argpos});')
+                values.append(f'{ctype} arg{argnum} = {ctype_get}(cpu, &ctx, {argpos});')
                 argpos += 1
             argnum += 1
 

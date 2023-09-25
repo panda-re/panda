@@ -61,36 +61,39 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 }
 
 // Forward declarations
-int32_t get_s32_generic(CPUState *cpu, uint32_t argnum);
-int64_t get_s64_generic(CPUState *cpu, uint32_t argnum);
-int32_t get_return_s32_generic(CPUState *cpu, uint32_t argnum);
-int64_t get_return_s64_generic(CPUState *cpu, uint32_t argnum);
+int32_t get_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+int64_t get_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+int32_t get_return_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+int64_t get_return_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
 target_long get_return_val_x86(CPUState *cpu);
 target_long get_return_val_x64(CPUState *cpu);
 target_long get_return_val_arm(CPUState *cpu);
 target_long get_return_val_mips(CPUState *cpu);
-uint32_t get_return_32_windows_x86(CPUState *cpu, uint32_t argnum);
-uint32_t get_return_32_windows_x64(CPUState *cpu, uint32_t argnum);
-uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum);
-uint64_t get_return_64_windows_x64(CPUState *cpu, uint32_t argnum);
-uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum);
-uint64_t get_64_linux_x64(CPUState *cpu, uint32_t argnum);
-uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum);
-uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum);
-uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum);
-uint64_t get_64_windows_x64(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_x86(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_x64(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_arm(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_mips(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_windows_x86(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_windows_x64(CPUState *cpu, uint32_t argnum);
+uint32_t get_return_32_windows_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_return_32_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_return_64_windows_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_return_64_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_64_linux_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_64_linux_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_64_linux_arm(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_64_linux_mips(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_64_windows_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint64_t get_64_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_32_linux_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_32_linux_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_32_linux_arm(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_32_linux_mips(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_32_windows_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+uint32_t get_32_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
 target_ulong calc_retaddr_windows_x86(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_windows_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_x86(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_mips(CPUState *cpu, target_ulong pc); // TODO
+
+void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_callno);
+void syscall_return_linux_mips64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
 
 enum ProfileType {
     PROFILE_LINUX_X86,
@@ -107,15 +110,6 @@ enum ProfileType {
     PROFILE_FREEBSD_X64,
     PROFILE_LAST
 };
-
-enum Syscall_abi {
-    ABI_DEFAULT,
-    ABI_MIPS_O32,
-    ABI_MIPS_N32,
-    ABI_MIPS_N64,
-};
-
-Syscall_abi syscall_abi = ABI_DEFAULT;
 
 
 // enter_switch:  the generated function that invokes the enter callback
@@ -135,14 +129,14 @@ struct Profile {
     void         (*return_switch)(CPUState *, target_ulong, const syscall_ctx_t *);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
-    uint32_t     (*get_32 )(CPUState *, uint32_t);
-    int32_t      (*get_s32)(CPUState *, uint32_t);
-    uint64_t     (*get_64)(CPUState *, uint32_t);
-    int64_t      (*get_s64)(CPUState *, uint32_t);
-    uint32_t     (*get_return_32 )(CPUState *, uint32_t);
-    int32_t      (*get_return_s32)(CPUState *, uint32_t);
-    uint64_t     (*get_return_64)(CPUState *, uint32_t);
-    int64_t      (*get_return_s64)(CPUState *, uint32_t);
+    uint32_t     (*get_32 )(CPUState *, syscall_ctx_t*, uint32_t);
+    int32_t      (*get_s32)(CPUState *, syscall_ctx_t*,  uint32_t);
+    uint64_t     (*get_64)(CPUState *, syscall_ctx_t*, uint32_t);
+    int64_t      (*get_s64)(CPUState *, syscall_ctx_t*, uint32_t);
+    uint32_t     (*get_return_32 )(CPUState *, syscall_ctx_t*, uint32_t);
+    int32_t      (*get_return_s32)(CPUState *, syscall_ctx_t*, uint32_t);
+    uint64_t     (*get_return_64)(CPUState *, syscall_ctx_t*, uint32_t);
+    int64_t      (*get_return_s64)(CPUState *, syscall_ctx_t*,uint32_t);
     int          windows_return_addr_register;
     int          windows_arg_offset;
     int          syscall_interrupt_number;
@@ -218,8 +212,8 @@ Profile profiles[PROFILE_LAST] = {
         .syscall_interrupt_number = 0x80,
     },
     {   /* Linux MIPS64 */
-        .enter_switch = syscall_enter_switch_linux_mips64,
-        .return_switch = syscall_return_switch_linux_mips64,
+        .enter_switch = syscall_enter_linux_mips64,
+        .return_switch = syscall_return_linux_mips64,
         .get_return_val = get_return_val_mips,
         .calc_retaddr = calc_retaddr_linux_mips,
         .get_32 = get_32_linux_mips,
@@ -565,7 +559,7 @@ target_ulong calc_retaddr_linux_mips(CPUState* cpu, target_ulong pc) {
 }
 
 // Argument getting (at syscall entry)
-uint32_t get_linux_x86_argnum(CPUState *cpu, uint32_t argnum) {
+uint32_t get_linux_x86_argnum(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch (argnum) {
@@ -594,7 +588,7 @@ uint32_t get_linux_x86_argnum(CPUState *cpu, uint32_t argnum) {
 }
 
 // Argument getting (at syscall entry)
-uint64_t get_linux_x64_argnum(CPUState *cpu, uint32_t argnum) {
+uint64_t get_linux_x64_argnum(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #if defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
@@ -630,7 +624,7 @@ uint64_t get_linux_x64_argnum(CPUState *cpu, uint32_t argnum) {
     return 0;
 }
 
-static uint32_t get_win_syscall_arg(CPUState* cpu, int nr) {
+static uint32_t get_win_syscall_arg(CPUState* cpu, syscall_ctx* ctx, int nr) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     // At sysenter on 32-bit Windows7, args start at env->regs[R_EDX]+8
     // At INT 0x2E on Windows 2000, args start at env->regs[R_EDX]
@@ -644,15 +638,15 @@ static uint32_t get_win_syscall_arg(CPUState* cpu, int nr) {
     return 0;
 }
 
-uint32_t get_32_linux_x86 (CPUState *cpu, uint32_t argnum) {
+uint32_t get_32_linux_x86 (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     assert (argnum < 6);
-    return (uint32_t) get_linux_x86_argnum(cpu, argnum);
+    return (uint32_t) get_linux_x86_argnum(cpu, ctx, argnum);
 }
-uint32_t get_32_linux_x64 (CPUState *cpu, uint32_t argnum) {
+uint32_t get_32_linux_x64 (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     assert (argnum < 6);
-    return (uint32_t) (get_linux_x64_argnum(cpu, argnum) & 0xFFFFFFFF);
+    return (uint32_t) (get_linux_x64_argnum(cpu, ctx, argnum) & 0xFFFFFFFF);
 }
-uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum) {
+uint32_t get_32_linux_arm (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
@@ -671,12 +665,12 @@ uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum) {
 #endif
 }
 
-uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
+uint32_t get_32_linux_mips (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #ifdef TARGET_MIPS
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
     assert (argnum < 8);
-    if (syscall_abi == ABI_MIPS_O32) {
+    if (ctx->no >= 4000 && ctx->no < 5000) {
         if (argnum < 4) {
             // Args 1-4 in $a0-$a3 which are regs 4-7 in gpr
             return (uint32_t) env->active_tc.gpr[argnum+4];
@@ -692,13 +686,15 @@ uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
             }
             return buf;
         }
-    } else if (syscall_abi == ABI_MIPS_N32) {
+#ifdef TARGET_MIPS64
+    } else if (ctx->no >= 6000 && ctx->no < 7000) {
         // Args 1-8 in $a0-$a7 which are regs 4-11 in gpr
         return (uint32_t) env->active_tc.gpr[argnum+4];
-    } else if (syscall_abi == ABI_MIPS_N64) {
+    } else if (ctx->no >= 5000 && ctx->no < 6000) {
       // We're on the N64 ABI for a 64-bit guest but we want a 32 bit value
       // E.g., mips sys_inotify_add_watch has a u32 argument even on 64-bit guests. I guess
-      return get_64_linux_mips(cpu, argnum) & 0xffffffff;
+      return get_64_linux_mips(cpu, ctx, argnum) & 0xffffffff;
+#endif
     } else {
         assert(0); // Unknown ABI. Should be unreachable
     }
@@ -708,11 +704,11 @@ uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
 #endif
 }
 
-uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
-    return (uint32_t) get_win_syscall_arg(cpu, argnum);
+uint32_t get_32_windows_x86 (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return (uint32_t) get_win_syscall_arg(cpu, ctx, argnum);
 }
 
-uint32_t get_32_windows_x64(CPUState *cpu, uint32_t argnum) {
+uint32_t get_32_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     uint32_t argval = 0;
@@ -745,17 +741,17 @@ uint32_t get_32_windows_x64(CPUState *cpu, uint32_t argnum) {
 #endif
 }
 
-uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum) {
+uint64_t get_64_linux_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     assert (argnum < 6);
-    return (((uint64_t) get_linux_x86_argnum(cpu, argnum)) << 32) | (get_linux_x86_argnum(cpu, argnum));
+    return (((uint64_t) get_linux_x86_argnum(cpu, ctx, argnum)) << 32) | (get_linux_x86_argnum(cpu, ctx, argnum));
 }
 
-uint64_t get_64_linux_x64(CPUState *cpu, uint32_t argnum) {
+uint64_t get_64_linux_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     assert (argnum < 6);
-    return (uint64_t) get_linux_x64_argnum(cpu, argnum);
+    return (uint64_t) get_linux_x64_argnum(cpu, ctx, argnum);
 }
 
-uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
+uint64_t get_64_linux_arm(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 #if !defined(TARGET_AARCH64)
@@ -772,34 +768,25 @@ uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
 #endif
 }
 
-uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum) {
+uint64_t get_64_linux_mips(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #ifdef TARGET_MIPS
     // A 64-bit guest may use n32 or n64 ABIs
     // Args 1-8 in $a0-$a7 which are regs 4-11 in gpr
     // With N32 ABI we should only return 32 bits worth of data
     assert (argnum < 8);
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    uint64_t result = (uint64_t) env->active_tc.gpr[argnum+4];
-    if (syscall_abi == ABI_MIPS_N32) {
-        // Mask off the upper 32 bits
-        result &= 0xFFFFFFFF;
-    }else if (syscall_abi == ABI_MIPS_O32) {
-        //assert(0); // XXX this happens: see panda issues 1337, 1338
-        printf("WARNING: no support for reading 64-bit arguments on 32-bit guest\n");
-        return 0;
-    }
-    return result;
+    return (uint64_t) env->active_tc.gpr[argnum+4];
 #else
     return 0;
 #endif
 }
 
-uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum) {
+uint64_t get_64_windows_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     assert (false && "64-bit arguments not supported on Windows 7 x86");
     return 0;
 }
 
-uint64_t get_64_windows_x64(CPUState *cpu, uint32_t argnum) {
+uint64_t get_64_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #if defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     uint64_t argval = 0;
@@ -831,7 +818,7 @@ uint64_t get_64_windows_x64(CPUState *cpu, uint32_t argnum) {
 }
 
 // Argument getting (at syscall return)
-static uint32_t get_win_syscall_return_arg(CPUState* cpu, int nr) {
+static uint32_t get_win_syscall_return_arg(CPUState* cpu, syscall_ctx *ctx, int nr) {
 #if defined(TARGET_I386)
     // At sysenter on Windows7, args start at env->regs[R_EDX]+8
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
@@ -844,20 +831,20 @@ static uint32_t get_win_syscall_return_arg(CPUState* cpu, int nr) {
 #endif
 }
 
-uint32_t get_return_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
-    return get_win_syscall_return_arg(cpu, argnum);
+uint32_t get_return_32_windows_x86 (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return get_win_syscall_return_arg(cpu, ctx, argnum);
 }
 
-uint32_t get_return_32_windows_x64(CPUState *cpu, uint32_t argnum) {
+uint32_t get_return_32_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     // suspect the part of the profile this is for is dead code
     LOG_WARNING("get_return_32_windows_x64, returning dummy value from presumed dead code\n");
     return 0;
 }
-uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
+uint64_t get_return_64_windows_x86(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     assert (false && "64-bit arguments not supported on Windows 7 x86");
 }
 
-uint64_t get_return_64_windows_x64(CPUState *cpu, uint32_t argnum) {
+uint64_t get_return_64_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
     // suspect the part of the profile this is for is dead code
     LOG_WARNING("get_return_64_windows_x64, returning dummy value from presumed dead code\n");
     return 0;
@@ -870,46 +857,79 @@ target_long get_return_val (CPUState *cpu) {
 target_ulong calc_retaddr (CPUState *cpu, target_ulong pc) {
     return syscalls_profile->calc_retaddr(cpu, pc);
 }
-uint32_t get_32(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_32(cpu, argnum);
+uint32_t get_32(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_32(cpu, ctx, argnum);
 }
-int32_t get_s32(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_s32(cpu, argnum);
+int32_t get_s32(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_s32(cpu, ctx, argnum);
 }
-uint64_t get_64(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_64(cpu, argnum);
+uint64_t get_64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_64(cpu, ctx, argnum);
 }
-int64_t get_s64(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_s64(cpu, argnum);
+int64_t get_s64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_s64(cpu, ctx, argnum);
 }
-uint32_t get_return_32 (CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_return_32(cpu, argnum);
+uint32_t get_return_32 (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_return_32(cpu, ctx, argnum);
 }
-int32_t get_return_s32(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_return_s32(cpu, argnum);
+int32_t get_return_s32(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_return_s32(cpu, ctx, argnum);
 }
-uint64_t get_return_64(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_return_64(cpu, argnum);
+uint64_t get_return_64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_return_64(cpu, ctx, argnum);
 }
-int64_t get_return_s64(CPUState *cpu, uint32_t argnum) {
-    return syscalls_profile->get_return_s64(cpu, argnum);
-}
-
-int32_t get_s32_generic(CPUState *cpu, uint32_t argnum) {
-    return (int32_t) get_32(cpu, argnum);
+int64_t get_return_s64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return syscalls_profile->get_return_s64(cpu, ctx, argnum);
 }
 
-int64_t get_s64_generic(CPUState *cpu, uint32_t argnum) {
-    return (int64_t) get_64(cpu, argnum);
+int32_t get_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return (int32_t) get_32(cpu, ctx, argnum);
 }
 
-int32_t get_return_s32_generic(CPUState *cpu, uint32_t argnum) {
-    return (int32_t) get_return_32(cpu, argnum);
+int64_t get_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return (int64_t) get_64(cpu, ctx, argnum);
 }
 
-int64_t get_return_s64_generic(CPUState *cpu, uint32_t argnum) {
-    return (int64_t) get_return_64(cpu, argnum);
+int32_t get_return_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return (int32_t) get_return_32(cpu, ctx, argnum);
 }
+
+int64_t get_return_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
+    return (int64_t) get_return_64(cpu, ctx, argnum);
+}
+
+/**
+ * MIPS64 supports 3 ABIs: o32, n32, and n64. This complicates our efforts.
+*/
+void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_callno) {
+    #if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+    if (static_callno >= 4000 && static_callno <= 4999) {
+		syscall_enter_switch_linux_mips(cpu, pc, static_callno);
+	}else if (static_callno >= 5000 && static_callno <= 5999) {
+        syscall_enter_switch_linux_mips64(cpu, pc, static_callno);
+    }else if (static_callno >= 6000 && static_callno <= 6999) {
+        syscall_enter_switch_linux_mipsn32(cpu, pc, static_callno);
+    }else{
+        assert("syscall_enter_linux_mips64: static_callno not found");
+    }
+    #endif
+}
+
+
+void syscall_return_linux_mips64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
+    #if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+    if (ctx->no >= 4000 && ctx->no <= 4999) {
+		syscall_return_switch_linux_mips(cpu, pc, ctx);
+	}else if (ctx->no >= 5000 && ctx->no <= 5999) {
+        syscall_return_switch_linux_mips64(cpu, pc, ctx);
+    }else if (ctx->no >= 6000 && ctx->no <= 6999) {
+        syscall_return_switch_linux_mipsn32(cpu, pc, ctx);
+    }else{
+        assert("syscall_return_linux_mips64: ctx->no not found");
+    }
+    #endif
+}
+
 
 static std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
 
@@ -1239,40 +1259,10 @@ bool init_plugin(void *self) {
 #endif
     
 #if defined(TARGET_MIPS)
-        if (abi) {
-            if (strcmp(abi, "n64") == 0) {
-                syscall_abi = ABI_MIPS_N64;
-
-            }else if (strcmp(abi, "n32") == 0) {
-                syscall_abi = ABI_MIPS_N32;
-
-            }else if (strcmp(abi, "o32") == 0) {
-                syscall_abi = ABI_MIPS_O32;
-            } else {
-                std::cerr << PANDA_MSG "ERROR: Unknown abi for mips: " << abi << std::endl;
-                std::cerr << PANDA_MSG "\tSupported values are o32, n32, and n64. " << std::endl;
-                return false;
-            }
-        } else {
-            // Per-arch defaults set below
 #if defined(TARGET_MIPS64)
-            // Default ABI for 64 bit
-            syscall_abi = ABI_MIPS_N64;
-        }
-        if (syscall_abi == ABI_MIPS_O32) {
-            std::cerr << PANDA_MSG "ERROR: cannot use O32 ABI for a 64-bit mips guest" << std::endl;
-            return false;
-        }
         std::cerr << PANDA_MSG "using profile for linux mips64" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_MIPS64];
 #else
-            // Default ABI for 32 bit
-            syscall_abi = ABI_MIPS_O32;
-        }
-        if (syscall_abi == ABI_MIPS_N64) {
-            std::cerr << PANDA_MSG "ERROR: cannot use N64 ABI for a 32-bit mips guest" << std::endl;
-            return false;
-        }
         std::cerr << PANDA_MSG "using profile for linux mips32" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_MIPS32];
 #endif

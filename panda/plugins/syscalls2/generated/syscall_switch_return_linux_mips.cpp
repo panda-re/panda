@@ -13,7 +13,7 @@ extern "C" {
 }
 
 void syscall_return_switch_linux_mips(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
-#if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+#if defined(TARGET_MIPS)
 	const syscall_info_t *call = NULL;
 	syscall_info_t zero = {0};
 	if (syscall_meta != NULL && ctx->no <= syscall_meta->max_generic) {

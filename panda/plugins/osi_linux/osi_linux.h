@@ -84,7 +84,7 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initiali
     while (true) {
         it++;
         if (it == offsets.end()) break;
-        OG_printf("\tDereferenced 0x" TARGET_FMT_lx" (offset 0x" TARGET_FMT_lx ") to get ", ptr, o);
+        OG_printf("\tDereferenced 0x" TARGET_FMT_lx" (offset 0x" TARGET_FMT_lx ") to get ", (target_ulong)ptr, (target_ulong)o);
         auto r = struct_get(cpu, &ptr, ptr, o);
         if (r != struct_get_ret_t::SUCCESS) {
             OG_printf("ERROR\n");
@@ -93,15 +93,15 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initiali
         }
         o = *it;
         // We just read a pointer so we may need to fix its endianness
-        if (sizeof(T) == 4) fixupendian(ptr); // XXX wrong for 64-bit guests
+        if (sizeof(T) == sizeof(target_ulong)) fixupendian2(ptr);
         OG_printf("0x" TARGET_FMT_lx "\n", ptr);
     }
 
     // last item is read using the size of the type of v
     // this isn't a pointer so there's no need to fix its endianness
     auto ret = struct_get(cpu, v, ptr, o); // deref ptr into v, result in ret
-    fixupendian(*v);
-    OG_printf("Struct_get final 0x" TARGET_FMT_lx " => 0x " TARGET_FMT_lx "\n", ptr, *v);
+    fixupendian2(*v);
+    OG_printf("Struct_get final 0x" TARGET_FMT_lx " => 0x " TARGET_FMT_lx "\n", (target_ulong)ptr, (target_ulong)*v);
     return ret;
 }
 #endif
@@ -182,8 +182,8 @@ static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
 #define IMPLEMENT_OFFSET_GETN(_funcName, _paramName, _retType, _retName, _retSize, _offset) \
 static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
     size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
-    OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset); \
-    OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset, ret_size); \
+    OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", _paramName, (target_ulong)_offset); \
+    OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", _paramName + _offset, (target_ulong) ret_size); \
     if (-1 == panda_virtual_memory_read(env, _paramName + _offset, (uint8_t *)_retName, ret_size)) { \
         return OG_ERROR_MEMORY; \
     } \
@@ -388,7 +388,7 @@ static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array
     if (-1 == panda_virtual_memory_read(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t))) {
         return (target_ptr_t)NULL;
     }
-    fixupendian(fd_file_ptr);
+    fixupendian2(fd_file_ptr);
     return fd_file_ptr;
 }
 
@@ -427,7 +427,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         OG_printf("Dentry loop: current_dentry(struct dentry*)0x" TARGET_FMT_lx "\n",  current_dentry);
         // First calculate the parent that we'll use in the next loop iteration
         og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
-        fixupendian(current_dentry_parent);
+        fixupendian2(current_dentry_parent);
 
 
         // Now process the current dentry to get the d_name
@@ -469,7 +469,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         } else {
           pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
         }
-        fixupendian(pcomp_length);
+        fixupendian2(pcomp_length);
 #else
         // Little endian: kernel version doesn't matter, len will always be second after an unsigned int
         pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
@@ -497,7 +497,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 
         // read component
         target_ptr_t guest_addr = *(target_ptr_t *)(d_name + ki.qstr.name_offset);
-        fixupendian(guest_addr);
+        fixupendian2(guest_addr);
         OG_printf("Reading name from guest 0x" TARGET_FMT_lx "\n", guest_addr);
         og_err1 = panda_virtual_memory_read(env, guest_addr, (uint8_t *)pcomp, pcomp_length*sizeof(char));
 
@@ -580,11 +580,11 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 
         // retrieve vfsmount members
         og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
-        fixupendian(current_vfsmount_dentry);
+        fixupendian2(current_vfsmount_dentry);
         OG_printf("###get_dentry returns %d with (struct vfsmount *)0x" TARGET_PTR_FMT " -> (struct dentry *)0x" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
 
         og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
-        fixupendian(current_vfsmount_parent);
+        fixupendian2(current_vfsmount_parent);
         OG_printf("###get_vsfmount_parent returns %d with (struct vfsmount *)0x" TARGET_PTR_FMT " -> (struct vfsmount *)0x" TARGET_PTR_FMT "\n", og_err1, current_vfsmount, current_vfsmount_parent);
 
         // check whether we should break out

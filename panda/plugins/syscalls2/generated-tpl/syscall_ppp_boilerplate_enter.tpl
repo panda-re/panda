@@ -1,5 +1,5 @@
 {%- for arch, syscalls in syscalls_arch|dictsort -%}
-#if {{architectures[arch].qemu_target}}
+#if {{architectures[arch].get('boilerplate_target', architectures[arch].qemu_target)}}
 {%- for syscall_name, syscall in syscalls|dictsort %}
 PPP_CB_BOILERPLATE(on_{{syscall.name}}_enter)
 {%- endfor %}
