@@ -777,8 +777,6 @@ void initialize_introspection(CPUState *cpu) {
     return;
   }
 
-  using_asid_change_heuristic = false;
-
   GArray *mods = get_modules(cpu);
   for (int i = 0; i < mods->len; i++) {
       OsiModule *mod = &g_array_index(mods, OsiModule, i);
@@ -793,8 +791,10 @@ void initialize_introspection(CPUState *cpu) {
   if (swapcontext_address == 0x0) {
     fprintf(stderr, "Error finding ntoskrnl! Defaulting to ASID change heuristic.\n");
   } else {
-    // disable ASID change heuristic
-    panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+    if (!using_asid_change_heuristic){
+      // disable ASID change heuristic
+      panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+    }
 
     // add hook for swapcontext_address
     void *hooks = panda_get_plugin_by_name("hooks");
@@ -821,6 +821,10 @@ bool init_plugin(void *_self) {
   panda_require("osi");
   assert(init_osi_api());
   self = _self;
+
+  // get arguments to this plugin
+  panda_arg_list *args = panda_get_args("wintrospection");
+  using_asid_change_heuristic = panda_parse_bool_opt(args, "asid_change_heuristic", "enable asid change heuristic");
 
   pcb_startblock.start_block_exec = start_block_exec;
   panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
