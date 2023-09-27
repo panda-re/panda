@@ -2634,7 +2634,7 @@ class Panda():
         interface after this returns
         '''
         print("PANDA: entering interactive mode. Type pandaquit to exit")
-        prompt = self.expect_prompt.decode("utf8") if self.expect_prompt  else "$ "
+        prompt = self.expect_prompt.decode("utf8") if self.expect_prompt and isinstance(self.expect_prompt, bytes) else "$ "
         if not prompt.endswith(" "): prompt += " "
         while True:
             cmd = input(prompt) # TODO: Strip all control characters - Ctrl-L breaks things
