@@ -4,6 +4,7 @@ asid_instr_count
 asidstory
 callfunc
 callstack_instr
+callwitharg
 checkpoint
 collect_code
 correlatetaps
