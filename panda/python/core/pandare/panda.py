@@ -2084,6 +2084,27 @@ class Panda():
             return tq
         else:
             return None
+    
+    def address_to_ram_offset(self, hwaddr, is_write):
+        '''
+        Convert physical address to ram offset
+
+        Args:
+            hwaddr (int): physical address
+            is_write (bool): boolean representing if this is a write
+
+        Returns:
+            ram offset (int)
+
+        Raises:
+            ValueError if memory access fails or fmt is unsupported
+        '''
+        
+        out = self.ffi.new("ram_addr_t*", self.ffi.cast("ram_addr_t", 0))
+        value = self.libpanda.PandaPhysicalAddressToRamOffset_external(out, hwaddr, is_write)
+        if value != 0:
+            raise ValueError(f"address_to_ram_offset returned {value}")
+        return out[0]
 
     # enables symbolic tracing
     def taint_sym_enable(self):

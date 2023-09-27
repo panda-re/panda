@@ -183,6 +183,10 @@ target_ulong panda_get_retval_external(const CPUState *cpu){
 	return panda_get_retval(cpu);
 }
 
+MemTxResult PandaPhysicalAddressToRamOffset_external(ram_addr_t* out, hwaddr addr, bool is_write){
+    return PandaPhysicalAddressToRamOffset(out, addr, is_write);
+}
+
 void panda_setup_signal_handling(void (*f) (int, void*, void *))
 {
     struct sigaction act;
