@@ -21,9 +21,9 @@ unsigned long long osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd);
 
 target_ptr_t ext_get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd);
 target_ptr_t ext_get_file_dentry(CPUState *env, target_ptr_t file_struct);
-target_ulong osi_virt_to_phys(CPUState *cpu, target_ulong addr);
-int osi_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf, int len);
-int osi_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len);
+target_ulong osi_linux_virt_to_phys(CPUState *cpu, target_ulong addr);
+int osi_linux_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf, int len);
+int osi_linux_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 

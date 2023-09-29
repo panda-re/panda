@@ -926,7 +926,7 @@ target_ulong walk_page_table(CPUState *cpu, target_ulong addr){
     return (target_ulong) -1;
 }
 
-target_ulong osi_virt_to_phys(CPUState *cpu, target_ulong virt) {
+target_ulong osi_linux_virt_to_phys(CPUState *cpu, target_ulong virt) {
     target_ulong ret;
     if ((ret = panda_virt_to_phys(cpu, virt)) != (target_ulong)-1)
     {
@@ -939,7 +939,7 @@ target_ulong osi_virt_to_phys(CPUState *cpu, target_ulong virt) {
     return (target_ulong) -1;
 }
 
-int osi_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write){
+int osi_linux_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write){
     int ret;
     if ((ret = panda_virtual_memory_rw(cpu, addr, buf, len, is_write)) == MEMTX_OK)
     {
@@ -956,12 +956,12 @@ int osi_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int le
     return ret;
 }
 
-int osi_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
-    return osi_virtual_memory_rw(cpu, addr, buf, len, false);
+int osi_linux_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
+    return osi_linux_virtual_memory_rw(cpu, addr, buf, len, false);
 }
 
-int osi_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
-    return osi_virtual_memory_rw(cpu, addr, buf, len, true);
+int osi_linux_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
+    return osi_linux_virtual_memory_rw(cpu, addr, buf, len, true);
 }
 
 
