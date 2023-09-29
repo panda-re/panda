@@ -803,60 +803,166 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
  osi_linux extra API
 ****************************************************************** */
 
-unsigned long walk_page_tables(CPUState *cpu, OsiProc *p, target_ptr_t virtual_address) {
-#ifndef TARGET_ARM
-    return 0;
+
+target_ulong read_target_ulong(CPUState *cpu, target_ulong addr) {
+    target_ulong ret = 0;
+    if (panda_virtual_memory_read(cpu, addr, (uint8_t *)&ret, sizeof(target_ulong)) != MEMTX_OK){
+        return 0;
+    }
+    printf("read_target_ulong: " TARGET_FMT_lx " result: " TARGET_FMT_lx "\n", addr, ret);
+    fixupendian2(ret);
+    printf("read_target_ulong: " TARGET_FMT_lx " result after fixup: " TARGET_FMT_lx "\n", addr, ret);
+
+    return ret;
+}
+
+#if (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+
+#define PGDIR_SHIFT 0x16
+#define PGD_SIZE 4
+#define PAGE_SHIFT 12
+#define PAGE_MASK 0xfffff000
+#define NOT_PAGE_GLOBAL_SHIFT 0xffffffdf
+
+target_ulong pte_offset(CPUState *cpu, target_ulong pmd, target_ulong addr){
+    return read_target_ulong(cpu, pmd) + (((addr & PAGE_MASK) >> 10) & 0xffc);
+}
+
+bool pte_valid(CPUState *cpu, target_ulong pte){
+    return (read_target_ulong(cpu, pte) & NOT_PAGE_GLOBAL_SHIFT) != 0;
+}
+
+#elif (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) 
+#define PGDIR_SHIFT 0x15
+#define PGD_SIZE 8
+#define PAGE_SHIFT 12
+#define PAGE_MASK 0xfffff000
+#define PHYS_OFFSET 0x40000000
+#define PAGE_OFFSET 0xc0000000
+
+#define KVA_TO_PA(x) (x - PHYS_OFFSET + PAGE_OFFSET)
+
+target_ulong pte_offset(CPUState *cpu, target_ulong pmd, target_ulong addr){
+    return (KVA_TO_PA(read_target_ulong(cpu, pmd)) & PAGE_MASK) + (addr & 0x1ff);
+}
+
+bool pte_valid(CPUState *cpu, target_ulong pte){
+    return read_target_ulong(cpu, pte) != 0;
+}
+
 #endif
 
-    bool changed = enter_priv(cpu);
+#if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
-    printf("Walk page table for %lx\n", virtual_address);
-    uint32_t pgd = p->pgd;
-    
-    printf("PGD is %x\n", pgd);
-    if (pgd == (unsigned int)-1) {
-        printf("BAD PGD\n");
+target_ulong pgd_offset(CPUState *cpu, target_ulong proc_pgd, target_ulong addr){
+    target_ulong pgd_index = (addr >> PGDIR_SHIFT) * PGD_SIZE;
+    return proc_pgd + pgd_index;
+}
+
+target_ulong pud_offset(CPUState *cpu, target_ulong pgd, target_ulong addr){
+    return pgd;
+}
+
+
+target_ulong pmd_offset(CPUState *cpu, target_ulong pud, target_ulong addr){
+    return pud;
+}
+
+bool pgd_valid(CPUState *cpu, target_ulong pgd){
+    return 1;
+}
+
+bool pud_valid(CPUState *cpu, target_ulong pud){
+    return 1;
+}
+
+bool pmd_valid(CPUState *cpu, target_ulong pmd){
+    return 1;
+}
+
+target_ulong pte_pfn_fn(CPUState *cpu, target_ulong pte){
+    return read_target_ulong(cpu, pte) >> PAGE_SHIFT;
+}
+
+target_ulong address_from_pfn(CPUState *cpu, target_ulong pte, target_ulong addr){
+    return ((pte << PAGE_SHIFT) & PAGE_MASK)  + (addr & (~PAGE_MASK));
+}
+
+#endif
+
+target_ulong walk_page_table(CPUState *cpu, target_ulong addr){
+#if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+    OsiProc *proc = get_current_process(cpu);
+    printf("VA IN: " TARGET_FMT_lx "\n", addr);
+    if (proc == NULL)
+    {
+        return (target_ulong) -1;
+    }
+    target_ulong proc_pgd = proc->pgd;
+    printf("proc_pgd: " TARGET_FMT_lx "\n", proc_pgd);
+    target_ulong pgd = pgd_offset(cpu, proc_pgd, addr);
+    printf("pgd: " TARGET_FMT_lx "\n", pgd);
+    if (pgd_valid(cpu, pgd)){
+        target_ulong pud = pud_offset(cpu, pgd, addr);
+        printf("pud: " TARGET_FMT_lx "\n", pud);
+        if (pud_valid(cpu, pud)){
+            target_ulong pmd = pmd_offset(cpu, pud, addr);
+            printf("pmd: " TARGET_FMT_lx "\n", pmd);
+            if (pmd_valid(cpu, pmd)){
+                target_ulong pte = pte_offset(cpu, pmd, addr);
+                printf("pte: " TARGET_FMT_lx "\n", pte);
+                if (pte_valid(cpu, pte)){
+                    target_ulong pfn = pte_pfn_fn(cpu, pte);
+                    printf("pfn: " TARGET_FMT_lx "\n", pfn);
+                    target_ulong phys = address_from_pfn(cpu, pfn, addr);
+                    printf("addr " TARGET_FMT_lx "\n", phys);
+                    return phys;
+                }
+            }
+        }
+    }
+#endif
+    return (target_ulong) -1;
+}
+
+target_ulong osi_virt_to_phys(CPUState *cpu, target_ulong virt) {
+    target_ulong ret;
+    if ((ret = panda_virt_to_phys(cpu, virt)) != (target_ulong)-1)
+    {
+        return ret;
+    }
+    if ((ret = walk_page_table(cpu, virt)) != (target_ulong)-1)
+    {
+        return ret;
+    }
+    return (target_ulong) -1;
+}
+int time_worked = 0;
+
+int osi_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write){
+    int ret;
+    if ((ret = panda_virtual_memory_rw(cpu, addr, buf, len, is_write)) == MEMTX_OK)
+    {
         return 0;
     }
 
-    uint32_t l1_index = (virtual_address >> 20);
-    uint32_t l2_index = (virtual_address >> 12) & 0xFF;
-    uint32_t offset   = virtual_address & 0xFFF;
-    printf("l1_index: %x, l2_index: %x, offset: %x\n", l1_index, l2_index, offset);
-
-    uint32_t l1_entry;
-    if (panda_virtual_memory_read(cpu, pgd+l1_index * 4, (uint8_t*)&l1_entry, 4) != 0) {
-        printf("Failed to read L1 entry\n");
-        return 0;
+    target_ulong pa = walk_page_table(cpu, addr);
+    if (pa != (target_ulong) -1){
+        if (panda_physical_memory_rw(pa, buf, len, is_write) == MEMTX_OK){
+            time_worked++;
+            printf("walking worked number %d\n", time_worked);
+            return 0;
+        }
     }
-    printf("l1_entry: %x\n", l1_entry);
+    return ret;
+}
 
-    if ((l1_entry & 0x3) != 0x1) {
-        printf("Invalid or unsupported L1 descriptor type\n");
-        return 0;
-    }
+int osi_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
+    return osi_virtual_memory_rw(cpu, addr, buf, len, false);
+}
 
-    uint32_t l2_table = l1_entry & ~0x3FF;  
-    printf("l2_table: %x\n", l2_table);
-
-    uint32_t l2_entry;
-    if (panda_virtual_memory_read(cpu, l2_table + l2_index * 4, (uint8_t*)&l2_entry, 4) != 0) {
-        printf("Failed to read L2 entry\n");
-        return 0;
-    }
-    printf("l2_entry: %x\n", l2_entry);
-
-    if ((l2_entry & 0x3) != 0x2) {
-        printf("Invalid or unsupported L2 descriptor type\n");
-        return 0;
-    }
-
-    hwaddr physical_address = (l2_entry & ~0xFFF) + offset;
-    printf("physical_address: %x\n", (uint32_t)physical_address);
-
-    if (changed) exit_priv(cpu);
-
-    return (unsigned long)physical_address;
+int osi_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
+    return osi_virtual_memory_rw(cpu, addr, buf, len, true);
 }
 
 

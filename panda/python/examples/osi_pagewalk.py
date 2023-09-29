@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+'''
+This is an example of the functionality that OSI provides for reading 2-level
+page tables.
+
+This does not work with the generic ARM image because it does not have the same
+type of page table. It does, however, work for some ARM images and the MIPS
+default image.
+'''
 from sys import argv
 from pandare import Panda
 
@@ -35,80 +43,60 @@ if arch == "mips" or arch == "mipsel":
     NOT_PAGE_GLOBAL_SHIFT = 0xffffffdf
     PGDIR_SHIFT = 0x16
     PFN_SHIFT = 0xb
-    def pgd_valid(pgd):
-        return True
-
-    def pud_valid(pud):
-        return True
-
-    def pmd_valid(pmd):
-        return True
 
     def pte_valid(pte):
         return (read_int(pte) & NOT_PAGE_GLOBAL_SHIFT) != 0
-    
-    def pgd_index(arg):
-        return ((arg >> PGDIR_SHIFT) * PGD_SIZE)
-
-    def pgd_offset(pgd, arg):
-        return read_int(pgd + pgd_index(arg))
-
-    def pud_offset(pgd, arg):
-        return pgd
-
-    def pmd_offset(pud, arg):
-        return pud
 
     def pte_offset(pmd, address):
-        return pmd + (((address & PAGE_MASK) >> 10) & 0xffc)
-
-    def pte_pfn_fn(pte):
-        return read_int(pte) >> PFN_SHIFT
+        return read_int(pmd) + (((address & PAGE_MASK) >> 10) & 0xffc)
 
     def address_from_pfn(pfn, address):
         return (pfn << PAGE_SHIFT) + (address & NOT_PAGE_MASK)
 elif arch == "arm":
-    # ARM DOES NOT CURRENTLY WORK!!!
     PAGE_SHIFT = 12
     PAGE_MASK =     0xfffff000
     NOT_PAGE_MASK = 0x00000fff
     PGD_SIZE = 8
     PGDIR_SHIFT = 0x15
     PFN_SHIFT = 0xc
-    def pgd_valid(pgd):
-        return True
-
-    def pud_valid(pud):
-        return True
-
-    def pmd_valid(pmd):
-        # return read_int(pmd) != 0 and read_int(pmd) & 2 == 0
-        return True
+    PHYS_MASK = 0xffffffff
+    PHYS_OFFSET = 0x40000000
+    PAGE_OFFSET = 0xc0000000
 
     def pte_valid(pte):
-        # return pte != 0
-        return True
+        return read_int(pte) != 0
     
-    def pgd_index(arg):
-        return (arg >> PGDIR_SHIFT) * 8
-
-    def pgd_offset(pgd, arg):
-        return read_int(pgd + pgd_index(arg)) & 0xfffffffc
-
-    def pud_offset(pgd, arg):
-        return pgd
-
-    def pmd_offset(pud, arg):
-        return pud
+    def kva_to_pa(address):
+        return address - PHYS_OFFSET + PAGE_OFFSET
 
     def pte_offset(pmd, address):
-        return pmd + (((((address & PAGE_MASK) << 0xb) & 0xffffffff) >> 0x17) * 4) & 0xffffffff
-
-    def pte_pfn_fn(pte):
-        return read_int(pte) >> PFN_SHIFT
+        return kva_to_pa(read_int(pmd) & PHYS_MASK & PAGE_MASK) + (address & 0x1ff)
 
     def address_from_pfn(pfn, address):
-        return (pfn << PAGE_SHIFT) + (address & NOT_PAGE_MASK)
+        return ((pfn << PAGE_SHIFT) & PAGE_MASK)  + (address & NOT_PAGE_MASK)
+
+def pte_pfn_fn(pte):
+    return read_int(pte) >> PAGE_SHIFT
+
+def pgd_index(arg):
+    return (arg >> PGDIR_SHIFT) * PGD_SIZE
+
+def pgd_offset(pgd, arg):
+    return pgd + pgd_index(arg) 
+
+def pud_offset(pgd, arg):
+    return pgd
+def pmd_offset(pud, arg):
+    return pud
+
+def pgd_valid(pgd):
+    return True
+
+def pud_valid(pud):
+    return True
+
+def pmd_valid(pmd):
+    return True
 
 def walk_page_table(cpu, address):
     proc_pgd = panda.plugins['osi'].get_current_process(cpu).pgd
@@ -158,6 +146,8 @@ def write(cpu, pc, fd, buf, count):
     try:
         print(f"buf: {buf:#x}/phys: {panda.virt_to_phys(cpu, buf):#x}")
         s = panda.read_str(cpu, buf, count)
+        if walk_page_table(cpu, buf) != panda.virt_to_phys(cpu, buf):
+            import ipdb
         print(f"{walk_page_table(cpu, buf):#x}")
     except ValueError:
         hdr = buf
