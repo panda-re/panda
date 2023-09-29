@@ -809,9 +809,9 @@ target_ulong read_target_ulong(CPUState *cpu, target_ulong addr) {
     if (panda_virtual_memory_read(cpu, addr, (uint8_t *)&ret, sizeof(target_ulong)) != MEMTX_OK){
         return 0;
     }
-    printf("read_target_ulong: " TARGET_FMT_lx " result: " TARGET_FMT_lx "\n", addr, ret);
+    OG_printf("read_target_ulong: " TARGET_FMT_lx " result: " TARGET_FMT_lx "\n", addr, ret);
     fixupendian2(ret);
-    printf("read_target_ulong: " TARGET_FMT_lx " result after fixup: " TARGET_FMT_lx "\n", addr, ret);
+    OG_printf("read_target_ulong: " TARGET_FMT_lx " result after fixup: " TARGET_FMT_lx "\n", addr, ret);
 
     return ret;
 }
