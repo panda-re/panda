@@ -831,7 +831,7 @@ bool init_plugin(void *_self) {
   
   // Hooking SwapContext on windows 2000 doesn't seem to be enough to detect
   // all tasks changes, fallback to ASID change heuristic for now.
-  if (strncmp(panda_os_name, "windows-32-2000", 16) == 0 && !using_asid_change_heuristic) {
+  if (strncmp(panda_os_name, "windows-32-2000", 15) == 0 && !using_asid_change_heuristic) {
     fprintf(stderr, "Warning: ASID change heuristic is required for windows 2000. Automatically enabling.\n");
     using_asid_change_heuristic = true;
   }
