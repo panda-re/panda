@@ -816,6 +816,7 @@ target_ulong read_target_ulong(CPUState *cpu, target_ulong addr) {
     return ret;
 }
 
+
 #if (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
 #define PGDIR_SHIFT 0x16
@@ -893,29 +894,29 @@ target_ulong address_from_pfn(CPUState *cpu, target_ulong pte, target_ulong addr
 target_ulong walk_page_table(CPUState *cpu, target_ulong addr){
 #if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
     OsiProc *proc = get_current_process(cpu);
-    printf("VA IN: " TARGET_FMT_lx "\n", addr);
+    OG_printf("VA IN: " TARGET_FMT_lx "\n", addr);
     if (proc == NULL)
     {
         return (target_ulong) -1;
     }
     target_ulong proc_pgd = proc->pgd;
-    printf("proc_pgd: " TARGET_FMT_lx "\n", proc_pgd);
+    OG_printf("proc_pgd: " TARGET_FMT_lx "\n", proc_pgd);
     target_ulong pgd = pgd_offset(cpu, proc_pgd, addr);
-    printf("pgd: " TARGET_FMT_lx "\n", pgd);
+    OG_printf("pgd: " TARGET_FMT_lx "\n", pgd);
     if (pgd_valid(cpu, pgd)){
         target_ulong pud = pud_offset(cpu, pgd, addr);
-        printf("pud: " TARGET_FMT_lx "\n", pud);
+        OG_printf("pud: " TARGET_FMT_lx "\n", pud);
         if (pud_valid(cpu, pud)){
             target_ulong pmd = pmd_offset(cpu, pud, addr);
-            printf("pmd: " TARGET_FMT_lx "\n", pmd);
+            OG_printf("pmd: " TARGET_FMT_lx "\n", pmd);
             if (pmd_valid(cpu, pmd)){
                 target_ulong pte = pte_offset(cpu, pmd, addr);
-                printf("pte: " TARGET_FMT_lx "\n", pte);
+                OG_printf("pte: " TARGET_FMT_lx "\n", pte);
                 if (pte_valid(cpu, pte)){
                     target_ulong pfn = pte_pfn_fn(cpu, pte);
-                    printf("pfn: " TARGET_FMT_lx "\n", pfn);
+                    OG_printf("pfn: " TARGET_FMT_lx "\n", pfn);
                     target_ulong phys = address_from_pfn(cpu, pfn, addr);
-                    printf("addr " TARGET_FMT_lx "\n", phys);
+                    OG_printf("addr " TARGET_FMT_lx "\n", phys);
                     return phys;
                 }
             }
@@ -937,7 +938,6 @@ target_ulong osi_virt_to_phys(CPUState *cpu, target_ulong virt) {
     }
     return (target_ulong) -1;
 }
-int time_worked = 0;
 
 int osi_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write){
     int ret;
@@ -949,8 +949,7 @@ int osi_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int le
     target_ulong pa = walk_page_table(cpu, addr);
     if (pa != (target_ulong) -1){
         if (panda_physical_memory_rw(pa, buf, len, is_write) == MEMTX_OK){
-            time_worked++;
-            printf("walking worked number %d\n", time_worked);
+            // OG_printf("walking worked when standard read did not\n");
             return 0;
         }
     }

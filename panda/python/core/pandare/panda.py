@@ -805,7 +805,7 @@ class Panda():
         if physical:
             err = self.libpanda.panda_physical_memory_read_external(addr_u, buf_a, length_a)
         else:
-            if self._plugin_loaded("osi_linux"):
+            if "osi_linux" in self.plugins.keys() or self._plugin_loaded("osi_linux"):
                 err = self.plugins["osi_linux"].osi_virtual_memory_read(env, addr_u, buf_a, length_a)
             else:
                 err = self.libpanda.panda_virtual_memory_read_external(env, addr_u, buf_a, length_a)
@@ -1116,7 +1116,10 @@ class Panda():
         Return:
             int: physical address
         '''
-        return self.libpanda.panda_virt_to_phys_external(cpu, addr)
+        if "osi_linux" in self.plugins.keys() or self._plugin_loaded(cpu, "osi_linux"):
+            return self.plugins["osi_linux"].osi_virt_to_phys(cpu, addr)
+        else:
+            return self.libpanda.panda_virt_to_phys_external(cpu, addr)
 
     def enable_plugin(self, handle):
         '''
