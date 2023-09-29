@@ -14,6 +14,7 @@ coverage
 dynamic_symbols
 edge_coverage
 filereadmon
+findcall
 forcedexec
 gdb
 hooks
