@@ -20,6 +20,8 @@ typedef void OsiProc;
 typedef void OsiProcHandle;
 typedef void CPUState;
 typedef void target_ptr_t;
+typedef void target_ulong;
+typedef void uint8_t;
 
 #include "osi_linux_int_fns.h"
 
