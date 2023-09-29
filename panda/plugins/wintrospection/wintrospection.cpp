@@ -743,7 +743,7 @@ void initialize_swapcontext_task_change(CPUState *cpu){
   // we do not know exactly when a nt!SwapContext executes, and we must use the
   // ASID change heuristic.
   if (swapcontext_offset == 0x0) {
-    fprintf(stderr, "Error finding nt!SwapContext. Defaulting to ASID change heuristic.\n")
+    fprintf(stderr, "Error finding nt!SwapContext. Defaulting to ASID change heuristic.\n");
     using_asid_change_heuristic = true;
     return;
   }
