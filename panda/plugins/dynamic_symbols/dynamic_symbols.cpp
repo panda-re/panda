@@ -98,7 +98,7 @@ void bind_symbol(CPUState *cpu, char* name, target_ulong base, struct symbol *s,
         } else {
             target_ulong gotentry= 0;
             target_ulong pltgotentry = base + pltgot + sizeof(target_ulong)*(s->symtab_idx + mips_local_gotno - mips_gotsym_idx);
-            if (osi_linux_virtual_memory_read(cpu, pltgotentry, (uint8_t*) &gotentry, sizeof(target_ulong)) != MEMTX_OK){
+            if (panda_virtual_memory_read(cpu, pltgotentry, (uint8_t*) &gotentry, sizeof(target_ulong)) != MEMTX_OK){
                 // printf("Error reading GOT entry @ %s (reloc_type: %d) @ " TARGET_FMT_lx "\n", name, s->reloc_type, pltgotentry);
                 s->address = 0;
                 return;
@@ -265,7 +265,7 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
     char *symtab_buf, *strtab_buf;
     int numelements_dyn, numelements_symtab;
 
-    if (osi_linux_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){            
+    if (panda_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){            
         error_case(procname, m->name, "3 CNRB");
         // can't read page. try again later;
         return false;
@@ -295,7 +295,7 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
     fixupendian(phoff);
 
     for (int j=0; j<phnum; j++){
-        if (osi_linux_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
+        if (panda_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
             error_case(procname, m->name, "5 DPHDR");
             return false;
         }
@@ -321,7 +321,7 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
 
     fixupendian(dynamic_phdr.p_vaddr);
     while (j < numelements_dyn){
-        if (osi_linux_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
+        if (panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
             //printf("%s:%s Failed to read entry %d\n", name.c_str(), procname, j);
             error_case(procname, m->name, "5 DPDR");
             return false;
@@ -373,13 +373,13 @@ bool find_symbols(CPUState* cpu, target_ulong asid, char* procname, OsiModule *m
     symtab_buf = (char*)malloc(symtab_size);
     strtab_buf = (char*)malloc(strtab_size);
     
-    if (osi_linux_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) != MEMTX_OK){
+    if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) != MEMTX_OK){
         error_case(procname, m->name, "8 CNR SYMTAB");
         free(symtab_buf);
         free(strtab_buf);
         return false;
     }
-    if (osi_linux_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) != MEMTX_OK){
+    if (panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) != MEMTX_OK){
         error_case(procname, m->name, "7 CNR STRTAB");
         free(symtab_buf);
         free(strtab_buf);
