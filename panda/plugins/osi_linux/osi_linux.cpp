@@ -76,6 +76,7 @@ struct KernelProfile const *kernel_profile;
 
 extern const char *qemu_file;
 static bool osi_initialized;
+static bool pagewalk_enabled;
 static bool first_osi_check = true;
 
 /* ******************************************************************
@@ -817,6 +818,17 @@ target_ulong read_target_ulong(CPUState *cpu, target_ulong addr) {
 }
 
 
+/**
+ * Our current implementation of walk_page_table is based on 2-level page table
+ * for MIPS and ARM. 
+*/
+
+/**
+ * An effort has been made to keep down the repeated code. In this case we 
+ * simply need different methods for pte_offset and pte_valid for MIPS and ARM.
+ * 
+ * This will be somewhat different for 3 and 4-level page tables.
+*/
 #if (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
 #define PGDIR_SHIFT 0x16
@@ -860,10 +872,14 @@ target_ulong pgd_offset(CPUState *cpu, target_ulong proc_pgd, target_ulong addr)
     return proc_pgd + pgd_index;
 }
 
+/**
+ * Our 2-level page tables flatten 2 levels of the page tables which, in turn,
+ * result in the pud and pmd being the same as the pgd and always being valid.
+*/
+
 target_ulong pud_offset(CPUState *cpu, target_ulong pgd, target_ulong addr){
     return pgd;
 }
-
 
 target_ulong pmd_offset(CPUState *cpu, target_ulong pud, target_ulong addr){
     return pud;
@@ -891,12 +907,16 @@ target_ulong address_from_pfn(CPUState *cpu, target_ulong pte, target_ulong addr
 
 #endif
 
+/**
+ * Our walk_page_table function is written in a generic manner so that we
+ * could theoretically support up to 4-level page table by target and setting.
+ * However, for our MIPS and ARM targets we only need 2-level page tables.
+*/
 target_ulong walk_page_table(CPUState *cpu, target_ulong addr){
 #if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
     OsiProc *proc = get_current_process(cpu);
     OG_printf("VA IN: " TARGET_FMT_lx "\n", addr);
-    if (proc == NULL)
-    {
+    if (proc == NULL){
         return (target_ulong) -1;
     }
     target_ulong proc_pgd = proc->pgd;
@@ -928,29 +948,29 @@ target_ulong walk_page_table(CPUState *cpu, target_ulong addr){
 
 target_ulong osi_linux_virt_to_phys(CPUState *cpu, target_ulong virt) {
     target_ulong ret;
-    if ((ret = panda_virt_to_phys(cpu, virt)) != (target_ulong)-1)
-    {
+    if ((ret = panda_virt_to_phys(cpu, virt)) != (target_ulong)-1){
         return ret;
     }
-    if ((ret = walk_page_table(cpu, virt)) != (target_ulong)-1)
-    {
-        return ret;
+    if (pagewalk_enabled){
+        if ((ret = walk_page_table(cpu, virt)) != (target_ulong)-1){
+            return ret;
+        }
     }
     return (target_ulong) -1;
 }
 
 int osi_linux_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write){
     int ret;
-    if ((ret = panda_virtual_memory_rw(cpu, addr, buf, len, is_write)) == MEMTX_OK)
-    {
+    if ((ret = panda_virtual_memory_rw(cpu, addr, buf, len, is_write)) == MEMTX_OK){
         return 0;
     }
-
-    target_ulong pa = walk_page_table(cpu, addr);
-    if (pa != (target_ulong) -1){
-        if (panda_physical_memory_rw(pa, buf, len, is_write) == MEMTX_OK){
-            // OG_printf("walking worked when standard read did not\n");
-            return 0;
+    if (pagewalk_enabled){
+        target_ulong pa = walk_page_table(cpu, addr);
+        if (pa != (target_ulong) -1){
+            if (panda_physical_memory_rw(pa, buf, len, is_write) == MEMTX_OK){
+                // OG_printf("walking worked when standard read did not\n");
+                return 0;
+            }
         }
     }
     return ret;
@@ -963,7 +983,6 @@ int osi_linux_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf
 int osi_linux_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
     return osi_linux_virtual_memory_rw(cpu, addr, buf, len, true);
 }
-
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     char *filename = NULL;
@@ -1167,6 +1186,7 @@ bool init_plugin(void *self) {
     char *kconf_file = g_strdup(panda_parse_string_opt(plugin_args, "kconf_file", NULL, "file containing kernel configuration information"));
     char *kconf_group = g_strdup(panda_parse_string_opt(plugin_args, "kconf_group", NULL, "kernel profile to use"));
     osi_initialized = panda_parse_bool_opt(plugin_args, "load_now", "Raise a fatal error if OSI cannot be initialized immediately");
+    pagewalk_enabled = panda_parse_bool_opt(plugin_args, "pagewalk", "Use pagewalk to find physical addresses for this target");
     panda_free_args(plugin_args);
 
     if (!kconf_file) {

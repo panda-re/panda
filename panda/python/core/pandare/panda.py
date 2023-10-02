@@ -1116,7 +1116,7 @@ class Panda():
         Return:
             int: physical address
         '''
-        if "osi_linux" in self.plugins.keys() or self._plugin_loaded(cpu, "osi_linux"):
+        if "osi_linux" in self.plugins.keys() or self._plugin_loaded("osi_linux"):
             return self.plugins["osi_linux"].osi_linux_virt_to_phys(cpu, addr)
         else:
             return self.libpanda.panda_virt_to_phys_external(cpu, addr)

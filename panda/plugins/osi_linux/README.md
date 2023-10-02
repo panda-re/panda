@@ -125,6 +125,7 @@ Arguments
 * `kconf_file`: string, by default searches build directory then install directory for "kernelinfo.conf". The location of the configuration file that gives the required offsets for different versions of Linux.
 * `kconf_group`: string, defaults to "debian-3.2.65-i686". The specific configuration desired from the kernelinfo file (multiple configurations can be stored in a single `kernelinfo.conf`).
 * `load_now`: bool, defaults to false. When set, we will raise a fatal error if OSI cannot be initialized immediately. Otherwise, the plugin will attempt to provide introspection immediately, but if that fails, it will wait until the first syscall. If OSI is still unavailable at the first syscall, a fatal error will always be raised.
+* `pagewalk`: bool, defaults to falts. When set, we will attempt to use pagewalk to resolve addresses. This is useful on embedded targets where TLB misses abound and your target page table configuration is supported.
 
 Dependencies
 ------------
