@@ -4,6 +4,7 @@
  *  Ben Dumas              benjamin.dumas@ll.mit.edu
  *  Nick Gillum            nicholas.gillum@ll.mit.edu
  *  Lisa Baer              lisa.baer@ll.mit.edu
+ *  Luke Craig             luke.craig@ll.mit.edu
  *
  * This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
@@ -74,6 +75,7 @@ void on_get_mapping_base_address_by_name(CPUState *cpu, OsiProc *p, const char *
 void on_has_mapping_prefix(CPUState *cpu, OsiProc *p, const char *prefix, bool *found);
 
 void initialize_introspection(CPUState *cpu);
+void initialize_swapcontext_task_change(CPUState *cpu);
 void task_change(CPUState *cpu);
 
 std::unique_ptr<WindowsKernelManager> g_kernel_manager;
@@ -735,6 +737,55 @@ bool is_windows_pae_enabled(CPUState* cpu) {
   return false;
 }
 
+void initialize_swapcontext_task_change(CPUState *cpu){
+  uint64_t swapcontext_offset = g_kernel_manager->get_swapcontext_offset();
+
+  // we do not know exactly when a nt!SwapContext executes, and we must use the
+  // ASID change heuristic.
+  if (swapcontext_offset == 0x0) {
+    fprintf(stderr, "Error finding nt!SwapContext. Defaulting to ASID change heuristic.\n");
+    using_asid_change_heuristic = true;
+    return;
+  }
+
+  GArray *mods = get_modules(cpu);
+  for (int i = 0; i < mods->len; i++) {
+      OsiModule *mod = &g_array_index(mods, OsiModule, i);
+      if (0 == strcmp("ntoskrnl.exe", mod->name)) {
+          swapcontext_address = mod->base + swapcontext_offset;
+      }
+  }
+  if (NULL != mods) {
+      g_array_free(mods, true);
+  }
+
+  if (swapcontext_address == 0x0) {
+    fprintf(stderr, "Error finding ntoskrnl! Defaulting to ASID change heuristic.\n");
+    using_asid_change_heuristic = true;
+  } else {
+    // disable ASID change heuristic
+    panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
+
+    // add hook for swapcontext_address
+    void *hooks = panda_get_plugin_by_name("hooks");
+    if (hooks == NULL){
+      panda_require("hooks");
+      hooks = panda_get_plugin_by_name("hooks");
+    }
+    hooks_add_hook = (void (*)(struct hook *))dlsym(hooks, "add_hook");
+
+    // create hook for swapcontext_address
+    struct hook h;
+    h.addr = swapcontext_address;
+    h.asid = 0; // match any asid
+    h.cb.start_block_exec = task_change_hook;
+    h.type = PANDA_CB_START_BLOCK_EXEC;
+    h.enabled = true;
+    h.km = MODE_ANY;
+    hooks_add_hook(&h);
+  }
+}
+
 void initialize_introspection(CPUState *cpu) {
   auto pmem = create_panda_physical_memory();
   if (!pmem) {
@@ -763,56 +814,8 @@ void initialize_introspection(CPUState *cpu) {
       std::unique_ptr<WindowsProcessManager>(new WindowsProcessManager());
   task_change(cpu);
 
-  // Hooking SwapContext on windows 2000 doesn't seem to be enough to detect
-  // all tasks changes, fallback to ASID change heuristic for now.
-  if (strncmp(panda_os_name, "windows-32-2000", 15) == 0) {
-    return;
-  }
-
-  uint64_t swapcontext_offset = g_kernel_manager->get_swapcontext_offset();
-
-  // we do not know exactly when a nt!SwapContext executes, and we must use the
-  // ASID change heuristic.
-  if (swapcontext_offset == 0x0) {
-    return;
-  }
-
-  using_asid_change_heuristic = false;
-
-  GArray *mods = get_modules(cpu);
-  for (int i = 0; i < mods->len; i++) {
-      OsiModule *mod = &g_array_index(mods, OsiModule, i);
-      if (0 == strcmp("ntoskrnl.exe", mod->name)) {
-          swapcontext_address = mod->base + swapcontext_offset;
-      }
-  }
-  if (NULL != mods) {
-      g_array_free(mods, true);
-  }
-
-  if (swapcontext_address == 0x0) {
-    fprintf(stderr, "Error finding ntoskrnl! Defaulting to ASID change heuristic.\n");
-  } else {
-    // disable ASID change heuristic
-    panda_disable_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
-
-    // add hook for swapcontext_address
-    void *hooks = panda_get_plugin_by_name("hooks");
-    if (hooks == NULL){
-      panda_require("hooks");
-      hooks = panda_get_plugin_by_name("hooks");
-    }
-    hooks_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-
-    // create hook for swapcontext_address
-    struct hook h;
-		h.addr = swapcontext_address;
-		h.asid = 0; // match any asid
-		h.cb.start_block_exec = task_change_hook;
-		h.type = PANDA_CB_START_BLOCK_EXEC;
-		h.enabled = true;
-		h.km = MODE_ANY;
-		hooks_add_hook(&h);
+  if (!using_asid_change_heuristic) {
+    initialize_swapcontext_task_change(cpu);
   }
 }
 
@@ -822,6 +825,17 @@ bool init_plugin(void *_self) {
   assert(init_osi_api());
   self = _self;
 
+  // get arguments to this plugin
+  panda_arg_list *args = panda_get_args("wintrospection");
+  using_asid_change_heuristic = panda_parse_bool_opt(args, "asid_change_heuristic", "enable asid change heuristic");
+  
+  // Hooking SwapContext on windows 2000 doesn't seem to be enough to detect
+  // all tasks changes, fallback to ASID change heuristic for now.
+  if (strncmp(panda_os_name, "windows-32-2000", 15) == 0 && !using_asid_change_heuristic) {
+    fprintf(stderr, "Warning: ASID change heuristic is required for windows 2000. Automatically enabling.\n");
+    using_asid_change_heuristic = true;
+  }
+  
   pcb_startblock.start_block_exec = start_block_exec;
   panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
   panda_disable_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb_startblock);
