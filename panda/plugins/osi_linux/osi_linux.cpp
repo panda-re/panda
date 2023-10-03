@@ -76,6 +76,7 @@ struct KernelProfile const *kernel_profile;
 
 extern const char *qemu_file;
 static bool osi_initialized;
+static bool pagewalk_enabled;
 static bool first_osi_check = true;
 
 /* ******************************************************************
@@ -159,10 +160,12 @@ static void fill_osiprochandle(CPUState *cpu, OsiProcHandle *h,
     struct_get_ret_t UNUSED(err);
 
     // h->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
+    // Note osiprochandle doesn't make the physical pgd available!
     err = struct_get(cpu, &h->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
     h->asid = panda_virt_to_phys(cpu, h->asid);
+
     h->taskd = kernel_profile->get_group_leader(cpu, task_addr);
 }
 
@@ -173,15 +176,17 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     struct_get_ret_t UNUSED(err);
     memset(p, 0, sizeof(OsiProc));
 
-    // p->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
-    err = struct_get(cpu, &p->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
+    // p->pgd = taskd->mm->pgd (some kernel tasks are expected to return error)
+    // Note pgd is physicl address vs asid is virtual (may be -1)
+    err = struct_get(cpu, &p->pgd, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
 
     // p->ppid = taskd->real_parent->pid
     err = struct_get(cpu, &p->ppid, task_addr,
                      {ki.task.real_parent_offset, ki.task.tgid_offset});
 
-    // Convert asid to physical to be able to compare it with the pgd register.
-    p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
+    // Convert pasid to physical to be able to compare it with the pgd register.
+    p->asid = panda_virt_to_phys(cpu, p->pgd);
+
     p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
 
     p->name = get_name(cpu, task_addr, p->name);
@@ -799,6 +804,186 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
  osi_linux extra API
 ****************************************************************** */
 
+
+target_ulong read_target_ulong(CPUState *cpu, target_ulong addr) {
+    target_ulong ret = 0;
+    if (panda_virtual_memory_read(cpu, addr, (uint8_t *)&ret, sizeof(target_ulong)) != MEMTX_OK){
+        return 0;
+    }
+    OG_printf("read_target_ulong: " TARGET_FMT_lx " result: " TARGET_FMT_lx "\n", addr, ret);
+    fixupendian2(ret);
+    OG_printf("read_target_ulong: " TARGET_FMT_lx " result after fixup: " TARGET_FMT_lx "\n", addr, ret);
+
+    return ret;
+}
+
+
+/**
+ * Our current implementation of walk_page_table is based on 2-level page table
+ * for MIPS and ARM. 
+*/
+
+/**
+ * An effort has been made to keep down the repeated code. In this case we 
+ * simply need different methods for pte_offset and pte_valid for MIPS and ARM.
+ * 
+ * This will be somewhat different for 3 and 4-level page tables.
+*/
+#if (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+
+#define PGDIR_SHIFT 0x16
+#define PGD_SIZE 4
+#define PAGE_SHIFT 12
+#define PAGE_MASK 0xfffff000
+#define NOT_PAGE_GLOBAL_SHIFT 0xffffffdf
+
+target_ulong pte_offset(CPUState *cpu, target_ulong pmd, target_ulong addr){
+    return read_target_ulong(cpu, pmd) + (((addr & PAGE_MASK) >> 10) & 0xffc);
+}
+
+bool pte_valid(CPUState *cpu, target_ulong pte){
+    return (read_target_ulong(cpu, pte) & NOT_PAGE_GLOBAL_SHIFT) != 0;
+}
+
+#elif (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) 
+#define PGDIR_SHIFT 0x15
+#define PGD_SIZE 8
+#define PAGE_SHIFT 12
+#define PAGE_MASK 0xfffff000
+#define PHYS_OFFSET 0x40000000
+#define PAGE_OFFSET 0xc0000000
+
+#define KVA_TO_PA(x) (x - PHYS_OFFSET + PAGE_OFFSET)
+
+target_ulong pte_offset(CPUState *cpu, target_ulong pmd, target_ulong addr){
+    return (KVA_TO_PA(read_target_ulong(cpu, pmd)) & PAGE_MASK) + (addr & 0x1ff);
+}
+
+bool pte_valid(CPUState *cpu, target_ulong pte){
+    return read_target_ulong(cpu, pte) != 0;
+}
+
+#endif
+
+#if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+
+target_ulong pgd_offset(CPUState *cpu, target_ulong proc_pgd, target_ulong addr){
+    target_ulong pgd_index = (addr >> PGDIR_SHIFT) * PGD_SIZE;
+    return proc_pgd + pgd_index;
+}
+
+/**
+ * Our 2-level page tables flatten 2 levels of the page tables which, in turn,
+ * result in the pud and pmd being the same as the pgd and always being valid.
+*/
+
+target_ulong pud_offset(CPUState *cpu, target_ulong pgd, target_ulong addr){
+    return pgd;
+}
+
+target_ulong pmd_offset(CPUState *cpu, target_ulong pud, target_ulong addr){
+    return pud;
+}
+
+bool pgd_valid(CPUState *cpu, target_ulong pgd){
+    return 1;
+}
+
+bool pud_valid(CPUState *cpu, target_ulong pud){
+    return 1;
+}
+
+bool pmd_valid(CPUState *cpu, target_ulong pmd){
+    return 1;
+}
+
+target_ulong pte_pfn_fn(CPUState *cpu, target_ulong pte){
+    return read_target_ulong(cpu, pte) >> PAGE_SHIFT;
+}
+
+target_ulong address_from_pfn(CPUState *cpu, target_ulong pte, target_ulong addr){
+    return ((pte << PAGE_SHIFT) & PAGE_MASK)  + (addr & (~PAGE_MASK));
+}
+
+#endif
+
+/**
+ * Our walk_page_table function is written in a generic manner so that we
+ * could theoretically support up to 4-level page table by target and setting.
+ * However, for our MIPS and ARM targets we only need 2-level page tables.
+*/
+target_ulong walk_page_table(CPUState *cpu, target_ulong addr){
+#if (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+    OsiProc *proc = get_current_process(cpu);
+    OG_printf("VA IN: " TARGET_FMT_lx "\n", addr);
+    if (proc == NULL){
+        return (target_ulong) -1;
+    }
+    target_ulong proc_pgd = proc->pgd;
+    OG_printf("proc_pgd: " TARGET_FMT_lx "\n", proc_pgd);
+    target_ulong pgd = pgd_offset(cpu, proc_pgd, addr);
+    OG_printf("pgd: " TARGET_FMT_lx "\n", pgd);
+    if (pgd_valid(cpu, pgd)){
+        target_ulong pud = pud_offset(cpu, pgd, addr);
+        OG_printf("pud: " TARGET_FMT_lx "\n", pud);
+        if (pud_valid(cpu, pud)){
+            target_ulong pmd = pmd_offset(cpu, pud, addr);
+            OG_printf("pmd: " TARGET_FMT_lx "\n", pmd);
+            if (pmd_valid(cpu, pmd)){
+                target_ulong pte = pte_offset(cpu, pmd, addr);
+                OG_printf("pte: " TARGET_FMT_lx "\n", pte);
+                if (pte_valid(cpu, pte)){
+                    target_ulong pfn = pte_pfn_fn(cpu, pte);
+                    OG_printf("pfn: " TARGET_FMT_lx "\n", pfn);
+                    target_ulong phys = address_from_pfn(cpu, pfn, addr);
+                    OG_printf("addr " TARGET_FMT_lx "\n", phys);
+                    return phys;
+                }
+            }
+        }
+    }
+#endif
+    return (target_ulong) -1;
+}
+
+target_ulong osi_linux_virt_to_phys(CPUState *cpu, target_ulong virt) {
+    target_ulong ret;
+    if ((ret = panda_virt_to_phys(cpu, virt)) != (target_ulong)-1){
+        return ret;
+    }
+    if (pagewalk_enabled){
+        if ((ret = walk_page_table(cpu, virt)) != (target_ulong)-1){
+            return ret;
+        }
+    }
+    return (target_ulong) -1;
+}
+
+int osi_linux_virtual_memory_rw(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write){
+    int ret;
+    if ((ret = panda_virtual_memory_rw(cpu, addr, buf, len, is_write)) == MEMTX_OK){
+        return 0;
+    }
+    if (pagewalk_enabled){
+        target_ulong pa = walk_page_table(cpu, addr);
+        if (pa != (target_ulong) -1){
+            if (panda_physical_memory_rw(pa, buf, len, is_write) == MEMTX_OK){
+                // OG_printf("walking worked when standard read did not\n");
+                return 0;
+            }
+        }
+    }
+    return ret;
+}
+
+int osi_linux_virtual_memory_read(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
+    return osi_linux_virtual_memory_rw(cpu, addr, buf, len, false);
+}
+
+int osi_linux_virtual_memory_write(CPUState *cpu, target_ulong addr, uint8_t *buf, int len){
+    return osi_linux_virtual_memory_rw(cpu, addr, buf, len, true);
+}
+
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     char *filename = NULL;
     target_ptr_t ts_current;
@@ -1001,6 +1186,7 @@ bool init_plugin(void *self) {
     char *kconf_file = g_strdup(panda_parse_string_opt(plugin_args, "kconf_file", NULL, "file containing kernel configuration information"));
     char *kconf_group = g_strdup(panda_parse_string_opt(plugin_args, "kconf_group", NULL, "kernel profile to use"));
     osi_initialized = panda_parse_bool_opt(plugin_args, "load_now", "Raise a fatal error if OSI cannot be initialized immediately");
+    pagewalk_enabled = panda_parse_bool_opt(plugin_args, "pagewalk", "Use pagewalk to find physical addresses for this target");
     panda_free_args(plugin_args);
 
     if (!kconf_file) {

@@ -71,7 +71,8 @@ typedef struct osi_module_struct {
  */
 typedef struct osi_proc_struct {
     target_ptr_t taskd;
-    target_ptr_t asid;
+    target_ptr_t pgd; // Physical address space ID
+    target_ptr_t asid; // virt_to_phys(pgd)
     target_pid_t pid;
     target_pid_t ppid;
     char *name;
