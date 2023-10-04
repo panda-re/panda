@@ -908,7 +908,7 @@ void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_calln
 	}else if (static_callno >= 5000 && static_callno <= 5999) {
         syscall_enter_switch_linux_mips64(cpu, pc, static_callno);
     }else if (static_callno >= 6000 && static_callno <= 6999) {
-        syscall_enter_switch_linux_mipsn32(cpu, pc, static_callno);
+        syscall_enter_switch_linux_mips64n32(cpu, pc, static_callno);
     }else{
         assert("syscall_enter_linux_mips64: static_callno not found");
     }
@@ -923,7 +923,7 @@ void syscall_return_linux_mips64(CPUState *cpu, target_ptr_t pc, const syscall_c
 	}else if (ctx->no >= 5000 && ctx->no <= 5999) {
         syscall_return_switch_linux_mips64(cpu, pc, ctx);
     }else if (ctx->no >= 6000 && ctx->no <= 6999) {
-        syscall_return_switch_linux_mipsn32(cpu, pc, ctx);
+        syscall_return_switch_linux_mips64n32(cpu, pc, ctx);
     }else{
         assert("syscall_return_linux_mips64: ctx->no not found");
     }
