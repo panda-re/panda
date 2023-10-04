@@ -14,8 +14,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static
 void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static_callno);
 void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc, int static_callno);
 void syscall_enter_switch_linux_mips(CPUState *cpu, target_ptr_t pc, int static_callno);
-void syscall_enter_switch_linux_mipsn32(CPUState *cpu, target_ptr_t pc, int static_callno);
 void syscall_enter_switch_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_callno);
+void syscall_enter_switch_linux_mips64n32(CPUState *cpu, target_ptr_t pc, int static_callno);
 void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc, int static_callno);
 void syscall_enter_switch_linux_x86(CPUState *cpu, target_ptr_t pc, int static_callno);
 void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int static_callno);
@@ -27,7 +27,7 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 void syscall_return_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
 void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
 void syscall_return_switch_linux_mips(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
-void syscall_return_switch_linux_mipsn32(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
+void syscall_return_switch_linux_mips64n32(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
 void syscall_return_switch_linux_mips64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
 void syscall_return_switch_linux_x64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
 void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
