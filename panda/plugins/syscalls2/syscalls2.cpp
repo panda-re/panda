@@ -902,7 +902,11 @@ int64_t get_return_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum)
  * MIPS64 supports 3 ABIs: o32, n32, and n64. This complicates our efforts.
 */
 void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_callno) {
-    #if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+    #if defined(TARGET_MIPS) && defined(TARGET_MIPS64)
+    if (static_callno == -1){
+        CPUArchState *env = (CPUArchState*) cpu->env_ptr;
+        static_callno = env->active_tc.gpr[2]; 
+    }
     if (static_callno >= 4000 && static_callno <= 4999) {
 		syscall_enter_switch_linux_mips(cpu, pc, static_callno);
 	}else if (static_callno >= 5000 && static_callno <= 5999) {
@@ -917,7 +921,7 @@ void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_calln
 
 
 void syscall_return_linux_mips64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
-    #if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+    #if defined(TARGET_MIPS) && defined(TARGET_MIPS64)
     if (ctx->no >= 4000 && ctx->no <= 4999) {
 		syscall_return_switch_linux_mips(cpu, pc, ctx);
 	}else if (ctx->no >= 5000 && ctx->no <= 5999) {
