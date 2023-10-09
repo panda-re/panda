@@ -196,13 +196,18 @@ MAKE_CALLBACK_NO_ARGS(void, PRE_SHUTDOWN, pre_shutdown);
 
 // Non-standard callbacks below here
 
+extern bool panda_plugin_to_unload;
+extern int nb_panda_plugins;
+extern panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
+
 void PCB(before_find_fast)(void) {
     if (panda_plugin_to_unload) {
         panda_plugin_to_unload = false;
-        for (int i = 0; i < MAX_PANDA_PLUGINS; i++) {
-            if (panda_plugins_to_unload[i]) {
+        for (int i = 0; i < nb_panda_plugins;) {
+            if (panda_plugins[i].unload) {
                 panda_do_unload_plugin(i);
-                panda_plugins_to_unload[i] = false;
+            } else {
+                i++;
             }
         }
     }

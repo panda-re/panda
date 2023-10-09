@@ -57,8 +57,6 @@ int panda_argc;
 int nb_panda_plugins = 0;
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 
-bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-
 bool panda_plugin_to_unload = false;
 
 bool panda_please_flush_tb = false;
@@ -207,6 +205,7 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     // initialization completes. E.g. osi does a panda_require("wintrospection"),
     // and then wintrospection does a PPP_REG_CB("osi", ...) while initializing.
     panda_plugins[nb_panda_plugins].plugin = plugin;
+    panda_plugins[nb_panda_plugins].unload = false;
     if (plugin_name) {
         strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
     } else {
@@ -397,7 +396,7 @@ void panda_unload_plugin_idx(int plugin_idx)
         return;
     }
     panda_plugin_to_unload = true;
-    panda_plugins_to_unload[plugin_idx] = true;
+    panda_plugins[plugin_idx].unload = true;
 }
 
 void panda_unload_plugins(void)
