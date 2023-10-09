@@ -108,10 +108,6 @@ static char* attempt_normalize_path(char* path){
     return new_path;
 }
 
-bool panda_load_plugin(const char *filename, const char *plugin_name) {
-  return _panda_load_plugin(filename, plugin_name, false);
-}
-
 static void *try_open_libpanda(const char *panda_lib) {
     void *libpanda = NULL;
     if(panda_lib != NULL) {
@@ -152,8 +148,7 @@ static bool load_libpanda(void) {
     return libpanda != NULL;
 }
 
-
-bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+static bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
 
     static bool libpanda_loaded = false;
 
@@ -230,6 +225,10 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
         return false;
     }
     return true;
+}
+
+bool panda_load_plugin(const char *filename, const char *plugin_name) {
+  return _panda_load_plugin(filename, plugin_name, false);
 }
 
 extern const char *qemu_file;

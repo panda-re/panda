@@ -182,10 +182,6 @@ void panda_unregister_callbacks(void *plugin);
  */
 bool panda_load_plugin(const char *filename, const char *plugin_name);
 
-
-bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode);
-
-
 /**
  * panda_add_arg() - Add an argument to those for a plugin.
  * @plugin_name: The name of the plugin.
