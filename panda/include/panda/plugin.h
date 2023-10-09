@@ -69,6 +69,7 @@ void panda_disable_plugin(void *plugin);
 typedef struct panda_plugin {
     char name[256];     // Currently basename(filename)
     void *plugin;       // Handle to the plugin (for use with dlsym())
+    bool unload;        // When true, unload plugin when safe
 } panda_plugin;
 
 
@@ -228,8 +229,6 @@ void panda_unload_plugins(void);
 extern bool panda_update_pc;
 extern bool panda_use_memcb;
 extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
-extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-extern bool panda_plugin_to_unload;
 extern bool panda_tb_chaining;
 
 // this stuff is used by the new qemu cmd-line arg '-os os_name'
