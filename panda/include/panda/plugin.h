@@ -67,9 +67,10 @@ void panda_disable_plugin(void *plugin);
 
 // Structure to store metadata about a plugin
 typedef struct panda_plugin {
-    char name[256];     // Currently basename(filename)
-    void *plugin;       // Handle to the plugin (for use with dlsym())
-    bool unload;        // When true, unload plugin when safe
+    char name[256];        // Currently basename(filename)
+    void *plugin;          // Handle to the plugin (for use with dlsym())
+    bool unload;           // When true, unload plugin when safe
+    bool exported_symbols; // True if plugin dlopened with RTLD_GLOBAL
 } panda_plugin;
 
 
