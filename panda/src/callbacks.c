@@ -61,9 +61,6 @@ bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
 
 bool panda_plugin_to_unload = false;
 
-int nb_panda_plugins_loaded = 0;
-char *panda_plugins_loaded[MAX_PANDA_PLUGINS];
-
 bool panda_please_flush_tb = false;
 bool panda_please_break_exec = false;
 bool panda_update_pc = false;
@@ -177,16 +174,12 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 
     // don't load the same plugin twice
     uint32_t i;
-    for (i=0; i<nb_panda_plugins_loaded; i++) {
-        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
-            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
+    for (i=0; i<nb_panda_plugins; i++) {
+        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0) {
+            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, plugin_name);
             return true;
         }
     }
-    // NB: this is really a list of plugins for which we have started loading
-    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
-    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
-    nb_panda_plugins_loaded ++;
 
     // Ensure libpanda has been dlopened so its symbols can be used in the plugin we're
     // now loading. XXX: This should probably happen earlier.
@@ -353,7 +346,7 @@ void panda_require(const char *plugin_name) {
     g_free(plugin_path);
 }
 
-// Internal: remove a plugin from the global array panda_plugins and panda_plugins_loaded
+// Internal: remove a plugin from the global array panda_plugins
 static void panda_delete_plugin(int i)
 {
     if (i != nb_panda_plugins - 1) { // not the last element
@@ -361,11 +354,6 @@ static void panda_delete_plugin(int i)
                 (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
     }
     nb_panda_plugins--;
-
-    if (i != nb_panda_plugins_loaded -1 ) { // not the last element
-        memmove(&panda_plugins_loaded[i], &panda_plugins_loaded[i+1], (nb_panda_plugins_loaded - i - 1)*sizeof(char*));
-    }
-    nb_panda_plugins_loaded--;
 }
 
 void panda_do_unload_plugin(int plugin_idx)
