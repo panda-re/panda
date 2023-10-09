@@ -165,7 +165,50 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
   return _panda_load_plugin(filename, plugin_name, false);
 }
 
+static void *try_open_libpanda(const char *panda_lib) {
+    void *libpanda = NULL;
+    if(panda_lib != NULL) {
+        libpanda = dlopen(panda_lib, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
+        if (NULL == libpanda) {
+            fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), panda_lib);
+        }
+    }
+    return libpanda;
+}
+
+// When running as a library, load libpanda
+static bool load_libpanda(void) {
+
+    const char *panda_lib = g_getenv("PANDA_LIB");
+    void *libpanda;
+
+    if(panda_lib != NULL) {
+        libpanda = try_open_libpanda(panda_lib);
+    } else {
+#ifndef LIBRARY_DIR
+        assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
+        printf("Library dir not set");
+#endif
+        const char *lib_dir = g_getenv("PANDA_DIR");
+
+        if (lib_dir != NULL) {
+            panda_lib = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
+        } else {
+            fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
+            panda_lib = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
+        }
+
+        libpanda = try_open_libpanda(panda_lib);
+        g_free((char *)panda_lib);
+    }
+
+    return libpanda != NULL;
+}
+
+
 bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+
+    static bool libpanda_loaded = false;
 
 #ifndef CONFIG_LLVM
     // Taint2 seems to be our most commonly used LLVM plugin and it causes some confusion
@@ -193,41 +236,13 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
 
-    // Ensure pypanda has been dlopened so its symbols can be used in the plugin we're
-    // now loading. XXX: This should probably happen earlier and only once
-    if (library_mode) {
-      // When running as a library, load libpanda
-#ifndef LIBRARY_DIR
-      assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
-	  printf("Library dir not set");
-#endif
-      const char *panda_lib = g_getenv("PANDA_LIB");
-      if(panda_lib != NULL) {
-        void *libpanda = dlopen(panda_lib, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
-
-        if (!libpanda) {
-          fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), panda_lib);
-          return false;
-        }
-      } else {
-        const char *lib_dir = g_getenv("PANDA_DIR");
-        char *library_path;
-        if (lib_dir != NULL) {
-          library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
-        }else{
-          fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
-          library_path = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
-        }
-
-        void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
-
-        if (!libpanda) {
-          fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), library_path);
-          g_free(library_path);
-          return false;
-        }
-        g_free(library_path);
+    // Ensure libpanda has been dlopened so its symbols can be used in the plugin we're
+    // now loading. XXX: This should probably happen earlier.
+    if (library_mode && (!libpanda_loaded)) {
+      if(!load_libpanda()) {
+        return false;
       }
+      libpanda_loaded = true;
     }
 
     void *plugin = dlopen(filename, RTLD_NOW);
@@ -244,8 +259,8 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 
     // Populate basic plugin info *before* calling init_fn.
     // This allows plugins accessing handles of other plugins before
-    // initialization completes. E.g. osi does a panda_require("win7x86intro"),
-    // and then win7x86intro does a PPP_REG_CB("osi", ...) while initializing.
+    // initialization completes. E.g. osi does a panda_require("wintrospection"),
+    // and then wintrospection does a PPP_REG_CB("osi", ...) while initializing.
     panda_plugins[nb_panda_plugins].plugin = plugin;
     if (plugin_name) {
         strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
