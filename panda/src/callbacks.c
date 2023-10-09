@@ -302,7 +302,7 @@ char *panda_plugin_path(const char *plugin_name) {
     return resolve_file_from_plugin_directory("panda_%s" HOST_DSOSUF, plugin_name);
 }
 
-void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
+static void _panda_require(const char *plugin_name, char **plugin_args, uint32_t num_args, bool library_mode) {
     // If we're printing help, panda_require will be a no-op.
     if (panda_help_wanted) return;
 
@@ -313,36 +313,25 @@ void panda_require_from_library(const char *plugin_name, char **plugin_args, uin
 
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would raise assert in in _panda_load_plugin
+    if (NULL == plugin_path) {
+        LOG_ERROR(PANDA_MSG_FMT "FAILED to find required plugin %s\n", PANDA_CORE_NAME, plugin_name);
+        abort();
+    }
 
     // load plugin same as in vl.c
-    if (!_panda_load_plugin(plugin_path, plugin_name, true)) { // Load in library mode
+    if (!_panda_load_plugin(plugin_path, plugin_name, library_mode)) {
         LOG_ERROR(PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
         abort();
     }
     g_free(plugin_path);
 }
 
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
+    _panda_require(plugin_name, plugin_args, num_args, true);
+}
+
 void panda_require(const char *plugin_name) {
-    // If we're printing help, panda_require will be a no-op.
-    if (panda_help_wanted) return;
-
-    LOG_INFO(PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
-
-    // translate plugin name into a path to .so
-    char *plugin_path = panda_plugin_path(plugin_name);
-    if (NULL == plugin_path) {
-        LOG_ERROR(PANDA_MSG_FMT "FAILED to find required plugin %s\n",
-                PANDA_CORE_NAME, plugin_name);
-        abort();
-    }
-
-    // load plugin same as in vl.c
-    if (!panda_load_plugin(plugin_path, plugin_name)) {
-        LOG_ERROR(PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n",
-                PANDA_CORE_NAME, plugin_name, plugin_path);
-        abort();
-    }
-    g_free(plugin_path);
+    _panda_require(plugin_name, NULL, 0, false);
 }
 
 // Internal: remove a plugin from the global array panda_plugins
