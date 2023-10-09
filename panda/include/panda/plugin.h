@@ -194,10 +194,6 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
  */
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg);
 
-
-// I think this is not used anywhere?
-bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr);
-
 /**
  * panda_get_plugin_by_name() - Returns pointer to the plugin of this name.
  * @name: The name of the desired plugin.
