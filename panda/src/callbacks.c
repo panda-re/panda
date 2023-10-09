@@ -188,6 +188,7 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
         return false;
     }
+
     bool (*init_fn)(void *) = dlsym(plugin, "init_plugin");
     if(!init_fn) {
         fprintf(stderr, "Couldn't get symbol %s: %s\n", "init_plugin", dlerror());
@@ -201,6 +202,8 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     // and then wintrospection does a PPP_REG_CB("osi", ...) while initializing.
     panda_plugins[nb_panda_plugins].plugin = plugin;
     panda_plugins[nb_panda_plugins].unload = false;
+    panda_plugins[nb_panda_plugins].exported_symbols = false;
+
     if (plugin_name) {
         strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
     } else {
@@ -209,6 +212,17 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
         strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
         g_free(pn);
     }
+
+    char *export_symbol = g_strdup_printf("PANDA_EXPORT_SYMBOLS_%s", plugin_name);
+
+    if(NULL != dlsym(plugin, export_symbol)) {
+        LOG_DEBUG(PANDA_MSG_FMT "Exporting symbols for plugin %s\n", PANDA_CORE_NAME, plugin_name);
+        assert(plugin == dlopen(filename, RTLD_NOW | RTLD_GLOBAL));
+        panda_plugins[nb_panda_plugins].exported_symbols = true;
+    }
+
+    g_free(export_symbol);
+
     nb_panda_plugins++;
 
     // Call init_fn and check status.
@@ -222,6 +236,10 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     }
     if(!init_fn(plugin) || panda_plugin_load_failed) {
         dlclose(plugin);
+        if(panda_plugins[nb_panda_plugins].exported_symbols) {
+            // This plugin was dlopened twice.  dlclose it twice to fully unload it.
+            dlclose(plugin);
+        }
         return false;
     }
     return true;
@@ -346,6 +364,7 @@ static void panda_delete_plugin(int i)
 void panda_do_unload_plugin(int plugin_idx)
 {
     void *plugin = panda_plugins[plugin_idx].plugin;
+    bool exported_symbols = panda_plugins[plugin_idx].exported_symbols;
     void (*uninit_fn)(void *) = dlsym(plugin, "uninit_plugin");
     if (!uninit_fn) {
         LOG_ERROR("Couldn't get symbol %s: %s\n", "uninit_plugin",
@@ -356,6 +375,10 @@ void panda_do_unload_plugin(int plugin_idx)
     panda_unregister_callbacks(plugin);
     panda_delete_plugin(plugin_idx);
     dlclose(plugin);
+    if(exported_symbols) {
+        // This plugin was dlopened twice.  dlclose it twice to fully unload it.
+        dlclose(plugin);
+    }
 }
 
 void panda_unload_plugin(void *plugin)
