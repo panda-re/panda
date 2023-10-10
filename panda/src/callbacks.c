@@ -152,6 +152,11 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
 
     static bool libpanda_loaded = false;
 
+    if ((plugin_name == NULL) || (*plugin_name == '\0')) {
+        LOG_ERROR(PANDA_MSG_FMT "Fatal error: plugin_name is required\n", PANDA_CORE_NAME);
+        abort();
+    }
+
 #ifndef CONFIG_LLVM
     // Taint2 seems to be our most commonly used LLVM plugin and it causes some confusion
     // when users build PANDA without LLVM and then claim taint2 is "missing"
@@ -160,10 +165,10 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     }
 #endif
 
-    if (filename == NULL) {
+    if ((filename == NULL) || (*filename == '\0')) {
         LOG_ERROR(PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
+        abort();
     }
-    assert(filename != NULL);
 
     // don't load the same plugin twice
     uint32_t i;
@@ -204,14 +209,7 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     panda_plugins[nb_panda_plugins].unload = false;
     panda_plugins[nb_panda_plugins].exported_symbols = false;
 
-    if (plugin_name) {
-        strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
-    } else {
-        char *pn = g_path_get_basename((char *) filename);
-        *g_strrstr(pn, HOST_DSOSUF) = '\0';
-        strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
-        g_free(pn);
-    }
+    strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
 
     char *export_symbol = g_strdup_printf("PANDA_EXPORT_SYMBOLS_%s", plugin_name);
 
@@ -329,7 +327,7 @@ static void _panda_require(const char *plugin_name, char **plugin_args, uint32_t
     LOG_INFO(PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
     // translate plugin name into a path to .so
-    char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would raise assert in in _panda_load_plugin
+    char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would abort in in _panda_load_plugin
     if (NULL == plugin_path) {
         LOG_ERROR(PANDA_MSG_FMT "FAILED to find required plugin %s\n", PANDA_CORE_NAME, plugin_name);
         abort();
