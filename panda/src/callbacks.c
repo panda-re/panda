@@ -173,7 +173,7 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     // don't load the same plugin twice
     uint32_t i;
     for (i=0; i<nb_panda_plugins; i++) {
-        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0) {
+        if (strcmp(panda_plugins[i].name, plugin_name) == 0) {
             LOG_DEBUG(PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, plugin_name);
             return true;
         }
@@ -208,8 +208,7 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     panda_plugins[nb_panda_plugins].plugin = plugin;
     panda_plugins[nb_panda_plugins].unload = false;
     panda_plugins[nb_panda_plugins].exported_symbols = false;
-
-    strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
+    panda_plugins[nb_panda_plugins].name = g_strdup(plugin_name);
 
     char *export_symbol = g_strdup_printf("PANDA_EXPORT_SYMBOLS_%s", plugin_name);
 
@@ -392,7 +391,7 @@ void panda_unload_plugin(void *plugin)
 
 void panda_unload_plugin_by_name(const char *plugin_name) {
     for (int i = 0; i < nb_panda_plugins; i++) {
-        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0) {
+        if (strcmp(panda_plugins[i].name, plugin_name) == 0) {
             panda_unload_plugin(panda_plugins[i].plugin);
             break;
         }
@@ -420,7 +419,7 @@ void panda_unload_plugins(void)
 void *panda_get_plugin_by_name(const char *plugin_name)
 {
     for (int i = 0; i < nb_panda_plugins; i++) {
-        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0)
+        if (strcmp(panda_plugins[i].name, plugin_name) == 0)
             return panda_plugins[i].plugin;
     }
     return NULL;
