@@ -148,6 +148,27 @@ static bool load_libpanda(void) {
     return libpanda != NULL;
 }
 
+// Internal: remove a plugin from the global array panda_plugins
+static void panda_delete_plugin(int i)
+{
+    if (i != nb_panda_plugins - 1) { // not the last element
+        memmove(&panda_plugins[i], &panda_plugins[i + 1],
+                (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
+    }
+    nb_panda_plugins--;
+}
+
+static void dlclose_plugin(int plugin_idx) {
+    void *plugin = panda_plugins[plugin_idx].plugin;
+    bool exported_symbols = panda_plugins[plugin_idx].exported_symbols;
+    panda_delete_plugin(plugin_idx);
+    dlclose(plugin);
+    if(exported_symbols) {
+        // This plugin was dlopened twice.  dlclose it twice to fully unload it.
+        dlclose(plugin);
+    }
+}
+
 static bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
 
     static bool libpanda_loaded = false;
@@ -231,14 +252,12 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
         fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
         fprintf(stderr, "======              ========                ========        ===========\n");
     }
+
     if(!init_fn(plugin) || panda_plugin_load_failed) {
-        dlclose(plugin);
-        if(panda_plugins[nb_panda_plugins].exported_symbols) {
-            // This plugin was dlopened twice.  dlclose it twice to fully unload it.
-            dlclose(plugin);
-        }
+        dlclose_plugin(nb_panda_plugins - 1);
         return false;
     }
+
     return true;
 }
 
@@ -348,20 +367,9 @@ void panda_require(const char *plugin_name) {
     _panda_require(plugin_name, NULL, 0, false);
 }
 
-// Internal: remove a plugin from the global array panda_plugins
-static void panda_delete_plugin(int i)
-{
-    if (i != nb_panda_plugins - 1) { // not the last element
-        memmove(&panda_plugins[i], &panda_plugins[i + 1],
-                (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
-    }
-    nb_panda_plugins--;
-}
-
 void panda_do_unload_plugin(int plugin_idx)
 {
     void *plugin = panda_plugins[plugin_idx].plugin;
-    bool exported_symbols = panda_plugins[plugin_idx].exported_symbols;
     void (*uninit_fn)(void *) = dlsym(plugin, "uninit_plugin");
     if (!uninit_fn) {
         LOG_ERROR("Couldn't get symbol %s: %s\n", "uninit_plugin",
@@ -370,12 +378,7 @@ void panda_do_unload_plugin(int plugin_idx)
         uninit_fn(plugin);
     }
     panda_unregister_callbacks(plugin);
-    panda_delete_plugin(plugin_idx);
-    dlclose(plugin);
-    if(exported_symbols) {
-        // This plugin was dlopened twice.  dlclose it twice to fully unload it.
-        dlclose(plugin);
-    }
+    dlclose_plugin(plugin_idx);
 }
 
 void panda_unload_plugin(void *plugin)
