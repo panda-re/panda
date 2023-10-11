@@ -181,6 +181,10 @@ static void do_check_export_symbols(panda_plugin *panda_plugin, const char *file
         LOG_DEBUG(PANDA_MSG_FMT "Exporting symbols for plugin %s\n", PANDA_CORE_NAME, panda_plugin->name);
         assert(panda_plugin->plugin == dlopen(filename, RTLD_NOW | RTLD_GLOBAL));
         panda_plugin->exported_symbols = true;
+    } else {
+        // Error condition is not unexpected, clear dlerror(), 
+        // otherwise someone might call it later and be confused
+        dlerror();
     }
 
     g_free(export_symbol);
