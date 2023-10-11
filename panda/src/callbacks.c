@@ -170,6 +170,22 @@ static void dlclose_plugin(int plugin_idx) {
     }
 }
 
+// Determine if the plugin being loaded wants to export symbols to
+// subsequently loaded plugins.  If it does, dlopen it a second time
+// with RTLD_GLOBAL.
+static void do_check_export_symbols(panda_plugin *panda_plugin, const char *filename) {
+
+    char *export_symbol = g_strdup_printf("PANDA_EXPORT_SYMBOLS_%s", panda_plugin->name);
+
+    if(NULL != dlsym(panda_plugin->plugin, export_symbol)) {
+        LOG_DEBUG(PANDA_MSG_FMT "Exporting symbols for plugin %s\n", PANDA_CORE_NAME, panda_plugin->name);
+        assert(panda_plugin->plugin == dlopen(filename, RTLD_NOW | RTLD_GLOBAL));
+        panda_plugin->exported_symbols = true;
+    }
+
+    g_free(export_symbol);
+}
+
 static bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
 
     static bool libpanda_loaded = false;
@@ -233,15 +249,7 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     panda_plugins[nb_panda_plugins].exported_symbols = false;
     panda_plugins[nb_panda_plugins].name = g_strdup(plugin_name);
 
-    char *export_symbol = g_strdup_printf("PANDA_EXPORT_SYMBOLS_%s", plugin_name);
-
-    if(NULL != dlsym(plugin, export_symbol)) {
-        LOG_DEBUG(PANDA_MSG_FMT "Exporting symbols for plugin %s\n", PANDA_CORE_NAME, plugin_name);
-        assert(plugin == dlopen(filename, RTLD_NOW | RTLD_GLOBAL));
-        panda_plugins[nb_panda_plugins].exported_symbols = true;
-    }
-
-    g_free(export_symbol);
+    do_check_export_symbols(&panda_plugins[nb_panda_plugins], filename);
 
     nb_panda_plugins++;
 
