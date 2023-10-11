@@ -151,6 +151,7 @@ static bool load_libpanda(void) {
 // Internal: remove a plugin from the global array panda_plugins
 static void panda_delete_plugin(int i)
 {
+    g_free(panda_plugins[i].name);
     if (i != nb_panda_plugins - 1) { // not the last element
         memmove(&panda_plugins[i], &panda_plugins[i + 1],
                 (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
