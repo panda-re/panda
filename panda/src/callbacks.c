@@ -113,7 +113,7 @@ static void *try_open_libpanda(const char *panda_lib) {
     if(panda_lib != NULL) {
         libpanda = dlopen(panda_lib, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
         if (NULL == libpanda) {
-            fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), panda_lib);
+            LOG_ERROR(PANDA_MSG_FMT "Failed to load libpanda: %s from %s\n", PANDA_CORE_NAME, dlerror(), panda_lib);
         }
     }
     return libpanda;
@@ -129,15 +129,15 @@ static bool load_libpanda(void) {
         libpanda = try_open_libpanda(panda_lib);
     } else {
 #ifndef LIBRARY_DIR
-        assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
-        printf("Library dir not set");
+        assert(0 && "LIBRARY_DIR undefined, but library mode is enabled - Unsupported architecture?");
+        LOG_ERROR(PANDA_MSG_FMT "LIBRARY_DIR not defined\n", PANDA_CORE_NAME);
 #endif
         const char *lib_dir = g_getenv("PANDA_DIR");
 
         if (lib_dir != NULL) {
             panda_lib = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
         } else {
-            fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
+            LOG_WARNING(PANDA_MSG_FMT "WARNING: using hacky dlopen code that will be removed soon\n", PANDA_CORE_NAME);
             panda_lib = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
         }
 
@@ -212,13 +212,14 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
 
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
-        fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
+        LOG_ERROR(PANDA_MSG_FMT "Failed to load %s: %s\n", PANDA_CORE_NAME, filename, dlerror());
         return false;
     }
 
-    bool (*init_fn)(void *) = dlsym(plugin, "init_plugin");
+    const char *init_plugin = "init_plugin";
+    bool (*init_fn)(void *) = dlsym(plugin, init_plugin);
     if(!init_fn) {
-        fprintf(stderr, "Couldn't get symbol %s: %s\n", "init_plugin", dlerror());
+        LOG_ERROR(PANDA_MSG_FMT "Couldn't get symbol %s: %s\n", PANDA_CORE_NAME, init_plugin, dlerror());
         dlclose(plugin);
         return false;
     }
@@ -250,8 +251,8 @@ static bool _panda_load_plugin(const char *filename, const char *plugin_name, bo
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
         printf("Options for plugin %s:\n", plugin_name);
-        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
-        fprintf(stderr, "======              ========                ========        ===========\n");
+        printf("PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
+        printf("======              ========                ========        ===========\n");
     }
 
     if(!init_fn(plugin) || panda_plugin_load_failed) {
@@ -1102,7 +1103,7 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%-20s%-24sOptional        %s (default=true)\n", args->plugin_name, argname, help);
+        printf("%-20s%-24sOptional        %s (default=true)\n", args->plugin_name, argname, help);
     }
 
     // not found
@@ -1138,13 +1139,13 @@ static target_ulong panda_parse_ulong_internal(panda_arg_list *args, const char 
 error_handling:
     if (required) {
         LOG_ERROR("ERROR: plugin required ulong argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        LOG_ERROR(PANDA_MSG_FMT "Help for \"%s\": %s\n", PANDA_CORE_NAME, argname, help);
         panda_plugin_load_failed = true;
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1180,8 +1181,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%d)\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=%d)\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1217,8 +1218,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s)\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%" PRId64 ")\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s)\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=%" PRId64 ")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1254,8 +1255,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%f)\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=%f)\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1329,8 +1330,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=\"%s\")\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=\"%s\")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
