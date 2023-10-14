@@ -394,6 +394,15 @@ Chardev *qemu_chr_fe_get_driver(CharBackend *be);
 void qemu_chr_fe_deinit(CharBackend *b);
 
 /**
+ * @qemu_chr_fe_deinit:
+ *
+ * Dissociate the CharBackend from the Chardev.
+ *
+ * Safe to call without associated Chardev.
+ */
+void qemu_chr_fe_deinit_del(CharBackend *b, bool del);
+
+/**
  * @qemu_chr_fe_set_handlers:
  * @b: a CharBackend
  * @fd_can_read: callback to get the amount of data the frontend may

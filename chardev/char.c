@@ -523,7 +523,7 @@ static bool qemu_chr_is_busy(Chardev *s)
     }
 }
 
-void qemu_chr_fe_deinit(CharBackend *b)
+void qemu_chr_fe_deinit_del(CharBackend *b)
 {
     assert(b);
 
@@ -536,8 +536,17 @@ void qemu_chr_fe_deinit(CharBackend *b)
             MuxChardev *d = MUX_CHARDEV(b->chr);
             d->backends[b->tag] = NULL;
         }
+        if (del) {
+            object_unparent(OBJECT(b->chr));
+        }
         b->chr = NULL;
     }
+}
+
+
+void qemu_chr_fe_deinit(CharBackend *b)
+{
+    qemu_chr_fe_deinit_del(b, false);
 }
 
 void qemu_chr_fe_set_handlers(CharBackend *b,

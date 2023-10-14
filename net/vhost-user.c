@@ -13,10 +13,11 @@
 #include "net/vhost_net.h"
 #include "net/vhost-user.h"
 #include "sysemu/char.h"
-#include "hw/virtio/vhost-user.h"
+//#include "hw/virtio/vhost-user.h"
 //#include "chardev/char-fe.h"
 #include "qapi/error.h"
-#include "qapi/qapi-commands-net.h"
+//#include "qapi/qapi-commands-net.h"
+#include "qmp-commands.h"
 #include "qemu/config-file.h"
 #include "qemu/error-report.h"
 #include "qmp-commands.h"
@@ -25,7 +26,6 @@
 typedef struct VhostUserState {
     NetClientState nc;
     CharBackend chr; /* only queue index 0 */
-    VhostUserState *vhost_user;
     VHostNetState *vhost_net;
     guint watch;
     uint64_t acked_features;
@@ -161,7 +161,7 @@ static void net_vhost_user_cleanup(NetClientState *nc)
             g_source_remove(s->watch);
             s->watch = 0;
         }
-        qemu_chr_fe_deinit(&s->chr, true);
+        qemu_chr_fe_deinit_del(&s->chr, true);
         if (s->vhost_user) {
             vhost_user_cleanup(s->vhost_user);
             g_free(s->vhost_user);

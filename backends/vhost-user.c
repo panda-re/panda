@@ -189,7 +189,7 @@ static void vhost_user_backend_finalize(Object *obj)
     g_free(b->chr_name);
 
     vhost_user_cleanup(&b->vhost_user);
-    qemu_chr_fe_deinit(&b->chr, true);
+    qemu_chr_fe_deinit_del(&b->chr, true);
 }
 
 static const TypeInfo vhost_user_backend_info = {
