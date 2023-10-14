@@ -14,8 +14,8 @@
 #ifndef _QEMU_VHOST_VSOCK_H
 #define _QEMU_VHOST_VSOCK_H
 
-#include "hw/virtio/virtio.h"
-#include "hw/virtio/vhost.h"
+#include "hw/virtio/vhost-vsock-common.h"
+
 
 #define TYPE_VHOST_VSOCK "vhost-vsock-device"
 #define VHOST_VSOCK(obj) \
@@ -28,14 +28,8 @@ typedef struct {
 
 typedef struct {
     /*< private >*/
-    VirtIODevice parent;
+    VHostVSockCommon parent;
     VHostVSockConf conf;
-    struct vhost_virtqueue vhost_vqs[2];
-    struct vhost_dev vhost_dev;
-    VirtQueue *event_vq;
-    VirtQueue *recv_vq;
-    VirtQueue *trans_vq;
-    QEMUTimer *post_load_timer;
 
     /*< public >*/
 } VHostVSock;
