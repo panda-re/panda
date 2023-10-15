@@ -130,8 +130,7 @@ typedef struct VhostOps {
     vhost_vsock_set_guest_cid_op vhost_vsock_set_guest_cid;
     vhost_vsock_set_running_op vhost_vsock_set_running;
     vhost_set_iotlb_callback_op vhost_set_iotlb_callback;
-    vhost_update_device_iotlb_op vhost_update_device_iotlb;
-    vhost_invalidate_device_iotlb_op vhost_invalidate_device_iotlb;
+    vhost_send_device_iotlb_msg_op vhost_send_device_iotlb_msg;
     vhost_backend_mem_section_filter_op vhost_backend_mem_section_filter;
     vhost_get_config_op vhost_get_config;
     vhost_set_config_op vhost_set_config;
