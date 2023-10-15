@@ -20,6 +20,11 @@ typedef enum VhostBackendType {
     VHOST_BACKEND_TYPE_MAX = 3,
 } VhostBackendType;
 
+typedef enum VhostSetConfigType {
+    VHOST_SET_CONFIG_TYPE_MASTER = 0,
+    VHOST_SET_CONFIG_TYPE_MIGRATION = 1,
+} VhostSetConfigType;
+
 struct vhost_dev;
 struct vhost_log;
 struct vhost_memory;
@@ -90,7 +95,11 @@ typedef int (*vhost_invalidate_device_iotlb_op)(struct vhost_dev *dev,
 
 typedef bool (*vhost_backend_mem_section_filter_op)(struct vhost_dev *dev,
                                                 MemoryRegionSection *section);
-
+typedef int (*vhost_set_config_op)(struct vhost_dev *dev, const uint8_t *data,
+                                   uint32_t offset, uint32_t size,
+                                   uint32_t flags);
+typedef int (*vhost_get_config_op)(struct vhost_dev *dev, uint8_t *config,
+                                   uint32_t config_len);
 
 typedef struct VhostOps {
     VhostBackendType backend_type;
@@ -127,6 +136,8 @@ typedef struct VhostOps {
     vhost_update_device_iotlb_op vhost_update_device_iotlb;
     vhost_invalidate_device_iotlb_op vhost_invalidate_device_iotlb;
     vhost_backend_mem_section_filter_op vhost_backend_mem_section_filter;
+    vhost_get_config_op vhost_get_config;
+    vhost_set_config_op vhost_set_config;
 } VhostOps;
 
 extern const VhostOps user_ops;

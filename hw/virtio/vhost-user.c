@@ -589,6 +589,7 @@ static int vhost_user_reset_device(struct vhost_dev *dev)
     return 0;
 }
 
+<<<<<<< HEAD
 static void slave_read(void *opaque)
 {
     struct vhost_dev *dev = opaque;
@@ -699,6 +700,26 @@ out:
 }
 
 static int vhost_user_backend_init(struct vhost_dev *dev, void *opaque)
+||||||| parent of 7cf5da0e80 (start of backport for vhost-user get/set config functions)
+static int vhost_user_init(struct vhost_dev *dev, void *opaque)
+=======
+static int vhost_user_slave_handle_config_change(struct vhost_dev *dev)
+{
+    int ret = -1;
+
+    if (!dev->config_ops) {
+        return -1;
+    }
+
+    if (dev->config_ops->vhost_dev_config_notifier) {
+        ret = dev->config_ops->vhost_dev_config_notifier(dev);
+    }
+
+    return ret;
+}
+
+static int vhost_user_init(struct vhost_dev *dev, void *opaque)
+>>>>>>> 7cf5da0e80 (start of backport for vhost-user get/set config functions)
 {
     uint64_t features;
     int err;
@@ -881,6 +902,7 @@ static void vhost_user_set_iotlb_callback(struct vhost_dev *dev, int enabled)
     /* No-op as the receive channel is not dedicated to IOTLB messages. */
 }
 
+<<<<<<< HEAD
 VhostUserState *vhost_user_init(void)
 {
     VhostUserState *user = g_new0(struct VhostUserState, 1);
@@ -893,6 +915,86 @@ void vhost_user_cleanup(VhostUserState *user)
 }
 
 
+||||||| parent of 7cf5da0e80 (start of backport for vhost-user get/set config functions)
+=======
+static int vhost_user_get_config(struct vhost_dev *dev, uint8_t *config,
+                                 uint32_t config_len)
+{
+    VhostUserMsg msg = {
+        msg.request = VHOST_USER_GET_CONFIG,
+        msg.flags = VHOST_USER_VERSION,
+        msg.size = VHOST_USER_CONFIG_HDR_SIZE + config_len,
+    };
+
+    if (config_len > VHOST_USER_MAX_CONFIG_SIZE) {
+        return -1;
+    }
+
+    msg.payload.config.offset = 0;
+    msg.payload.config.size = config_len;
+    if (vhost_user_write(dev, &msg, NULL, 0) < 0) {
+        return -1;
+    }
+
+    if (vhost_user_read(dev, &msg) < 0) {
+        return -1;
+    }
+
+    if (msg.request != VHOST_USER_GET_CONFIG) {
+        error_report("Received unexpected msg type. Expected %d received %d",
+                     VHOST_USER_GET_CONFIG, msg.request);
+        return -1;
+    }
+
+    if (msg.size != VHOST_USER_CONFIG_HDR_SIZE + config_len) {
+        error_report("Received bad msg size.");
+        return -1;
+    }
+
+    memcpy(config, msg.payload.config.region, config_len);
+
+    return 0;
+}
+
+static int vhost_user_set_config(struct vhost_dev *dev, const uint8_t *data,
+                                 uint32_t offset, uint32_t size, uint32_t flags)
+{
+    uint8_t *p;
+    bool reply_supported = virtio_has_feature(dev->protocol_features,
+                                              VHOST_USER_PROTOCOL_F_REPLY_ACK);
+
+    VhostUserMsg msg = {
+        msg.request = VHOST_USER_SET_CONFIG,
+        msg.flags = VHOST_USER_VERSION,
+        msg.size = VHOST_USER_CONFIG_HDR_SIZE + size,
+    };
+
+    if (reply_supported) {
+        msg.flags |= VHOST_USER_NEED_REPLY_MASK;
+    }
+
+    if (size > VHOST_USER_MAX_CONFIG_SIZE) {
+        return -1;
+    }
+
+    msg.payload.config.offset = offset,
+    msg.payload.config.size = size,
+    msg.payload.config.flags = flags,
+    p = msg.payload.config.region;
+    memcpy(p, data, size);
+
+    if (vhost_user_write(dev, &msg, NULL, 0) < 0) {
+        return -1;
+    }
+
+    if (reply_supported) {
+        return process_message_reply(dev, &msg);
+    }
+
+    return 0;
+}
+
+>>>>>>> 7cf5da0e80 (start of backport for vhost-user get/set config functions)
 const VhostOps user_ops = {
         .backend_type = VHOST_BACKEND_TYPE_USER,
         .vhost_backend_init = vhost_user_backend_init,
@@ -919,4 +1021,6 @@ const VhostOps user_ops = {
         .vhost_net_set_mtu = vhost_user_net_set_mtu,
         .vhost_set_iotlb_callback = vhost_user_set_iotlb_callback,
         .vhost_backend_mem_section_filter = vhost_user_mem_section_filter,
+        .vhost_get_config = vhost_user_get_config,
+        .vhost_set_config = vhost_user_set_config,
 };
