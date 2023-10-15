@@ -792,6 +792,7 @@ Linux)
   vhost_net="no" # Disabled for PANDA
   vhost_scsi="yes"
   vhost_vsock="yes"
+  vhost_user="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
   supported_os="yes"
   LIBS="-ldl $LIBS"
