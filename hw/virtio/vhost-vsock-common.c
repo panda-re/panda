@@ -164,7 +164,7 @@ static void vhost_vsock_common_post_load_timer_cb(void *opaque)
     vhost_vsock_common_send_transport_reset(vvc);
 }
 
-int vhost_vsock_common_pre_save(void *opaque)
+void vhost_vsock_common_pre_save(void *opaque)
 {
     VHostVSockCommon *vvc = opaque;
 
@@ -174,7 +174,7 @@ int vhost_vsock_common_pre_save(void *opaque)
      */
     assert(!vvc->vhost_dev.started);
 
-    return 0;
+    //return 0;
 }
 
 int vhost_vsock_common_post_load(void *opaque, int version_id)
