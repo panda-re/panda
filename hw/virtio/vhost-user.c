@@ -680,7 +680,7 @@ static int vhost_setup_slave_channel(struct vhost_dev *dev)
     }
 
     if (reply_supported) {
-        ret = process_message_reply(dev, &msg);
+        ret = process_message_reply(dev, msg);
     }
 
 out:
@@ -701,6 +701,7 @@ static int vhost_user_init(struct vhost_dev *dev, void *opaque)
 
     assert(dev->vhost_ops->backend_type == VHOST_BACKEND_TYPE_USER);
 
+    struct vhost_user *u;
     u = g_new0(struct vhost_user, 1);
     u->chr = opaque;
     u->slave_fd = -1;
