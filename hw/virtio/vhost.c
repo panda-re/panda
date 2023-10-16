@@ -838,10 +838,11 @@ static int vhost_memory_region_lookup(struct vhost_dev *hdev,
     return -EFAULT;
 }
 
-void vhost_device_iotlb_miss(struct vhost_dev *dev, uint64_t iova, int write)
+int vhost_device_iotlb_miss(struct vhost_dev *dev, uint64_t iova, int write)
 {
     IOMMUTLBEntry iotlb;
     uint64_t uaddr, len;
+    int ret = -EFAULT;
 
     rcu_read_lock();
 
@@ -867,6 +868,7 @@ void vhost_device_iotlb_miss(struct vhost_dev *dev, uint64_t iova, int write)
     }
 out:
     rcu_read_unlock();
+    return ret;
 }
 
 static int vhost_virtqueue_start(struct vhost_dev *dev,
