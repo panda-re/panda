@@ -8,7 +8,8 @@
 #ifndef HW_VIRTIO_VHOST_USER_H
 #define HW_VIRTIO_VHOST_USER_H
 
-#include "chardev/char-fe.h"
+//#include "chardev/char-fe.h"
+#include "sysemu/char.h"
 #include "hw/virtio/virtio.h"
 
 typedef struct VhostUserHostNotifier {

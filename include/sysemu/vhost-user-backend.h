@@ -18,7 +18,8 @@
 #include "qemu/bitmap.h"
 #include "hw/virtio/vhost.h"
 #include "hw/virtio/vhost-user.h"
-#include "chardev/char-fe.h"
+//#include "chardev/char-fe.h"
+#include "sysemu/char.h"
 #include "io/channel.h"
 
 #define TYPE_VHOST_USER_BACKEND "vhost-user-backend"
