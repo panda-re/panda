@@ -744,7 +744,7 @@ static int vhost_setup_slave_channel(struct vhost_dev *dev)
     }
 
     if (reply_supported) {
-        ret = process_message_reply(dev, &msg);
+        ret = process_message_reply(dev, msg);
     }
 
 out:
@@ -1023,7 +1023,7 @@ static int vhost_user_set_config(struct vhost_dev *dev, const uint8_t *data,
     }
 
     if (reply_supported) {
-        return process_message_reply(dev, &msg);
+        return process_message_reply(dev, msg);
     }
 
     return 0;
@@ -1043,91 +1043,9 @@ static int vhost_user_send_device_iotlb_msg(struct vhost_dev *dev,
         return -EFAULT;
     }
 
-    return process_message_reply(dev, &msg);
+    return process_message_reply(dev, msg);
 }
 
-
-static void vhost_user_set_iotlb_callback(struct vhost_dev *dev, int enabled)
-{
-    /* No-op as the receive channel is not dedicated to IOTLB messages. */
-}
-
-static int vhost_user_get_config(struct vhost_dev *dev, uint8_t *config,
-                                 uint32_t config_len)
-{
-    VhostUserMsg msg = {
-        msg.request = VHOST_USER_GET_CONFIG,
-        msg.flags = VHOST_USER_VERSION,
-        msg.size = VHOST_USER_CONFIG_HDR_SIZE + config_len,
-    };
-
-    if (config_len > VHOST_USER_MAX_CONFIG_SIZE) {
-        return -1;
-    }
-
-    msg.payload.config.offset = 0;
-    msg.payload.config.size = config_len;
-    if (vhost_user_write(dev, &msg, NULL, 0) < 0) {
-        return -1;
-    }
-
-    if (vhost_user_read(dev, &msg) < 0) {
-        return -1;
-    }
-
-    if (msg.request != VHOST_USER_GET_CONFIG) {
-        error_report("Received unexpected msg type. Expected %d received %d",
-                     VHOST_USER_GET_CONFIG, msg.request);
-        return -1;
-    }
-
-    if (msg.size != VHOST_USER_CONFIG_HDR_SIZE + config_len) {
-        error_report("Received bad msg size.");
-        return -1;
-    }
-
-    memcpy(config, msg.payload.config.region, config_len);
-
-    return 0;
-}
-
-static int vhost_user_set_config(struct vhost_dev *dev, const uint8_t *data,
-                                 uint32_t offset, uint32_t size, uint32_t flags)
-{
-    uint8_t *p;
-    bool reply_supported = virtio_has_feature(dev->protocol_features,
-                                              VHOST_USER_PROTOCOL_F_REPLY_ACK);
-
-    VhostUserMsg msg = {
-        msg.request = VHOST_USER_SET_CONFIG,
-        msg.flags = VHOST_USER_VERSION,
-        msg.size = VHOST_USER_CONFIG_HDR_SIZE + size,
-    };
-
-    if (reply_supported) {
-        msg.flags |= VHOST_USER_NEED_REPLY_MASK;
-    }
-
-    if (size > VHOST_USER_MAX_CONFIG_SIZE) {
-        return -1;
-    }
-
-    msg.payload.config.offset = offset,
-    msg.payload.config.size = size,
-    msg.payload.config.flags = flags,
-    p = msg.payload.config.region;
-    memcpy(p, data, size);
-
-    if (vhost_user_write(dev, &msg, NULL, 0) < 0) {
-        return -1;
-    }
-
-    if (reply_supported) {
-        return process_message_reply(dev, &msg);
-    }
-
-    return 0;
-}
 
 const VhostOps user_ops = {
         .backend_type = VHOST_BACKEND_TYPE_USER,
