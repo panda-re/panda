@@ -16,6 +16,7 @@
 #include "trace.h"
 #include "hw/virtio/virtio-serial.h"
 #include "qapi-event.h"
+#include "hw/qdev-properties.h"
 
 #define TYPE_VIRTIO_CONSOLE_SERIAL_PORT "virtserialport"
 #define VIRTIO_CONSOLE(obj) \
