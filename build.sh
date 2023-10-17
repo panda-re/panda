@@ -11,7 +11,7 @@
 # and still use pypanda.
 
 # printf wrapper - messages sent to stderr
-msg() {
+msg() { 
     local fmt=$1
     shift
     printf "%s: $fmt\n" build.sh $* >&2
