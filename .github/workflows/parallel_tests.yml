@@ -31,7 +31,7 @@ jobs:
 
 
   build_container:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'coolkingcole/panda'
     runs-on: self-hosted
     steps:
 
@@ -44,7 +44,7 @@ jobs:
       run: docker run --rm "panda_local_${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   taint_tests:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'coolkingcole/panda'
     runs-on: self-hosted
     needs: [build_container]
 
@@ -70,7 +70,7 @@ jobs:
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
   sym_trace_tests:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'coolkingcole/panda'
     runs-on: self-hosted
     needs: [build_container]
 
@@ -88,7 +88,7 @@ jobs:
         if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
   make_check:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'coolkingcole/panda'
     runs-on: self-hosted
     needs: [build_container]
 
@@ -107,7 +107,7 @@ jobs:
         "cd /panda/build && make ${{ matrix.target }}"
 
   pypanda_tests:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'coolkingcole/panda'
     runs-on: self-hosted
     needs: [build_container]
 
