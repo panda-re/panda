@@ -586,69 +586,6 @@ bool qemu_plugin_run_callback(qemu_plugin_id_t id, const char *cb_name,
     return (cb->registered_cb_funcs[0] != NULL);
 }
 
-bool qemu_plugin_reg_callback(const char *target_plugin, const char *cb_name,
-                              cb_func_t function_pointer) {
-    struct qemu_plugin_ctx *ctx = plugin_name_to_ctx_locked(target_plugin);
-    if (ctx == NULL) {
-        error_report("Cannot register callback with unknown plugin %s",
-                     target_plugin);
-      return false;
-    }
-
-    struct qemu_plugin_qpp_cb *cb = plugin_find_qpp_cb(ctx, cb_name);
-    if (!cb) {
-        error_report("Cannot register a function to run on callback %s in "
-                     "plugin %s as that callback does not exist",
-                     cb_name, target_plugin);
-        return false;
-    }
-    if (cb->counter == QEMU_PLUGIN_EV_MAX) {
-        error_report("The maximum number of allowed callbacks are already "
-                     "registered for callback %s in plugin %s\n",
-                     cb_name, target_plugin);
-        return false;
-    }
-    // append function pointer to list of functions
-    cb->registered_cb_funcs[cb->counter] = function_pointer;
-    cb->counter++;
-    return true;
-}
-
-bool qemu_plugin_unreg_callback(const char *target_plugin, const char *cb_name,
-                              cb_func_t function_pointer) {
-    struct qemu_plugin_ctx *ctx = plugin_name_to_ctx_locked(target_plugin);
-    if (ctx == NULL) {
-        error_report("Cannot remove callback function from unknown plugin %s",
-                     target_plugin);
-        return false;
-    }
-
-    struct qemu_plugin_qpp_cb *cb = plugin_find_qpp_cb(ctx, cb_name);
-    if (!cb) {
-        error_report("Cannot remove a function to run on callback %s in "
-                     "plugin %s as that callback does not exist",
-                     cb_name, target_plugin);
-        return false;
-    }
-
-    // remove function pointer from list of functions and shift all others accordingly
-    for (int i = 0; i < cb->counter; i++) {
-        if (cb->registered_cb_funcs[i] == function_pointer) {
-            for (int j = i + 1; j < cb->counter; j++) {
-                cb->registered_cb_funcs[i] = cb->registered_cb_funcs[j];
-                i++;
-            }
-            cb->registered_cb_funcs[i] = NULL;
-            cb->counter--;
-            return true;
-        }
-    }
-    error_report("Function to remove not found in registered functions "
-                 "for callback %s in plugin %s",
-                 cb_name, target_plugin);
-    return false;
-}
-
 /*
  * QPP: inter-plugin function resolution and callbacks
  */
