@@ -405,8 +405,9 @@ int64_t qemu_plugin_get_reg64(unsigned int reg_idx, bool* error);
 
 /**
  * qemu_plugin_load_plugin() - load a plugin in another plugin
- * @path: plugin name
- * @function: function name
+ * @path: path to plugin shared object
+ * @argc: number of arguments to plugin
+ * @argv: argument vector of char* to provide to plugin
  *
  * Returns: NULL on failure, function pointer on success
  */
@@ -479,7 +480,7 @@ int qemu_plugin_read_guest_virt_mem(uint64_t gva, void *buf, size_t length);
 
 /**
  * Translates guest virtual addres to a guest physical address.
- * @gva: Guest virtual address
+ * @addr: Guest virtual address
  *
  * Returns: Guest physical address
  */
@@ -487,7 +488,8 @@ uint64_t qemu_plugin_virt_to_phys(uint64_t addr);
 
 /**
  * Obtain a host pointer for a guest virtual address
- * @gva: Guest virtual address
+ * @addr: Guest virtual address
+ * @len: Length of the memory region
  *
  * Returns: Host virtual address
  */

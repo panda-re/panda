@@ -278,18 +278,6 @@ const char *id_to_plugin_name(qemu_plugin_id_t id)
     }
 }
 
-struct qemu_plugin_qpp_cb *plugin_find_qpp_cb(struct qemu_plugin_ctx *ctx,
-                                              const char *name)
-{
-    struct qemu_plugin_qpp_cb *cb;
-    QTAILQ_FOREACH(cb, &ctx->qpp_cbs, entry) {
-        if (strcmp(cb->name, name) == 0) {
-            return cb;
-        }
-    }
-    return NULL;
-}
-
 struct plugin_for_each_args {
     struct qemu_plugin_ctx *ctx;
     qemu_plugin_vcpu_simple_cb_t cb;

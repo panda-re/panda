@@ -20,6 +20,7 @@
 #include "monitor/hmp.h"
 #include "qemu/help_option.h"
 #include "monitor/monitor-internal.h"
+#include "qemu/plugin.h"
 #include "qapi/error.h"
 #include "qapi/qapi-commands-control.h"
 #include "qapi/qapi-commands-misc.h"
@@ -442,4 +443,14 @@ void hmp_info_mtree(Monitor *mon, const QDict *qdict)
     bool disabled = qdict_get_try_bool(qdict, "disabled", false);
 
     mtree_info(flatview, dispatch_tree, owner, disabled);
+}
+
+void hmp_load_plugin(Monitor *mon, const QDict *qdict)
+{
+    QemuPluginList plugin_list = QTAILQ_HEAD_INITIALIZER(plugin_list);
+
+    const char *args = qdict_get_str(qdict, "args");
+
+    qemu_plugin_opt_parse(args, &plugin_list);
+    qemu_plugin_load_list(&plugin_list, &error_fatal);
 }
