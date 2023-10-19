@@ -1,36 +1,36 @@
 [submodule "roms/vgabios"]
 	path = roms/vgabios
-	url = https://git.qemu.org/git/vgabios.git
+	url = https://gitlab.com/qemu-project/vgabios.git
 [submodule "roms/seabios"]
 	path = roms/seabios
-	url = https://git.qemu.org/git/seabios.git
+	url = https://gitlab.com/qemu-project/seabios.git
 [submodule "roms/SLOF"]
 	path = roms/SLOF
-	url = https://git.qemu.org/git/SLOF.git
+	url = https://gitlab.com/qemu-project/SLOF.git
 [submodule "roms/ipxe"]
 	path = roms/ipxe
-	url = https://git.qemu.org/git/ipxe.git
+	url = https://gitlab.com/qemu-project/ipxe.git
 [submodule "roms/openbios"]
 	path = roms/openbios
-	url = https://git.qemu.org/git/openbios.git
+	url = https://gitlab.com/qemu-project/openbios.git
 [submodule "roms/openhackware"]
 	path = roms/openhackware
-	url = https://git.qemu.org/git/openhackware.git
+	url = https://gitlab.com/qemu-project/openhackware.git
 [submodule "roms/qemu-palcode"]
 	path = roms/qemu-palcode
 	url = https://github.com/rth7680/qemu-palcode.git
 [submodule "roms/sgabios"]
 	path = roms/sgabios
-	url = https://git.qemu.org/git/sgabios.git
+	url = https://gitlab.com/qemu-project/sgabios.git
 [submodule "pixman"]
 	path = pixman
-	url = https://anongit.freedesktop.org/git/pixman
+	url = https://github.com/coolkingcole/pixman.git
 [submodule "dtc"]
 	path = dtc
-	url = https://git.qemu.org/git/dtc.git
+	url = https://github.com/qemu/dtc.git
 [submodule "roms/u-boot"]
 	path = roms/u-boot
-	url = https://git.qemu.org/git/u-boot.git
+	url = https://gitlab.com/qemu-project/u-boot.git
 [submodule "roms/skiboot"]
 	path = roms/skiboot
-	url = https://git.qemu.org/git/skiboot.git
+	url = https://gitlab.com/qemu-project/skiboot.git
