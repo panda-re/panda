@@ -18,8 +18,10 @@ enum qemu_plugin_event {
     QEMU_PLUGIN_EV_VCPU_RESUME,
     QEMU_PLUGIN_EV_VCPU_SYSCALL,
     QEMU_PLUGIN_EV_VCPU_SYSCALL_RET,
+    QEMU_PLUGIN_EV_VCPU_TLB_FLUSH,
     QEMU_PLUGIN_EV_FLUSH,
     QEMU_PLUGIN_EV_ATEXIT,
+    QEMU_PLUGIN_EV_LOADVM,
     QEMU_PLUGIN_EV_MAX, /* total number of plugin events we support */
 };
 
