@@ -52,19 +52,22 @@ RUN cd /tmp && \
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need
-COPY . /panda/
-COPY .git /panda/
+COPY ./* /panda/
+#COPY .git /panda/
 
 # Note we diable NUMA for docker builds because it causes make check to fail in docker
-RUN git -C /panda submodule update --init dtc && \
-    git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
-    mkdir  /panda/build && cd /panda/build && \
-    /panda/configure \
+RUN ls -alh
+RUN ls -alh /panda/
+RUN git -C /panda submodule update --init dtc
+RUN git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash
+RUN mkdir  /panda/build && cd /panda/build
+RUN /panda/configure \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
         --disable-numa \
-        --enable-llvm && \
-    (make -C /panda/build -j "$(nproc)" || make) # If multi-core make fails, remake once to give a good error at the end
+        --enable-llvm
+
+RUN make -C /panda/build -j "$(nproc)"
 
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer

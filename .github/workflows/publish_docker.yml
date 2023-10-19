@@ -9,24 +9,27 @@ on:
 jobs:
   build_dev:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
-    runs-on: self-hosted
+    runs-on: panda-arc
     steps:
     - name: Checkout PANDA at current commit
       uses: actions/checkout@v2
 
     - name: Docker login
       run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
-
-    - name: Build Bionic container
-      # Push both dev and regular container
-      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda:${GITHUB_SHA} $GITHUB_WORKSPACE;
-            docker tag pandare/panda:${GITHUB_SHA} pandare/panda:latest;
-            docker push pandare/panda:${GITHUB_SHA};
-            docker push pandare/panda;
-            DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:${GITHUB_SHA} $GITHUB_WORKSPACE;
-            docker tag pandare/pandadev:${GITHUB_SHA} pandare/pandadev:latest;
-            docker push pandare/pandadev:${GITHUB_SHA};
-            docker push pandare/pandadev;
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build panda:latest
+      uses: docker/build-push-action@v5
+      with:
+        tags: pandare/panda:${GITHUB_SHA}
+        target: panda
+    - name: Build pandadev:latest
+      uses: docker/build-push-action@v5
+      with:
+        tags: pandare/pandadev:${GITHUB_SHA}
+        target: developer
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
@@ -55,7 +58,7 @@ jobs:
 
   build_stable:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/stable'
-    runs-on: self-hosted
+    runs-on: panda-arc
     steps:
     - name: Checkout PANDA at current commit
       uses: actions/checkout@v1
