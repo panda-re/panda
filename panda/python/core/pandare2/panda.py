@@ -39,6 +39,7 @@ from .asyncthread import AsyncThread
 from .qcows import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
+from .wrappers import CWrapper
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -154,14 +155,14 @@ class Panda():
         if libpanda_path:
             self.libpanda_path = libpanda_path
         else:
-            self.libpanda_path = pjoin(self.build_dir, f"{self.arch_name}-softmmu", f"libpanda_{self.arch_name}-softmmu.so")
+            self.libpanda_path = pjoin(self.build_dir, f"libpanda_{self.arch_name}-softmmu.so")
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
 
         self.ffi = self._do_types_import()
 
         self.libpanda = self.ffi.dlopen(self.libpanda_path, self.ffi.RTLD_GLOBAL)
         from os.path import join
-        pandummy_path = join(dirname(self.libpanda_path),'../panda/core/libpandacore.so')
+        pandummy_path = join(dirname(self.libpanda_path),'./panda/core/libpandacore.so')
         self.pandummy = self.ffi.dlopen(pandummy_path)
         self.C = self.ffi.dlopen(None)
 
@@ -2665,7 +2666,15 @@ class Panda():
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
                 if not hasattr(self, "exit_exception"):
                     try:
-                        r = fun(*args, **kwargs)
+                        newargs = []
+                        for i in range(len(args)):
+                            if isinstance(args[i], self.ffi.CData):
+                                ctype = self.ffi.typeof(args[i]).cname
+                                if p := CWrapper.wrap(self, ctype, args[i]):
+                                    newargs.append(p)
+                                    continue
+                            newargs.append(args[i])
+                        r = fun(*tuple(newargs), **kwargs)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
                         #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
