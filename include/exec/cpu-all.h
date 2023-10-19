@@ -408,12 +408,6 @@ static inline bool tlb_hit(uint64_t tlb_addr, vaddr addr)
 
 #endif /* !CONFIG_USER_ONLY */
 
-/* accel/tcg/cpu-exec.c */
-int cpu_exec(CPUState *cpu);
-void tcg_exec_post_load(CPUState *cpu);
-void tcg_exec_realizefn(CPUState *cpu, Error **errp);
-void tcg_exec_unrealizefn(CPUState *cpu);
-
 /* Validate correct placement of CPUArchState. */
 QEMU_BUILD_BUG_ON(offsetof(ArchCPU, parent_obj) != 0);
 QEMU_BUILD_BUG_ON(offsetof(ArchCPU, env) != sizeof(CPUState));
