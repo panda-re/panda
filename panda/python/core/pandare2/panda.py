@@ -39,7 +39,7 @@ from .asyncthread import AsyncThread
 from .qcows import Qcows
 from .qemu_logging import QEMU_Log_Manager
 from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
-from .wrappers import CWrapper
+from .wrappers import wrap_args
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -2666,15 +2666,7 @@ class Panda():
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
                 if not hasattr(self, "exit_exception"):
                     try:
-                        newargs = []
-                        for i in range(len(args)):
-                            if isinstance(args[i], self.ffi.CData):
-                                ctype = self.ffi.typeof(args[i]).cname
-                                if p := CWrapper.wrap(self, ctype, args[i]):
-                                    newargs.append(p)
-                                    continue
-                            newargs.append(args[i])
-                        r = fun(*tuple(newargs), **kwargs)
+                        r = fun(*wrap_args(self,args), **kwargs)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
                         #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.

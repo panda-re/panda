@@ -1,3 +1,27 @@
+def wrap_args(panda, args):
+    return args
+    # newargs = []
+    # for i in range(len(args)):
+    #     if isinstance(args[i], panda.ffi.CData):
+    #         ctype = panda.ffi.typeof(args[i]).cname
+    #         if p := CWrapper.wrap(panda, ctype, args[i]):
+    #             newargs.append(p)
+    #             continue
+    #     newargs.append(args[i])
+    # return tuple(newargs)
+
+class Person:
+    def __init__(self, ffi, obj):
+        self.ffi = ffi
+        self.obj = obj
+    
+    def __str__(self):
+        fname = self.ffi.string(self.p.first_name) if self.p.first_name != self.ffi.NULL else ""
+        mname = self.ffi.string(self.p.middle_name) if self.p.middle_name != self.ffi.NULL else ""
+        lname = self.ffi.string(self.p.last_name) if self.p.last_name != self.ffi.NULL else ""
+        return f"{fname} {mname} {lname} {int(self.p.age)}
+    
+
 class CWrapper:
     C_Class = None
     def __init__(self, panda, obj):
@@ -20,13 +44,19 @@ class CWrapper:
         return f"struct {cls.C_Class} *"
     
     def is_null(self, obj):
-        return self.obj == self.panda.ffi.NULL
+        return obj == self.panda.ffi.NULL
 
 class StringWrapper(CWrapper):
     C_Class = "char"
+    def __init__(self, ffi, obj):
+        self.ffi = ffi
+        self.obj = obj
+    
+    def __eq__(self, other):
+        return str(self) == other
 
     def __str__(self):
-        if self.is_null(self.obj):
+        if self.ffi.NULL(self.obj):
             return ""
         return self.panda.ffi.string(self.obj).decode("utf-8")
 
@@ -52,12 +82,19 @@ class QEMUPluginTb(CWrapper):
         return QEMUPluginInsn(self.panda, raw_insn)
     
     @property
+    def size(self):
+        return sum(i.size for i in self.iter_insns())
+    
+    @property
     def insns(self):
         return list(self.iter_insns())
     
     def iter_insns(self):
         for i in range(self.n_insns):
             yield self.get_insn(i)
+
+            
+        
 
 class QEMUPluginInsn(CWrapper):
     C_Class = "qemu_plugin_insn"

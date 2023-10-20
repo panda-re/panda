@@ -1,7 +1,7 @@
 from pandare2 import Panda
 from sys import argv
 
-panda = Panda(generic="arm")
+panda = Panda(generic="i386")
 
 i = 0
 d = {}
@@ -19,31 +19,29 @@ def qb():
     sleep(10)
     panda.run_monitor_cmd("q")
 
-@panda.ffi.callback("void(unsigned int, void*)")
+
 def vcpu_tb_exec(cpu_index, udata):
+    breakpoint()
     i = panda.ffi.cast("int", udata)
     d[i]['exec'] = True
 
 @panda.cb_vcpu_tb_trans
 def vcpu_tb(id, tb):
+    breakpoint()
     # print(f"vcpu_tb in Python!!! {id} {tb}")
-    pc = panda.libpanda.qemu_plugin_tb_vaddr(tb)
-    n = panda.libpanda.qemu_plugin_tb_n_insns(tb)
+    pc = tb.vaddr
     
     global i
-    d[i] = {'start': pc, 'mod_id': 0, 'exec': False, 'size': 0}
+    d[i] = {'start': pc, 'mod_id': 0, 'exec': False, 'size': 0,
+            'size': tb.size}
     
-    for j in range(n):
-        d[i]['size'] += panda.libpanda.qemu_plugin_insn_size(panda.libpanda.qemu_plugin_tb_get_insn(tb, j))
     # panda.cb_vcpu_tb_exec(vcpu_tb_exec, args=[tb, vcpu_tb_exec, panda.libpanda.QEMU_PLUGIN_CB_NO_REGS, panda.ffi.cast("void*", i)])
-    panda.libpanda.qemu_plugin_register_vcpu_tb_exec_cb(tb, vcpu_tb_exec, panda.libpanda.QEMU_PLUGIN_CB_NO_REGS, panda.ffi.cast("void*", i))
+    panda.libpanda.qemu_plugin_register_vcpu_tb_exec_cb(tb.obj, vcpu_tb_exec, panda.libpanda.QEMU_PLUGIN_CB_NO_REGS, panda.ffi.cast("void*", i))
     i += 1
 
-# @panda.ffi.callback("void(qemu_plugin_id_t, void*)")
-@panda.cb_atexit
-def atexit(id, p):
+def atexit():
     print("at exit")
-    with open(outfile,"w") as f:
+    with open(outfile,"wb") as f:
         path = panda.libpanda.qemu_plugin_path_to_binary()
         if path == panda.ffi.NULL:
             path = "?"
@@ -51,21 +49,18 @@ def atexit(id, p):
         end_code = panda.libpanda.qemu_plugin_end_code()
         entry = panda.libpanda.qemu_plugin_entry_code()
         for line in header:
-            f.write(line)
-        f.write(f"0, {start_code:#x}, {end_code:#x}, {entry:#x}, {path}\n")
-        f.write(f"BB Table: {len(d)} entries\n")
+            f.write(line.encode())
+        f.write(f"0, {start_code:#x}, {end_code:#x}, {entry:#x}, {path}\n".encode())
+        f.write(f"BB Table: {len(d)} entries\n".encode())
         from struct import pack
-        for block in d:
+        for b in d:
+            block = d[b]
             if block['exec']:
-                f.write(pack('I', block['start'])+pack('H', block['size'])+pack('H',block['mod_id']))
+                outval = pack('I', block['start'])+pack('H', block['size'])+pack('H',block['mod_id'])
+                f.write(outval)
 
-
-def init(id, info, argc, argv):
-    print("got to init")
-    panda.libpanda.qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb)
-    panda.libpanda.qemu_plugin_register_atexit_cb(id, atexit,panda.ffi.NULL)
-    return 0 
 
 print("entering main loop")
 panda.run()
 print("exiting")
+atexit()
