@@ -57,10 +57,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ github.workspace }}
-          tags: panda_local_${{ github.sha }}
+          tags: panda_local:${{ github.sha }}
           target: developer
       - name: Minimal test of built container # Just test to see if one of our binaries is built
-        run: docker run --rm "panda_local_${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
+        run: docker run --rm "panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   taint_tests:
     if: github.repository  == 'panda-re/panda'
