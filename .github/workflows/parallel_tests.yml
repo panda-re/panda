@@ -45,6 +45,8 @@ jobs:
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
     steps:
+      - name: Install git
+        run: sudo apt-get update -y && sudo apt-get install git -y
       - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
         with:
           fetch-depth: 0
