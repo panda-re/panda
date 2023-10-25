@@ -80,7 +80,13 @@ WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4
 FROM builder as installer
-RUN  make -C /panda/build install
+RUN  make -C /panda/build install && \
+    rm -r /usr/local/lib/panda/*/cosi \
+        /usr/local/lib/panda/*/cosi_strace \
+        /usr/local/lib/panda/*/gdb \
+        /usr/local/lib/panda/*/snake_hook \
+        /usr/local/lib/panda/*/rust_skeleton
+
 # Install pypanda
 RUN cd /panda/panda/python/core && \
     python3 setup.py install
