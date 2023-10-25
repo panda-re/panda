@@ -56,12 +56,10 @@ COPY . /panda/
 COPY .git /panda/
 
 # Note we diable NUMA for docker builds because it causes make check to fail in docker
-RUN ls -alh
-RUN ls -alh /panda/
-RUN git -C /panda submodule update --init dtc
-RUN git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash
-RUN mkdir  /panda/build && cd /panda/build
-RUN /panda/configure \
+RUN git -C /panda submodule update --init dtc && \
+    git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
+    mkdir  /panda/build && cd /panda/build && \
+    /panda/configure \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
         --disable-numa \
