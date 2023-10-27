@@ -1,9 +1,8 @@
 use panda::prelude::*;
 
 #[panda::init]
-fn init(_: &mut PluginHandle) -> bool {
+fn init(_: &mut PluginHandle) {
     println!("Initialized!");
-    true
 }
 
 #[panda::uninit]
@@ -12,5 +11,6 @@ fn exit(_: &mut PluginHandle) {
 }
 
 #[panda::before_block_exec]
-fn bbe(_cpu: &mut CPUState, _tb: &mut TranslationBlock){
+fn bbe(_cpu: &mut CPUState, _tb: &mut TranslationBlock) {
+    // runs every basic block
 }

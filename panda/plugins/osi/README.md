@@ -82,6 +82,12 @@ The following data structures are defined in the [`osi_types.h` header][osi_type
         OsiPage *pages;     // TODO in osi_linux
     } OsiProc;
 
+    // Represents process memory details
+    typedef struct osi_proc_mem {
+        target_ptr_t start_brk;
+        target_ptr_t brk;
+    } OsiProcMem;
+
 ```
 
 ### Data allocation
@@ -191,6 +197,18 @@ Description: Called to retrieve full process information about the process point
 
 ---
 
+Name: **on\_get\_proc\_mem**
+
+Signature:
+
+```C
+typedef void (*on_get_proc_mem_t)(CPUState *, OsiProc *, OsiProcMem **)
+```
+
+Description: Called to retrieve process memory details.  Currently only implemented in osi\_linux.  Returns a pointer to a static memory address, which will be overwritten on the next call to this function.
+
+---
+
 Name: **on\_get\_current\_thread**
 
 Signature:
@@ -228,6 +246,100 @@ typedef void (*on_get_mappings_t)(CPUState *, OsiProc *, GArray**)
 Description: Retrieves the shared libraries loaded for the specified process of the guest OS. The process `OsiProc` can be aquired via a previous call to `on_get_current_process` or `on_get_processes`.
 
 Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
+
+---
+
+Name: **on\_get\_file\_mappings**
+
+Signature:
+
+```C
+typedef void (*on_get_file_mappings_t)(CPUState *, OsiProc *, GArray**)
+```
+
+Description: Similar to on\_get\_mappings, but returns only mappings that are backed by a file.  In wintrospection this returns the same results as on\_get\_mappings.  In osi\_linux, this returns a subset of the mappings that on\_get\_mappings returns.
+
+Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
+
+---
+
+Name: **on\_get\_heap\_mappings**
+
+Signature:
+
+```C
+typedef void (*on_get_heap_mappings_t)(CPUState *, OsiProc *, GArray**)
+```
+
+Description: Similar to on\_get\_mappings, but returns only mappings that are heap segments.  Implemented only in osi\_linux.
+
+Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
+
+---
+
+Name: **on\_get\_stack\_mappings**
+
+Signature:
+
+```C
+typedef void (*on_get_stack_mappings_t)(CPUState *, OsiProc *, GArray**)
+```
+
+Description: Similar to on\_get\_mappings, but returns only mappings that are stack segments.  Implemented only in osi\_linux.
+
+Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
+
+---
+
+Name: **on\_get\_unknown\_mappings**
+
+Signature:
+
+```C
+typedef void (*on_get_unknown_mappings_t)(CPUState *, OsiProc *, GArray**)
+```
+
+Description: Similar to on\_get\_mappings, but returns only mappings of an unknown origin.  These can be additional heap segements for processes that have exhausted the primary heap segment.  They can also be memory allocated via mmap() by a process.  Implemented only in osi\_linux.
+
+Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
+
+---
+
+Name: **on\_get\_mapping\_by\_addr**
+
+Signature:
+
+```C
+typedef void (*on_get_mapping_by_addr_t)(CPUState *, OsiProc *, target_ptr_t, OsiModule**)
+```
+
+Description: Returns the mapping that contains a specific virtual memory address.
+
+The implementation should allocate memory and fill in the pointer to an `OsiModule` struct. The returned `OsiModule` must be freed with `free_osimodule`.
+
+---
+
+Name: **on\_get\_mapping\_base\_address\_by\_name**
+
+Signature:
+
+```C
+typedef void (*on_get_mapping_base_address_by_name_t)(CPUState *, OsiProc *, char *, target_ptr_t *)
+```
+
+Description: Returns the base address of the mapping with the specified name.
+
+---
+
+Name: **has\_mapping\_prefix**
+
+Signature:
+
+```C
+typedef void (*on_has_mapping_prefix_t)(CPUState *, OsiProc *, char *, bool *)
+```
+
+Description: Returns true if a mapping exists whose name begins with the specified prefix.
 
 ---
 

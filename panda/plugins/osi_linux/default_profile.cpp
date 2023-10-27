@@ -29,7 +29,7 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
             //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
             err = struct_get(cpu, &ts, current_task_addr, 0);
             assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
-            fixupendian(ts);
+            fixupendian2(ts);
             return ts;
         } else {
             assert(false && "cannot use kernel version older than 3.7");
@@ -49,7 +49,7 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
         //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
         err = struct_get(cpu, &ts, current_task_addr, 0);
         assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
-        fixupendian(ts);
+        fixupendian2(ts);
         return ts;
 
     }
@@ -58,6 +58,7 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     // userspace clobbers it but kernel restores (somewhow?)
     // First field of struct is task - no offset needed
     current_task_addr = get_id(cpu); // HWID returned by hw_proc_id is the cached r28 value
+    OG_printf("Got current task struct at " TARGET_FMT_lx "\n", current_task_addr);
 
 #else // x86/64
     current_task_addr = ki.task.current_task_addr;
@@ -66,9 +67,10 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     //assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
     if (err != struct_get_ret_t::SUCCESS) {
       // Callers need to check if we return NULL!
+      OG_printf("Failed to read current task struct from task_addr with offset " TARGET_FMT_lx "\n", ki.task.per_cpu_offset_0_addr);
       return 0;
     }
-    fixupendian(ts);
+    fixupendian2(ts);
     return ts;
 }
 
@@ -80,7 +82,7 @@ target_ptr_t default_get_task_struct_next(CPUState *cpu, target_ptr_t task_struc
     struct_get_ret_t err;
     target_ptr_t tasks;
     err = struct_get(cpu, &tasks, task_struct, ki.task.tasks_offset);
-    fixupendian(tasks);
+    fixupendian2(tasks);
     assert(err == struct_get_ret_t::SUCCESS && "failed to get next task");
     return tasks-ki.task.tasks_offset;
 }
@@ -92,8 +94,9 @@ target_ptr_t default_get_group_leader(CPUState *cpu, target_ptr_t ts)
 {
     struct_get_ret_t err;
     target_ptr_t group_leader;
+    OG_printf("Getting group leader from task_struct at " TARGET_FMT_lx " with offset %x\n", ts, ki.task.group_leader_offset);
     err = struct_get(cpu, &group_leader, ts, ki.task.group_leader_offset);
-    fixupendian(group_leader);
+    fixupendian2(group_leader);
     assert(err == struct_get_ret_t::SUCCESS && "failed to get group leader for task");
     return group_leader;
 }

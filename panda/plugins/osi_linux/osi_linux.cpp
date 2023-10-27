@@ -34,6 +34,12 @@
 
 #define KERNEL_CONF "/" TARGET_NAME "-softmmu/panda/plugins/osi_linux/kernelinfo.conf"
 
+const uint32_t MAPPING_TYPE_FILE    = 1 << 0;
+const uint32_t MAPPING_TYPE_HEAP    = 1 << 1;
+const uint32_t MAPPING_TYPE_STACK   = 1 << 2;
+const uint32_t MAPPING_TYPE_UNKNOWN = 1 << 3;
+const uint32_t MAPPING_TYPE_ALL     = (1 << 4) - 1;
+
 #ifdef TARGET_MIPS
 #include "hw_proc_id/hw_proc_id_ext.h"
 #endif
@@ -55,6 +61,13 @@ void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
+void on_get_file_mappings(CPUState *env, OsiProc *p, GArray **out);
+void on_get_heap_mappings(CPUState *env, OsiProc *p, GArray **out);
+void on_get_stack_mappings(CPUState *env, OsiProc *p, GArray **out);
+void on_get_unknown_mappings(CPUState *env, OsiProc *p, GArray **out);
+void on_get_mapping_by_addr(CPUState *env, OsiProc *p, const target_ptr_t addr, OsiModule **out);
+void on_get_mapping_base_address_by_name(CPUState *env, OsiProc *p, const char *name, target_ptr_t *base_address);
+void on_has_mapping_prefix(CPUState *env, OsiProc *p, const char *prefix, bool *found);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 void init_per_cpu_offsets(CPUState *cpu);
@@ -196,43 +209,87 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
 
 /**
  * @brief Fills an OsiModule struct.
+ * Returns true if the struct was filled (module type of m matches one of the
+ *   requested mapping types.
  */
-static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
+static bool fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr,
+        uint32_t mapping_type) {
+
     target_ulong vma_start, vma_end;
     target_ptr_t vma_vm_file;
     target_ptr_t vma_dentry;
     target_ptr_t mm_addr, start_brk, brk, start_stack;
+    bool populated = false;
+
+    static uint64_t last_instr_count;
+    static target_ptr_t last_dentry;
+    static char *last_file;
+    static char *last_name;
+
+    memset(m, 0, sizeof(OsiModule));
 
     vma_start = get_vma_start(env, vma_addr);
     vma_end = get_vma_end(env, vma_addr);
     vma_vm_file = get_vma_vm_file(env, vma_addr);
 
-    // Fill everything but m->name and m->file.
-    m->modd = vma_addr;
-    m->base = vma_start;
-    m->size = vma_end - vma_start;
+    if (vma_vm_file != (target_ptr_t)NULL) {
+        // Memory area is mapped from a file.
+        if((mapping_type & MAPPING_TYPE_FILE) != 0) {
+            populated = true;
+            vma_dentry = get_vma_dentry(env, vma_addr);
 
-    if (vma_vm_file !=
-        (target_ptr_t)NULL) {  // Memory area is mapped from a file.
-        vma_dentry = get_vma_dentry(env, vma_addr);
-        m->file = read_dentry_name(env, vma_dentry);
-        m->name = g_strrstr(m->file, "/");
-        if (m->name != NULL) m->name = g_strdup(m->name + 1);
+            if((env->rr_guest_instr_count == last_instr_count) &&
+                    (vma_dentry == last_dentry)) {
+                m->file = g_strdup(last_file);
+                m->name = g_strdup(last_name);
+            } else {
+                m->file = read_dentry_name(env, vma_dentry);
+                m->name = g_strrstr(m->file, "/");
+                if (m->name != NULL) m->name = g_strdup(m->name + 1);
+
+                // Save the results from calling read_dentry_name
+                // Next request may be able to reuse these
+                last_instr_count = env->rr_guest_instr_count;
+                last_dentry = vma_dentry;
+                last_file = m->file;
+                last_name = m->name;
+            }
+
+            // Get offset in pages, then *= with PAGE_SIZE to translate into bytes
+            get_vma_pgoff(env, vma_addr, &m->offset);
+            m->offset *= 4096; // PAGE_SIZE XXX should specify this size in OSI profiles.
+        }
     } else {  // Other memory areas.
         mm_addr = get_vma_vm_mm(env, vma_addr);
         start_brk = get_mm_start_brk(env, mm_addr);
         brk = get_mm_brk(env, mm_addr);
         start_stack = get_mm_start_stack(env, mm_addr);
 
-        m->file = NULL;
         if (vma_start <= start_brk && vma_end >= brk) {
-            m->name = g_strdup("[heap]");
+            if((mapping_type & MAPPING_TYPE_HEAP) != 0) {
+                populated = true;
+                m->name = g_strdup("[heap]");
+            }
         } else if (vma_start <= start_stack && vma_end >= start_stack) {
-            m->name = g_strdup("[stack]");
-        } else {
+            if((mapping_type & MAPPING_TYPE_STACK) != 0) {
+                populated = true;
+                m->name = g_strdup("[stack]");
+            }
+        } else if((mapping_type & MAPPING_TYPE_UNKNOWN) != 0) {
+            populated = true;
             m->name = g_strdup("[???]");
         }
     }
+
+    if(populated) {
+        // Fill everything but m->name, m->file & m->offset.
+        m->modd = vma_addr;
+        m->base = vma_start;
+        m->size = vma_end - vma_start;
+        m->flags = get_vma_flags(env, vma_addr);
+    }
+
+    return populated;
 }
 
 /**
@@ -313,7 +370,7 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
             // If we're on MIPS, we need to wait until r28 is set before
             // moving to a syscall strategy
             if (!id_is_initialized()){
-                ret = NULL;
+                *ret = NULL;
                 return false;
             }
         }
@@ -339,7 +396,7 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
         PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
     // Not yet initialized, just set the caller's result buffer to NULL
-    ret = NULL;
+    *ret = NULL;
     return false;
 }
 
@@ -447,15 +504,40 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
 }
 
 /**
- * @brief PPP callback to retrieve OsiModules from the running OS.
- *
- * Current implementation returns all the memory areas mapped by the
- * process and the files they were mapped from. Libraries that have
- * many mappings will appear multiple times.
- *
- * @todo Remove duplicates from results.
+ * @brief PPP callback to retrieve memory details about a running process.
+ * Return value is a pointer to a static memory address, which will be
+ * overwritten the next time this function is called.
  */
-void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
+void on_get_proc_mem(CPUState *env, const OsiProc *p, OsiProcMem **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
+    static OsiProcMem pm;
+
+    if ((p != nullptr) && (p->taskd != 0)) {
+        target_ptr_t vma_addr = get_vma_first(env, p->taskd);
+        if(vma_addr != 0) {
+            target_ptr_t mm_addr = get_vma_vm_mm(env, vma_addr);
+            if(mm_addr != 0) {
+                pm.start_brk = get_mm_start_brk(env, mm_addr);
+                if(pm.start_brk != 0) {
+                    pm.brk = get_mm_brk(env, mm_addr);
+                    if(pm.brk != 0) {
+                        *out = &pm;
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    *out = nullptr;
+}
+
+/**
+ * @brief Get all mappings that match one of the specified mapping types.
+ */
+static void get_mappings(CPUState *env, OsiProc *p, GArray **out,
+        uint32_t mapping_type) {
     if (!osi_guest_is_ready(env, (void**)out)) return;
 
     OsiModule m;
@@ -472,9 +554,9 @@ void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
     }
 
     do {
-        memset(&m, 0, sizeof(OsiModule));
-        fill_osimodule(env, &m, vma_current);
-        g_array_append_val(*out, m);
+        if(fill_osimodule(env, &m, vma_current, mapping_type)) {
+            g_array_append_val(*out, m);
+        }
         vma_current = get_vma_next(env, vma_current);
     } while(vma_current != (target_ptr_t)NULL && vma_current != vma_first);
 
@@ -485,6 +567,170 @@ error0:
         g_array_free(*out, true);
     }
     *out = NULL;
+    return;
+}
+
+
+/**
+ * @brief PPP callback to retrieve OsiModules from the running OS.
+ *
+ * Current implementation returns all the memory areas mapped by the
+ * process and the files they were mapped from. Libraries that have
+ * many mappings will appear multiple times.
+ *
+ * @todo Remove duplicates from results.
+ */
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    get_mappings(env, p, out, MAPPING_TYPE_ALL);
+}
+
+/**
+ * @brief PPP callback to retrieve OsiModules backed by files from 
+ * the running OS.
+ */
+void on_get_file_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    get_mappings(env, p, out, MAPPING_TYPE_FILE);
+}
+
+/**
+ * @brief PPP callback to retrieve heap OsiModules from the running OS.
+ */
+void on_get_heap_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    get_mappings(env, p, out, MAPPING_TYPE_HEAP);
+}
+
+/**
+ * @brief PPP callback to retrieve stack OsiModules from the running OS.
+ */
+void on_get_stack_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    get_mappings(env, p, out, MAPPING_TYPE_STACK);
+}
+
+/**
+ * @brief PPP callback to retrieve unknown OsiModules from the running OS.
+ */
+void on_get_unknown_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    get_mappings(env, p, out, MAPPING_TYPE_UNKNOWN);
+}
+
+/**
+ * @brief PPP callback to retrieve OsiModule for a specific virtual memory
+ * address from the running OS.
+ */
+void on_get_mapping_by_addr(CPUState *env, OsiProc *p, const target_ptr_t addr,
+        OsiModule **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
+    // Read the module info for the process.
+    target_ptr_t vma_first = get_vma_first(env, p->taskd);
+    target_ptr_t vma_current = vma_first;
+
+    if (vma_current != (target_ptr_t)NULL) {
+        do {
+            target_ptr_t vma_start = get_vma_start(env, vma_current);
+            if(addr >= vma_start) {
+                target_ptr_t vma_end = get_vma_end(env, vma_current);
+                if(addr < vma_end) {
+                    *out = static_cast<OsiModule *>(g_malloc(sizeof(**out)));
+                    assert(fill_osimodule(env, *out, vma_current,
+                        MAPPING_TYPE_ALL));
+                    return;
+                }
+            }
+            vma_current = get_vma_next(env, vma_current);
+        } while(vma_current != (target_ptr_t)NULL && vma_current != vma_first);
+    }
+
+    *out = nullptr;
+}
+
+/**
+ * @brief PPP callback that returns true if a modules is loaded whose name
+ * begins with prefix.
+ */
+void on_has_mapping_prefix(CPUState *env, OsiProc *p, const char *prefix,
+        bool *found) {
+
+    void *_out;
+    *found = false;
+    if (!osi_guest_is_ready(env, &_out)) {
+        return;
+    }
+
+    const size_t prefix_len = strlen(prefix);
+
+    // Read the module info for the process.
+    target_ptr_t vma_first = get_vma_first(env, p->taskd);
+    target_ptr_t vma_current = vma_first;
+    target_ptr_t vma_previous_dentry = 0;
+
+    if (vma_current != (target_ptr_t)NULL) {
+        do {
+            target_ptr_t vma_vm_file = get_vma_vm_file(env, vma_current);
+            if (vma_vm_file != (target_ptr_t)NULL) {
+                // Memory area is mapped from a file.
+                target_ptr_t vma_dentry = get_vma_dentry(env, vma_current);
+                if(vma_dentry != vma_previous_dentry) {
+                    char *file = read_dentry_name(env, vma_dentry);
+                    char *mapping_name = g_strrstr(file, "/");
+                    if(mapping_name != NULL) {
+                        *found = strncmp(prefix, ++mapping_name,
+                            prefix_len) == 0;
+                    }
+                    g_free(file);
+                    if(*found) {
+                        return;
+                    }
+                    vma_previous_dentry = vma_dentry;
+                }
+            }
+            vma_current = get_vma_next(env, vma_current);
+        } while(vma_current != (target_ptr_t)NULL && vma_current != vma_first);
+    }
+}
+
+/**
+ * @brief PPP callback that returns the base address for the requested module.
+ */
+void on_get_mapping_base_address_by_name(CPUState *env, OsiProc *p, const char *name, target_ptr_t *base_address) {
+    void *_out;
+    if (!osi_guest_is_ready(env, &_out)) {
+        *base_address = 0;
+        return;
+    }
+
+    bool found = false;
+
+    // Read the module info for the process.
+    target_ptr_t vma_first = get_vma_first(env, p->taskd);
+    target_ptr_t vma_current = vma_first;
+    target_ptr_t vma_previous_dentry = 0;
+
+    if (vma_current != (target_ptr_t)NULL) {
+        do {
+            target_ptr_t vma_vm_file = get_vma_vm_file(env, vma_current);
+            if (vma_vm_file != (target_ptr_t)NULL) {
+                // Memory area is mapped from a file.
+                target_ptr_t vma_dentry = get_vma_dentry(env, vma_current);
+                if(vma_dentry != vma_previous_dentry) {
+                    char *file = read_dentry_name(env, vma_dentry);
+                    char *mapping_name = g_strrstr(file, "/");
+                    if(mapping_name != NULL) {
+                        found = g_strcmp0(name, ++mapping_name) == 0;
+                    }
+                    g_free(file);
+                    if(found) {
+                        *base_address = get_vma_start(env, vma_current);
+                        return;
+                    }
+                    vma_previous_dentry = vma_dentry;
+                }
+            }
+            vma_current = get_vma_next(env, vma_current);
+        } while(vma_current != (target_ptr_t)NULL && vma_current != vma_first);
+    }
+
+    *base_address = 0;
     return;
 }
 
@@ -726,12 +972,7 @@ void restore_after_snapshot(CPUState* cpu) {
  */
 bool init_plugin(void *self) {
     // Register callbacks to the PANDA core.
-#if defined(TARGET_MIPS64)
-        printf("No OSI for mips64\n");
-        return false;
-#endif
-
-#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
+#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     {
         // Whenever we load a snapshot, we need to find cpu offsets again
         // (particularly if KASLR is enabled) and we also may need to re-initialize
@@ -743,7 +984,7 @@ bool init_plugin(void *self) {
         assert(init_osi_api());
     }
 
-#if defined(TARGET_MIPS)
+#if defined(TARGET_MIPS) // 32 or 64 bit
         panda_require("hw_proc_id");
         assert(init_hw_proc_id_api());
 #endif
@@ -834,7 +1075,16 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_process, on_get_process);
+    PPP_REG_CB("osi", on_get_proc_mem, on_get_proc_mem);
     PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
+    PPP_REG_CB("osi", on_get_file_mappings, on_get_file_mappings);
+    PPP_REG_CB("osi", on_get_heap_mappings, on_get_heap_mappings);
+    PPP_REG_CB("osi", on_get_stack_mappings, on_get_stack_mappings);
+    PPP_REG_CB("osi", on_get_unknown_mappings, on_get_unknown_mappings);
+    PPP_REG_CB("osi", on_get_mapping_by_addr, on_get_mapping_by_addr);
+    PPP_REG_CB("osi", on_get_mapping_base_address_by_name,
+        on_get_mapping_base_address_by_name);
+    PPP_REG_CB("osi", on_has_mapping_prefix, on_has_mapping_prefix);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);

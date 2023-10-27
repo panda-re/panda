@@ -8,6 +8,7 @@
 # *  Michael Zhivich          mzhivich@ll.mit.edu
 # *  Brendan Dolan-Gavitt     brendandg@gatech.edu
 # *  Manolis Stamatogiannakis manolis.stamatogiannakis@vu.nl
+# *  Luke Craig               luke.craig@ll.mit.edu
 # *
 # * This work is licensed under the terms of the GNU GPL, version 2.
 # * See the COPYING file in the top-level directory.
@@ -20,8 +21,8 @@
 
 import jinja2
 import json
-import sys
 import os
+import contextlib
 import re
 import logging
 import argparse
@@ -66,14 +67,20 @@ KNOWN_ARCH = {
         'bits': 32,
         'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime ($v0)
         'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime ($sp)
-        'qemu_target': 'defined(TARGET_MIPS)',    # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_MIPS) && !defined(TARGET_MIPS64)',    # qemu target name for this arch - used in guards
+    },
+    'mips64': {
+        'bits': 64,
+        'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime ($v0)
+        'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime ($sp)
+        'qemu_target': 'defined(TARGET_MIPS) && defined(TARGET_MIPS64)',    # qemu target name for this arch - used in guards
     }
 }
 
 # This is the the maximum generic syscall number.
 # We use this to tell apart arch-specific system calls (see last lines in arm prototypes).
 MAX_GENERIC_SYSCALL = 1023
-MAX_GENERIC_SYSCALL_ALT = 5000 # Compensate for MIPS ABI offsets
+MAX_GENERIC_SYSCALL_ALT = 6000 # Compensate for MIPS ABI offsets
 
 # Templates for per-arch typedefs and callback registration code files.
 # Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
@@ -264,7 +271,7 @@ class Argument(object):
             return 'int64_t'
         elif self.type == 'U16':
             return 'uint16_t'
-        assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)
+        assert False, f'Unknown type for argument {self.name}: {self.type}'
 
     def emit_local_declaration(self, ctxp, prefix, unused=True):
         ''' Returns a snippet declaring a local variable for this
@@ -296,16 +303,17 @@ class Argument(object):
         '''
         return '{0} arg{1} = 0;'.format(self.ctype, self.no)
 
-    def emit_temp_assignment(self):
-        ''' Returns a snippet declaring an appropriate temp
-            variable for this argument and assigning its
-            runtime value to it.
-        '''
-        ctype = self.ctype
-        ctype_bits = int(''.join(filter(str.isdigit, ctype)))
-        assert ctype_bits in [32, 64], 'Invalid number of bits for type %s' % ctype
-        ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
-        return '{0} arg{1} = {2}(cpu, {1});'.format(ctype, self.no, ctype_get)
+    # no longer in use. see syscall.temp_assignments()
+    # def emit_temp_assignment(self):
+    #     ''' Returns a snippet declaring an appropriate temp
+    #         variable for this argument and assigning its
+    #         runtime value to it.
+    #     '''
+    #     ctype = self.ctype
+    #     ctype_bits = int(''.join(filter(str.isdigit, ctype)))
+    #     assert ctype_bits in [32, 64], 'Invalid number of bits for type %s' % ctype
+    #     ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
+    #     return '{0} arg{1} = {2}(cpu, {1});'.format(ctype, self.no, ctype_get)
 
     def emit_memcpy_temp_to_ref(self):
         ''' Returns a snippet that copies this argument from its
@@ -348,33 +356,28 @@ class SysCallDefError(SysCallError):
 class SysCall(object):
     ''' Wraps a system call.
     '''
-    # Fields: <no> <return-type> <name><signature with spaces>
-    linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
 
-    def __init__(self, line, target_context={}):
-        fields = SysCall.linere.match(line)
-        if fields is None:
-            raise SysCallDefError()
-
-        max_generic_syscall = MAX_GENERIC_SYSCALL_ALT if target_context['arch'] == 'mips' else MAX_GENERIC_SYSCALL
+    def __init__(self, fields, target_context={}):
+        max_generic_syscall = MAX_GENERIC_SYSCALL_ALT if target_context['arch'] in ['mips', 'mips64'] else MAX_GENERIC_SYSCALL
 
         # set properties inferred from prototype
-        self.no = int(fields.group(1))
-        self.generic = False if self.no > max_generic_syscall else True
+        self.nos = [int(fields.group(1))] # "nos' is a list of syscall numbers, often 1 element
+        self.generic = max(self.nos) <= max_generic_syscall
         self.rettype = fields.group(2)
         self.name = fields.group(3)
-        self.args_raw = [arg.strip() for arg in fields.group(4).split(',')]
+        self.args_raw = [[arg.strip() for arg in fields.group(4).split(',')]]
+        self.target_context = target_context
 
         # set properties inferred from target context
         self.arch_bits = target_context['arch_conf']['bits']
         panda_noreturn_names = target_context.get('panda_noreturn', {})
-        self.panda_noreturn = True if self.name in panda_noreturn_names else False
+        self.panda_noreturn = self.name in panda_noreturn_names
         panda_doublereturn_names = target_context.get('panda_doublereturn', {})
-        self.panda_double_return = True if self.name in panda_doublereturn_names else False
+        self.panda_double_return = self.name in panda_doublereturn_names
 
-        # process raw args
+        # process raw args at construction
         self.args = []
-        for arg in self.args_raw:
+        for arg in self.args_raw[0]:
             try:
                 self.args.append(Argument(arg, argno=len(self.args), arch_bits=self.arch_bits))
             except EmptyArgumentError:
@@ -396,7 +399,35 @@ class SysCall(object):
         ''' Returns the system call arguments.
             declaration info (type and name) for each arg passed to C++ and C callbacks
         '''
-        return ', '.join(['CPUState* cpu', 'target_ulong pc'] + ['%s %s' % (x.ctype, x.name) for x in self.args])
+        return ', '.join(
+            ['CPUState* cpu', 'target_ulong pc']
+            + [f'{x.ctype} {x.name}' for x in self.args]
+        )
+    
+    def temp_assignments(self):
+        values = []
+        argnum, argpos = 0, 0
+        while argnum < len(self.args):
+            ctype = self.args[argnum].ctype
+            ctype_bits = int(''.join(filter(str.isdigit, ctype)))
+            assert ctype_bits in {32, 64}, f'Invalid number of bits for type {ctype}'
+            ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
+            if self.arch_bits == 32 and ctype in ['uint64_t', 'int64_t']:
+                if self.target_context['arch'] == 'arm' and argpos % 2 != 0:
+                    # in this case, a zero is placed in this register in 
+                    # in order to make 64-bit arguments aligned on even 
+                    # registers
+                    argpos += 1
+                values.append(
+                        f'{ctype} arg{argnum} = ({ctype})get_32(cpu, {argpos+1}) << 32 | ({ctype})get_32(cpu, {argpos});'
+                )
+                argpos += 2
+            else:
+                values.append(f'{ctype} arg{argnum} = {ctype_get}(cpu, {argpos});')
+                argpos += 1
+            argnum += 1
+
+        return '\n\t\t'.join(values)
 
 
 ##############################################################################
@@ -415,9 +446,18 @@ if __name__ == '__main__':
     logging.debug(args)
 
     # Sanity checks.
-    assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
-    assert os.path.isdir(args.prototypes), 'Output directory %s does not exist.' % args.prototypes
-    assert os.path.isdir(args.templates), 'Template directory %s does not exist.' % args.templates
+    assert os.path.isdir(
+        args.outdir
+    ), f'Output directory {args.outdir} does not exist.'
+    assert os.path.isdir(
+        args.prototypes
+    ), f'Output directory {args.prototypes} does not exist.'
+    assert os.path.isdir(
+        args.templates
+    ), f'Template directory {args.templates} does not exist.'
+
+    # Fields: <no> <return-type> <name><signature with spaces>
+    prototype_linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
 
     # Create a Jinja2 environment for rendering templates.
     # Setting undefined to StrictUndefined will raise an error if a variable
@@ -450,6 +490,18 @@ if __name__ == '__main__':
             context_target_extra = json.load(args.context_target_file)
     else:
         context_target_extra = {}
+    
+    arch_scs = {arch: {} for arch in KNOWN_ARCH}
+
+    # delete old typedefs when we run this
+    for _target in args.target:
+        _os, _arch = _target.split(':')
+        assert (_os in KNOWN_OS and _arch in KNOWN_ARCH), 'Unknown os or arch. Please read help message.'
+
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(f'{args.prefix}syscalls_ext_typedefs_*.h')
+
+    
 
     # parse system call definitions for all targets
     for _target in args.target:
@@ -457,8 +509,10 @@ if __name__ == '__main__':
         assert (_os in KNOWN_OS and _arch in KNOWN_ARCH), 'Unknown os or arch. Please read help message.'
         logging.info('Processing system calls for %s', _target)
 
-        protofile_name = os.path.join(args.prototypes, '%s_%s_prototypes.txt' % (_os, _arch))
-        assert os.path.isfile(protofile_name), 'Missing prototype file %s' % protofile_name
+        protofile_name = os.path.join(args.prototypes, f'{_os}_{_arch}_prototypes.txt')
+        assert os.path.isfile(
+            protofile_name
+        ), f'Missing prototype file {protofile_name}'
 
         syscalls = global_context['syscalls'][_target]
         syscalls_arch = global_context['syscalls_arch'][_arch]
@@ -470,25 +524,61 @@ if __name__ == '__main__':
         }
         if _target in context_target_extra:
             d = context_target_extra[_target]
-            assert all([k not in target_context for k in list(d.keys())]), 'target context for %s overwrites values' % (_target)
-            target_context.update(d)
+            assert all(
+                k not in target_context for k in list(d.keys())
+            ), f'target context for {_target} overwrites values'
+            target_context |= d
 
         # Parse prototype file contents. Extra context is passed to set
         # properties that are not defined by the prototype definition.
+
+        new_scs = {} # We use (name,args): syscall object with 1 or more nos
+
         with open(protofile_name) as protofile:
             for lineno, line in enumerate(protofile, 1):
-                try:
-                    syscall = SysCall(line, target_context)
-                    syscalls.append(syscall)
-                    syscalls_arch[syscall.name] = syscall
-                except SysCallDefError:
+
+                # HACK: we want to support multiple ABIs for the same arch. For MIPS
+                # N32 + N64 we've seen distinct callnos with the same name and args.
+                # As such, we expand this interface to support a many-to-one mapping
+                # where multiple syscall numbers map to the same syscall object
+
+                # If we ever encounter an arch with multiple ABIs that have distinct
+                # arguments, we'll need to refactor this better.
+
+                # First we parse the prototype line to get the callno and name
+                fields = prototype_linere.match(line)
+                if fields is None:
                     logging.debug('Bad prototype line in %s:%d: %s', protofile.name, lineno, line.rstrip())
+                    continue
+                sc_name = fields[3]
+
+                new_syscall = SysCall(fields, target_context)
+                new_args = str(new_syscall.args)
+
+                if (new_syscall.name, new_args) not in new_scs:
+                    new_scs[(new_syscall.name, new_args)] = new_syscall
+                    syscalls.append(new_syscall)
+                    syscalls_arch[sc_name] = new_syscall
+                else:
+                    # Already have a syscall object with this name and args, just add to nos
+                    new_scs[(new_syscall.name, new_args)].nos.append(new_syscall.nos[0])
+                    # And add args in case they're different, just for good soucre comments
+                    this_args = new_syscall.args_raw[0]
+                    if this_args not in new_scs[(new_syscall.name, new_args)].args_raw:
+                        new_scs[(new_syscall.name, new_args)].args_raw.append(this_args)
+
+        # Reformat into name: syscall mappings
+        syscalls_to_write = {sc.name: sc for sc in syscalls}
+        # Sort by smallest sc.nos values
+        syscalls.sort(key=lambda sc: min(sc.nos))
         logging.info('Loaded %d system calls from %s.', len(syscalls), protofile_name)
 
         # Calculate the maximum number of arguments and system call number for this os/arch.
-        target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
-        target_context['max_syscall_no'] = max([s.no for s in syscalls])
-        target_context['max_syscall_generic_no'] = max([s.no for s in syscalls if s.generic])
+        target_context['max_syscall_args'] = max(len(s.args) for s in syscalls)
+        target_context['max_syscall_no'] = max(max(s.nos) for s in syscalls)
+        target_context['max_syscall_generic_no'] = max(
+            max(s.nos) for s in syscalls if s.generic
+        )
 
         # Update the global maximum number of arguments and system call number.
         global_context['global_max_syscall_args'] = max(
@@ -500,32 +590,41 @@ if __name__ == '__main__':
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')
-        with open(os.path.join(args.outdir, "%ssyscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "w+") as of:
+        with open(os.path.join(args.outdir, f"{args.prefix}syscall_switch_enter_{_os}_{_arch}.cpp"), "w+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
         j2tpl = j2env.get_template('syscall_switch_return.tpl')
-        with open(os.path.join(args.outdir, "%ssyscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "w+") as of:
+        with open(os.path.join(args.outdir, f"{args.prefix}syscall_switch_return_{_os}_{_arch}.cpp"), "w+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
 
         # Generate syscall info dynamic libraries.
         if args.generate_info:
             j2tpl = j2env.get_template('syscalls_info.tpl')
-            with open(os.path.join(args.outdir, "%sdso_info_%s_%s.c" % (args.prefix, _os, _arch)), "w+") as of:
+            with open(os.path.join(args.outdir, f"{args.prefix}dso_info_{_os}_{_arch}.c"), "w+") as of:
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))
 
+        arch_scs[_arch][_os] = syscalls_to_write
+    
+    for _arch in arch_scs:
+        oss = sorted(arch_scs[_arch].keys())
+        outvals = {}
+        for _os in oss:
+            for ov in arch_scs[_arch][_os]:
+                outvals[ov] = arch_scs[_arch][_os][ov]
+        
         # Make syscalls_ext_typedefs_[arch] files
         j2tpl = j2env.get_template('syscalls_ext_typedefs_arch.tpl')
-        of_name = '%s%s' % (args.prefix, 'syscalls_ext_typedefs_' + _arch + '.h')
-        with open(os.path.join(args.outdir, of_name), 'w+') as of:
+        of_name = f'{args.prefix}syscalls_ext_typedefs_{_arch}.h'
+        with open(os.path.join(args.outdir, of_name), 'w') as of:
             logging.info("Writing %s", of.name)
-            of.write(j2tpl.render(syscalls=syscalls_arch))
+            of.write(j2tpl.render(syscalls=outvals))
 
     # Render big files.
     for tpl, ext in GENERATED_FILES:
         j2tpl = j2env.get_template(tpl)
-        of_name = '%s%s%s' % (args.prefix, os.path.splitext(os.path.basename(tpl))[0], ext)
+        of_name = f'{args.prefix}{os.path.splitext(os.path.basename(tpl))[0]}{ext}'
         with open(os.path.join(args.outdir, of_name), 'w+') as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(global_context))

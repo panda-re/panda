@@ -20,9 +20,11 @@ typedef void CPUState;
 typedef void OsiProcHandle;
 typedef void OsiThread;
 typedef void OsiProc;
+typedef void OsiProcMem;
 typedef void OsiModule;
 typedef void GArray;
 typedef void target_pid_t;
+typedef void target_ptr_t;
 
 #include "osi_int_fns.h"
 

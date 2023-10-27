@@ -83,3 +83,5 @@ zlib1g
 #rr2 dependencies
 libarchive-dev
 libssl-dev
+
+libfuse2

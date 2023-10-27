@@ -151,6 +151,8 @@ CONFIG_LINUX = {
         'map_function_number': {
             'parser': 'parse_numbers_tbl',
             'source': 'arch/mips/kernel/syscalls/syscall_o32.tbl',
+            'offset': 4000,
+            # Note mips32 o32 ABI starts at 4000
         },
     },
     # Generate using Linux kernel at v2.6. Note the prototypes files for mips was hand-created
@@ -179,6 +181,27 @@ CONFIG_LINUX = {
             'parser': 'parse_numbers_unistd',
             'source': 'arch/mips/include/asm/unistd.h',
             'cpp_flags': ['-D_MIPS_SIM=1', '-I'+os.path.expanduser("~/git/linux")+'/arch/mips/include'],
+        },
+    },
+    # Generated with stock linux 5.8
+    'linux:mips64:generic': {
+        'bits': 64,
+        'src': os.path.expanduser('~/git/linux'),
+        'map_function_signature': {
+            'parser': 'parse_signature_files',
+            'locations': {
+                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/mips/kernel/signal.c': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+            },
+            'normalize': True,
+        },
+        'map_function_number': {
+            'parser': 'parse_numbers_tbl_multi',
+            'abi_offset_file_map': {
+                ('n64', 5000,): 'arch/mips/kernel/syscalls/syscall_n64.tbl',
+                ('n32', 6000,): 'arch/mips/kernel/syscalls/syscall_n32.tbl',
+            }
+            # See arch/mips/include/uapi/asm/unistd for various definitions of __NR_Linux that set this offset
         },
     },
 }

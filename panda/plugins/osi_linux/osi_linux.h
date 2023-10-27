@@ -32,6 +32,9 @@
 #include "hw_proc_id/hw_proc_id_ext.h"
 #endif
 
+#define OG_printf(...)
+//#define OG_printf(...) printf(__VA_ARGS__) // Uncomment for debugging
+
 extern struct kernelinfo ki;
 extern struct KernelProfile const *kernel_profile;
 
@@ -81,24 +84,24 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initiali
     while (true) {
         it++;
         if (it == offsets.end()) break;
-        //printf("\tDereferenced 0x%x (offset 0x%lx) to get ", ptr, o);
+        OG_printf("\tDereferenced 0x" TARGET_FMT_lx" (offset 0x" TARGET_FMT_lx ") to get ", ptr, o);
         auto r = struct_get(cpu, &ptr, ptr, o);
         if (r != struct_get_ret_t::SUCCESS) {
-            //printf("ERROR\n");
+            OG_printf("ERROR\n");
             memset((uint8_t *)v, 0, sizeof(T));
             return r;
         }
         o = *it;
         // We just read a pointer so we may need to fix its endianness
         if (sizeof(T) == 4) fixupendian(ptr); // XXX wrong for 64-bit guests
-        //printf("0x%x\n", ptr);
+        OG_printf("0x" TARGET_FMT_lx "\n", ptr);
     }
 
     // last item is read using the size of the type of v
     // this isn't a pointer so there's no need to fix its endianness
     auto ret = struct_get(cpu, v, ptr, o); // deref ptr into v, result in ret
     fixupendian(*v);
-    //printf("Struct_get final 0x%x => 0x%x\n", ptr, *v);
+    OG_printf("Struct_get final 0x" TARGET_FMT_lx " => 0x " TARGET_FMT_lx "\n", ptr, *v);
     return ret;
 }
 #endif
@@ -169,8 +172,6 @@ static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
 #define OG_SUCCESS 0
 #define OG_ERROR_MEMORY -1
 #define OG_ERROR_DEREF -2
-#define OG_printf(...)
-//#define OG_printf(...) printf(__VA_ARGS__)
 
 /**
  * @brief IMPLEMENT_OFFSET_GETN is a macro for generating uniform
@@ -290,7 +291,8 @@ IMPLEMENT_OFFSET_GET(get_vma_start, vma_struct, target_ulong, ki.vma.vm_start_of
 IMPLEMENT_OFFSET_GET(get_vma_end, vma_struct, target_ulong, ki.vma.vm_end_offset, 0)
 
 /**
- * @todo Retrieves the address of the following vm_area_struct.
+ * @brief Retrieves the flags of the following vm_area_struct.
+ * https://elixir.bootlin.com/linux/v6.5/source/include/linux/mm.h#L260
  */
 IMPLEMENT_OFFSET_GET(get_vma_flags, vma_struct, target_ulong, ki.vma.vm_flags_offset, 0)
 
@@ -307,6 +309,13 @@ IMPLEMENT_OFFSET_GET(get_vma_vm_file, vma_struct, target_ptr_t, ki.vma.vm_file_o
  * mm resolution and fd resolution.
  */
 IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, target_ptr_t, ki.vma.vm_file_offset, target_ptr_t, ki.fs.f_path_dentry_offset, 0)
+
+/**
+ * @brief Retrieves the pgoff field from a VMA. This contains the offset in pages from the file start for this mapping.
+ * XXX We're basing this on the file_offset and grabbing a pointer before. Linux 2-6 all keep these fields adjacent.
+ * This is not guaranteed to be the case in the future. https://elixir.bootlin.com/linux/v6.5-rc5/source/include/linux/mm_types.h#L562
+ */
+IMPLEMENT_OFFSET_GETN(get_vma_pgoff, vma_struct, target_ulong, page_offset, OG_AUTOSIZE, ki.vma.vm_file_offset-sizeof(target_ptr_t))
 
 /**
  * @brief Retrieves the vfsmount dentry associated with a vma_struct.
@@ -472,7 +481,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         }
 
         if (pcomp_length > PATH_MAX){
-            printf("Error: OSI_linux pcomp length %d exceeds PATH_MAX. Check endianness.\n", pcomp_length);
+            OG_printf("Error: OSI_linux pcomp length %d exceeds PATH_MAX. Check endianness.\n", pcomp_length);
             break;
         }
         pcomp_length += 1; // space for string terminator

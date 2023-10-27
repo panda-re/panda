@@ -194,20 +194,13 @@ int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
         }
 
         // dump info on the dynamic library for the current PC, if there is one
-        GArray *ms = get_mappings(cpu, current);
-        if (ms != NULL) {
-            for (int i = 0; i < ms->len; i++) {
-                OsiModule *m = &g_array_index(ms, OsiModule, i);
-                if ((pc >= m->base) && (pc < (m->base + m->size))) {
-                    dump_process_info("false", pc, cur_instr, pname,
-                            current->pid, tid, m->name, m->file, m->base);
-                    found_lib = true;
-                    break;
-                }
-            }
-
+        OsiModule *m = get_mapping_by_addr(cpu, current, pc);
+        if(m) {
+            dump_process_info("false", pc, cur_instr, pname,
+                    current->pid, tid, m->name, m->file, m->base);
+            found_lib = true;
             // cleanup
-            g_array_free(ms, true);
+            free_osimodule(m);
         }
     }
 

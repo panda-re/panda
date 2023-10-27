@@ -96,7 +96,8 @@ enum ProfileType {
     PROFILE_LINUX_X86,
     PROFILE_LINUX_ARM,
     PROFILE_LINUX_AARCH64,
-    PROFILE_LINUX_MIPS,
+    PROFILE_LINUX_MIPS32,
+    PROFILE_LINUX_MIPS64,
     PROFILE_WINDOWS_2000_X86,
     PROFILE_WINDOWS_XPSP2_X86,
     PROFILE_WINDOWS_XPSP3_X86,
@@ -106,6 +107,16 @@ enum ProfileType {
     PROFILE_FREEBSD_X64,
     PROFILE_LAST
 };
+
+enum Syscall_abi {
+    ABI_DEFAULT,
+    ABI_MIPS_O32,
+    ABI_MIPS_N32,
+    ABI_MIPS_N64,
+};
+
+Syscall_abi syscall_abi = ABI_DEFAULT;
+
 
 // enter_switch:  the generated function that invokes the enter callback
 // return_switch:  the generated function that invokes the return callback
@@ -189,9 +200,26 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = -1,
         .syscall_interrupt_number = 0x80,
     },
-    {   /* Linux MIPS */
+    {   /* Linux MIPS32 */
         .enter_switch = syscall_enter_switch_linux_mips,
         .return_switch = syscall_return_switch_linux_mips,
+        .get_return_val = get_return_val_mips,
+        .calc_retaddr = calc_retaddr_linux_mips,
+        .get_32 = get_32_linux_mips,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_mips,
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_32_linux_mips,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_mips,
+        .get_return_s64 = get_return_s64_generic,
+        .windows_return_addr_register = -1,
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
+    },
+    {   /* Linux MIPS64 */
+        .enter_switch = syscall_enter_switch_linux_mips64,
+        .return_switch = syscall_return_switch_linux_mips64,
         .get_return_val = get_return_val_mips,
         .calc_retaddr = calc_retaddr_linux_mips,
         .get_32 = get_32_linux_mips,
@@ -348,11 +376,6 @@ Profile profiles[PROFILE_LAST] = {
 };
 
 static Profile *syscalls_profile;
-
-// TODO (tnballo): MIPS has weird ABI variations and we eventually need a way to support them via external param/config,
-// this includes ordinal number variations (4XXX, 5XXX, 6XXX). See: https://www.linux-mips.org/wiki/P32_Linux_ABI
-// For now, let's just be biased toward O32 here - seems to be most of our dataset?
-#define MIPS_O32_ABI
 
 // Reinterpret the ulong as a long. Arch and host specific.
 target_long get_return_val_x86(CPUState *cpu){
@@ -652,34 +675,33 @@ uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_MIPS
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
-    // https://www.linux-mips.org/wiki/P32_Linux_ABI
-    #ifdef MIPS_O32_ABI
-        assert (argnum < 8);
-
-        // Args 1-4 in $a0-$a3 which are regs 4-7 in gpr
+    assert (argnum < 8);
+    if (syscall_abi == ABI_MIPS_O32) {
         if (argnum < 4) {
-
+            // Args 1-4 in $a0-$a3 which are regs 4-7 in gpr
             return (uint32_t) env->active_tc.gpr[argnum+4];
-
-        // Args 5-8 on the stack
-        // 4 <= argnum < 8
         } else {
-
+            // Args 5-8 on the stack
+            // 4 <= argnum < 8
             uint32_t buf;
             target_ulong arg_stack_addr = env->active_tc.gpr[29] + 16 + ((argnum - 4) * 4);
             int res = panda_virtual_memory_read(cpu, arg_stack_addr, (uint8_t*)&buf, 4);
-
             if (res < 0) {
                 // TODO: we need an error propagation methodology in this codebase, func sig assumes success
+                buf = 0;
             }
-
             return buf;
         }
-    #else
-        // Args 1-6 in $a0-$a5 which are regs 4-9 in gpr
-        assert (argnum < 6);
+    } else if (syscall_abi == ABI_MIPS_N32) {
+        // Args 1-8 in $a0-$a7 which are regs 4-11 in gpr
         return (uint32_t) env->active_tc.gpr[argnum+4];
-    #endif
+    } else if (syscall_abi == ABI_MIPS_N64) {
+      // We're on the N64 ABI for a 64-bit guest but we want a 32 bit value
+      // E.g., mips sys_inotify_add_watch has a u32 argument even on 64-bit guests. I guess
+      return get_64_linux_mips(cpu, argnum) & 0xffffffff;
+    } else {
+        assert(0); // Unknown ABI. Should be unreachable
+    }
 
 #else
     return 0;
@@ -752,10 +774,21 @@ uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
 
 uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_MIPS
-    // Args 1-6 in $a0-$a5 which are regs 4-9 in gpr
+    // A 64-bit guest may use n32 or n64 ABIs
+    // Args 1-8 in $a0-$a7 which are regs 4-11 in gpr
+    // With N32 ABI we should only return 32 bits worth of data
+    assert (argnum < 8);
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    assert (argnum < 6);
-    return env->active_tc.gpr[argnum+4];
+    uint64_t result = (uint64_t) env->active_tc.gpr[argnum+4];
+    if (syscall_abi == ABI_MIPS_N32) {
+        // Mask off the upper 32 bits
+        result &= 0xFFFFFFFF;
+    }else if (syscall_abi == ABI_MIPS_O32) {
+        //assert(0); // XXX this happens: see panda issues 1337, 1338
+        printf("WARNING: no support for reading 64-bit arguments on 32-bit guest\n");
+        return 0;
+    }
+    return result;
 #else
     return 0;
 #endif
@@ -1175,6 +1208,11 @@ const syscall_meta_t *get_syscall_meta(void) { return syscall_meta; }
 bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+    panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
+
+    // Unused in some architectures
+    const char *UNUSED(abi) = panda_parse_string_opt(plugin_args, "abi", NULL, "Syscall ABI if a nonstandard value is used. Currently supported for mips(64) with values: n64, n32, and o32");
+
     if(panda_os_familyno == OS_UNKNOWN){
         std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7sp[01]' " << std::endl;
         return false;
@@ -1199,12 +1237,47 @@ bool init_plugin(void *self) {
         syscalls_profile = &profiles[PROFILE_LINUX_AARCH64];
 #endif
 #endif
+    
 #if defined(TARGET_MIPS)
-        std::cerr << PANDA_MSG "using profile for linux mips" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_MIPS];
+        if (abi) {
+            if (strcmp(abi, "n64") == 0) {
+                syscall_abi = ABI_MIPS_N64;
+
+            }else if (strcmp(abi, "n32") == 0) {
+                syscall_abi = ABI_MIPS_N32;
+
+            }else if (strcmp(abi, "o32") == 0) {
+                syscall_abi = ABI_MIPS_O32;
+            } else {
+                std::cerr << PANDA_MSG "ERROR: Unknown abi for mips: " << abi << std::endl;
+                std::cerr << PANDA_MSG "\tSupported values are o32, n32, and n64. " << std::endl;
+                return false;
+            }
+        } else {
+            // Per-arch defaults set below
+#if defined(TARGET_MIPS64)
+            // Default ABI for 64 bit
+            syscall_abi = ABI_MIPS_N64;
+        }
+        if (syscall_abi == ABI_MIPS_O32) {
+            std::cerr << PANDA_MSG "ERROR: cannot use O32 ABI for a 64-bit mips guest" << std::endl;
+            return false;
+        }
+        std::cerr << PANDA_MSG "using profile for linux mips64" << std::endl;
+        syscalls_profile = &profiles[PROFILE_LINUX_MIPS64];
+#else
+            // Default ABI for 32 bit
+            syscall_abi = ABI_MIPS_O32;
+        }
+        if (syscall_abi == ABI_MIPS_N64) {
+            std::cerr << PANDA_MSG "ERROR: cannot use N64 ABI for a 32-bit mips guest" << std::endl;
+            return false;
+        }
+        std::cerr << PANDA_MSG "using profile for linux mips32" << std::endl;
+        syscalls_profile = &profiles[PROFILE_LINUX_MIPS32];
 #endif
-    }
-    else if (panda_os_familyno == OS_WINDOWS) {
+#endif
+    } else if (panda_os_familyno == OS_WINDOWS) {
         if ((panda_os_bits != 32) && (0 != strncmp(panda_os_variant, "7", 1))) {
             std::cerr << PANDA_MSG "only windows 7 supported for 64-bit windows" << std::endl;
             return false;
@@ -1252,8 +1325,6 @@ bool init_plugin(void *self) {
     }
 
     // parse arguments and initialize callbacks & info api
-    panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
-
     panda_cb pcb;
     pcb.before_tcg_codegen = before_tcg_codegen;
     panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);

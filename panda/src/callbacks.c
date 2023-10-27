@@ -6,6 +6,7 @@
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ *  Luke Craig             luke.craig@ll.mit.edu
  *
  * This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
@@ -118,7 +119,7 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
         if (0 == (strcmp(rfilename, panda_plugins_loaded[i]))) {
-            fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
+            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded", PANDA_CORE_NAME, filename);
             return true;
         }
     }
@@ -145,7 +146,7 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     nb_panda_plugins++;
 
     // Call init_fn and check status.
-    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
+    LOG_INFO(PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
@@ -170,12 +171,12 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     // Taint2 seems to be our most commonly used LLVM plugin and it causes some confusion
     // when users build PANDA without LLVM and then claim taint2 is "missing"
     if (strcmp(plugin_name, "taint2") == 0) {
-        fprintf(stderr, PANDA_MSG_FMT "Fatal error: PANDA was built with LLVM disabled but LLVM is required for the taint2 plugin\n", PANDA_CORE_NAME);
+        LOG_ERROR(PANDA_MSG_FMT "Fatal error: PANDA was built with LLVM disabled but LLVM is required for the taint2 plugin\n", PANDA_CORE_NAME);
     }
 #endif
 
     if (filename == NULL) {
-        fprintf(stderr, PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
+        LOG_ERROR(PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
     }
     assert(filename != NULL);
 
@@ -183,7 +184,7 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
         if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
-            fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
+            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;
         }
     }
@@ -247,7 +248,7 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     nb_panda_plugins++;
 
     // Call init_fn and check status.
-    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
+    LOG_INFO(PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
@@ -339,14 +340,14 @@ void panda_require_from_library(const char *plugin_name, char **plugin_args, uin
     for (uint32_t i=0; i<num_args; i++)
         panda_add_arg(plugin_name, plugin_args[i]);
 
-    fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
+    LOG_INFO(PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would raise assert in in _panda_load_plugin
 
     // load plugin same as in vl.c
     if (!_panda_load_plugin(plugin_path, plugin_name, true)) { // Load in library mode
-        fprintf(stderr, PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
+        LOG_ERROR(PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
         abort();
     }
     g_free(plugin_path);
@@ -356,20 +357,19 @@ void panda_require(const char *plugin_name) {
     // If we're printing help, panda_require will be a no-op.
     if (panda_help_wanted) return;
 
-    fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
+    LOG_INFO(PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name);
     if (NULL == plugin_path) {
-        fprintf(stderr, PANDA_MSG_FMT "FAILED to find required plugin %s\n",
+        LOG_ERROR(PANDA_MSG_FMT "FAILED to find required plugin %s\n",
                 PANDA_CORE_NAME, plugin_name);
         abort();
     }
 
     // load plugin same as in vl.c
     if (!panda_load_plugin(plugin_path, plugin_name)) {
-        fprintf(stderr,
-                PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n",
+        LOG_ERROR(PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n",
                 PANDA_CORE_NAME, plugin_name, plugin_path);
         abort();
     }
@@ -396,7 +396,7 @@ void panda_do_unload_plugin(int plugin_idx)
     void *plugin = panda_plugins[plugin_idx].plugin;
     void (*uninit_fn)(void *) = dlsym(plugin, "uninit_plugin");
     if (!uninit_fn) {
-        fprintf(stderr, "Couldn't get symbol %s: %s\n", "uninit_plugin",
+        LOG_ERROR("Couldn't get symbol %s: %s\n", "uninit_plugin",
                 dlerror());
     } else {
         uninit_fn(plugin);
@@ -1116,12 +1116,12 @@ static bool panda_parse_bool_internal(panda_arg_list *args, const char *argname,
 
 error_handling:
     if (val != NULL) { // value provided but not in the list of accepted values
-        fprintf(stderr, PANDA_MSG_FMT "FAILED to parse value \"%s\" for bool argument \"%s\"\n", PANDA_CORE_NAME, val, argname);
+        LOG_ERROR(PANDA_MSG_FMT "FAILED to parse value \"%s\" for bool argument \"%s\"\n", PANDA_CORE_NAME, val, argname);
         panda_plugin_load_failed = true;
     }
     else if (required) { // value not provided but required
-        fprintf(stderr, PANDA_MSG_FMT "ERROR finding required bool argument \"%s\"\n", PANDA_CORE_NAME, argname);
-        fprintf(stderr, PANDA_MSG_FMT "help for \"%s\": %s\n", PANDA_CORE_NAME, argname, help);
+        LOG_ERROR(PANDA_MSG_FMT "ERROR finding required bool argument \"%s\"\n", PANDA_CORE_NAME, argname);
+        LOG_ERROR(PANDA_MSG_FMT "help for \"%s\": %s\n", PANDA_CORE_NAME, argname, help);
         panda_plugin_load_failed = true;
     }
 help:
@@ -1161,7 +1161,7 @@ static target_ulong panda_parse_ulong_internal(panda_arg_list *args, const char 
 
 error_handling:
     if (required) {
-        fprintf(stderr, "ERROR: plugin required ulong argument \"%s\" but you did not provide it\n", argname);
+        LOG_ERROR("ERROR: plugin required ulong argument \"%s\" but you did not provide it\n", argname);
         fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
         panda_plugin_load_failed = true;
     }
@@ -1198,8 +1198,8 @@ static uint32_t panda_parse_uint32_internal(panda_arg_list *args, const char *ar
 
 error_handling:
     if (required) {
-        fprintf(stderr, "ERROR: plugin required uint32 argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        LOG_ERROR("ERROR: plugin required uint32 argument \"%s\" but you did not provide it\n", argname);
+        LOG_ERROR("Help for \"%s\": %s\n", argname, help);
         panda_plugin_load_failed = true;
     }
 help:
@@ -1235,8 +1235,8 @@ static uint64_t panda_parse_uint64_internal(panda_arg_list *args, const char *ar
 
 error_handling:
     if (required) {
-        fprintf(stderr, "ERROR: plugin required uint64 argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        LOG_ERROR("ERROR: plugin required uint64 argument \"%s\" but you did not provide it\n", argname);
+        LOG_ERROR("Help for \"%s\": %s\n", argname, help);
         panda_plugin_load_failed = true;
     }
 help:
@@ -1272,8 +1272,8 @@ static double panda_parse_double_internal(panda_arg_list *args, const char *argn
 
 error_handling:
     if (required) {
-        fprintf(stderr, "ERROR: plugin required double argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        LOG_ERROR("ERROR: plugin required double argument \"%s\" but you did not provide it\n", argname);
+        LOG_ERROR("Help for \"%s\": %s\n", argname, help);
         panda_plugin_load_failed = true;
     }
 help:
@@ -1347,8 +1347,8 @@ static const char *panda_parse_string_internal(panda_arg_list *args, const char 
 
 error_handling:
     if (required) {
-        fprintf(stderr, "ERROR: plugin required string argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        LOG_ERROR("ERROR: plugin required string argument \"%s\" but you did not provide it\n", argname);
+        LOG_ERROR("Help for \"%s\": %s\n", argname, help);
         panda_plugin_load_failed = true;
     }
 help:

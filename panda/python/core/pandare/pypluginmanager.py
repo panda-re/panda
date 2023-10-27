@@ -5,6 +5,8 @@ Class to manage loading Panda PyPlugins. See docs/pyplugins.md for details.
 """
 from pathlib import Path
 from pandare import PyPlugin
+import inspect
+import importlib.util
 
 class _DotGetter(object):
     '''
@@ -19,7 +21,7 @@ class _DotGetter(object):
         self.data[k] = v
 
     def __str__(self):
-        return str([x for x in self.data.keys()])
+        return str(list(self.data.keys()))
 
     def __getattr__(self, name):
         raise NotImplementedError("Subclass must implement this virtual method")
@@ -126,7 +128,6 @@ class PyPluginManager:
         This avoids the `NameError: name 'PyPlugin' is not defined` which
         you would get from directly doing `import [class_name] from [plugin_file]`
         '''
-        import importlib.util
         spec = importlib.util.spec_from_file_location(plugin_file.split("/")[-1], plugin_file)
         if spec is None:
             raise ValueError(f"Unable to resolve plugin {plugin_file}")
@@ -214,7 +215,7 @@ class PyPluginManager:
 
                 bp = self.blueprint(name, __name__, template_folder=template_dir)
                 self.plugins[name].webserver_init(bp)
-                self.app.register_blueprint(bp, url_prefix="/" + name)
+                self.app.register_blueprint(bp, url_prefix=f"/{name}")
 
     def load_all(self, plugin_file, args=None, template_dir=None):
         '''
@@ -230,7 +231,6 @@ class PyPluginManager:
         Returns:
             String list of PyPlugin class names loaded from the plugin_file
         '''
-        import inspect, importlib
         spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
         if spec is None:
             # Likely an invalid path
@@ -249,11 +249,7 @@ class PyPluginManager:
         return names
 
     def unload(self, pluginclass, do_del=True):
-        if isinstance(pluginclass, str):
-            name = pluginclass
-        else:
-            name = pluginclass.__name__
-
+        name = pluginclass if isinstance(pluginclass, str) else pluginclass.__name__
         if callable(getattr(self.plugins[name], "uninit", None)):
             self.plugins[name].uninit()
 
@@ -261,23 +257,17 @@ class PyPluginManager:
             del self.plugins[name]
 
     def unload_all(self):
-        for name in self.plugins.keys():
+        while self.plugins:
+            name, _ = self.plugins.popitem()
             self.unload(name, do_del=False)
-        self.plugins.clear()
 
     def is_loaded(self, pluginclass):
-        if isinstance(pluginclass, str):
-            name = pluginclass
-        else:
-            name = pluginclass.__name__
+        name = pluginclass if isinstance(pluginclass, str) else pluginclass.__name__
         return name in self.plugins
 
     def get_plugin(self, pluginclass):
         # Lookup name
-        if isinstance(pluginclass, str):
-            name = pluginclass
-        else:
-            name = pluginclass.__name__
+        name = pluginclass if isinstance(pluginclass, str) else pluginclass.__name__
         if not self.is_loaded(pluginclass, name):
             raise ValueError(f"Plugin {name} is not loaded")
         return self.plugins[name]
