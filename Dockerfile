@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="ubuntu:22.04"
+ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu"
 
 ### BASE IMAGE
@@ -130,4 +130,3 @@ RUN ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
     if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
-    
