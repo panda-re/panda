@@ -6,6 +6,7 @@
 
 #include <archive.h>
 #include <archive_entry.h>
+#define OPENSSL_API_COMPAT 0x10100000L
 #include <openssl/sha.h>
 
 #include "config-host.h"
