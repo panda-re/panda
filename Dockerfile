@@ -51,7 +51,7 @@ RUN cd /tmp && \
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need
 COPY . /panda/
-# COPY .git /panda/
+COPY .git /panda/
 
 # Note we diable NUMA for docker builds because it causes make check to fail in docker
 RUN git -C /panda submodule update --init dtc && \
