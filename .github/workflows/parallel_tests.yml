@@ -73,6 +73,10 @@ jobs:
 
     steps:
     # Given a container with PANDA installed at /panda, run the taint tests
+    - name: Update
+      run: apt-get update -y
+    - name: Install ssl
+      run: apt-get install -y wget
     - name: Run taint tests inside current container
       run: >-
         wget https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow -o wheezy_panda2.qcow2
