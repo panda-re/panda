@@ -78,7 +78,7 @@ jobs:
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --mount type=bind,source=/home/panda/regdir/qcows/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
         --mount type=bind,source=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
-        --rm -t "panda_local_${{ github.sha }}" bash -c
+        --rm -t "panda_local:${{ github.sha }}" bash -c
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
         python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
@@ -102,7 +102,7 @@ jobs:
     - name: Run symbolic tracing tests inside current container
       run: >-
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --rm -t "panda_local_${{ github.sha }}" bash -c
+        --rm -t "panda_local:${{ github.sha }}" bash -c
         "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
         if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
@@ -122,7 +122,7 @@ jobs:
       run: >-
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "panda_local_${{ github.sha }}" bash -c
+        --rm -t "panda_local:${{ github.sha }}" bash -c
         "cd /panda/build && make ${{ matrix.target }}"
 
   pypanda_tests:
@@ -143,7 +143,7 @@ jobs:
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         --mount type=bind,source=/home/panda/regdir/qcows/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "panda_local_${{ github.sha }}" bash -c
+        --rm -t "panda_local:${{ github.sha }}" bash -c
         "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
 
   cleanup:
