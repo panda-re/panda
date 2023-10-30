@@ -75,9 +75,11 @@ jobs:
     # Given a container with PANDA installed at /panda, run the taint tests
     - name: Run taint tests inside current container
       run: >-
+        wget https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow -o wheezy_panda2.qcow2
+        wget https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=/home/panda/regdir/qcows/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
-        --mount type=bind,source=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
+        --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
+        --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
         --rm -t "panda_local:${{ github.sha }}" bash -c
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
@@ -140,8 +142,9 @@ jobs:
     - name: Run individual pypanda tests
       # TODO: pip requirements install here should be moved to Docker image build to save test time
       run: >-
+        wget https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=/home/panda/regdir/qcows/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
+        --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "panda_local:${{ github.sha }}" bash -c
         "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
