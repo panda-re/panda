@@ -56,7 +56,6 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          push: true
           context: ${{ github.workspace }}
           tags: panda_local:${{ github.sha }}
           target: developer
