@@ -6,7 +6,7 @@
 
 #include <archive.h>
 #include <archive_entry.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #include "config-host.h"
 #include "panda/rr/panda_rr2.h"
@@ -15,7 +15,7 @@
 bool write_file_to_archive(struct rr_file_state* rstate, const char* fname,
                            const uint8_t* contents, size_t len);
 void write_magic_file(struct rr_file_state* rstate);
-void write_hash_to_log(struct rr_file_state* rstate, const char* fname, SHA_CTX* ctx);
+void write_hash_to_log(struct rr_file_state* rstate, const char* fname, EVP_MD_CTX* mdctx);
 bool is_valid_rrv2_file(const char* state);
 void add_file_hash_for_content(struct rr_file_state* rstate, const char* fname,
                                const void* content, size_t len);
@@ -287,12 +287,13 @@ bool rrfile_add_recording_file(struct rr_file_state* rstate, const char* type,
         archive_entry_free(entry);
     }
 
-    // Initialize a SHA_CTX for openssl for this file
-    SHA_CTX* ctx = (SHA_CTX*)malloc(sizeof(SHA_CTX));
-    if (!ctx || !SHA1_Init(ctx)) {
+    // Initialize a EVP_MD_CTX for openssl for this file
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_create();
+    const EVP_MD *md = EVP_sha1();
+    if (!mdctx || !md || !EVP_DigestInit_ex(mdctx, md, NULL)) {
         fprintf(stderr, "Failed to find hash for file contents of %s\n", type);
-        if (ctx) {
-            free(ctx);
+        if (mdctx) {
+            EVP_MD_CTX_destroy(mdctx);
         }
         return false;
     }
@@ -302,7 +303,7 @@ bool rrfile_add_recording_file(struct rr_file_state* rstate, const char* type,
     uint8_t buffer[1024 * 1024];
     len = fread(buffer, 1, sizeof(buffer), fp);
     while (len > 0) {
-        SHA1_Update(ctx, buffer, len);
+        EVP_DigestUpdate(mdctx, buffer, len);
         int status = archive_write_data(a, buffer, len);
         if (status <= 0) {
             fprintf(stderr, "Failed to archive_write_data\n");
@@ -315,8 +316,8 @@ bool rrfile_add_recording_file(struct rr_file_state* rstate, const char* type,
     }
     unlink(fpath);
     // Write the hash for this file out to the log
-    write_hash_to_log(rstate, type, ctx);
-    free(ctx);
+    write_hash_to_log(rstate, type, mdctx);
+    EVP_MD_CTX_destroy(mdctx);
     return true;
 }
 
@@ -418,7 +419,7 @@ bool write_file_to_archive(struct rr_file_state* rstate, const char* fname,
     return true;
 }
 
-void write_hash_to_log(struct rr_file_state* rstate, const char* fname, SHA_CTX* ctx)
+void write_hash_to_log(struct rr_file_state* rstate, const char* fname, EVP_MD_CTX* mdctx)
 {
     // If the log isn't open for writing, exit
     if (!rstate->hash_fp) {
@@ -426,11 +427,11 @@ void write_hash_to_log(struct rr_file_state* rstate, const char* fname, SHA_CTX*
     }
 
     size_t hexsize = 41;
-    unsigned char* hash_md = (unsigned char*)malloc(SHA_DIGEST_LENGTH);
+    unsigned char* hash_md = (unsigned char*)malloc(EVP_MAX_MD_SIZE);
     char* hex = (char*)calloc(1, hexsize);
 
     // Finalize the hash and snprintf the hexified string for it
-    if (!SHA1_Final(hash_md, ctx)) {
+    if (!EVP_DigestFinal_ex(mdctx, hash_md, 0)) {
         fprintf(stderr, "Failed to find hash for file contents of %s\n", fname);
         goto cleanup;
     }
@@ -453,23 +454,24 @@ cleanup:
 void add_file_hash_for_content(struct rr_file_state* rstate, const char* fname,
                                const void* content, size_t len)
 {
-    // Initialize a SHA_CTX for openssl
-    SHA_CTX* ctx = (SHA_CTX*)malloc(sizeof(SHA_CTX));
-    if (!ctx || !SHA1_Init(ctx)) {
+    // Initialize a EVP_MD_CTX for openssl
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_create();
+    const EVP_MD *md = EVP_sha1();
+    if (!mdctx || !md || !EVP_DigestInit_ex(mdctx, md, NULL)) {
         fprintf(stderr, "Failed to find hash for file contents of %s\n", fname);
         goto cleanup;
     }
     // Calculate the SHA1 hash for these file contents
-    if (!SHA1_Update(ctx, content, len)) {
+    if (!EVP_DigestUpdate(mdctx, content, len)) {
         fprintf(stderr, "Failed to find hash for file contents of %s\n", fname);
         goto cleanup;
     }
     // Write it to the log
-    write_hash_to_log(rstate, fname, ctx);
+    write_hash_to_log(rstate, fname, mdctx);
 
 cleanup:
-    if (ctx) {
-        free(ctx);
+    if (mdctx) {
+        EVP_MD_CTX_destroy(mdctx);
     }
 }
 
