@@ -42,8 +42,7 @@ using namespace coverage;
 const char *DEFAULT_FILE = "coverage.csv";
 
 // commands that can be accessed through the QEMU monitor
-const char *MONITOR_HELP = "help";
-constexpr size_t MONITOR_HELP_LEN = 4;
+const std::string MONITOR_HELP = "help";
 const std::string MONITOR_ENABLE = "coverage_enable";
 const std::string MONITOR_DISABLE = "coverage_disable";
 
@@ -124,6 +123,11 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
                 std::cerr << "Error enabling instrumentation: " << err.code().message() << "\n";
             }
         }
+    } else if (0 == cmd.find(MONITOR_HELP)) {
+        log_message("coverage_enable=filename:  start logging coverage "
+                "information to the named file");
+        log_message("coverage_disable:  stop logging coverage information "
+                "and close the current file");
     }
     return 0;
 }
