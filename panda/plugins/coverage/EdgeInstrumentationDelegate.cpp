@@ -98,6 +98,10 @@ const static std::unordered_map<unsigned, RegisterFetcher>
 
 	{ X86_REG_CS, MK_SEG_FETCHER(segs[R_CS]) },
 
+	{ X86_REG_DS, MK_SEG_FETCHER(segs[R_DS]) },
+
+	{ X86_REG_FS, MK_SEG_FETCHER(segs[R_FS]) },
+
 	{ X86_REG_SS, MK_SEG_FETCHER(segs[R_SS]) },
 
     { X86_REG_GS, MK_SEG_FETCHER(segs[R_GS]) },
@@ -128,7 +132,7 @@ const static std::unordered_map<unsigned, RegisterFetcher>
 // control flow instructions have at most two targets, we can get away with
 // this struct and avoid the worst case O(N) complexity of a hash table and
 // this should be more cache friendly because setting the jump targets for
-// the current thread basiclaly a memcpy or assignment.
+// the current thread basically a memcpy or assignment.
 struct JumpTargets
 {
     bool has_dst1;
@@ -146,7 +150,7 @@ struct EdgeState
     // Flag for enabling or disabling coverage.
     bool cov_enabled;
 
-    // Maps Thread ID -> Previos Blocks
+    // Maps Thread ID -> Previous Blocks
     std::unordered_map<target_pid_t, Block> prev_blocks;
     // Previous Block for Current Thread
     Block* prev_block;
@@ -414,6 +418,21 @@ static void instrument_jcc(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
     insert_call(&op, &jcc_callback, edge_state, tb->pc, tb->size, nit, jt);
 }
 
+static const RegisterFetcher *get_register_fetcher(cs_insn *insn, unsigned int reg)
+{
+    // print some useful debugging information before give up if can't get
+    // the requested register fetcher
+    const RegisterFetcher *rf = nullptr;
+    try {
+        rf = &CS_TO_QEMU_REG_FETCH.at(reg);
+    } catch (std::out_of_range& err) {
+        printf("Error getting fetcher for register %d at address 0x%lx\n", reg,
+                insn->address);
+        throw;
+    }
+    return rf;
+}
+
 static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
                            TranslationBlock *tb, cs_insn *insn)
 {
@@ -422,14 +441,13 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
         target_ulong jt = static_cast<target_ulong>(jmp_op.imm);
         insert_call(&op, static_jmp_callback, edge_state, tb->pc, tb->size, jt);
     } else if (X86_OP_MEM == jmp_op.type) {
-
         static const RegisterFetcher *INVALID_REGISTER =
-            &CS_TO_QEMU_REG_FETCH.at(X86_REG_INVALID);
-        const RegisterFetcher *srf = &CS_TO_QEMU_REG_FETCH.at(
+            get_register_fetcher(insn, X86_REG_INVALID);
+        const RegisterFetcher *srf = get_register_fetcher(insn,
             jmp_op.mem.segment);
-        const RegisterFetcher *brf = &CS_TO_QEMU_REG_FETCH.at(
+        const RegisterFetcher *brf = get_register_fetcher(insn,
             jmp_op.mem.base);
-        const RegisterFetcher *irf = &CS_TO_QEMU_REG_FETCH.at(
+        const RegisterFetcher *irf = get_register_fetcher(insn,
             jmp_op.mem.index);
 
 #ifdef EDGE_INST_DEBUG
@@ -491,7 +509,7 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
 
         }
     } else if (X86_OP_REG == jmp_op.type) {
-        const RegisterFetcher *reg_fetcher = &CS_TO_QEMU_REG_FETCH.at(
+        const RegisterFetcher *reg_fetcher = get_register_fetcher(insn,
             jmp_op.reg);
         insert_call(&op, jmp_reg_callback, edge_state, cpu, tb->pc, tb->size,
                     reg_fetcher);
