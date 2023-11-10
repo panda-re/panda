@@ -868,3 +868,59 @@ class X86_64Arch(PandaArch):
             self._set_general_purpose_register(env, reg, val, mask)
         else:
             super().set_reg(cpu, reg, val)
+
+
+class PPCArch(PandaArch):
+    '''
+    Register names and accessors for PPC
+    '''
+    def __init__(self, panda):
+        PandaArch.__init__(self, panda)
+
+        # r0 - r31
+        regnames = [f"r{i}" for i in range(32)] + ["lr"]
+
+        self.reg_sp = regnames.index("r1")
+        self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
+        self.reg_retaddr = regnames.index("lr")
+
+        self.call_conventions = {"ppc": ["r3", "r4", "r5", "r6", "r7", "r8", "r9"],
+                                 "syscall": ["r0", "r3", "r4", "r5", "r6", "r7", "r8", "r9"]}
+        self.call_conventions['default'] = self.call_conventions['ppc']
+        self.call_conventions['linux_kernel'] = self.call_conventions['syscall']
+
+        self.reg_retval = {"default":    "r3",
+                           "syscall":    "r3",
+                           "linux_kernel": "r3"}
+
+    def get_pc(self, cpu):
+        return cpu.env_ptr.nip
+
+    def set_pc(self, cpu, val):
+        '''
+        Overloaded function set AArch64 program counter
+        '''
+        cpu.env_ptr.nip = val
+
+    def _get_reg_val(self, cpu, reg):
+        if reg > 31:
+            return cpu.env_ptr.lr
+        return cpu.env_ptr.gpr[reg]
+
+    def _set_reg_val(self, cpu, reg, val):
+        if reg > 31:
+            cpu.env_ptr.lr = val
+        else:
+            cpu.env_ptr.xregs[reg] = val
+
+    def get_return_value(self, cpu):
+        '''
+        .. Deprecated:: use get_retval
+        '''
+        return self.get_retval(cpu)
+
+    def get_return_address(self, cpu):
+        '''
+        Looks up where ret will go
+        '''
+        return self.get_reg(cpu, "LR")
