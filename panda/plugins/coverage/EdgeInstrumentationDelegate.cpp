@@ -39,7 +39,8 @@ static target_ulong fetch_register_value(size_t cpu_offset, target_ulong mask,
                                          target_ulong shr)
 {
     CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
-    return (*(reinterpret_cast<target_ulong *>((env + cpu_offset))) & mask) 
+    // don't want to do pointer arithmetic, as cpu_offset in wrong units
+    return (*(reinterpret_cast<target_ulong *>((((size_t)env) + cpu_offset))) & mask)
            >> shr;
 }
 #define MK_REG_FETCHER(cpu_state_variable, mask, shift_right) \
@@ -49,7 +50,7 @@ static target_ulong fetch_register_value(size_t cpu_offset, target_ulong mask,
 static target_ulong fetch_segment_value(size_t cpu_offset)
 {
     CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
-    return reinterpret_cast<SegmentCache*>((env + cpu_offset))->base;
+    return reinterpret_cast<SegmentCache*>((((size_t)env) + cpu_offset))->base;
 }
 #define MK_SEG_FETCHER(cpu_state_variable) \
     std::bind(fetch_segment_value, offsetof(CPUArchState, cpu_state_variable))
@@ -251,8 +252,12 @@ static void jmp_mem_direct_callback(EdgeState *edge_state,
         return;
     }
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, direct_address,
+    int retcode = panda_virtual_memory_read(cpu, direct_address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -273,8 +278,12 @@ static void jmp_mem_indexed_callback(EdgeState *edge_state,
     }
     target_ulong address = (*index_register_fetcher)() * scale + disp;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -294,8 +303,12 @@ static void jmp_mem_indirect(EdgeState* edge_state, CPUState *cpu,
     }
     target_ulong address = (*base_register_fetch)() + disp;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -317,8 +330,12 @@ static void jmp_mem_indirect_no_index(EdgeState* edge_state, CPUState *cpu,
     target_ulong address = (*segment_register_fetch)() +
     		(*base_register_fetch)() + disp;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -340,8 +357,12 @@ static void jmp_mem_indirect_disp_si_callback(EdgeState *edge_state,
     }
     target_ulong address = (*brf)() + disp + (*irf)() * scale;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -379,8 +400,12 @@ static void ret_callback(EdgeState *edge_state,
     // Read the return target address off the stack.
     CPUArchState *env_ptr = static_cast<CPUArchState *>(cpu->env_ptr);
     target_ulong return_addr = 0x0;
-    panda_virtual_memory_read(cpu, env_ptr->regs[R_ESP],
+    int retcode = panda_virtual_memory_read(cpu, env_ptr->regs[R_ESP],
         reinterpret_cast<uint8_t *>(&return_addr), sizeof(return_addr));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = return_addr,
