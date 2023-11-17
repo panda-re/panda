@@ -317,6 +317,35 @@ static void jmp_mem_indirect(EdgeState* edge_state, CPUState *cpu,
     });
 }
 
+static void jmp_mem_indirect_rip(EdgeState* edge_state, CPUState *cpu,
+                             target_ulong prev_block_addr,
+                             target_ulong prev_block_size,
+                             int64_t disp)
+{
+    if (!edge_state->cov_enabled) {
+        return;
+    }
+    // this instrumentation is called just before the prev_block is executed
+    // so the RIP register has prev_block_addr in it, not the address of the
+    // next block in memory after this one; fortunately, we have enough info
+    // to calculate the address of the next block without using a register
+    // fetcher
+    target_ulong address = prev_block_addr + prev_block_size + disp;
+    target_ulong jump_target = 0x0;
+    int retcode = panda_virtual_memory_read(cpu, address,
+        reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
+    update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
+}
+
 static void jmp_mem_indirect_no_index(EdgeState* edge_state, CPUState *cpu,
                              target_ulong prev_block_addr,
                              target_ulong prev_block_size,
@@ -494,9 +523,15 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
 
         } else if (INVALID_REGISTER == srf && INVALID_REGISTER == irf) {
 
-            // indirect addressing
-            insert_call(&op, jmp_mem_indirect, edge_state, cpu, tb->pc,
-                        tb->size, brf, jmp_op.mem.disp); 
+            if (X86_REG_RIP == jmp_op.mem.base) {
+                // RIP relative addressing
+                insert_call(&op, jmp_mem_indirect_rip, edge_state, cpu, tb->pc,
+                        tb->size, jmp_op.mem.disp);
+            } else {
+                // indirect addressing
+                insert_call(&op, jmp_mem_indirect, edge_state, cpu, tb->pc,
+                        tb->size, brf, jmp_op.mem.disp);
+            }
 
         } else if (INVALID_REGISTER == srf && INVALID_REGISTER == brf) {
 
