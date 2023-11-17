@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <linux/vhost.h>
+#include "hw/virtio/vhost-user.h"
 
 #define VHOST_MEMORY_MAX_NREGIONS    8
 #define VHOST_USER_F_PROTOCOL_FEATURES 30
@@ -40,7 +41,15 @@ enum VhostUserProtocolFeature {
     VHOST_USER_PROTOCOL_F_NET_MTU = 4,
     VHOST_USER_PROTOCOL_F_SLAVE_REQ = 5,
     VHOST_USER_PROTOCOL_F_CROSS_ENDIAN = 6,
-
+    VHOST_USER_PROTOCOL_F_CRYPTO_SESSION = 7,
+    VHOST_USER_PROTOCOL_F_PAGEFAULT = 8,
+    VHOST_USER_PROTOCOL_F_CONFIG = 9,
+    VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD = 10,
+    VHOST_USER_PROTOCOL_F_HOST_NOTIFIER = 11,
+    VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD = 12,
+    VHOST_USER_PROTOCOL_F_RESET_DEVICE = 13,
+    /* Feature 14 reserved for VHOST_USER_PROTOCOL_F_INBAND_NOTIFICATIONS. */
+    VHOST_USER_PROTOCOL_F_CONFIGURE_MEM_SLOTS = 15,
     VHOST_USER_PROTOCOL_F_MAX
 };
 
@@ -73,6 +82,19 @@ typedef enum VhostUserRequest {
     VHOST_USER_SET_VRING_ENDIAN = 23,
     VHOST_USER_GET_CONFIG = 24,
     VHOST_USER_SET_CONFIG = 25,
+    VHOST_USER_CREATE_CRYPTO_SESSION = 26,
+    VHOST_USER_CLOSE_CRYPTO_SESSION = 27,
+    VHOST_USER_POSTCOPY_ADVISE  = 28,
+    VHOST_USER_POSTCOPY_LISTEN  = 29,
+    VHOST_USER_POSTCOPY_END     = 30,
+    VHOST_USER_GET_INFLIGHT_FD = 31,
+    VHOST_USER_SET_INFLIGHT_FD = 32,
+    VHOST_USER_GPU_SET_SOCKET = 33,
+    VHOST_USER_RESET_DEVICE = 34,
+    /* Message number 35 reserved for VHOST_USER_VRING_KICK. */
+    VHOST_USER_GET_MAX_MEM_SLOTS = 36,
+    VHOST_USER_ADD_MEM_REG = 37,
+    VHOST_USER_REM_MEM_REG = 38,
     VHOST_USER_MAX
 } VhostUserRequest;
 
@@ -145,6 +167,8 @@ static VhostUserMsg m __attribute__ ((unused));
 #define VHOST_USER_VERSION    (0x1)
 
 struct vhost_user {
+    struct vhost_dev *dev;
+    VhostUserState *user;
     CharBackend *chr;
     int slave_fd;
 };
@@ -156,7 +180,8 @@ static bool ioeventfd_enabled(void)
 
 static int vhost_user_read(struct vhost_dev *dev, VhostUserMsg *msg)
 {
-    CharBackend *chr = dev->opaque;
+    struct vhost_user *u = dev->opaque;
+    CharBackend *chr = u->user->chr;
     uint8_t *p = (uint8_t *) msg;
     int r, size = VHOST_USER_HDR_SIZE;
 
@@ -241,7 +266,8 @@ static bool vhost_user_one_time_request(VhostUserRequest request)
 static int vhost_user_write(struct vhost_dev *dev, VhostUserMsg *msg,
                             int *fds, int fd_num)
 {
-    CharBackend *chr = dev->opaque;
+    struct vhost_user *u = dev->opaque;
+    CharBackend *chr = u->user->chr;
     int ret, size = VHOST_USER_HDR_SIZE + msg->size;
 
     /*
@@ -757,18 +783,50 @@ out:
 
     return ret;
 }
+bool vhost_user_init(VhostUserState *user, CharBackend *chr, Error **errp)
+{
+    if (user->chr) {
+        error_setg(errp, "Cannot initialize vhost-user state");
+        return false;
+    }
+    user->chr = chr;
+    return true;
+}
 
-static int vhost_user_init(struct vhost_dev *dev, void *opaque)
+void vhost_user_cleanup(VhostUserState *user)
+{
+    int i;
+
+    if (!user->chr) {
+        return;
+    }
+
+    for (i = 0; i < VIRTIO_QUEUE_MAX; i++) {
+        if (user->notifier[i].addr) {
+            object_unparent(OBJECT(&user->notifier[i].mr));
+            munmap(user->notifier[i].addr, qemu_real_host_page_size);
+            user->notifier[i].addr = NULL;
+        }
+    }
+    user->chr = NULL;
+}
+
+
+static int vhost_user_backend_init(struct vhost_dev *dev, void *opaque)
 {
     uint64_t features, protocol_features;
     struct vhost_user *u;
+    VhostUserState *vus = (VhostUserState *)opaque;
     int err;
 
     assert(dev->vhost_ops->backend_type == VHOST_BACKEND_TYPE_USER);
 
     u = g_new0(struct vhost_user, 1);
+    
     u->chr = opaque;
+    u->user = vus;
     u->slave_fd = -1;
+    u->dev = dev;
     dev->opaque = u;
 
     err = vhost_user_get_features(dev, &features);
@@ -828,7 +886,7 @@ static int vhost_user_init(struct vhost_dev *dev, void *opaque)
     return 0;
 }
 
-static int vhost_user_cleanup(struct vhost_dev *dev)
+static int vhost_user_backend_cleanup(struct vhost_dev *dev)
 {
     struct vhost_user *u;
 
@@ -1049,8 +1107,8 @@ static int vhost_user_send_device_iotlb_msg(struct vhost_dev *dev,
 
 const VhostOps user_ops = {
         .backend_type = VHOST_BACKEND_TYPE_USER,
-        .vhost_backend_init = vhost_user_init,
-        .vhost_backend_cleanup = vhost_user_cleanup,
+        .vhost_backend_init = vhost_user_backend_init,
+        .vhost_backend_cleanup = vhost_user_backend_cleanup,
         .vhost_backend_memslots_limit = vhost_user_memslots_limit,
         .vhost_set_log_base = vhost_user_set_log_base,
         .vhost_set_mem_table = vhost_user_set_mem_table,
