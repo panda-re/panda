@@ -150,6 +150,8 @@ set -x
 "${PANDA_DIR_REL}/configure" \
     --target-list=$TARGET_LIST \
     --prefix=$prefix \
+    --enable-vhost-net \
+    --enable-vhost-vsock \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \
     "$@"

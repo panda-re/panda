@@ -104,6 +104,8 @@ static void vuv_device_realize(DeviceState *dev, Error **errp)
 
     vhost_vsock_common_realize(vdev, "vhost-user-vsock");
 
+    ret = vhost_set_backend_type(&vvc->vhost_dev, VHOST_BACKEND_TYPE_USER);
+    assert(ret >= 0);
     vhost_dev_set_config_notifier(&vvc->vhost_dev, &vsock_ops);
 
     ret = vhost_dev_init(&vvc->vhost_dev, &vsock->vhost_user,
@@ -130,7 +132,7 @@ err_virtio:
     return;
 }
 
-static void vuv_device_unrealize(DeviceState *dev)
+static void vuv_device_unrealize(DeviceState *dev, Error **errp)
 {
     VHostVSockCommon *vvc = VHOST_VSOCK_COMMON(dev);
     VirtIODevice *vdev = VIRTIO_DEVICE(dev);
@@ -157,7 +159,7 @@ static void vuv_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     VirtioDeviceClass *vdc = VIRTIO_DEVICE_CLASS(klass);
 
-    device_class_set_props(dc, vuv_properties);
+    dc->props = vuv_properties;
     dc->vmsd = &vuv_vmstate;
     vdc->realize = vuv_device_realize;
     vdc->unrealize = vuv_device_unrealize;
