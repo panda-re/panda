@@ -115,7 +115,15 @@ static void cpu_common_get_memory_mapping(CPUState *cpu,
 
 void cpu_reset_interrupt(CPUState *cpu, int mask)
 {
+    bool need_lock = !qemu_mutex_iothread_locked();
+
+    if (need_lock) {
+      qemu_mutex_lock_iothread();
+    }
     cpu->interrupt_request &= ~mask;
+    if (need_lock) {
+      qemu_mutex_unlock_iothread();
+    }
 }
 
 void cpu_exit(CPUState *cpu)

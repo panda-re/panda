@@ -323,6 +323,12 @@ bool aio_poll(AioContext *ctx, bool blocking)
     int count;
     int timeout;
 
+    /*
+     * There cannot be two concurrent aio_poll calls for the same AioContext (or
+     * an aio_poll concurrent with a GSource prepare/check/dispatch callback).
+     * We rely on this below to avoid slow locked accesses to ctx->notify_me.
+     */
+    assert(in_aio_context_home_thread(ctx));
     progress = false;
 
     /* aio_notify can avoid the expensive event_notifier_set if
@@ -333,7 +339,13 @@ bool aio_poll(AioContext *ctx, bool blocking)
      * so disable the optimization now.
      */
     if (blocking) {
-        atomic_add(&ctx->notify_me, 2);
+        atomic_set(&ctx->notify_me, atomic_read(&ctx->notify_me) + 2);
+        /*
+         * Write ctx->notify_me before computing the timeout
+         * (reading bottom half flags, etc.).  Pairs with
+         * smp_mb in aio_notify().
+         */
+        smp_mb();
     }
 
     qemu_lockcnt_inc(&ctx->list_lock);
@@ -366,7 +378,8 @@ bool aio_poll(AioContext *ctx, bool blocking)
         ret = WaitForMultipleObjects(count, events, FALSE, timeout);
         if (blocking) {
             assert(first);
-            atomic_sub(&ctx->notify_me, 2);
+            atomic_store_release(&ctx->notify_me, atomic_read(&ctx->notify_me) - 2);
+            aio_notify_accept(ctx);
         }
 
         if (first) {
