@@ -18,6 +18,8 @@ jobs:
   test_installer:
     runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
     steps:
+    - name: Add Dead Snakes
+      run: sudo add-apt-repository -y ppa:deadsnakes/ppa
     - name: Update
       run: sudo apt-get update -y
     - name: Install ssl
@@ -27,7 +29,7 @@ jobs:
       with:
         python-version: '3.9'
     - name: Install Python dev headers
-      run: sudo apt-get install -y libpython3-dev
+      run: sudo apt-get install -y libpython3.9-dev
     - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
     - name: Lint PyPANDA with flake8
       run: |
