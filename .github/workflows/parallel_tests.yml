@@ -15,7 +15,7 @@ on:
 
 jobs:
 
-  test_installer: # test install_ubuntu.sh
+  test_installer:
     runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
     steps:
     - name: Update
