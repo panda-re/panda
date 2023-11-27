@@ -18,12 +18,14 @@ jobs:
   test_installer:
     runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
     steps:
+    - name: Update
+      run: sudo apt-get update -y
+    - name: Install ssl
+      run: sudo apt-get install -y libssl-dev software-properties-common
     - name: Add Dead Snakes
       run: sudo add-apt-repository -y ppa:deadsnakes/ppa
     - name: Update
       run: sudo apt-get update -y
-    - name: Install ssl
-      run: sudo apt-get install -y libssl-dev
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
