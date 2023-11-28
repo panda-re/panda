@@ -65,6 +65,8 @@ jobs:
           context: ${{ github.workspace }}
           tags: panda_local:${{ github.sha }}
           target: developer
+      - name: Debug Docker Info
+        run: docker info
       - name: Minimal test of built container # Just test to see if one of our binaries is built
         run: sudo docker run --rm "panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
