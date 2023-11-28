@@ -50,7 +50,6 @@ jobs:
   build_container:
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
-    needs: [test_installer]
     steps:
       - name: Install git
         run: sudo apt-get update -y && sudo apt-get install git -y
