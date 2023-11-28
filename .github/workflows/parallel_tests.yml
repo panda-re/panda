@@ -37,6 +37,8 @@ jobs:
       run: |
        pip install --upgrade pip
        pip install flake8
+       pip uninstall protobuf python3-protobuf
+       pip install --upgrade protobuf
        flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
        # python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run install_ubuntu.sh
