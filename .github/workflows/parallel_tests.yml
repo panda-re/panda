@@ -21,7 +21,7 @@ jobs:
     - name: Update
       run: sudo apt-get update -y
     - name: Install ssl
-      run: sudo apt-get install -y libssl-dev software-properties-common
+      run: sudo apt-get install -y libssl-dev software-properties-common protobuf-compiler
     - name: Add Dead Snakes
       run: sudo add-apt-repository -y ppa:deadsnakes/ppa
     - name: Update
@@ -42,7 +42,6 @@ jobs:
        pip install --upgrade protobuf
        pip3 install --upgrade protobuf
        pip show protobuf
-       protoc --version
        flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
        # python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run install_ubuntu.sh
