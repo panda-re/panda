@@ -62,6 +62,7 @@ RUN git -C /panda submodule update --init dtc && \
         --prefix=/usr/local \
         --disable-numa \
         --enable-llvm
+    rm -rf /panda/.git
 
 RUN make -C /panda/build -j "$(nproc)"
 
