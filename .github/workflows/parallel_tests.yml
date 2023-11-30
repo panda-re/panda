@@ -87,25 +87,8 @@ jobs:
           - test_type: "pypanda"
             test_script: "all"
           - test_type: "make_check"
-            test_script: "check-qtest-x86_64"
-          - test_type: "make_check"
-            test_script: "check-qtest-i386"
-          - test_type: "make_check"
-            test_script: "check-qtest-arm"
-          - test_type: "make_check"
-            test_script: "check-qtest-mips"
-          - test_type: "make_check"
-            test_script: "check-qtest-mipsel"
-          - test_type: "make_check"
-            test_script: "check-qtest-ppc"
-          - test_type: "make_check"
-            test_script: "check-block"
-          - test_type: "make_check"
-            test_script: "check-unit"
-          - test_type: "make_check"
-            test_script: "check-qapi-schema"
-
-
+            test_script: "all"
+        
     steps:
     # Given a container with PANDA installed at /panda, run the taint tests
     - name: Update
@@ -156,7 +139,7 @@ jobs:
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
-        "cd /panda/build && make ${{ matrix.test_script }}"
+        "cd /panda/build && make check"
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
