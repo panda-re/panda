@@ -148,7 +148,7 @@ jobs:
         --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
-        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && ./run_all_tests.sh"
+        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh"
 
     - name: Run make Tests
       if: matrix.test_type == 'make_check'
