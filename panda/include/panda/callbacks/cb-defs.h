@@ -57,6 +57,7 @@ typedef enum panda_cb_type {
     PANDA_CB_HD_WRITE,              // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,               // Monitor callback
+    PANDA_CB_QMP,                   // QMP callback
     PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
     PANDA_CB_BEFORE_LOADVM,         // at start of replay, before loadvm
     PANDA_CB_ASID_CHANGED,          // When CPU asid (address space identifier) changes
@@ -591,6 +592,23 @@ typedef union panda_cb {
         as a prefix ("sample_do_foo" rather than "do_foo").
     */
     int (*monitor)(Monitor *mon, const char *cmd);
+
+    /* Callback ID: PANDA_CB_QMP
+
+       qmp:
+        Called when someone sends an unhandled QMP command
+
+       Arguments:
+         char *command: the command string as json
+         char *args:    the arguments string as json
+         char **result: pointer to a json result or NULL
+
+       Helper call location: TBA
+
+       Return value:
+         bool: true IFF the command was handled by the plugin
+    */
+    bool (*qmp)(char *command, char* args, char **result);
 
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
@@ -1543,6 +1561,23 @@ typedef union panda_cb_with_context {
         as a prefix ("sample_do_foo" rather than "do_foo").
     */
     int (*monitor)(void* context, Monitor *mon, const char *cmd);
+
+    /* Callback ID: PANDA_CB_QMP
+
+       qmp:
+        Called when someone sends an unhandled QMP command
+
+       Arguments:
+         char *command: the command string as json
+         char *args:    the arguments string as json
+         char **result: pointer to a json result or NULL
+
+       Helper call location: TBA
+
+       Return value:
+         bool: true IFF the command was handled by the plugin
+    */
+    bool (*qmp)(void* context, char *command, char* args, char **result);
 
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
