@@ -10,6 +10,9 @@
 #include "exec/cpu-common.h"
 #include "exec/ram_addr.h"
 
+// For QDict
+#include "qapi/qmp/qdict.h"
+
 // For each callback, use MAKE_CALLBACK or MAKE_REPLAY_ONLY_CALLBACK as defined in
 #include "panda/callbacks/cb-macros.h"
 #include "panda/callbacks/cb-trampolines.h"
@@ -101,7 +104,9 @@ void panda_cb_trampoline_start_block_exec(void* context, CPUState *cpu, Translat
 // these aren't used
 MAKE_CALLBACK(void, HD_READ, hd_read, CPUState*, env);
 MAKE_CALLBACK(void, HD_WRITE, hd_write, CPUState*, env);
+
 MAKE_CALLBACK(int, MONITOR, monitor, Monitor*, mon, const char*, cmd);
+MAKE_CALLBACK(bool, QMP, qmp, const char*, cmd, QDict*, dict, QObject**, ret, Error**, errp);
 
 // Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {

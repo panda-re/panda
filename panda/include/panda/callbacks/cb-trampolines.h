@@ -19,6 +19,7 @@ void panda_cb_trampoline_phys_mem_after_write(void* context, CPUState *env, targ
 int panda_cb_trampoline_insn_exec(void* context, CPUState *env, target_ptr_t pc);
 int panda_cb_trampoline_after_insn_exec(void* context, CPUState *env, target_ptr_t pc);
 int panda_cb_trampoline_monitor(void* context, Monitor *mon, const char *cmd);
+bool panda_cb_trampoline_qmp(void* context, const char *command, QDict *dict, QObject **ret, Error **errp);
 //int panda_cb_trampoline_before_loadvm(void* context);
 void panda_cb_trampoline_replay_hd_transfer(void* context, CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 void panda_cb_trampoline_after_machine_init(void* context, CPUState *env);

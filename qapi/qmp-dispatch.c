@@ -19,6 +19,8 @@
 #include "qapi/qmp/qjson.h"
 #include "qapi-types.h"
 #include "qapi/qmp/qerror.h"
+//#include "panda/callbacks/cb-support.h"
+extern bool panda_callbacks_qmp(const char *command, QDict *dict, QObject **ret, Error **errp);
 
 static QDict *qmp_dispatch_check_obj(const QObject *request, Error **errp)
 {
@@ -83,22 +85,30 @@ static QObject *do_qmp_dispatch(QmpCommandList *cmds, QObject *request,
 
     command = qdict_get_str(dict, "execute");
     cmd = qmp_find_command(cmds, command);
-    if (cmd == NULL) {
-        error_set(errp, ERROR_CLASS_COMMAND_NOT_FOUND,
-                  "The command %s has not been found", command);
-        return NULL;
-    }
-    if (!cmd->enabled) {
-        error_setg(errp, "The command %s has been disabled for this instance",
-                   command);
-        return NULL;
-    }
 
     if (!qdict_haskey(dict, "arguments")) {
         args = qdict_new();
     } else {
         args = qdict_get_qdict(dict, "arguments");
         QINCREF(args);
+    }
+
+    if (cmd == NULL) {
+        // Check if this is a PANDA supported command and dispatch if so we're done
+        if (panda_callbacks_qmp(command, dict, &ret, errp)) {
+            // XXX callback needs to populate ret, might be hard
+            return ret;
+        }
+
+        error_set(errp, ERROR_CLASS_COMMAND_NOT_FOUND,
+                  "The command %s has not been found", command);
+        return NULL;
+    }
+
+    if (!cmd->enabled) {
+        error_setg(errp, "The command %s has been disabled for this instance",
+                   command);
+        return NULL;
     }
 
     cmd->fn(args, &ret, &local_err);
