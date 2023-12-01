@@ -21,16 +21,16 @@ jobs:
       image: ubuntu:20.04
     steps:
     - name: Update
-      run: apt-get update -y
+      run: apt-get -qq update -y
     - name: Install ssl
-      run: apt-get install -y libssl-dev
+      run: apt-get -qq install -y libssl-dev
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
     - name: Install Python dev headers
-      run: apt-get install -y libpython3.9-dev
-    - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+      run: apt-get -qq install -y libpython3.9-dev
+    - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
     - name: Lint PyPANDA with flake8
       run: |
        pip install --upgrade pip
@@ -46,8 +46,8 @@ jobs:
     runs-on: panda-arc
     steps:
       - name: Install git
-        run: sudo apt-get update -y && sudo apt-get install git -y
-      - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+        run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
+      - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
         with:
           fetch-depth: 0
 
@@ -82,8 +82,6 @@ jobs:
             target: "i386"
           - test_type: "taint"
             target: "x86_64"
-          - test_type: "sym_trace"
-            target: "x86_64"
           - test_type: "pypanda"
             test_script: "all"
           - test_type: "make_check"
@@ -92,9 +90,9 @@ jobs:
     steps:
     # Given a container with PANDA installed at /panda, run the taint tests
     - name: Update
-      run: sudo apt-get update -y
+      run: sudo apt-get -qq update -y
     - name: Install ssl
-      run: sudo apt-get install -y wget
+      run: sudo apt-get -qq install -y wget
     - name: Run Taint Tests
       if: matrix.test_type == 'taint'
       run: >-
@@ -115,14 +113,6 @@ jobs:
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
-    - name: Run symbolic tracing tests
-      if: matrix.test_type == 'sym_trace'
-      run: >-
-        docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
-        "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
-        if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
-
     - name: Run PyPanda Tests
       if: matrix.test_type == 'pypanda'
       run: >-
@@ -131,7 +121,12 @@ jobs:
         --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
-        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh"
+        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
+
+        docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
+        "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
+        if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
     - name: Run make Tests
       if: matrix.test_type == 'make_check'
