@@ -474,6 +474,7 @@ panda_cb_with_context panda_get_cb_trampoline(panda_cb_type type) {
         CASE_CB_TRAMPOLINE(HD_WRITE,hd_write)
         CASE_CB_TRAMPOLINE(GUEST_HYPERCALL,guest_hypercall)
         CASE_CB_TRAMPOLINE(MONITOR,monitor)
+        CASE_CB_TRAMPOLINE(QMP,qmp)
         CASE_CB_TRAMPOLINE(CPU_RESTORE_STATE,cpu_restore_state)
 
         //CASE_CB_TRAMPOLINE(BEFORE_LOADVM,before_loadvm)

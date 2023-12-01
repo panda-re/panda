@@ -101,7 +101,9 @@ void panda_cb_trampoline_start_block_exec(void* context, CPUState *cpu, Translat
 // these aren't used
 MAKE_CALLBACK(void, HD_READ, hd_read, CPUState*, env);
 MAKE_CALLBACK(void, HD_WRITE, hd_write, CPUState*, env);
+
 MAKE_CALLBACK(int, MONITOR, monitor, Monitor*, mon, const char*, cmd);
+MAKE_CALLBACK(bool, QMP, qmp, char*, cmd, char*, args, char **, result);
 
 // Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {

@@ -19,6 +19,8 @@
 #include "qapi/qmp/qjson.h"
 #include "qapi-types.h"
 #include "qapi/qmp/qerror.h"
+//#include "panda/callbacks/cb-support.h"
+extern bool panda_callbacks_qmp(char *command, char* args, char **result);
 
 static QDict *qmp_dispatch_check_obj(const QObject *request, Error **errp)
 {
@@ -83,22 +85,53 @@ static QObject *do_qmp_dispatch(QmpCommandList *cmds, QObject *request,
 
     command = qdict_get_str(dict, "execute");
     cmd = qmp_find_command(cmds, command);
-    if (cmd == NULL) {
-        error_set(errp, ERROR_CLASS_COMMAND_NOT_FOUND,
-                  "The command %s has not been found", command);
-        return NULL;
-    }
-    if (!cmd->enabled) {
-        error_setg(errp, "The command %s has been disabled for this instance",
-                   command);
-        return NULL;
-    }
 
     if (!qdict_haskey(dict, "arguments")) {
         args = qdict_new();
     } else {
         args = qdict_get_qdict(dict, "arguments");
         QINCREF(args);
+    }
+
+    if (cmd == NULL) {
+        // Call any PANDA consumers of the unhandled command
+        // Provide them with arguments in json format.
+        // If any plugin returns true, we assume it handled the command
+        // and we expect a json output in result.
+        char *result = NULL;
+        const QString* cmd_args_q = qobject_to_json(QOBJECT(args));
+        const char *cmd_args = qstring_get_str(cmd_args_q);
+
+        if (panda_callbacks_qmp((char*)command, (char*)cmd_args, &result)) {
+            if (result != NULL) {
+                // We have a return value from the callback. Let's convert it to a qobject
+                ret = qobject_from_json(result, &local_err);
+                if (local_err) {
+                    printf("PANDA ERROR decoding result json in callback");
+                    error_propagate(errp, local_err);
+                    return NULL;
+                }
+            }
+
+            if (!ret) {
+                printf("PANDA WARNING: a qmp callback consumer returned TRUE without providing \
+                        a return value! Creating empty dictionary");
+
+                ret = QOBJECT(qdict_new());
+            }
+            QDECREF(args);
+            return ret;
+        }
+
+        error_set(errp, ERROR_CLASS_COMMAND_NOT_FOUND,
+                  "The command %s has not been found", command);
+        return NULL;
+    }
+
+    if (!cmd->enabled) {
+        error_setg(errp, "The command %s has been disabled for this instance",
+                   command);
+        return NULL;
     }
 
     cmd->fn(args, &ret, &local_err);
