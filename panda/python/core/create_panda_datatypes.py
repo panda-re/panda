@@ -231,6 +231,10 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 
+    # QObject, QDict, Error. Need these before we can handle the QMP callback
+    # type signature
+    define_clean_header(ffi, include_dir + "/qobj_helpers.h")
+
     # PPP Headers
     # Syscalls - load architecture-specific headers
     if arch == "i386":
@@ -273,7 +277,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     # get some libc functionality
     define_clean_header(ffi, include_dir + "/libc_includes.h")
-    
+
     # QEMU logging functionality
     define_clean_header(ffi, include_dir + "/qlog.h")
 
