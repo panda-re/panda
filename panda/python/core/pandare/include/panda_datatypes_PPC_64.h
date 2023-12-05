@@ -98,14 +98,12 @@ typedef void IOEventHandler(void *opaque, int event);
 typedef void IOReadHandler(void *opaque, const uint8_t *buf, int size);
 typedef int IOCanReadHandler(void *opaque);
 typedef uint32_t guint;
-typedef uint32_t QType; // actually an enum
 typedef void ReadLineCompletionFunc(void *opaque, const char *cmdline);
 typedef void ReadLineFlushFunc(void *opaque);
 typedef void ReadLineFunc(void *opaque, const char *str,void *readline_opaque);
 typedef void ReadLinePrintfFunc(void *opaque,const char *fmt, ...);
 typedef uint8_t MonitorQMP[72];
 typedef void BlockCompletionFunc(void *opaque, int ret);
-typedef uint8_t QDict[4120];
 typedef uint8_t mon_cmd_t[56];
 typedef char gchar;
 struct QemuThread;
@@ -289,16 +287,6 @@ struct Notifier {
 	} node;                                          /*     8    16 */
 	/* size: 24, cachelines: 1, members: 2 */
 	/* last cacheline: 24 bytes */
-};
-struct QObject;
-typedef struct QObject QObject;
-struct QObject {
-	QType                      type;                 /*     0     4 */
-	/* XXX 4 bytes hole, try to pack */
-	size_t                     refcnt;               /*     8     8 */
-	/* size: 16, cachelines: 1, members: 2 */
-	/* sum members: 12, holes: 1, sum holes: 4 */
-	/* last cacheline: 16 bytes */
 };
 struct MemoryRegionMmio;
 typedef struct MemoryRegionMmio MemoryRegionMmio;
