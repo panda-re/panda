@@ -19,8 +19,11 @@
 #include "qapi/qmp/qjson.h"
 #include "qapi-types.h"
 #include "qapi/qmp/qerror.h"
+
 //#include "panda/callbacks/cb-support.h"
 extern bool panda_callbacks_qmp(char *command, char* args, char **result);
+// And we have a stub in stubs/qtest.c  that always returns false if we build
+// without panda for tests
 
 static QDict *qmp_dispatch_check_obj(const QObject *request, Error **errp)
 {

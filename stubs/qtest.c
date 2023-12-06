@@ -18,3 +18,9 @@ bool qtest_driver(void)
 {
     return false;
 }
+
+/* Needed for qmp-dispatch tests to pass when we don't have panda */
+bool panda_callbacks_qmp(char *command, char* args, char **result);
+bool panda_callbacks_qmp(char *command, char* args, char **result) {
+    return false;
+}
