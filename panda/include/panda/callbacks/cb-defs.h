@@ -609,7 +609,7 @@ typedef union panda_cb {
        Return value:
          bool: true IFF the command was handled by the plugin
     */
-    bool (*qmp)(const char *command, QDict *dict, QObject **ret, Error **errp);
+    bool (*qmp)(char *command, QDict *dict, QObject **ret, Error **errp);
 
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE

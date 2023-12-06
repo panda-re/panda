@@ -95,8 +95,24 @@ static QObject *do_qmp_dispatch(QmpCommandList *cmds, QObject *request,
 
     if (cmd == NULL) {
         // Check if this is a PANDA supported command and dispatch if so we're done
-        if (panda_callbacks_qmp(command, dict, &ret, errp)) {
-            // XXX callback needs to populate ret, might be hard
+        // XXX should we pass arguments in as well?
+        char *result = NULL;
+        if (panda_callbacks_qmp(command, dict, &result)) {
+            if (ret != NULL) {
+                // We have a return value from the callback. Let's convert it to a qobject
+                ret = qobject_from_json(result);
+
+                // DEBUG
+                printf("\nCALLBACK PROVIDES RETURN VALUE:\n");
+                QString *str = qobject_to_json_pretty(ret);
+                puts(qstring_get_str(str));
+            }
+
+            if (!ret) {
+                printf("CB didn't provide a result. Creating empty dict\n");
+                ret = QOBJECT(qdict_new());
+            }
+            QDECREF(args);
             return ret;
         }
 

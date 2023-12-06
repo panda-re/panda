@@ -11,6 +11,12 @@ struct QObject {
     size_t                     refcnt;
 };
 
+typedef struct QInt QInt;
+struct QInt {
+    QObject base;
+    int64_t value;
+};
+
 typedef struct QDictEntry QDictEntry;
 struct QDictEntry {
     char *key;
