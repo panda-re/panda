@@ -86,7 +86,7 @@ Addr make_greg(uint64_t r, uint16_t off) {
     return ra;
 }
 void print_membytes(CPUState *env, target_ulong a, target_ulong len) {
-    unsigned char c;
+    unsigned char c = (unsigned char)0;
     printf("{ ");
     for (int i = 0; i < len; i++) {
         if (-1 == panda_virtual_memory_read(env, a+i, (uint8_t *) &c, sizeof(char))) {
