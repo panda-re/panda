@@ -69,7 +69,7 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
     buf[0] = 0;
     unsigned i;
     for (i=0; i<maxlen; i++) {
-        uint8_t c;
+        uint8_t c = 0;
         panda_virtual_memory_rw(cpu, guest_addr+i, &c, 1, 0);
         buf[i] = c;
         if (c==0) {
