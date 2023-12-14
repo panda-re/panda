@@ -241,6 +241,8 @@ void exit_priv(CPUState* cpu);
  * * 0      - Read/write succeeded
  * * -1     - An error 
  */
+#define MAX_ATTEMPTS 1000 // Define a suitable maximum attempt limit
+
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                                           uint8_t *buf, int len, bool is_write) {
     int l;
@@ -248,39 +250,55 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     hwaddr phys_addr;
     target_ulong page;
     bool changed_priv = false;
+    int attempt_count = 0;
 
     while (len > 0) {
-        page = addr & TARGET_PAGE_MASK;
-        phys_addr = cpu_get_phys_page_debug(env, page);
-        // If we failed and we aren't in priv mode and we CAN go into it, toggle modes and try again
-        if (phys_addr == -1  && !changed_priv && (changed_priv=enter_priv(env))) {
-            phys_addr = cpu_get_phys_page_debug(env, page);
-            //if (phys_addr != -1) printf("[panda dbg] virt->phys failed until privileged mode\n");
+        if (++attempt_count > MAX_ATTEMPTS) {
+            printf("Too many attempts, aborting\n");
+            if (changed_priv) exit_priv(env);
+            return -1;
         }
 
-        // No physical page mapped, even after potential privileged switch, abort
+        page = addr & TARGET_PAGE_MASK;
+        phys_addr = cpu_get_phys_page_debug(env, page);
+        // Toggle modes and try again if necessary
+        if (phys_addr == -1  && !changed_priv && (changed_priv=enter_priv(env))) {
+            phys_addr = cpu_get_phys_page_debug(env, page);
+        }
+
+        // No physical page mapped, abort
         if (phys_addr == -1)  {
             if (changed_priv) exit_priv(env); // Cleanup mode if necessary
             return -1;
         }
 
         l = (page + TARGET_PAGE_SIZE) - addr;
+        if (l <= 0/* || l > len*/) {
+            printf("Invalid length calculation l=%d, aborting\n", l);
+            if (changed_priv) exit_priv(env);
+            return -1;
+        }
+
+        // Ensure 'l' does not exceed the remaining buffer size
         if (l > len) {
             l = len;
         }
+
         phys_addr += (addr & ~TARGET_PAGE_MASK);
         ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
 
-        // Failed and privileged mode wasn't already enabled - enable priv and retry if we can
+        // Enable priv and retry if necessary
         if (ret != MEMTX_OK && !changed_priv && (changed_priv = enter_priv(env))) {
             ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
-            //if (ret == MEMTX_OK) printf("[panda dbg] accessing phys failed until privileged mode\n");
         }
-        // Still failed, even after potential privileged switch, abort
+
+        // Still failed, abort
         if (ret != MEMTX_OK) {
             if (changed_priv) exit_priv(env); // Cleanup mode if necessary
             return ret;
         }
+
+        //printf("Processed %d bytes, %d remaining\n", l, len - l);
 
         len -= l;
         buf += l;
@@ -289,6 +307,7 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     if (changed_priv) exit_priv(env); // Clear privileged mode if necessary
     return 0;
 }
+
 
 
 /* (not kernel-doc)
