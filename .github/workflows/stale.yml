@@ -7,7 +7,7 @@ on:
 jobs:
   stale:
 
-    runs-on: ubuntu-latest
+    runs-on: panda-arc
     permissions:
       issues: write
       pull-requests: write

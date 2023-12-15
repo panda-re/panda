@@ -62,7 +62,9 @@ RUN git -C /panda submodule update --init dtc && \
         --prefix=/usr/local \
         --disable-numa \
         --enable-llvm && \
-    (make -C /panda/build -j "$(nproc)" || make) # If multi-core make fails, remake once to give a good error at the end
+    rm -rf /panda/.git
+
+RUN make -C /panda/build -j "$(nproc)"
 
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer
