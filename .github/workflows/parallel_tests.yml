@@ -1,8 +1,7 @@
 name: Parallel Tests
 # For PRs to dev or pushes that modify the root Dockerfile, build from scratch
 # then run CI tests using that container in parallel
-# For forked repos that can't use our self-hosted test suite, just build and run make check
-
+# For forked repos that can't use our panda-arc test suite, just build and run make check
 on:
   pull_request:
     branches:
@@ -16,15 +15,33 @@ on:
 
 jobs:
 
-  test_installer: # test install_ubuntu.sh
-    runs-on: ubuntu-20.04 # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
+  test_installer:
+    runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
     steps:
+    - name: Update
+      run: sudo apt-get update -y
+    - name: Install ssl
+      run: sudo apt-get install -y libssl-dev software-properties-common protobuf-compiler
+    - name: Add Dead Snakes
+      run: sudo add-apt-repository -y ppa:deadsnakes/ppa
+    - name: Update
+      run: sudo apt-get update -y
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install Python dev headers
+      run: sudo apt-get install -y libpython3.9-dev
     - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
     - name: Lint PyPANDA with flake8
       run: |
-       python -m pip install --upgrade pip
-       python -m pip install flake8
-       python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
+       pip cache purge
+       pip install --upgrade pip
+       pip install flake8
+       pip uninstall protobuf python3-protobuf
+       pip install protobuf==3.6.1
+       pip show protobuf
+       flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
        # python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run install_ubuntu.sh
       run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
@@ -32,105 +49,141 @@ jobs:
 
   build_container:
     if: github.repository  == 'panda-re/panda'
-    runs-on: self-hosted
+    runs-on: panda-arc
     steps:
+      - name: Install git
+        run: sudo apt-get update -y && sudo apt-get install git -y
+      - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+        with:
+          fetch-depth: 0
 
-    - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+      #- name: Set up Docker Buildx
+      #  uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ github.workspace }}
+          tags: panda_local:${{ github.sha }}
+          target: developer
+      - name: Debug Docker Info
+        run: docker info
+      - name: Debug Docker Info 2 
+        run: ls -alh /var/run/docker.sock
+      - name: Minimal test of built container # Just test to see if one of our binaries is built
+        run: sudo docker run --rm "panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
-    - name: Build docker container from project root
-      run: cd $GITHUB_WORKSPACE && DOCKER_BUILDKIT=1 docker build --progress=plain --target developer -t panda_local_${{ github.sha }} .
-
-    - name: Minimal test of built container # Just test to see if one of our binaries is built
-      run: docker run --rm "panda_local_${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
-
-  taint_tests:
+  tests:
     if: github.repository  == 'panda-re/panda'
-    runs-on: self-hosted
+    runs-on: panda-arc
     needs: [build_container]
 
     strategy:
       matrix:
-        target: [i386, x86_64]
+        include:
+          - test_type: "taint"
+            target: "i386"
+          - test_type: "taint"
+            target: "x86_64"
+          - test_type: "sym_trace"
+            target: "x86_64"
+          - test_type: "pypanda"
+            test_script: "dyn_hooks"
+          - test_type: "pypanda"
+            test_script: "copy_test"
+          - test_type: "pypanda"
+            test_script: "file_fake"
+          - test_type: "pypanda"
+            test_script: "file_hook"
+          - test_type: "pypanda"
+            test_script: "generic_tests"
+          - test_type: "pypanda"
+            test_script: "monitor_cmds"
+          - test_type: "pypanda"
+            test_script: "multi_proc_cbs"
+          - test_type: "pypanda"
+            test_script: "sleep_in_cb"
+          - test_type: "pypanda"
+            test_script: "syscalls"
+          - test_type: "pypanda"
+            test_script: "record_no_snap"
+          - test_type: "pypanda"
+            test_script: "sig_suppress"
+          - test_type: "make_check"
+            test_script: "check-qtest-x86_64"
+          - test_type: "make_check"
+            test_script: "check-qtest-i386"
+          - test_type: "make_check"
+            test_script: "check-qtest-arm"
+          - test_type: "make_check"
+            test_script: "check-qtest-mips"
+          - test_type: "make_check"
+            test_script: "check-qtest-mipsel"
+          - test_type: "make_check"
+            test_script: "check-qtest-ppc"
+          - test_type: "make_check"
+            test_script: "check-block"
+          - test_type: "make_check"
+            test_script: "check-unit"
+          - test_type: "make_check"
+            test_script: "check-qapi-schema"
+
 
     steps:
     # Given a container with PANDA installed at /panda, run the taint tests
-    - name: Run taint tests inside current container
+    - name: Update
+      run: sudo apt-get update -y
+    - name: Install ssl
+      run: sudo apt-get install -y wget
+    - name: Run Taint Tests
+      if: matrix.test_type == 'taint'
       run: >-
+        wget -q -O wheezy_panda2.qcow2 https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow;
+        wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2;
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=/home/panda/regdir/qcows/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
-        --mount type=bind,source=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
-        --rm -t "panda_local_${{ github.sha }}" bash -c
+        --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
+        --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
+        --rm -t "panda_local:${{ github.sha }}" bash -c
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
+        echo 'Running Record:';
         python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
+        echo 'Running Replay:';
         python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode replay;
         sed -i '/^\s*$/d' taint2_log;
         if cat taint2_log; then echo 'Taint unit test log found!'; else echo 'Taint unit test log NOT found!' && exit 1; fi;
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
-  sym_trace_tests:
-    if: github.repository  == 'panda-re/panda'
-    runs-on: self-hosted
-    needs: [build_container]
-
-    strategy:
-      matrix:
-        target: [x86_64]
-
-    steps:
-    # Given a container with PANDA installed at /panda, run the taint tests
-    - name: Run symbolic tracing tests inside current container
+    - name: Run symbolic tracing tests
+      if: matrix.test_type == 'sym_trace'
       run: >-
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --rm -t "panda_local_${{ github.sha }}" bash -c
+        --rm -t "panda_local:${{ github.sha }}" bash -c
         "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
         if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
-  make_check:
-    if: github.repository  == 'panda-re/panda'
-    runs-on: self-hosted
-    needs: [build_container]
-
-    strategy:
-      matrix:
-        # See output from `make check-help`: we're just splitting `make check` into all the things it does
-        # so we can run them in parallel: arch-specific qtests, plus a few others
-        target: [check-qtest-x86_64, check-qtest-i386, check-qtest-arm, check-qtest-mips, check-qtest-mipsel, check-qtest-ppc, check-block, check-unit, check-qapi-schema]
-
-    steps:
-    - name: Run Individual QEMU tests
+    - name: Run PyPanda Tests
+      if: matrix.test_type == 'pypanda'
       run: >-
-        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow;
+        docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
+        --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "panda_local_${{ github.sha }}" bash -c
-        "cd /panda/build && make ${{ matrix.target }}"
+        --rm -t "panda_local:${{ github.sha }}" bash -c
+        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
 
-  pypanda_tests:
-    if: github.repository  == 'panda-re/panda'
-    runs-on: self-hosted
-    needs: [build_container]
-
-    strategy:
-      matrix:
-        # See output from `make check-help`: we're just splitting `make check` into all the things it does
-        # so we can run them in parallel: arch-specific qtests, plus a few others
-        test_script: [dyn_hooks, copy_test, file_fake, file_hook, generic_tests, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, record_no_snap, sig_suppress]
-
-    steps:
-    - name: Run individual pypanda tests
-      # TODO: pip requirements install here should be moved to Docker image build to save test time
+    - name: Run make Tests
+      if: matrix.test_type == 'make_check'
       run: >-
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=/home/panda/regdir/qcows/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "panda_local_${{ github.sha }}" bash -c
-        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
+        --rm -t "panda_local:${{ github.sha }}" bash -c
+        "cd /panda/build && make ${{ matrix.test_script }}"
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
-    needs: [taint_tests, sym_trace_tests, make_check, pypanda_tests]
-    runs-on: self-hosted
+    needs: [tests]
+    runs-on: panda-arc
     if: always()
 
     steps:
@@ -143,9 +196,9 @@ jobs:
         docker image prune --all -f --filter "until=72h"
         docker builder prune -af --filter "until=72h"
 
-  build_and_check_fork: # Forked repos can't use self-hosted test suite - just checkout and run make check
+  build_and_check_fork: # Forked repos can't use panda-arc test suite - just checkout and run make check
     if: github.repository != 'panda-re/panda'
-    runs-on: ubuntu-latest
+    runs-on: panda-arc
 
     steps:
     - uses: actions/checkout@v1 # Clones code into to /home/runner/work/panda
