@@ -79,7 +79,7 @@ fi
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
 # This will give us "./panda/dependencies/ubuntu:20.04" where ubuntu:20.04_build.txt or 20.04_base.txt exists
-dep_base=$(find ./panda/dependencies/ubuntu:${version}.* -print -quit | sed  -e "s/_build\.txt\|_base\.txt//")
+dep_base=$(find ./panda/dependencies/ubuntu_${version}.* -print -quit | sed  -e "s/_build\.txt\|_base\.txt//")
 
 if [ -e ${dep_base}_build.txt ] || [ -e ${dep_base}_base.txt ]; then
   echo "Found dependency file(s) at ${dep_base}*.txt"
