@@ -1,0 +1,12 @@
+Package: pandare
+Version: 3.1.0
+Architecture: all
+BUILD_DEPENDS_LIST
+DEPENDS_LIST
+Maintainer: Andrew Fasano <fasano@mit.edu>
+Description: dynamic analysis platform
+ Platform for Architecture Neutral Dynamic Analysis (PANDA) is a processor
+ emulator designed to support analyses of guest code. PANDA supports record-
+ and-replay based analyses as well as analyses on live systems. PANDA is forked
+ from the QEMU emulator.
+ Panda currently supports i386, x86_64, ARM, MIPS, and PPC.

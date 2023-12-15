@@ -118,6 +118,10 @@ RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
+# Include dependency lists for packager
+COPY --from=base /tmp/base_dep.txt /tmp
+COPY --from=base /tmp/build_dep.txt /tmp
+
 # Copy panda + libcapstone.so* + libosi libraries
 COPY --from=cleanup /usr/local /usr/local
 COPY --from=cleanup /usr/lib/libcapstone* /usr/lib/
