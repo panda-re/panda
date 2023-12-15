@@ -2,6 +2,7 @@ build
 venv
 local
 Dockerfile
+panda/debian
 .*sw*
 .dockerignore
 .github
