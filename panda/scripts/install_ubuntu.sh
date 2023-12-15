@@ -110,7 +110,7 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
   echo "Installing libcapstone v4"
   pushd /tmp && \
   curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && $SUDO make install && cd /tmp && \
+  tar xvf cap.tgz && cd capstone-4.0.2/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
   rm -rf /tmp/capstone-4.0.2
   $SUDO ldconfig
   popd

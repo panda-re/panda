@@ -16,7 +16,7 @@ execution is also stored, regardless of mode.  (A value of 1 means the block
 was executed in kernel mode.) For the `osi-block` and `asid-block` modes, the
 mode used to create the CSV file is also written at the top of the file, to cue
 parsers in as to how to interpret the file. `edge` mode writes two blocks per
-records where the first block represents the "from" node in a control flow
+record where the first block represents the "from" node in a control flow
 graph (CFG) and the second represents the "to" node. Note that the `edge` mode
 requires OSI and only works with X86 guests.
 
@@ -69,10 +69,10 @@ adjusted manually for DOS operating systems.
 
 Arguments
 ---------
-* `filename` - The name of the file to output (default:  `coverage.csv`).
+* `filename` - The name of the file to output (default: `coverage.csv`).
 * `mode` - Output mode, one of `asid-block`, `osi-block`, or `edge` (default:
 `asid-block`). Note that `edge` requires OSI.
-* `full` - When `true`, logs each record every time it is generated (default:
+* `full` - When `true`, logs each record every time it is generated (default: `false`)
 * `summary` - When `true`, only report total distinct blocks executed per process. Requires OSI and a mode of `osi-block` (default:
 `false`)
 * `start_disabled` - When `true`, does not start data collection when the
@@ -111,12 +111,14 @@ None
 Example
 -------
 Use the coverage plugin with a recording:
+
 ```
 panda-system-i386 -m 2G -replay test \
     -os windows-32-xpsp3 \
     -panda coverage:filename=test_coverage.csv,mode=osi-block
 ```
 Use the coverage plugin on a live system:
+
 ```
 panda-system-i386 -monitor stdio -m 2G -net nic -net user -os linux-32-.+ -panda osi -panda osi_linux:kconf_file=myconf.conf,kconf_group=mygroup -hda myimage.img
 (qemu) load_plugin coverage,filename=test01.csv,mode=osi-block

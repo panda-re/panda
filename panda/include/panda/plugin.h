@@ -67,8 +67,10 @@ void panda_disable_plugin(void *plugin);
 
 // Structure to store metadata about a plugin
 typedef struct panda_plugin {
-    char name[256];     // Currently basename(filename)
-    void *plugin;       // Handle to the plugin (for use with dlsym())
+    char *name;            // Plugin name: basename(filename)
+    void *plugin;          // Handle to the plugin (for use with dlsym())
+    bool unload;           // When true, unload plugin when safe
+    bool exported_symbols; // True if plugin dlopened with RTLD_GLOBAL
 } panda_plugin;
 
 
@@ -181,10 +183,6 @@ void panda_unregister_callbacks(void *plugin);
  */
 bool panda_load_plugin(const char *filename, const char *plugin_name);
 
-
-bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode);
-
-
 /**
  * panda_add_arg() - Add an argument to those for a plugin.
  * @plugin_name: The name of the plugin.
@@ -193,10 +191,6 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
  * Return: Always returns True
  */
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg);
-
-
-// I think this is not used anywhere?
-bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr);
 
 /**
  * panda_get_plugin_by_name() - Returns pointer to the plugin of this name.
@@ -232,8 +226,6 @@ void panda_unload_plugins(void);
 extern bool panda_update_pc;
 extern bool panda_use_memcb;
 extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
-extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-extern bool panda_plugin_to_unload;
 extern bool panda_tb_chaining;
 
 // this stuff is used by the new qemu cmd-line arg '-os os_name'

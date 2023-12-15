@@ -101,7 +101,9 @@ void panda_cb_trampoline_start_block_exec(void* context, CPUState *cpu, Translat
 // these aren't used
 MAKE_CALLBACK(void, HD_READ, hd_read, CPUState*, env);
 MAKE_CALLBACK(void, HD_WRITE, hd_write, CPUState*, env);
+
 MAKE_CALLBACK(int, MONITOR, monitor, Monitor*, mon, const char*, cmd);
+MAKE_CALLBACK(bool, QMP, qmp, char*, cmd, char*, args, char **, result);
 
 // Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
@@ -196,13 +198,18 @@ MAKE_CALLBACK_NO_ARGS(void, PRE_SHUTDOWN, pre_shutdown);
 
 // Non-standard callbacks below here
 
+extern bool panda_plugin_to_unload;
+extern int nb_panda_plugins;
+extern panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
+
 void PCB(before_find_fast)(void) {
     if (panda_plugin_to_unload) {
         panda_plugin_to_unload = false;
-        for (int i = 0; i < MAX_PANDA_PLUGINS; i++) {
-            if (panda_plugins_to_unload[i]) {
+        for (int i = 0; i < nb_panda_plugins;) {
+            if (panda_plugins[i].unload) {
                 panda_do_unload_plugin(i);
-                panda_plugins_to_unload[i] = false;
+            } else {
+                i++;
             }
         }
     }

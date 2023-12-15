@@ -4,6 +4,7 @@ asid_instr_count
 asidstory
 callfunc
 callstack_instr
+callwitharg
 checkpoint
 collect_code
 correlatetaps
@@ -13,6 +14,7 @@ coverage
 dynamic_symbols
 edge_coverage
 filereadmon
+findcall
 forcedexec
 gdb
 hooks
@@ -47,6 +49,7 @@ snake_hook
 stringsearch
 syscalls2
 syscalls_logger
+targetcmp
 textprinter
 trace
 track_intexc

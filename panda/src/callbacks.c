@@ -57,12 +57,7 @@ int panda_argc;
 int nb_panda_plugins = 0;
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 
-bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-
 bool panda_plugin_to_unload = false;
-
-int nb_panda_plugins_loaded = 0;
-char *panda_plugins_loaded[MAX_PANDA_PLUGINS];
 
 bool panda_please_flush_tb = false;
 bool panda_please_break_exec = false;
@@ -113,59 +108,96 @@ static char* attempt_normalize_path(char* path){
     return new_path;
 }
 
-bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
-    // don't load the same plugin twice
-    char* rfilename = attempt_normalize_path(strdup(filename));
-    uint32_t i;
-    for (i=0; i<nb_panda_plugins_loaded; i++) {
-        if (0 == (strcmp(rfilename, panda_plugins_loaded[i]))) {
-            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded", PANDA_CORE_NAME, filename);
-            return true;
+static void *try_open_libpanda(const char *panda_lib) {
+    void *libpanda = NULL;
+    if(panda_lib != NULL) {
+        libpanda = dlopen(panda_lib, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
+        if (NULL == libpanda) {
+            LOG_ERROR(PANDA_MSG_FMT "Failed to load libpanda: %s from %s\n", PANDA_CORE_NAME, dlerror(), panda_lib);
         }
     }
-    // NB: this is really a list of plugins for which we have started loading
-    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
-    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(rfilename);
-    nb_panda_plugins_loaded ++;
-    void *plugin = plugin_uuid;//going to be a handle of some sort -> dlopen(filename, RTLD_NOW);
-    bool (*init_fn)(void *) = init_fn_ptr; //normally dlsym init_fun
+    return libpanda;
+}
 
-    // Populate basic plugin info *before* calling init_fn.
-    // This allows plugins accessing handles of other plugins before
-    // initialization completes. E.g. osi does a panda_require("win7x86intro"),
-    // and then win7x86intro does a PPP_REG_CB("osi", ...) while initializing.
-    panda_plugins[nb_panda_plugins].plugin = plugin;
-    if (plugin_name) {
-        strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
+// When running as a library, load libpanda
+static bool load_libpanda(void) {
+
+    const char *panda_lib = g_getenv("PANDA_LIB");
+    void *libpanda;
+
+    if(panda_lib != NULL) {
+        libpanda = try_open_libpanda(panda_lib);
     } else {
-        char *pn = g_path_get_basename(rfilename);
-        *g_strrstr(pn, HOST_DSOSUF) = '\0';
-        strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
-        g_free(pn);
-    }
-    nb_panda_plugins++;
+#ifndef LIBRARY_DIR
+        assert(0 && "LIBRARY_DIR undefined, but library mode is enabled - Unsupported architecture?");
+        LOG_ERROR(PANDA_MSG_FMT "LIBRARY_DIR not defined\n", PANDA_CORE_NAME);
+#endif
+        const char *lib_dir = g_getenv("PANDA_DIR");
 
-    // Call init_fn and check status.
-    LOG_INFO(PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
-    panda_help_wanted = false;
-    panda_args_set_help_wanted(plugin_name);
-    if (panda_help_wanted) {
-        printf("Options for plugin %s:\n", plugin_name);
-        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
-        fprintf(stderr, "======              ========                ========        ===========\n");
+        if (lib_dir != NULL) {
+            panda_lib = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
+        } else {
+            LOG_WARNING(PANDA_MSG_FMT "WARNING: using hacky dlopen code that will be removed soon\n", PANDA_CORE_NAME);
+            panda_lib = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
+        }
+
+        libpanda = try_open_libpanda(panda_lib);
+        g_free((char *)panda_lib);
     }
-    if(!init_fn(plugin) || panda_plugin_load_failed) {
-        return false;
-    }
-    return true;
+
+    return libpanda != NULL;
 }
 
-
-bool panda_load_plugin(const char *filename, const char *plugin_name) {
-  return _panda_load_plugin(filename, plugin_name, false);
+// Internal: remove a plugin from the global array panda_plugins
+static void panda_delete_plugin(int i)
+{
+    g_free(panda_plugins[i].name);
+    if (i != nb_panda_plugins - 1) { // not the last element
+        memmove(&panda_plugins[i], &panda_plugins[i + 1],
+                (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
+    }
+    nb_panda_plugins--;
 }
 
-bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+static void dlclose_plugin(int plugin_idx) {
+    void *plugin = panda_plugins[plugin_idx].plugin;
+    bool exported_symbols = panda_plugins[plugin_idx].exported_symbols;
+    panda_delete_plugin(plugin_idx);
+    dlclose(plugin);
+    if(exported_symbols) {
+        // This plugin was dlopened twice.  dlclose it twice to fully unload it.
+        dlclose(plugin);
+    }
+}
+
+// Determine if the plugin being loaded wants to export symbols to
+// subsequently loaded plugins.  If it does, dlopen it a second time
+// with RTLD_GLOBAL.
+static void do_check_export_symbols(panda_plugin *panda_plugin, const char *filename) {
+
+    char *export_symbol = g_strdup_printf("PANDA_EXPORT_SYMBOLS_%s", panda_plugin->name);
+
+    if(NULL != dlsym(panda_plugin->plugin, export_symbol)) {
+        LOG_DEBUG(PANDA_MSG_FMT "Exporting symbols for plugin %s\n", PANDA_CORE_NAME, panda_plugin->name);
+        assert(panda_plugin->plugin == dlopen(filename, RTLD_NOW | RTLD_GLOBAL));
+        panda_plugin->exported_symbols = true;
+    } else {
+        // Error condition is not unexpected, clear dlerror(), 
+        // otherwise someone might call it later and be confused
+        dlerror();
+    }
+
+    g_free(export_symbol);
+}
+
+static bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+
+    static bool libpanda_loaded = false;
+
+    if ((plugin_name == NULL) || (*plugin_name == '\0')) {
+        LOG_ERROR(PANDA_MSG_FMT "Fatal error: plugin_name is required\n", PANDA_CORE_NAME);
+        abort();
+    }
 
 #ifndef CONFIG_LLVM
     // Taint2 seems to be our most commonly used LLVM plugin and it causes some confusion
@@ -175,86 +207,54 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     }
 #endif
 
-    if (filename == NULL) {
+    if ((filename == NULL) || (*filename == '\0')) {
         LOG_ERROR(PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
+        abort();
     }
-    assert(filename != NULL);
 
     // don't load the same plugin twice
     uint32_t i;
-    for (i=0; i<nb_panda_plugins_loaded; i++) {
-        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
-            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
+    for (i=0; i<nb_panda_plugins; i++) {
+        if (strcmp(panda_plugins[i].name, plugin_name) == 0) {
+            LOG_DEBUG(PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, plugin_name);
             return true;
         }
     }
-    // NB: this is really a list of plugins for which we have started loading
-    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
-    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
-    nb_panda_plugins_loaded ++;
 
-    // Ensure pypanda has been dlopened so its symbols can be used in the plugin we're
-    // now loading. XXX: This should probably happen earlier and only once
-    if (library_mode) {
-      // When running as a library, load libpanda
-#ifndef LIBRARY_DIR
-      assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
-	  printf("Library dir not set");
-#endif
-      const char *panda_lib = g_getenv("PANDA_LIB");
-      if(panda_lib != NULL) {
-        void *libpanda = dlopen(panda_lib, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
-
-        if (!libpanda) {
-          fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), panda_lib);
-          return false;
-        }
-      } else {
-        const char *lib_dir = g_getenv("PANDA_DIR");
-        char *library_path;
-        if (lib_dir != NULL) {
-          library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
-        }else{
-          fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
-          library_path = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
-        }
-
-        void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
-
-        if (!libpanda) {
-          fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), library_path);
-          g_free(library_path);
-          return false;
-        }
-        g_free(library_path);
+    // Ensure libpanda has been dlopened so its symbols can be used in the plugin we're
+    // now loading. XXX: This should probably happen earlier.
+    if (library_mode && (!libpanda_loaded)) {
+      if(!load_libpanda()) {
+        return false;
       }
+      libpanda_loaded = true;
     }
 
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
-        fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
+        LOG_ERROR(PANDA_MSG_FMT "Failed to load %s: %s\n", PANDA_CORE_NAME, filename, dlerror());
         return false;
     }
-    bool (*init_fn)(void *) = dlsym(plugin, "init_plugin");
+
+    const char *init_plugin = "init_plugin";
+    bool (*init_fn)(void *) = dlsym(plugin, init_plugin);
     if(!init_fn) {
-        fprintf(stderr, "Couldn't get symbol %s: %s\n", "init_plugin", dlerror());
+        LOG_ERROR(PANDA_MSG_FMT "Couldn't get symbol %s: %s\n", PANDA_CORE_NAME, init_plugin, dlerror());
         dlclose(plugin);
         return false;
     }
 
     // Populate basic plugin info *before* calling init_fn.
     // This allows plugins accessing handles of other plugins before
-    // initialization completes. E.g. osi does a panda_require("win7x86intro"),
-    // and then win7x86intro does a PPP_REG_CB("osi", ...) while initializing.
+    // initialization completes. E.g. osi does a panda_require("wintrospection"),
+    // and then wintrospection does a PPP_REG_CB("osi", ...) while initializing.
     panda_plugins[nb_panda_plugins].plugin = plugin;
-    if (plugin_name) {
-        strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
-    } else {
-        char *pn = g_path_get_basename((char *) filename);
-        *g_strrstr(pn, HOST_DSOSUF) = '\0';
-        strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
-        g_free(pn);
-    }
+    panda_plugins[nb_panda_plugins].unload = false;
+    panda_plugins[nb_panda_plugins].exported_symbols = false;
+    panda_plugins[nb_panda_plugins].name = g_strdup(plugin_name);
+
+    do_check_export_symbols(&panda_plugins[nb_panda_plugins], filename);
+
     nb_panda_plugins++;
 
     // Call init_fn and check status.
@@ -263,14 +263,20 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
         printf("Options for plugin %s:\n", plugin_name);
-        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
-        fprintf(stderr, "======              ========                ========        ===========\n");
+        printf("PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
+        printf("======              ========                ========        ===========\n");
     }
+
     if(!init_fn(plugin) || panda_plugin_load_failed) {
-        dlclose(plugin);
+        dlclose_plugin(nb_panda_plugins - 1);
         return false;
     }
+
     return true;
+}
+
+bool panda_load_plugin(const char *filename, const char *plugin_name) {
+  return _panda_load_plugin(filename, plugin_name, false);
 }
 
 extern const char *qemu_file;
@@ -343,7 +349,7 @@ char *panda_plugin_path(const char *plugin_name) {
     return resolve_file_from_plugin_directory("panda_%s" HOST_DSOSUF, plugin_name);
 }
 
-void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
+static void _panda_require(const char *plugin_name, char **plugin_args, uint32_t num_args, bool library_mode) {
     // If we're printing help, panda_require will be a no-op.
     if (panda_help_wanted) return;
 
@@ -353,52 +359,26 @@ void panda_require_from_library(const char *plugin_name, char **plugin_args, uin
     LOG_INFO(PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
     // translate plugin name into a path to .so
-    char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would raise assert in in _panda_load_plugin
+    char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would abort in in _panda_load_plugin
+    if (NULL == plugin_path) {
+        LOG_ERROR(PANDA_MSG_FMT "FAILED to find required plugin %s\n", PANDA_CORE_NAME, plugin_name);
+        abort();
+    }
 
     // load plugin same as in vl.c
-    if (!_panda_load_plugin(plugin_path, plugin_name, true)) { // Load in library mode
+    if (!_panda_load_plugin(plugin_path, plugin_name, library_mode)) {
         LOG_ERROR(PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
         abort();
     }
     g_free(plugin_path);
 }
 
-void panda_require(const char *plugin_name) {
-    // If we're printing help, panda_require will be a no-op.
-    if (panda_help_wanted) return;
-
-    LOG_INFO(PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
-
-    // translate plugin name into a path to .so
-    char *plugin_path = panda_plugin_path(plugin_name);
-    if (NULL == plugin_path) {
-        LOG_ERROR(PANDA_MSG_FMT "FAILED to find required plugin %s\n",
-                PANDA_CORE_NAME, plugin_name);
-        abort();
-    }
-
-    // load plugin same as in vl.c
-    if (!panda_load_plugin(plugin_path, plugin_name)) {
-        LOG_ERROR(PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n",
-                PANDA_CORE_NAME, plugin_name, plugin_path);
-        abort();
-    }
-    g_free(plugin_path);
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
+    _panda_require(plugin_name, plugin_args, num_args, true);
 }
 
-// Internal: remove a plugin from the global array panda_plugins and panda_plugins_loaded
-static void panda_delete_plugin(int i)
-{
-    if (i != nb_panda_plugins - 1) { // not the last element
-        memmove(&panda_plugins[i], &panda_plugins[i + 1],
-                (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
-    }
-    nb_panda_plugins--;
-
-    if (i != nb_panda_plugins_loaded -1 ) { // not the last element
-        memmove(&panda_plugins_loaded[i], &panda_plugins_loaded[i+1], (nb_panda_plugins_loaded - i - 1)*sizeof(char*));
-    }
-    nb_panda_plugins_loaded--;
+void panda_require(const char *plugin_name) {
+    _panda_require(plugin_name, NULL, 0, false);
 }
 
 void panda_do_unload_plugin(int plugin_idx)
@@ -412,8 +392,7 @@ void panda_do_unload_plugin(int plugin_idx)
         uninit_fn(plugin);
     }
     panda_unregister_callbacks(plugin);
-    panda_delete_plugin(plugin_idx);
-    dlclose(plugin);
+    dlclose_plugin(plugin_idx);
 }
 
 void panda_unload_plugin(void *plugin)
@@ -429,7 +408,7 @@ void panda_unload_plugin(void *plugin)
 
 void panda_unload_plugin_by_name(const char *plugin_name) {
     for (int i = 0; i < nb_panda_plugins; i++) {
-        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0) {
+        if (strcmp(panda_plugins[i].name, plugin_name) == 0) {
             panda_unload_plugin(panda_plugins[i].plugin);
             break;
         }
@@ -442,7 +421,7 @@ void panda_unload_plugin_idx(int plugin_idx)
         return;
     }
     panda_plugin_to_unload = true;
-    panda_plugins_to_unload[plugin_idx] = true;
+    panda_plugins[plugin_idx].unload = true;
 }
 
 void panda_unload_plugins(void)
@@ -457,7 +436,7 @@ void panda_unload_plugins(void)
 void *panda_get_plugin_by_name(const char *plugin_name)
 {
     for (int i = 0; i < nb_panda_plugins; i++) {
-        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0)
+        if (strcmp(panda_plugins[i].name, plugin_name) == 0)
             return panda_plugins[i].plugin;
     }
     return NULL;
@@ -495,6 +474,7 @@ panda_cb_with_context panda_get_cb_trampoline(panda_cb_type type) {
         CASE_CB_TRAMPOLINE(HD_WRITE,hd_write)
         CASE_CB_TRAMPOLINE(GUEST_HYPERCALL,guest_hypercall)
         CASE_CB_TRAMPOLINE(MONITOR,monitor)
+        CASE_CB_TRAMPOLINE(QMP,qmp)
         CASE_CB_TRAMPOLINE(CPU_RESTORE_STATE,cpu_restore_state)
 
         //CASE_CB_TRAMPOLINE(BEFORE_LOADVM,before_loadvm)
@@ -1136,7 +1116,7 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%-20s%-24sOptional        %s (default=true)\n", args->plugin_name, argname, help);
+        printf("%-20s%-24sOptional        %s (default=true)\n", args->plugin_name, argname, help);
     }
 
     // not found
@@ -1172,13 +1152,13 @@ static target_ulong panda_parse_ulong_internal(panda_arg_list *args, const char 
 error_handling:
     if (required) {
         LOG_ERROR("ERROR: plugin required ulong argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        LOG_ERROR(PANDA_MSG_FMT "Help for \"%s\": %s\n", PANDA_CORE_NAME, argname, help);
         panda_plugin_load_failed = true;
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1214,8 +1194,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%d)\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=%d)\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1251,8 +1231,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s)\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%" PRId64 ")\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s)\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=%" PRId64 ")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1288,8 +1268,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%f)\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=%f)\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -1363,8 +1343,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
-        else fprintf(stderr, "%-20s%-24sOptional        %s (default=\"%s\")\n", args->plugin_name, argname, help, defval);
+        if (required) printf("%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else printf("%-20s%-24sOptional        %s (default=\"%s\")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;

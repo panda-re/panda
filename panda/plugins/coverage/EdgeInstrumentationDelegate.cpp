@@ -39,7 +39,8 @@ static target_ulong fetch_register_value(size_t cpu_offset, target_ulong mask,
                                          target_ulong shr)
 {
     CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
-    return (*(reinterpret_cast<target_ulong *>((env + cpu_offset))) & mask) 
+    // don't want to do pointer arithmetic, as cpu_offset in wrong units
+    return (*(reinterpret_cast<target_ulong *>((((size_t)env) + cpu_offset))) & mask)
            >> shr;
 }
 #define MK_REG_FETCHER(cpu_state_variable, mask, shift_right) \
@@ -49,7 +50,7 @@ static target_ulong fetch_register_value(size_t cpu_offset, target_ulong mask,
 static target_ulong fetch_segment_value(size_t cpu_offset)
 {
     CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
-    return reinterpret_cast<SegmentCache*>((env + cpu_offset))->base;
+    return reinterpret_cast<SegmentCache*>((((size_t)env) + cpu_offset))->base;
 }
 #define MK_SEG_FETCHER(cpu_state_variable) \
     std::bind(fetch_segment_value, offsetof(CPUArchState, cpu_state_variable))
@@ -98,6 +99,10 @@ const static std::unordered_map<unsigned, RegisterFetcher>
 
 	{ X86_REG_CS, MK_SEG_FETCHER(segs[R_CS]) },
 
+	{ X86_REG_DS, MK_SEG_FETCHER(segs[R_DS]) },
+
+	{ X86_REG_FS, MK_SEG_FETCHER(segs[R_FS]) },
+
 	{ X86_REG_SS, MK_SEG_FETCHER(segs[R_SS]) },
 
     { X86_REG_GS, MK_SEG_FETCHER(segs[R_GS]) },
@@ -128,7 +133,7 @@ const static std::unordered_map<unsigned, RegisterFetcher>
 // control flow instructions have at most two targets, we can get away with
 // this struct and avoid the worst case O(N) complexity of a hash table and
 // this should be more cache friendly because setting the jump targets for
-// the current thread basiclaly a memcpy or assignment.
+// the current thread basically a memcpy or assignment.
 struct JumpTargets
 {
     bool has_dst1;
@@ -146,7 +151,7 @@ struct EdgeState
     // Flag for enabling or disabling coverage.
     bool cov_enabled;
 
-    // Maps Thread ID -> Previos Blocks
+    // Maps Thread ID -> Previous Blocks
     std::unordered_map<target_pid_t, Block> prev_blocks;
     // Previous Block for Current Thread
     Block* prev_block;
@@ -247,8 +252,12 @@ static void jmp_mem_direct_callback(EdgeState *edge_state,
         return;
     }
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, direct_address,
+    int retcode = panda_virtual_memory_read(cpu, direct_address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -269,8 +278,12 @@ static void jmp_mem_indexed_callback(EdgeState *edge_state,
     }
     target_ulong address = (*index_register_fetcher)() * scale + disp;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -290,8 +303,41 @@ static void jmp_mem_indirect(EdgeState* edge_state, CPUState *cpu,
     }
     target_ulong address = (*base_register_fetch)() + disp;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
+    update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
+}
+
+static void jmp_mem_indirect_rip(EdgeState* edge_state, CPUState *cpu,
+                             target_ulong prev_block_addr,
+                             target_ulong prev_block_size,
+                             int64_t disp)
+{
+    if (!edge_state->cov_enabled) {
+        return;
+    }
+    // this instrumentation is called just before the prev_block is executed
+    // so the RIP register has prev_block_addr in it, not the address of the
+    // next block in memory after this one; fortunately, we have enough info
+    // to calculate the address of the next block without using a register
+    // fetcher
+    target_ulong address = prev_block_addr + prev_block_size + disp;
+    target_ulong jump_target = 0x0;
+    int retcode = panda_virtual_memory_read(cpu, address,
+        reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -313,8 +359,12 @@ static void jmp_mem_indirect_no_index(EdgeState* edge_state, CPUState *cpu,
     target_ulong address = (*segment_register_fetch)() +
     		(*base_register_fetch)() + disp;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -336,8 +386,12 @@ static void jmp_mem_indirect_disp_si_callback(EdgeState *edge_state,
     }
     target_ulong address = (*brf)() + disp + (*irf)() * scale;
     target_ulong jump_target = 0x0;
-    panda_virtual_memory_read(cpu, address,
+    int retcode = panda_virtual_memory_read(cpu, address,
         reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = jump_target,
@@ -375,8 +429,12 @@ static void ret_callback(EdgeState *edge_state,
     // Read the return target address off the stack.
     CPUArchState *env_ptr = static_cast<CPUArchState *>(cpu->env_ptr);
     target_ulong return_addr = 0x0;
-    panda_virtual_memory_read(cpu, env_ptr->regs[R_ESP],
+    int retcode = panda_virtual_memory_read(cpu, env_ptr->regs[R_ESP],
         reinterpret_cast<uint8_t *>(&return_addr), sizeof(return_addr));
+    if (retcode != 0) {
+        printf("error reading panda memory for block 0x" TARGET_FMT_lx "\n",
+                prev_block_addr);
+    }
     update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
         .has_dst1 = true,
         .dst1 = return_addr,
@@ -414,6 +472,21 @@ static void instrument_jcc(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
     insert_call(&op, &jcc_callback, edge_state, tb->pc, tb->size, nit, jt);
 }
 
+static const RegisterFetcher *get_register_fetcher(cs_insn *insn, unsigned int reg)
+{
+    // print some useful debugging information before give up if can't get
+    // the requested register fetcher
+    const RegisterFetcher *rf = nullptr;
+    try {
+        rf = &CS_TO_QEMU_REG_FETCH.at(reg);
+    } catch (std::out_of_range& err) {
+        printf("Error getting fetcher for register %d at address 0x%lx\n", reg,
+                insn->address);
+        throw;
+    }
+    return rf;
+}
+
 static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
                            TranslationBlock *tb, cs_insn *insn)
 {
@@ -422,14 +495,13 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
         target_ulong jt = static_cast<target_ulong>(jmp_op.imm);
         insert_call(&op, static_jmp_callback, edge_state, tb->pc, tb->size, jt);
     } else if (X86_OP_MEM == jmp_op.type) {
-
         static const RegisterFetcher *INVALID_REGISTER =
-            &CS_TO_QEMU_REG_FETCH.at(X86_REG_INVALID);
-        const RegisterFetcher *srf = &CS_TO_QEMU_REG_FETCH.at(
+            get_register_fetcher(insn, X86_REG_INVALID);
+        const RegisterFetcher *srf = get_register_fetcher(insn,
             jmp_op.mem.segment);
-        const RegisterFetcher *brf = &CS_TO_QEMU_REG_FETCH.at(
+        const RegisterFetcher *brf = get_register_fetcher(insn,
             jmp_op.mem.base);
-        const RegisterFetcher *irf = &CS_TO_QEMU_REG_FETCH.at(
+        const RegisterFetcher *irf = get_register_fetcher(insn,
             jmp_op.mem.index);
 
 #ifdef EDGE_INST_DEBUG
@@ -451,9 +523,15 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
 
         } else if (INVALID_REGISTER == srf && INVALID_REGISTER == irf) {
 
-            // indirect addressing
-            insert_call(&op, jmp_mem_indirect, edge_state, cpu, tb->pc,
-                        tb->size, brf, jmp_op.mem.disp); 
+            if (X86_REG_RIP == jmp_op.mem.base) {
+                // RIP relative addressing
+                insert_call(&op, jmp_mem_indirect_rip, edge_state, cpu, tb->pc,
+                        tb->size, jmp_op.mem.disp);
+            } else {
+                // indirect addressing
+                insert_call(&op, jmp_mem_indirect, edge_state, cpu, tb->pc,
+                        tb->size, brf, jmp_op.mem.disp);
+            }
 
         } else if (INVALID_REGISTER == srf && INVALID_REGISTER == brf) {
 
@@ -491,7 +569,7 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
 
         }
     } else if (X86_OP_REG == jmp_op.type) {
-        const RegisterFetcher *reg_fetcher = &CS_TO_QEMU_REG_FETCH.at(
+        const RegisterFetcher *reg_fetcher = get_register_fetcher(insn,
             jmp_op.reg);
         insert_call(&op, jmp_reg_callback, edge_state, cpu, tb->pc, tb->size,
                     reg_fetcher);

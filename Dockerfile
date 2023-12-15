@@ -1,6 +1,4 @@
 ARG BASE_IMAGE="ubuntu:20.04"
-# Note PANDA supports ubuntu:22.04, but docker versions <= 20.10.7 can't run 22.04 containers
-
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu"
 
 ### BASE IMAGE
@@ -63,7 +61,8 @@ RUN git -C /panda submodule update --init dtc && \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
         --disable-numa \
-        --enable-llvm
+        --enable-llvm && \
+    rm -rf /panda/.git
 
 RUN make -C /panda/build -j "$(nproc)"
 
@@ -97,13 +96,29 @@ RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install 
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
 RUN bash -c "ls $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/panda_{aarch64_64,arm_32,mips64_64,mips_32,mipsel_32,ppc_32,ppc_64,x86_64_64,i386_32}.py"
 
+# this layer is used to strip shared objects and change python data to be
+# symlinks to the installed panda data directory
+FROM installer as cleanup
+RUN find /usr/local/lib/panda -name "*.so" -exec strip {} \;
+RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
+    rm -rf $PKG/pc-bios && ln -s /usr/local/share/panda $PKG/pc-bios; \
+    for arch in `find $PKG -name "*-softmmu" -type d -exec basename {} \;` ; do \
+        ARCHP=$PKG/$arch; \
+        SARCH=`echo $arch | cut -d'-' -f 1`; \
+        rm $ARCHP/libpanda-$SARCH.so $ARCHP/llvm-helpers-$SARCH.bc; \
+        ln -s /usr/local/share/panda/llvm-helpers-$SARCH.bc $ARCHP/llvm-helpers-$SARCH.bc1; \
+        ln -s /usr/local/bin/libpanda-$SARCH.so $ARCHP/libpanda-$SARCH.so; \ 
+        rm -rf $ARCHP/panda/plugins; \
+        ln -s /usr/local/lib/panda/$SARCH/ $ARCHP/panda/plugins; \
+    done
+
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
 # Copy panda + libcapstone.so* + libosi libraries
-COPY --from=installer /usr/local /usr/local
-COPY --from=installer /usr/lib/libcapstone* /usr/lib/
-COPY --from=installer /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
+COPY --from=cleanup /usr/local /usr/local
+COPY --from=cleanup /usr/lib/libcapstone* /usr/lib/
+COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
