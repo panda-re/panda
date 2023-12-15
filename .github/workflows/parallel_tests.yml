@@ -21,27 +21,16 @@ jobs:
       image: ubuntu:20.04
     steps:
     - name: Update
-<<<<<<< HEAD
-      run: apt-get update -y
-    - name: Install ssl
-      run: apt-get install -y libssl-dev
-=======
       run: apt-get -qq update -y
     - name: Install ssl
       run: apt-get -qq install -y libssl-dev
->>>>>>> dev
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
     - name: Install Python dev headers
-<<<<<<< HEAD
-      run: apt-get install -y libpython3.9-dev
-    - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
-=======
       run: apt-get -qq install -y libpython3.9-dev
     - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
->>>>>>> dev
     - name: Lint PyPANDA with flake8
       run: |
        pip install --upgrade pip
@@ -57,13 +46,8 @@ jobs:
     runs-on: panda-arc
     steps:
       - name: Install git
-<<<<<<< HEAD
-        run: sudo apt-get update -y && sudo apt-get install git -y
-      - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
-=======
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
       - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
->>>>>>> dev
         with:
           fetch-depth: 0
 
@@ -73,21 +57,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ github.workspace }}
-<<<<<<< HEAD
-          tags: panda_local:${{ github.sha }}
-          target: developer
-      - name: Minimal test of built container # Just test to see if one of our binaries is built
-        run: docker run --rm "panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
-      - name: Save docker container for next job
-        run: docker save -o panda_local.tar panda_local:${{ github.sha }} && gzip panda_local.tar 
-      - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
-        with:
-          name: panda_local_image
-          path: panda_local.tar.gz
-          retention-days: 2
-  taint_tests:
-=======
           tags: ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}
           target: developer
       - name: Minimal test of built container # Just test to see if one of our binaries is built
@@ -102,7 +71,6 @@ jobs:
         run: docker push ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}
 
   tests:
->>>>>>> dev
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
     needs: [build_container]
@@ -128,14 +96,6 @@ jobs:
       run: docker load -i panda_local.tar.gz
     # Given a container with PANDA installed at /panda, run the taint tests
     - name: Update
-<<<<<<< HEAD
-      run: sudo apt-get update -y
-    - name: Install ssl
-      run: sudo apt-get install -y wget
-    - name: Run taint tests inside current container
-      run: >-
-        wget -q https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow -o wheezy_panda2.qcow2;
-=======
       run: sudo apt-get -qq update -y
     - name: Install ssl
       run: sudo apt-get -qq install -y wget
@@ -143,16 +103,11 @@ jobs:
       if: matrix.test_type == 'taint'
       run: >-
         wget -q -O wheezy_panda2.qcow2 https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow;
->>>>>>> dev
         wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2;
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
         --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
-<<<<<<< HEAD
-        --rm -t "panda_local:${{ github.sha }}" bash -c
-=======
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
->>>>>>> dev
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
         echo 'Running Record:';
@@ -164,23 +119,8 @@ jobs:
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
-<<<<<<< HEAD
-  sym_trace_tests:
-    if: github.repository  == 'panda-re/panda'
-    runs-on: panda-arc
-    needs: [build_container]
-
-    strategy:
-      matrix:
-        target: [x86_64]
-
-    steps:
-    # Given a container with PANDA installed at /panda, run the taint tests
-    - name: Run symbolic tracing tests inside current container
-=======
     - name: Run PyPanda Tests
       if: matrix.test_type == 'pypanda'
->>>>>>> dev
       run: >-
         wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow;
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
@@ -190,65 +130,15 @@ jobs:
         "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
 
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-<<<<<<< HEAD
-        --rm -t "panda_local:${{ github.sha }}" bash -c
-        "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
-        if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
-
-  make_check:
-    if: github.repository  == 'panda-re/panda'
-    runs-on: panda-arc
-    needs: [build_container]
-
-    strategy:
-      matrix:
-        # See output from `make check-help`: we're just splitting `make check` into all the things it does
-        # so we can run them in parallel: arch-specific qtests, plus a few others
-        target: [check-qtest-x86_64, check-qtest-i386, check-qtest-arm, check-qtest-mips, check-qtest-mipsel, check-qtest-ppc, check-block, check-unit, check-qapi-schema]
-
-    steps:
-    - name: Run Individual QEMU tests
-      run: >-
-        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "panda_local:${{ github.sha }}" bash -c
-        "cd /panda/build && make ${{ matrix.target }}"
-
-  pypanda_tests:
-    if: github.repository  == 'panda-re/panda'
-    runs-on: panda-arc
-    needs: [build_container]
-
-    strategy:
-      matrix:
-        # See output from `make check-help`: we're just splitting `make check` into all the things it does
-        # so we can run them in parallel: arch-specific qtests, plus a few others
-        test_script: [dyn_hooks, copy_test, file_fake, file_hook, generic_tests, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, record_no_snap, sig_suppress]
-
-    steps:
-    - name: Run individual pypanda tests
-      # TODO: pip requirements install here should be moved to Docker image build to save test time
-=======
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
         "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
         if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
     - name: Run make Tests
       if: matrix.test_type == 'make_check'
->>>>>>> dev
       run: >-
         wget https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow;
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
-<<<<<<< HEAD
-        --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
-        -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "panda_local:${{ github.sha }}" bash -c
-        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
-
-  cleanup:
-    # Cleanup after prior jobs finish - even if they fail
-    needs: [taint_tests, sym_trace_tests, make_check, pypanda_tests]
-=======
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
         "cd /panda/build && make check"
@@ -256,7 +146,6 @@ jobs:
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
     needs: [tests]
->>>>>>> dev
     runs-on: panda-arc
     if: always()
 
