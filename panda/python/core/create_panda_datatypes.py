@@ -303,6 +303,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
     define_clean_header(ffi, include_dir + "/proc_start_linux_ppp.h")
+    define_clean_header(ffi, include_dir + "/track_proc_hc_ppp.h")
     define_clean_header(ffi, include_dir + "/forcedexec_ppp.h")
     define_clean_header(ffi, include_dir + "/stringsearch_ppp.h")
     # END PPP headers
@@ -386,6 +387,9 @@ def main(install=False,recompile=True):
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/cosi", "cosi.h"))
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
+
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/track_proc_hc", "track_proc_hc_ppp.h"))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/track_proc_hc", "track_proc_hc.h"))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""from __future__ import print_function
