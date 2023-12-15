@@ -5,14 +5,17 @@ ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-sof
 FROM $BASE_IMAGE as base
 ARG BASE_IMAGE
 
-# Copy dependencies lists into container. Note this
-#  will rarely change so caching should still work well
-COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/ 
+# Copy dependencies lists into container. We copy them all and then do a mv because
+# we need to transform base_image into a windows compatible filename which we can't
+# do in a COPY command.
+COPY ./panda/dependencies/* /tmp
+RUN mv /tmp/$(echo "$BASE_IMAGE" | sed 's/:/_/g')_build.txt /tmp/build_dep.txt && \
+    mv /tmp/$(echo "$BASE_IMAGE" | sed 's/:/_/g')_base.txt /tmp/base_dep.txt
 
 # Base image just needs runtime dependencies
-RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
+RUN [ -e /tmp/base_dep.txt ] && \
     apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl $(cat /tmp/${BASE_IMAGE}_base.txt | grep -o '^[^#]*') && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl $(cat /tmp/base_dep.txt | grep -o '^[^#]*') && \
     apt-get clean
 
 ### BUILD IMAGE - STAGE 2
@@ -20,9 +23,9 @@ FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
 
-RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
+RUN [ -e /tmp/build_dep.txt ] && \
     apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_build.txt | grep -o '^[^#]*') && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
     apt-get clean && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \

@@ -12,7 +12,7 @@ Installation
 --
 Note the PANDARE package provided on pypi only a binary distribution and will certainly only work on `x86_64` hosts as pre-built PANDA libraries from Ubuntu 20.04 are included.
 
-Prior to using pandare **you must install some dependencies**, these are fully described in the code's dependencies folder, i.e., [the list for ubuntu:20.04 is here](https://github.com/panda-re/panda/blob/dev/panda/dependencies/ubuntu:20.04_base.txt). On our development systems, we typically find we just need to install:
+Prior to using pandare **you must install some dependencies**, these are fully described in the code's dependencies folder, i.e., [the list for ubuntu:20.04 is here](https://github.com/panda-re/panda/blob/dev/panda/dependencies/ubuntu_20.04_base.txt). On our development systems, we typically find we just need to install:
 ```
 apt install libvdeplug-dev libpng16-16 libsdl2-2.0-0
 ```
