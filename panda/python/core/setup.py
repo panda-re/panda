@@ -121,7 +121,7 @@ setup(name='pandare',
           'data/pypanda/include/*.h',         # Includes files
           'qcows.json'                        # Generic Images
           ]},
-      install_requires=[ 'cffi>=1.14.3', 'colorama'],
+      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf>=4.25.1'],
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
      )
