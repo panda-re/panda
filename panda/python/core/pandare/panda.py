@@ -157,7 +157,16 @@ class Panda():
         if libpanda_path:
             environ["PANDA_LIB"] = self.libpanda_path = libpanda_path
         else:
-            self.libpanda_path = pjoin(self.get_build_dir(), "{0}-softmmu/libpanda-{0}.so".format(self.arch_name))
+            build_dir = self.get_build_dir()
+            lib_paths = ["libpanda-{0}.so".format(self.arch_name), "{0}-softmmu/libpanda-{0}.so".format(self.arch_name)]
+            # Select the first path that exists - we'll have libpanda-{arch}.so for a system install versus arch-softmmu/libpanda-arch.so for a build
+            for p in lib_paths:
+                if isfile(pjoin(build_dir, p)):
+                    self.libpanda_path = pjoin(build_dir, p)
+                    break
+            else:
+                raise RuntimeError("Couldn't find libpanda-{0}.so in {1} (in either root or {0}-libpanda directory)".format(self.arch_name, build_dir))
+
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
 
         self.ffi = self._do_types_import()
