@@ -18,7 +18,7 @@ import readline
 # seems to work with python's but not vice-versa. This allows for
 # stdio interactions later (e.g., pdb, input())  without segfaults
 
-from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
+from os.path import realpath, exists, abspath, isfile, dirname, isdir, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
 from inspect import signature
@@ -261,7 +261,16 @@ class Panda():
 
     def get_plugin_path(self):
         if self.plugin_path is None:
-            self.plugin_path = pjoin(*[self.get_build_dir(), self.arch_name+"-softmmu", "panda", "plugins"])
+            build_dir = self.get_build_dir()
+            rel_dir = pjoin(*[build_dir, self.arch_name+"-softmmu", "panda", "plugins"])
+
+            if build_dir == "/usr/local/bin/":
+                # Installed - use /usr/local/lib/panda/plugins
+                self.plugin_path = f"/usr/local/lib/panda/{self.arch_name}"
+            elif isdir(rel_dir):
+                self.plugin_path = rel_dir
+            else:
+                raise ValueError(f"Could not find plugin path. Build dir={build_dir}")
         return self.plugin_path
 
     def get_build_dir(self):
