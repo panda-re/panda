@@ -35,8 +35,12 @@ PANDAENDCOMMENT */
 #include "panda/rr/rr_api.h"
 #include "panda/callbacks/cb-trampolines.h"
 
-#define LIBRARY_DIR "/" TARGET_NAME "-softmmu/libpanda-" TARGET_NAME ".so"
+#define SOFTMMU_DIR "/" TARGET_NAME "-softmmu"
+#define LIBRARY_NAME "/libpanda-" TARGET_NAME ".so"
 #define PLUGIN_DIR "/" TARGET_NAME "-softmmu/panda/plugins/"
+
+#define INSTALL_PLUGIN_DIR "/usr/local/lib/panda/"
+#define INSTALL_BIN_DIR "/usr/local/bin/" // libpanda-arch.so and panda-system-arch in here
 
 const gchar *panda_bool_true_strings[] =  {"y", "yes", "true", "1", NULL};
 const gchar *panda_bool_false_strings[] = {"n", "no", "false", "0", NULL};
@@ -121,31 +125,54 @@ static void *try_open_libpanda(const char *panda_lib) {
 
 // When running as a library, load libpanda
 static bool load_libpanda(void) {
-
-    const char *panda_lib = g_getenv("PANDA_LIB");
+    const char *panda_lib = g_getenv("PANDA_LIB"); // Direct path to libpanda
+    const char *lib_dir = g_getenv("PANDA_DIR"); // Path to directory containing libpanda
     void *libpanda;
+    // We'll search through paths for libpanda. As soon as we find a valid path, we'll call try_open_libpanda on it
+    // First: if we have PANDA_LIB set, try that.
+    // Next, if we have LIB_DIR set, try to load from there.
+    // Next, try loading from standard /usr/local/bin/libpanda-arch.so
+    // Finally try the hacky dlopen code that will be removed soon
 
-    if(panda_lib != NULL) {
-        libpanda = try_open_libpanda(panda_lib);
-    } else {
-#ifndef LIBRARY_DIR
-        assert(0 && "LIBRARY_DIR undefined, but library mode is enabled - Unsupported architecture?");
-        LOG_ERROR(PANDA_MSG_FMT "LIBRARY_DIR not defined\n", PANDA_CORE_NAME);
-#endif
-        const char *lib_dir = g_getenv("PANDA_DIR");
-
-        if (lib_dir != NULL) {
-            panda_lib = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
-        } else {
-            LOG_WARNING(PANDA_MSG_FMT "WARNING: using hacky dlopen code that will be removed soon\n", PANDA_CORE_NAME);
-            panda_lib = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
+	// Try PANDA_LIB
+    if (panda_lib != NULL) {
+        if (g_file_test(panda_lib, G_FILE_TEST_EXISTS)) {
+            libpanda = try_open_libpanda(panda_lib);
+            return libpanda != NULL;
         }
+    }
 
-        libpanda = try_open_libpanda(panda_lib);
+	// Try relative to PANDA_DIR
+    if (lib_dir != NULL) {
+        panda_lib = g_strdup_printf("%s%s%s", lib_dir, SOFTMMU_DIR, LIBRARY_NAME);
+        if (g_file_test(panda_lib, G_FILE_TEST_EXISTS)) {
+            libpanda = try_open_libpanda(panda_lib);
+            g_free((char *)panda_lib);
+            return libpanda != NULL;
+        }
         g_free((char *)panda_lib);
     }
 
-    return libpanda != NULL;
+    // Try standard install location
+    panda_lib = g_strdup_printf("%s%s", INSTALL_BIN_DIR, LIBRARY_NAME);
+    if (g_file_test(panda_lib, G_FILE_TEST_EXISTS)) {
+        libpanda = try_open_libpanda(panda_lib);
+        g_free((char *)panda_lib);
+        return libpanda != NULL;
+    }
+    g_free((char *)panda_lib);
+
+    // XXX terrible hack: relative path to build directory from the binary(?)
+    panda_lib = g_strdup_printf("../../../build/%s%s", SOFTMMU_DIR, LIBRARY_NAME);
+    if (g_file_test(panda_lib, G_FILE_TEST_EXISTS)) {
+        LOG_WARNING(PANDA_MSG_FMT "WARNING: using hacky dlopen code that will be removed soon\n", PANDA_CORE_NAME);
+        libpanda = try_open_libpanda(panda_lib);
+        g_free((char *)panda_lib);
+        return libpanda != NULL;
+    }
+    g_free((char *)panda_lib);
+
+    return false;
 }
 
 // Internal: remove a plugin from the global array panda_plugins
@@ -287,6 +314,7 @@ extern const char *qemu_file;
 //
 //   - Relative to the PANDA_DIR environment variable.
 //   - Relative to the QEMU binary
+//   - Relative to the standard install location (/usr/local/lib/panda/[arch]/)
 //   - Relative to the install prefix directory.
 char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* name){
     char *plugin_path, *name_formatted;
@@ -319,6 +347,15 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
         return plugin_path;
     }
     g_free(plugin_path);
+
+
+    // Third, check relative to the standard install location.
+    plugin_path = attempt_normalize_path(
+        g_strdup_printf("%s/%s/%s", INSTALL_PLUGIN_DIR,
+                        TARGET_NAME, name_formatted));
+    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+        return plugin_path;
+    }
 
     // Finally, try relative to the installation path.
     plugin_path = attempt_normalize_path(
