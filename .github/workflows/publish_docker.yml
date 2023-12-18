@@ -30,6 +30,7 @@ jobs:
     - name: Build pandadev:latest
       uses: docker/build-push-action@v5
       with:
+        context: ${{ github.workspace }}
         tags: pandare/pandadev:${{ github.sha }}
         target: developer
 
