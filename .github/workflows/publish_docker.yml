@@ -19,16 +19,15 @@ jobs:
     - name: Install git
       run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
     - name: Checkout PANDA at current commit
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
           fetch-depth: 0
-    #- name: Set up Docker Buildx
-    #  uses: docker/setup-buildx-action@v3
-    #- name: Build panda:latest
-    #  uses: docker/build-push-action@v5
-    #  with:
-    #    tags: pandare/panda:${{ github.sha }}
-    #    target: panda
+    - name: Build panda:latest
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ github.workspace }}
+        tags: pandare/panda:${{ github.sha }}
+        target: panda
     - name: Build pandadev:latest
       uses: docker/build-push-action@v5
       with:
