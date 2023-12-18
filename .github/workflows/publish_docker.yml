@@ -17,7 +17,7 @@ jobs:
         username: pandare
         password: ${{secrets.pandare_dockerhub}}
     - name: Checkout PANDA at current commit
-      uses: actions/checkout@v4
+      uses: actions/checkout@v2
       with:
           fetch-depth: 0
     #- name: Set up Docker Buildx
