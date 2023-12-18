@@ -37,6 +37,7 @@ osi_test
 pc_search
 pri
 pri_dwarf
+dwarf2
 pri_simple
 proc_start_linux
 proc_trace
