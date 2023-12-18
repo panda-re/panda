@@ -26,8 +26,8 @@ extern "C" {
 #include "pri/pri.h"
 
 // needed for accessing type information on linux/elf based systems
-#include "pri_dwarf/pri_dwarf_types.h"
-#include "pri_dwarf/pri_dwarf_ext.h"
+#include "dwarf2/dwarf2_types.h"
+#include "dwarf2/dwarf2_ext.h"
 
 #include "callstack_instr/callstack_instr_ext.h"
 
@@ -99,8 +99,8 @@ void print_membytes(CPUState *env, target_ulong a, target_ulong len) {
 }
 
 // max length of strnlen or taint query
-#define LAVA_TAINT_QUERY_MAX_LEN 64U
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#define LAVA_TAINT_QUERY_MAX_LEN (target_ulong)64ULL
+#if defined(TARGET_I386)
 void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, const char *astnodename) {
     // can't do a taint query if it is not a valid register (loc) or if
     // the buf_len is greater than the register size (assume size of guest pointer)
@@ -127,7 +127,7 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     }
 
     uint8_t bytes[LAVA_TAINT_QUERY_MAX_LEN] = {0};
-    uint32_t len = std::min(buf_len, LAVA_TAINT_QUERY_MAX_LEN);
+    target_ulong len = std::min(buf_len, LAVA_TAINT_QUERY_MAX_LEN);
     if (is_strnlen) {
         panda_physical_memory_read(phys, bytes, LAVA_TAINT_QUERY_MAX_LEN);
         for (int i = 0; i < LAVA_TAINT_QUERY_MAX_LEN; i++) {
@@ -137,7 +137,7 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
             }
         }
         // Only include extent of string (but at least 32 bytes).
-        len = std::max(32U, len);
+        len = std::max((target_ulong)32ULL, len);
     }
 
     // don't cross page boundaries.
@@ -217,7 +217,7 @@ struct args {
     unsigned ast_loc_id;
 };
 
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
 void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
     if (!taint2_enabled())
         return;
@@ -230,7 +230,7 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
             return;
         }
     }
-    const char *var_ty = dwarf_type_to_string((DwarfVarType *) var_ty_void);
+    const char *var_ty = dwarf2_type_to_string((DwarfVarType *) var_ty_void);
     // restore args
     struct args *args = (struct args *) in_args;
     CPUState *pfun_cpu = args->cpu;
@@ -246,12 +246,12 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     switch (loc_t){
         case LocReg:
             dprintf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
-            dwarf_type_iter(pfun_cpu, loc, loc_t, (DwarfVarType *) var_ty_void, lava_taint_query, 3);
+            dwarf2_type_iter(pfun_cpu, loc, loc_t, (DwarfVarType *) var_ty_void, lava_taint_query, 3);
             break;
         case LocMem:
             if (debug)
                 printf("VAR MEM:   %s %s @ 0x" TARGET_FMT_lx "\n", var_ty, var_nm, loc);
-            dwarf_type_iter(pfun_cpu, loc, loc_t, (DwarfVarType *) var_ty_void, lava_taint_query, 3);
+            dwarf2_type_iter(pfun_cpu, loc, loc_t, (DwarfVarType *) var_ty_void, lava_taint_query, 3);
             break;
         case LocConst:
             //printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
@@ -352,7 +352,7 @@ void on_taint_change(Addr a, uint64_t size){
 */
 bool init_plugin(void *self) {
 
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     panda_arg_list *args = panda_get_args("pri_taint");
     hypercall_taint = panda_parse_bool_opt(args, "hypercall", "Register tainting on a panda hypercall callback");
     linechange_taint = panda_parse_bool_opt(args, "linechange", "Register tainting on every line change in the source code (default)");
@@ -364,8 +364,8 @@ bool init_plugin(void *self) {
     assert(init_callstack_instr_api());
     panda_require("pri");
     assert(init_pri_api());
-    panda_require("pri_dwarf");
-    assert(init_pri_dwarf_api());
+    panda_require("dwarf2");
+    assert(init_dwarf2_api());
 
     panda_require("taint2");
     assert(init_taint2_api());
