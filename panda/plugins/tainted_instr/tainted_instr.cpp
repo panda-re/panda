@@ -20,7 +20,6 @@ extern "C" {
 }
 
 #include "panda/plugin.h"
-
 #include "taint2/taint2.h"
 
 extern "C" {
@@ -37,102 +36,103 @@ extern "C" {
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
 void taint_change(void);
-
 }
 
-
-bool summary = false;
-uint64_t num_tainted_instr = 0;
-uint64_t num_tainted_instr_observed = 0;
-bool replay_ended = false;
-
-#include <map>
-#include <set>
+static bool summary = false;
+static uint64_t num_tainted_instr = 0;
+static uint64_t num_tainted_instr_observed = 0;
+static bool replay_ended = false;
+static bool suppress_redundant_taint_reports = false;
 
 // map from asid -> pc
-std::map<uint64_t,std::set<uint64_t>> tainted_instr;
+static std::map<uint64_t,std::set<uint64_t>> tainted_instr;
 
-target_ulong last_asid = 0;
-target_ulong last_pc = 0;
+static target_ulong last_asid = 0;
+static target_ulong last_pc = 0;
 
 void taint_change(Addr a, uint64_t size) {
     if (replay_ended) return;
-    if (!replay_ended 
-        && num_tainted_instr != 0 
-        && (num_tainted_instr_observed == num_tainted_instr)) {
+
+    if ((num_tainted_instr != 0)
+            && (num_tainted_instr_observed == num_tainted_instr)) {
         // analysis complete
         printf ("tainted_instr ending early -- seen enough\n");
         panda_replay_end();
         replay_ended = true;
         return;
     }
+
     CPUState *env = first_cpu; // cpu_single_env;
     target_ulong asid = panda_current_asid(env);
     target_ulong pc = panda_current_pc(env);
+
+    if((!pandalog) && suppress_redundant_taint_reports &&
+            (last_asid == asid) && (last_pc == pc)) {
+        return;
+    }
+
     uint32_t num_tainted = 0;
     for (uint32_t i=0; i<size; i++) {
         a.off = i;
-        num_tainted += (taint2_query(a) != 0);
+        if((num_tainted += (taint2_query(a) != 0)) && (!pandalog)) break;
     }
-    if (num_tainted > 0) {            
+
+    if (num_tainted > 0) {
         if (summary) {
             tainted_instr[asid].insert(pc);
-        }
-        else {
-            if (pandalog) {
-                Panda__TaintedInstr *ti = (Panda__TaintedInstr *) malloc(sizeof(Panda__TaintedInstr));
-                *ti = PANDA__TAINTED_INSTR__INIT;
-                ti->call_stack = pandalog_callstack_create();
-                ti->n_taint_query = num_tainted;
-                ti->taint_query = (Panda__TaintQuery **) malloc (sizeof(Panda__TaintQuery *) * num_tainted);
-                uint32_t j = 0;
-                for (uint32_t i=0; i<size; i++) {
-                    a.off = i;
-                    if (taint2_query(a)) {
-                        ti->taint_query[j++] = taint2_query_pandalog(a, 0);
-                    }
+        } else if (pandalog) {
+            Panda__TaintedInstr *ti = (Panda__TaintedInstr *) malloc(sizeof(Panda__TaintedInstr));
+            *ti = PANDA__TAINTED_INSTR__INIT;
+            ti->call_stack = pandalog_callstack_create();
+            ti->n_taint_query = num_tainted;
+            ti->taint_query = (Panda__TaintQuery **) malloc (sizeof(Panda__TaintQuery *) * num_tainted);
+            uint32_t j = 0;
+            for (uint32_t i=0; i<size; i++) {
+                a.off = i;
+                if (taint2_query(a)) {
+                    ti->taint_query[j++] = taint2_query_pandalog(a, 0);
                 }
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.tainted_instr = ti;
-                if (pandalog) {
-                    pandalog_write_entry(&ple);
-                }
-                pandalog_callstack_free(ti->call_stack);
-                for (uint32_t i=0; i<num_tainted; i++) {
-                    pandalog_taint_query_free(ti->taint_query[i]);
-                }
-                free(ti);
             }
-            else {
-                printf ("  pc = 0x%" PRIx64 "\n", (uint64_t) pc);
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.tainted_instr = ti;
+            pandalog_write_entry(&ple);
+            pandalog_callstack_free(ti->call_stack);
+            for (uint32_t i=0; i<num_tainted; i++) {
+                pandalog_taint_query_free(ti->taint_query[i]);
             }
+            free(ti->taint_query);
+            free(ti);
+        } else {
+            static char buf[32];
+            if(pc != last_pc) {
+                snprintf (buf, sizeof(buf), "  pc = 0x" TARGET_FMT_lx, pc);
+            }
+            puts(buf);
         }
+
         if (asid != last_asid) {
             if (pandalog) {
                 Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
                 ple.has_asid = 1;
                 ple.asid = asid;
-                if (pandalog) {
-                    pandalog_write_entry(&ple);
-                }
+                pandalog_write_entry(&ple);
             }
             num_tainted_instr_observed++;
-        }
-        else if (pc != last_pc) {
+            last_asid = asid;
+            last_pc = pc;
+        } else if (pc != last_pc) {
             num_tainted_instr_observed++;
             if (0 == (num_tainted_instr_observed % 1000))
                 printf ("%" PRId64 " tainted instr observed\n", num_tainted_instr_observed);
+            last_pc = pc;
         }
 
         // a taint delete on tainted data will cause a taint change event
         // thus, do not say we've seen a tainted 'instruction' unless the data
         // really was tainted
-        last_asid = asid;
-        last_pc = pc;
     }
 }
 
@@ -144,6 +144,7 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("tainted_instr");
     summary = panda_parse_bool_opt(args, "summary", "summary tainted instruction info");
     num_tainted_instr = panda_parse_uint64_opt(args, "num", 0, "number of tainted instructions to log or summarize");
+    suppress_redundant_taint_reports = panda_parse_bool_opt(args, "suppress_redundant_taint_reports", "don't output redundant taint change reports (only valid when not pandalogging)");
     if (summary) printf ("tainted_instr summary mode\n");
     else printf ("tainted_instr full mode\n");
     PPP_REG_CB("taint2", on_taint_change, taint_change);
@@ -168,8 +169,7 @@ void uninit_plugin(void *self) {
                     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
                     ple.tainted_instr_summary = tis;
                     pandalog_write_entry(&ple);
-                }
-                else {
+                } else {
                     printf ("  pc=0x%" PRIx64 "\n", (uint64_t) pc);
                 }
             }
