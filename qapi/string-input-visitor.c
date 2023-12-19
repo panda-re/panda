@@ -252,7 +252,7 @@ static void parse_type_uint64(Visitor *v, const char *name, uint64_t *obj,
                               Error **errp)
 {
     /* FIXME: parse_type_int64 mishandles values over INT64_MAX */
-    int64_t i;
+    int64_t i=0;
     Error *err = NULL;
     parse_type_int64(v, name, &i, &err);
     if (err) {
