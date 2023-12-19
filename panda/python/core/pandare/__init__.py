@@ -21,7 +21,7 @@ try:
     from .plog_reader import PLogReader
 except ImportError:
     # plog reader isn't widely used - let's make this optional
-    PlogReader = None
+    PLogReader = None
 
 __all__ = ['Panda', 'PLogReader', 'Callbacks', 'PyPlugin']
 
