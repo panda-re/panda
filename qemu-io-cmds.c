@@ -2197,7 +2197,7 @@ static void help_oneline(const char *cmd, const cmdinfo_t *ct)
     if (cmd) {
         printf("%s ", cmd);
     } else {
-        printf("%s ", ct->name);
+        printf("%s ", ct->name ? ct->name : "(ct->name==NULL!)");
         if (ct->altname) {
             printf("(or %s) ", ct->altname);
         }
