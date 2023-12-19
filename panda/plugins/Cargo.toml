@@ -1,0 +1,9 @@
+[workspace]
+members = [
+	"gdb",
+	"rust_skeleton",
+	"cosi_strace",
+	"cosi",
+	"cosi/volatility_profile",
+	"snake_hook",
+]
