@@ -1,0 +1,42 @@
+{
+  "nodes": {
+    "libosi-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1693574302,
+        "narHash": "sha256-rHbfp1llyVEvHw+sz+rCmx9DrR/e1nnJYRidhPM3jZY=",
+        "owner": "panda-re",
+        "repo": "libosi",
+        "rev": "c68bafdb7e2a4d83128ae6ba0f5f70e28318eda0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "panda-re",
+        "repo": "libosi",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1699725108,
+        "narHash": "sha256-NTiPW4jRC+9puakU4Vi8WpFEirhp92kTOSThuZke+FA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "911ad1e67f458b6bcf0278fa85e33bb9924fed7e",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "root": {
+      "inputs": {
+        "libosi-src": "libosi-src",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
