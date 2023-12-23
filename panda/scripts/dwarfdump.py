@@ -20,9 +20,9 @@ def parse_die(ent):
                 result[attr] = v
     return result
 
-def parse_section(fd):
+def parse_section(indat):
     result = {'.debug_line': [], '.debug_info': []}
-    data = fd.read().strip().split('\n')
+    data = indat.strip().split('\n')
     for l in data:
         l = l.strip()
         if l.startswith("0x"):
@@ -48,7 +48,6 @@ def reprocess_ops(ops):
             out.append(op)
     return out
 
-reloc_base = 0
 
 class TypeDB(object):
     def __init__(self):
@@ -105,10 +104,10 @@ class LineDB(object):
         for srcfn in self.data:
             for i in range(len(self.data[srcfn])):
                 if self.data[srcfn][i].lowpc == base_addr:
-                    srcinfo = (srcfn, lno)
+                    srcinfo = (srcfn, self.data[srcfn][i].lno)
                 if self.data[srcfn][i].lowpc >= base_addr \
                         and self.data[srcfn][i].highpc < end_addr:
-                    line_info.data[srcfn][i].func = finfo.scope.lowpc
+                    self.data[srcfn][i].func = finfo.scope.lowpc
         return srcinfo
 
     def jsondump(self):
@@ -149,10 +148,6 @@ class FunctionDB(object):
             jout[cu] = [f.jsondump() for f in self.data[cu]]
         return json.dumps(jout)
 
-line_info = LineDB()
-globvar_info = GlobVarDB()
-func_info = FunctionDB()
-type_info = TypeDB()
 
 class VarInfo(object):
     def __init__(self, name, cu_off):
@@ -207,12 +202,14 @@ class StructType(TypeInfo):
         self.children = {}  # <member_offset: (name, type_offset)>
 
     def jsondump(self):
-        return TypeInfo.jsondump(self) | {
+        d = TypeInfo.jsondump(self)
+        d.update({
                 'tag': 'StructType',
                 'size': self.size,
                 'cu_off': self.cu_off,
                 'children': self.children,
-                }
+                })
+        return d
 
 class BaseType(TypeInfo):
     def __init__(self, name, size):
@@ -220,10 +217,12 @@ class BaseType(TypeInfo):
         self.size = size
 
     def jsondump(self):
-        return TypeInfo.jsondump(self) | {
+        d = TypeInfo.jsondump(self)
+        d.update({
                 'tag': 'BaseType',
                 'size': self.size,
-                }
+                })
+        return d
 
 class SugarType(TypeInfo):
     def __init__(self, name, cu_off):
@@ -232,11 +231,13 @@ class SugarType(TypeInfo):
         self.ref = None
 
     def jsondump(self):
-        return TypeInfo.jsondump(self) | {
+        d = TypeInfo.jsondump(self)
+        d.update({
                 'tag': 'SugarType',
                 'cu_off': self.cu_off,
                 'ref': self.ref,
-                }
+                })
+        return d
 
 class PointerType(SugarType):
     def __init__(self, name, cu_off, target):
@@ -244,9 +245,11 @@ class PointerType(SugarType):
         self.ref = target
 
     def jsondump(self):
-        return SugarType.jsondump(self) | {
+        d = SugarType.jsondump(self)
+        d.update({
                 'tag': 'PointerType',
-                }
+                })
+        return d
 
 class ArrayType(SugarType):
     def __init__(self, name, cu_off, elemty):
@@ -255,10 +258,12 @@ class ArrayType(SugarType):
         self.range = []
 
     def jsondump(self):
-        return SugarType.jsondump(self) | {
+        d = SugarType.jsondump(self)
+        d.update({
                 'tag': 'ArrayType',
                 'range': self.range,
-                }
+                })
+        return d
 
 class ArrayRangeType(SugarType):
     def __init__(self, name, cu_off, rtype, cnt):
@@ -267,10 +272,12 @@ class ArrayRangeType(SugarType):
         self.size = cnt
 
     def jsondump(self):
-        return SugarType.jsondump(self) | {
+        d = SugarType.jsondump(self)
+        d.update({
                 'tag': 'ArrayRangeType',
                 'size': self.size,
-                }
+                })
+        return d
 
 class EnumType(TypeInfo):
     def __init__(self, name, size):
@@ -278,19 +285,23 @@ class EnumType(TypeInfo):
         self.size = size
 
     def jsondump(self):
-        return TypeInfo.jsondump(self) | {
+        d = TypeInfo.jsondump(self)
+        d.update({
                 'tag': 'EnumType',
                 'size': self.size,
-                }
+                })
+        return d
 
 class SubroutineType(TypeInfo):
     def __init__(self, name):
         TypeInfo.__init__(self, name)
 
     def jsondump(self):
-        return TypeInfo.jsondump(self) | {
+        d = TypeInfo.jsondump(self)
+        d.update({
                 'tag': 'SubroutineType',
-                }
+                })
+        return d
 
 class UnionType(TypeInfo):
     def __init__(self, name, cu_off, size):
@@ -300,12 +311,14 @@ class UnionType(TypeInfo):
         self.children = {}  # <member_offset: (name, type_offset)>
 
     def jsondump(self):
-        return TypeInfo.jsondump(self) | {
+        d = TypeInfo.jsondump(self)
+        d.update({
                 'tag': 'UnionType',
                 'size': self.size,
                 'cu_off': self.cu_off,
                 'children': self.children,
-                }
+                })
+        return d
 
 class Scope(object):
     def __init__(self, lopc, hipc):
@@ -332,8 +345,14 @@ class LineRange(object):
                 'func': self.func,
                 }
 
-with open(sys.argv[1], 'r') as fd:
-    data = parse_section(fd)
+def parse_dwarfdump(indat, prefix=""):
+    reloc_base = 0
+    line_info = LineDB()
+    globvar_info = GlobVarDB()
+    func_info = FunctionDB()
+    type_info = TypeDB()
+
+    data = parse_section(indat)
     tag = ".debug_line"
     if tag in data:
         srcname = ""
@@ -431,7 +450,7 @@ with open(sys.argv[1], 'r') as fd:
                     x = x.strip()
                     if not x:
                         continue
-                    v.loc_op.extend(f'DW_OP_{x}'.split())
+                    v.loc_op.extend('DW_OP_{}'.format(x).split())
                 v.loc_op = reprocess_ops(v.loc_op)
                 assert ('DW_AT_type' in res)
                 v.type = int(res['DW_AT_type'], 16)
@@ -459,7 +478,7 @@ with open(sys.argv[1], 'r') as fd:
                     x = x.strip()
                     if not x:
                         continue
-                    v.loc_op.extend(f'DW_OP_{x}'.split())
+                    v.loc_op.extend('DW_OP_{}'.format(x).split())
                 v.loc_op = reprocess_ops(v.loc_op)
                 assert ('DW_AT_type' in res)
                 v.type = int(res['DW_AT_type'], 16)
@@ -521,7 +540,7 @@ with open(sys.argv[1], 'r') as fd:
                 toff = int(res['DW_AT_type'], 16)
 
                 assert ('DW_AT_data_member_location' in res)
-                loc_op = [f'DW_OP_{x.strip()}' for x in \
+                loc_op = ['DW_OP_{}'.format(x.strip()) for x in \
                         res['DW_AT_data_member_location'].split(':')[-1].strip().split('DW_OP_')[1:]]
                 # Signal attribute form DW_FORM_data1/2/4/8
                 assert (len(loc_op) == 1)
@@ -633,15 +652,18 @@ with open(sys.argv[1], 'r') as fd:
             elif tname == "DW_TAG_constant":
                 pass
 
+    with open(prefix+'_lineinfo.json', 'w') as fd:
+        dump_json(fd, line_info)
+    with open(prefix+'_globvar.json', 'w') as fd:
+        dump_json(fd, globvar_info)
+    with open(prefix+'_funcinfo.json', 'w') as fd:
+        dump_json(fd, func_info)
+    with open(prefix+'_typeinfo.json', 'w') as fd:
+        dump_json(fd, type_info)
 
 def dump_json(j, info):
     json.dump(info.jsondump(), j)
 
-with open('lineinfo.json', 'w') as fd:
-    dump_json(fd, line_info)
-with open('globvar.json', 'w') as fd:
-    dump_json(fd, globvar_info)
-with open('funcinfo.json', 'w') as fd:
-    dump_json(fd, func_info)
-with open('typeinfo.json', 'w') as fd:
-    dump_json(fd, type_info)
+if __name__ == '__main__':
+    with open(sys.argv[1], 'r') as fd:
+        parse_dwarfdump(fd.read())
