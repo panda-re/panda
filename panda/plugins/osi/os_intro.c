@@ -180,9 +180,16 @@ OsiThread *get_current_thread(CPUState *cpu) {
     if((cachedInstructionCount != 0) &&
             (cachedInstructionCount == cpu->rr_guest_instr_count)) {
         thread=(OsiThread *) g_malloc(sizeof(*thread));
+        if (thread == NULL) {
+            return NULL;
+        }
         memcpy(thread, &cachedThread, sizeof(*thread));
     } else {
         PPP_RUN_CB(on_get_current_thread, cpu, &thread);
+        if (thread == NULL) {
+            // Returns NULL if OSI can't find the current thread
+            return NULL;
+        }
         cachedInstructionCount = cpu->rr_guest_instr_count;
         memcpy(&cachedThread, thread, sizeof(cachedThread));
     }
