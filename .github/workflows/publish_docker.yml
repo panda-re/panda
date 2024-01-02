@@ -25,12 +25,14 @@ jobs:
     - name: Build panda:latest
       uses: docker/build-push-action@v5
       with:
+        push: true
         context: ${{ github.workspace }}
         tags: pandare/panda:${{ github.sha }}
         target: panda
     - name: Build pandadev:latest
       uses: docker/build-push-action@v5
       with:
+        push: true
         context: ${{ github.workspace }}
         tags: pandare/pandadev:${{ github.sha }}
         target: developer
