@@ -27,14 +27,14 @@ jobs:
       with:
         push: true
         context: ${{ github.workspace }}
-        tags: pandare/panda:${{ github.sha }}
+        tags: pandare/panda:${{ github.sha }}, pandare/panda:latest
         target: panda
     - name: Build pandadev:latest
       uses: docker/build-push-action@v5
       with:
         push: true
         context: ${{ github.workspace }}
-        tags: pandare/pandadev:${{ github.sha }}
+        tags: pandare/pandadev:${{ github.sha }}, pandare/pandadev:latest
         target: developer
 
     - name: Checkout docs and reset
