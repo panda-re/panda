@@ -316,6 +316,7 @@ extern const char *qemu_file;
 //   - Relative to the QEMU binary
 //   - Relative to the standard install location (/usr/local/lib/panda/[arch]/)
 //   - Relative to the install prefix directory.
+//   - In the directories in the PANDA_PLUGIN_PATH environment variable.
 char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* name){
     char *plugin_path, *name_formatted;
     // makes "taint2" -> "panda_taint2"
@@ -357,7 +358,7 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
         return plugin_path;
     }
 
-    // Finally, try relative to the installation path.
+    // Fourth, try relative to the installation path.
     plugin_path = attempt_normalize_path(
         g_strdup_printf("%s/%s/%s", CONFIG_PANDA_PLUGINDIR,
                         TARGET_NAME, name_formatted));
@@ -365,6 +366,20 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
         return plugin_path;
     }
     g_free(plugin_path);
+
+    // Finally, try the directories in PANDA_PLUGIN_PATH
+    gchar **panda_plugin_path = g_strsplit(g_getenv("PANDA_PLUGIN_PATH"), ":", -1);
+    for (gchar **dir = panda_plugin_path; *dir; dir++) {
+        gchar *plugin_path = attempt_normalize_path(g_strdup_printf(
+                                    "%s/panda/plugins/%s", *dir,
+                                    name_formatted));
+        if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+            g_strfreev(panda_plugin_path);
+            return plugin_path;
+        }
+        g_free(plugin_path);
+    }
+    g_strfreev(panda_plugin_path);
 
     // Return null if plugin resolution failed.
     return NULL;
