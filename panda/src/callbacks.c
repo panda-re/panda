@@ -371,7 +371,7 @@ char* resolve_file_from_plugin_directory(const char* file_name_fmt, const char* 
     gchar **panda_plugin_path = g_strsplit(g_getenv("PANDA_PLUGIN_PATH"), ":", -1);
     for (gchar **dir = panda_plugin_path; *dir; dir++) {
         gchar *plugin_path = attempt_normalize_path(g_strdup_printf(
-                                    "%s/panda/plugins/%s", *dir,
+                                    "%s/%s", *dir,
                                     name_formatted));
         if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
             g_strfreev(panda_plugin_path);
