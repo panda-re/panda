@@ -65,7 +65,8 @@ class TypeDB(object):
             jout[cu] = {}
             for off in self.data[cu]:
                 jout[cu][off] = self.data[cu][off].jsondump()
-        return json.dumps(jout)
+        #return json.dumps(jout)
+        return jout
 
 class LineDB(object):
     def __init__(self):
@@ -113,10 +114,16 @@ class LineDB(object):
     def jsondump(self):
         jout = {}
         for srcfn in self.data:
+            key = srcfn
+            while srcfn[0] in ['"', "'"]:
+                srcfn = srcfn[1:]
+            while srcfn[-1] in ['"', "'"]:
+                srcfn = srcfn[:-1]
             jout[srcfn] = []
-            for lr in self.data[srcfn]:
+            for lr in self.data[key]:
                 jout[srcfn].append(lr.jsondump())
-        return json.dumps(jout)
+        #return json.dumps(jout)
+        return jout
 
 class GlobVarDB(object):
     def __init__(self):
@@ -131,7 +138,8 @@ class GlobVarDB(object):
         jout = {}
         for cu in self.data:
             jout[cu] = [f.jsondump() for f in self.data[cu]]
-        return json.dumps(jout)
+        #return json.dumps(jout)
+        return jout
 
 class FunctionDB(object):
     def __init__(self):
@@ -146,7 +154,8 @@ class FunctionDB(object):
         jout = {}
         for cu in self.data:
             jout[cu] = [f.jsondump() for f in self.data[cu]]
-        return json.dumps(jout)
+        #return json.dumps(jout)
+        return jout
 
 
 class VarInfo(object):
@@ -372,6 +381,7 @@ def parse_dwarfdump(indat, prefix=""):
                 col = int(lnostr.strip().split(',')[1])
                 line_info.insert(srcfn, lno, col, addr)
 
+    type_overlay = None
     cu_off = None
     lvl_stack = []
     scope_stack = []
@@ -424,6 +434,14 @@ def parse_dwarfdump(indat, prefix=""):
 
             if lvl != lvl_stack[-1][0] and lvl != (lvl_stack[-1][0]+1):
                 continue
+
+            if lvl_stack[-1][1] in ['SugarType', 'DW_TAG_pointer_type']:
+                assert (lvl == lvl_stack[-1][0])
+                lvl_stack.pop()
+                assert (type_overlay)
+                type_overlay[2].ref = idx
+                type_info.insert(type_overlay[0], type_overlay[1], type_overlay[2])
+                type_overlay = None
 
             if tname == "DW_TAG_lexical_block":
                 assert ('DW_AT_low_pc' in res)
@@ -596,6 +614,8 @@ def parse_dwarfdump(indat, prefix=""):
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
 
                 if 'DW_AT_type' not in res:
+                    lvl_stack.append((lvl, 'DW_TAG_pointer_type'))
+                    type_overlay = (cu_off, idx, PointerType(name, cu_off, None))
                     continue
                 target = int(res['DW_AT_type'], 16)
 
@@ -623,6 +643,8 @@ def parse_dwarfdump(indat, prefix=""):
                 t = SugarType(name, cu_off)
 
                 if 'DW_AT_type' not in res:
+                    lvl_stack.append((lvl, 'SugarType'))
+                    type_overlay = (cu_off, idx, t)
                     continue
                 t.ref = int(res['DW_AT_type'], 16)
 
@@ -662,7 +684,13 @@ def parse_dwarfdump(indat, prefix=""):
         dump_json(fd, type_info)
 
 def dump_json(j, info):
-    json.dump(info.jsondump(), j)
+    class DwarfJsonEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if hasattr(obj, "jsondump"):
+                return obj.jsondump()
+            else:
+                return json.JSONEncoder.default(self, obj)
+    json.dump(info.jsondump(), j, cls=DwarfJsonEncoder)
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as fd:

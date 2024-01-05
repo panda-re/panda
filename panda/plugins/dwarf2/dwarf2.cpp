@@ -422,6 +422,75 @@ std::map<std::string, DW_OPS> DW_OP_HELPER = {
     ENUM_OPS(T)
 #undef T
 };
+
+#if !defined(TARGET_X86_64)
+static const char *const dwarf_regnames[] =
+{
+    "eax", "ecx", "edx", "ebx",
+    "esp", "ebp", "esi", "edi",
+    "eip", "eflags", NULL,
+    "st0", "st1", "st2", "st3",
+    "st4", "st5", "st6", "st7",
+    NULL, NULL,
+    "xmm0", "xmm1", "xmm2", "xmm3",
+    "xmm4", "xmm5", "xmm6", "xmm7",
+    "mm0", "mm1", "mm2", "mm3",
+    "mm4", "mm5", "mm6", "mm7",
+    "fcw", "fsw", "mxcsr",
+    "es", "cs", "ss", "ds", "fs", "gs", NULL, NULL,
+    "tr", "ldtr"
+};
+static std::map<std::string, int> dwarf_regmap = {
+    {"eax", R_EAX},
+    {"ecx", R_ECX},
+    {"edx", R_EDX},
+    {"ebx", R_EBX},
+    {"esp", R_ESP},
+    {"ebp", R_EBP},
+    {"esi", R_ESI},
+    {"edi", R_EDI},
+};
+#else
+static const char *const dwarf_regnames[] =
+{
+    "rax", "rdx", "rcx", "rbx",
+    "rsi", "rdi", "rbp", "rsp",
+    "r8",  "r9",  "r10", "r11",
+    "r12", "r13", "r14", "r15",
+    "rip",
+    "xmm0",  "xmm1",  "xmm2",  "xmm3",
+    "xmm4",  "xmm5",  "xmm6",  "xmm7",
+    "xmm8",  "xmm9",  "xmm10", "xmm11",
+    "xmm12", "xmm13", "xmm14", "xmm15",
+    "st0", "st1", "st2", "st3",
+    "st4", "st5", "st6", "st7",
+    "mm0", "mm1", "mm2", "mm3",
+    "mm4", "mm5", "mm6", "mm7",
+    "rflags",
+    "es", "cs", "ss", "ds", "fs", "gs", NULL, NULL,
+    "fs.base", "gs.base", NULL, NULL,
+    "tr", "ldtr",
+    "mxcsr", "fcw", "fsw"
+};
+static std::map<std::string, int> dwarf_regmap = {
+    {"rax", R_EAX},
+    {"rdx", R_EDX},
+    {"rcx", R_ECX},
+    {"rbx", R_EBX},
+    {"rsi", R_ESI},
+    {"rdi", R_EDI},
+    {"rbp", R_EBP},
+    {"rsp", R_ESP},
+    {"r8", 8},
+    {"r9", 9},
+    {"r10", 10},
+    {"r11", 11},
+    {"r12", 12},
+    {"r13", 13},
+    {"r14", 14},
+    {"r15", 15},
+};
+#endif
 /* Decode a DW_OP stack program.  Place top of stack in ret_loc.  Push INITIAL
    onto the stack to start.  Return the location type: memory address, register,
    or const value representing value of variable*/
@@ -584,7 +653,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
             case DW_OP_reg30:
             case DW_OP_reg31:
                 //result = getReg (cpu, op - DW_OP_reg0);
-                result = op - DW_OP_reg0;
+                result = dwarf_regmap[dwarf_regnames[op - DW_OP_reg0]];
                 inReg = true;
                 break;
             case DW_OP_regx:
@@ -1482,7 +1551,6 @@ const char *dwarf2_type_to_string ( DwarfVarType *var_ty ){
     std::string argname;
     DwarfTypeInfo *ty = var_ty->type;
     std::string type_name = var_ty->nodename;
-    // initialize tag to DW_TAG_pointer_type to enter the while loop
     while (ty->type == PointerType ||
            ty->type == SugarType ||
            ty->type == EnumType ||
@@ -1539,10 +1607,10 @@ void load_func_info(const char *dbg_prefix,
     Json::Value root;
     reader.parse(fs, root);
 
-    for (auto it = root.begin(); it != root.end(); it++) {
+    for (Json::Value::const_iterator it = root.begin(); it != root.end(); it++) {
         Json::Value cu = it.key();
 
-        for (auto f = it->begin(); f != it->end(); f++) {
+        for (Json::Value::const_iterator f = it->begin(); f != it->end(); f++) {
             lowpc = (*f)["scope"]["lowpc"].asUInt64();
             highpc = (*f)["scope"]["highpc"].asUInt64();
             std::string die_name = (*f)["name"].asString();
@@ -1612,16 +1680,16 @@ void load_func_info(const char *dbg_prefix,
             funct_to_framepointers[lowpc] = (*f)["framebase"];
 
             std::vector<VarInfo> var_list;
-            for (auto v : (*f)["varlist"]) {
-                target_ulong cu = v["cu_offset"].asUInt64();
-                target_ulong vlow = v["scope"]["lowpc"].asUInt64();
-                target_ulong vhigh = v["scope"]["highpc"].asUInt64();
+            for (Json::Value::const_iterator v = (*f)["varlist"].begin(); v!=(*f)["varlist"].end(); v++) {
+                target_ulong cu = (*v)["cu_offset"].asUInt64();
+                target_ulong vlow = (*v)["scope"]["lowpc"].asUInt64();
+                target_ulong vhigh = (*v)["scope"]["highpc"].asUInt64();
                 if (needs_reloc) {
                     vlow += base_address;
                     vhigh += base_address;
                 }
-                var_list.push_back(VarInfo(cu, v["type"].asUInt64(), v["name"].asString(),
-                            vlow, vhigh, v["loc_op"], v["decl_lno"].asUInt64(), basename));
+                var_list.push_back(VarInfo(cu, (*v)["type"].asUInt64(), (*v)["name"].asString(),
+                            vlow, vhigh, (*v)["loc_op"], (*v)["decl_lno"].asUInt64(), basename));
             }
             // Load information about arguments and local variables
             //printf("Loading arguments and variables for %s\n", die_name);
@@ -1648,65 +1716,64 @@ void load_type_info(const char *dbg_prefix, const char *basename, uint64_t base_
     Json::Value root;
     reader.parse(fs, root);
 
-    for (auto it = root.begin(); it != root.end(); it++) {
+    for (Json::Value::const_iterator it = root.begin(); it != root.end(); it++) {
         target_ulong cu = std::stoul(it.key().asString());
-        for (auto ts = it->begin(); ts != it->end(); ts++) {
-            target_ulong off = std::stoul(ts.key().asString());
-            for (auto ty = ts->begin(); ty != ts->end(); ty++) {
-                DwarfType tag = TypeHelper[(*ty)["tag"].asString()];
-                switch (tag) {
-                case StructType:
-                case UnionType:
-                {
-                    AggregateTypeInfo *ti = new AggregateTypeInfo(tag, (*ty)["name"].asString(), (*ty)["size"].asUInt64(), basename, cu);
-                    for (auto c = (*ty)["children"].begin(); c != (*ty)["children"].end(); c++) {
-                        target_ulong memoff = std::stoul(c.key().asString());
-                        std::string memname = (*c)[0].asString();
-                        target_ulong memtype = (*c)[1].asUInt64();
-                        ti->children[memoff] = {memname, memtype};
-                    }
-                    type_map[basename][cu][off] = ti;
+        for (Json::Value::const_iterator ty = it->begin(); ty != it->end(); ty++) {
+            target_ulong off = std::stoul(ty.key().asString());
+            DwarfType tag = TypeHelper[(*ty)["tag"].asString()];
+            switch (tag) {
+            case StructType:
+            case UnionType:
+            {
+                AggregateTypeInfo *ti = new AggregateTypeInfo(tag, (*ty)["name"].asString(), (*ty)["size"].asUInt64(), basename, cu);
+                for (Json::Value::const_iterator c = (*ty)["children"].begin(); c != (*ty)["children"].end(); c++) {
+                    target_ulong memoff = std::stoul(c.key().asString());
+                    std::string memname = (*c)[0].asString();
+                    target_ulong memtype = (*c)[1].asUInt64();
+                    ti->children[memoff] = {memname, memtype};
+                }
+                type_map[basename][cu][off] = ti;
+                break;
+            }
+            case BaseType:
+            case EnumType:
+            {
+                type_map[basename][cu][off] = new DwarfTypeInfo(
+                        tag, (*ty)["name"].asString(), (*ty)["size"].asUInt64(), basename, cu);
+                break;
+            }
+            case SubroutineType:
+            {
+                type_map[basename][cu][off] = new DwarfTypeInfo(
+                        tag, (*ty)["name"].asString(), sizeof(target_ulong), basename, cu);
+                break;
+            }
+            case SugarType:
+            case PointerType:
+            {
+                std::cout << (*ty) <<"\n";
+                type_map[basename][cu][off] = new RefTypeInfo(
+                        tag, (*ty)["name"].asString(), sizeof(target_ulong),
+                        (*ty)["ref"].asUInt64(), basename, cu);
+                break;
+            }
+            case ArrayRangeType:
+            {
+                type_map[basename][cu][off] = new RefTypeInfo(
+                        tag, (*ty)["name"].asString(), (*ty)["size"].asUInt64(),
+                        (*ty)["ref"].asUInt64(), basename, cu);
+                break;
+            }
+            case ArrayType:
+            {
+                ArrayInfo *ai = new ArrayInfo(tag, (*ty)["name"].asString(), (*ty)["ref"].asUInt64(), basename, cu);
+                for (Json::Value::const_iterator r = (*ty)["range"].begin(); r!=(*ty)["range"].end(); r++) {
+                    ai->ranges.push_back(r->asUInt64());
+                }
+                type_map[basename][cu][off] = ai;
+            }
+            default:
                     break;
-                }
-                case BaseType:
-                case EnumType:
-                {
-                    type_map[basename][cu][off] = new DwarfTypeInfo(
-                            tag, (*ty)["name"].asString(), (*ty)["size"].asUInt64(), basename, cu);
-                    break;
-                }
-                case SubroutineType:
-                {
-                    type_map[basename][cu][off] = new DwarfTypeInfo(
-                            tag, (*ty)["name"].asString(), sizeof(target_ulong), basename, cu);
-                    break;
-                }
-                case SugarType:
-                case PointerType:
-                {
-                    type_map[basename][cu][off] = new RefTypeInfo(
-                            tag, (*ty)["name"].asString(), sizeof(target_ulong),
-                            (*ty)["ref"].asUInt64(), basename, cu);
-                    break;
-                }
-                case ArrayRangeType:
-                {
-                    type_map[basename][cu][off] = new RefTypeInfo(
-                            tag, (*ty)["name"].asString(), (*ty)["size"].asUInt64(),
-                            (*ty)["ref"].asUInt64(), basename, cu);
-                    break;
-                }
-                case ArrayType:
-                {
-                    ArrayInfo *ai = new ArrayInfo(tag, (*ty)["name"].asString(), (*ty)["ref"].asUInt64(), basename, cu);
-                    for (auto r : (*ty)["range"]) {
-                        ai->ranges.push_back(r.asUInt64());
-                    }
-                    type_map[basename][cu][off] = ai;
-                }
-                default:
-                        break;
-                }
             }
         }
     }
@@ -1718,10 +1785,10 @@ void load_glob_vars(const char *dbg_prefix, const char *basename, uint64_t base_
     Json::Value root;
     reader.parse(fs, root);
 
-    for (auto it = root.begin(); it != root.end(); it++) {
+    for (Json::Value::const_iterator it = root.begin(); it != root.end(); it++) {
         //Json::Value cu = it.key();
 
-        for (auto v = it->begin(); v != it->end(); v++) {
+        for (Json::Value::const_iterator v = it->begin(); v != it->end(); v++) {
             target_ulong cu = (*v)["cu_offset"].asUInt64();
             target_ulong lowpc = (*v)["scope"]["lowpc"].asUInt64();
             target_ulong highpc = (*v)["scope"]["highpc"].asUInt64();
@@ -1743,7 +1810,7 @@ bool populate_line_range_list(const char *dbg_prefix, const char *basename, uint
     Json::Value root;
     reader.parse(fs, root);
 
-    for (auto it = root.begin(); it != root.end(); it++) {
+    for (Json::Value::const_iterator it = root.begin(); it != root.end(); it++) {
         std::string srcfn = it.key().asString();
         //if ('.' == filenm_line[strlen(filenm_line) - 1] &&
         //        'S' == filenm_line[strlen(filenm_line) - 2]) {
@@ -2096,10 +2163,10 @@ void __livevar_iter(CPUState *cpu,
                     printf(" [livevar_iter] VAR %s in REG %d\n", var_name.c_str(), var_loc);
                     break;
                 case LocMem:
-                    printf(" [livevar_iter] VAR %s in MEM 0x%x\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s in MEM 0x%llx\n", var_name.c_str(), var_loc);
                     break;
                 case LocConst:
-                    printf(" [livevar_iter] VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s CONST VAL %llx\n", var_name.c_str(), var_loc);
                     break;
                 case LocErr:
                     printf(" [livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
