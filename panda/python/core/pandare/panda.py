@@ -263,7 +263,7 @@ class Panda():
         plugin_name_ffi = self.ffi.new("char[]", bytes(plugin_name, "utf-8"))
         plugin_path_ffi = self.libpanda.panda_plugin_path(plugin_name_ffi)
         plugin_path = self.ffi.string(plugin_path_ffi).decode("utf-8")
-        self.libpanda.g_free(plugin_path_ffi)
+        # TODO: self.libpanda.g_free(plugin_path_ffi)
         return self.plugin_path
 
     def get_build_dir(self):
