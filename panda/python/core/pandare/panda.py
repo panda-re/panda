@@ -105,7 +105,7 @@ class Panda():
         self.catch_exceptions=catch_exceptions
         self.qlog = QEMU_Log_Manager(self)
         self.build_dir = None
-        os.environ["PANDA_PLUGIN_PATH"] = f"{plugin_path}:{os.environ['PANDA_PLUGIN_PATH']}"
+        environ["PANDA_PLUGIN_PATH"] = f"{plugin_path}:{environ['PANDA_PLUGIN_PATH']}"
 
         self.serial_unconsumed_data = b''
 
