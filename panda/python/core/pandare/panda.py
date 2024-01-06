@@ -105,7 +105,7 @@ class Panda():
         self.catch_exceptions=catch_exceptions
         self.qlog = QEMU_Log_Manager(self)
         self.build_dir = None
-        self.plugin_path = plugin_path
+        os.environ["PANDA_PLUGIN_PATH"] = f"{plugin_path}:{os.environ["PANDA_PLUGIN_PATH"]}"
 
         self.serial_unconsumed_data = b''
 
@@ -259,18 +259,11 @@ class Panda():
         progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
     # /__init__
 
-    def get_plugin_path(self):
-        if self.plugin_path is None:
-            build_dir = self.get_build_dir()
-            rel_dir = pjoin(*[build_dir, self.arch_name+"-softmmu", "panda", "plugins"])
-
-            if build_dir == "/usr/local/bin/":
-                # Installed - use /usr/local/lib/panda/plugins
-                self.plugin_path = f"/usr/local/lib/panda/{self.arch_name}"
-            elif isdir(rel_dir):
-                self.plugin_path = rel_dir
-            else:
-                raise ValueError(f"Could not find plugin path. Build dir={build_dir}")
+    def get_plugin_path(self, plugin_name):
+        plugin_name_ffi = self.ffi.new("char[]", bytes(plugin_name, "utf-8"))
+        plugin_path_ffi = self.libpanda.panda_plugin_path(plugin_name_ffi)
+        plugin_path = self.ffi.string(plugin_path_ffi).decode("utf-8")
+        self.libpanda.g_free(plugin_path_ffi)
         return self.plugin_path
 
     def get_build_dir(self):
@@ -946,7 +939,7 @@ class Panda():
             libpanda_path_chr = self.ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         if not name in self.plugins.keys():
-            plugin = pjoin(*[self.get_plugin_path(), f"panda_{name}.so"])
+            plugin = self.get_plugin_path(name)
             assert(isfile(plugin))
             self.plugins[name] = self.ffi.dlopen(plugin)
 
