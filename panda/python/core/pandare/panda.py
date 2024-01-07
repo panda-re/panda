@@ -264,7 +264,7 @@ class Panda():
         plugin_path_ffi = self.libpanda.panda_plugin_path(plugin_name_ffi)
         plugin_path = self.ffi.string(plugin_path_ffi).decode("utf-8")
         # TODO: self.libpanda.g_free(plugin_path_ffi)
-        return self.plugin_path
+        return plugin_path
 
     def get_build_dir(self):
         if self.build_dir is None:
