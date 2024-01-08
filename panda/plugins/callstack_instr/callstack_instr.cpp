@@ -276,36 +276,38 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     if (count <= 0) goto done2;
 
     for (end = insn + count - 1; end >= insn; end--) {
-        if (!cs_insn_group(handle, end, CS_GRP_INVALID)) {
+        if (cs_insn_group(handle, end, CS_GRP_CALL)) {
+            res = INSTR_CALL;
+        } else if (cs_insn_group(handle, end, CS_GRP_RET)) {
+            res = INSTR_RET;
+        } else {
+            res = INSTR_UNKNOWN;
+        }
+
+        // Temporary workaround for https://github.com/aquynh/capstone/issues/1680
+        // Mnemonic/operand comparision as fallback for incorrect grouping
+        #if defined(TARGET_MIPS)
+            #define MAX_MNEMONIC_LEN 32 // CS_MNEMONIC_SIZE not imported?
+            if (res == INSTR_UNKNOWN) {
+                if (!strncasecmp(end->mnemonic, "jal", 32)) {
+                    res = INSTR_CALL;   // Direct absolute call
+                } else if  (!strncasecmp(end->mnemonic, "bal", 32)) {
+                    res = INSTR_CALL;   // Direct relative call
+                } else if  (!strncasecmp(end->mnemonic, "jalr", 32)) {
+                    res = INSTR_CALL;   // Direct jump table call
+                } else if  (!strncasecmp(end->mnemonic, "balr", 32)) {
+                    res = INSTR_CALL;   // Relative jump table call
+                } else if (cs_insn_group(handle, end, CS_GRP_JUMP) && strcasestr(end->op_str, "$ra")) {
+                    res = INSTR_RET;    // Jump to LR -> ret
+                }
+            }
+        #endif
+
+        if (res != INSTR_UNKNOWN) {
             break;
         }
     }
-    if (end < insn) goto done;
 
-    if (cs_insn_group(handle, end, CS_GRP_CALL)) {
-        res = INSTR_CALL;
-    } else if (cs_insn_group(handle, end, CS_GRP_RET)) {
-        res = INSTR_RET;
-    } else {
-        res = INSTR_UNKNOWN;
-    }
-
-    // Temporary workaround for https://github.com/aquynh/capstone/issues/1680
-    // Mnemonic/operand comparision as fallback for incorrect grouping
-    #if defined(TARGET_MIPS)
-        #define MAX_MNEMONIC_LEN 32 // CS_MNEMONIC_SIZE not imported?
-        if (res == INSTR_UNKNOWN) {
-            if (!strncasecmp(insn->mnemonic, "jal", 32)) {
-                res = INSTR_CALL;   // Direct call
-            } else if  (!strncasecmp(insn->mnemonic, "jalr", 32)) {
-                res = INSTR_CALL;   // Jump table call
-            } else if (cs_insn_group(handle, end, CS_GRP_JUMP) && strcasestr(insn->op_str, "$ra")) {
-                res = INSTR_RET;    // Jump to LR -> ret
-            }
-        }
-    #endif
-
-done:
     cs_free(insn, count);
 done2:
     free(buf);
