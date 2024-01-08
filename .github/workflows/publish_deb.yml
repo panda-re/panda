@@ -1,0 +1,31 @@
+name: Publish deb package
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  build_deb:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ubuntu_version:
+          - 18.04
+          - 20.04
+          - 22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./panda/debian/setup.sh Ubuntu ${{ matrix.ubuntu_version }}
+      - name: Publish to panda.re
+        if: github.ref == 'refs/heads/dev'
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SOURCE: pandare.deb
+          REMOTE_HOST: panda.re
+          REMOTE_USER: github
+          TARGET: /var/www/secret/pandare_${{ matrix.ubuntu_version }}.deb
