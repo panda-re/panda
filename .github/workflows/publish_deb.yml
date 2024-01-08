@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         ubuntu_version:
-          - 18.04
+          #TODO - 18.04
           - 20.04
           - 22.04
     steps:
