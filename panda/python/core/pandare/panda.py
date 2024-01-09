@@ -106,7 +106,10 @@ class Panda():
         self.qlog = QEMU_Log_Manager(self)
         self.build_dir = None
         prev_path = environ.get("PANDA_PLUGIN_PATH")
-        environ["PANDA_PLUGIN_PATH"] = plugin_path + (":" + prev_path if prev_path else "")
+        if plugin_path and prev_path:
+            environ["PANDA_PLUGIN_PATH"] = f"{plugin_path}:{prev_path}"
+        elif plugin_path:
+            environ["PANDA_PLUGIN_PATH"] = plugin_path
 
         self.serial_unconsumed_data = b''
 
