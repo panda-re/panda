@@ -11,7 +11,6 @@ jobs:
           - 20.04
           - 22.04
     steps:
-      - uses: easimon/maximize-build-space@master
       - name: Check out
         uses: actions/checkout@v4
       - name: Show free space
