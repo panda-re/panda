@@ -8,8 +8,7 @@ jobs:
     runs-on: panda-arc
     steps:
       - name: Create release
-        id: create_release
-        if: github.ref == "refs/heads/dev"
+        if: github.ref == 'refs/heads/main'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,12 +43,12 @@ jobs:
           path: panda/debian/pandare.deb
 
       - name: Upload to release
-        if: github.ref == "refs/heads/dev"
+        if: github.ref == 'refs/heads/dev'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: panda/debian/pandare.deb
           asset_name: pandare_${{ matrix.ubuntu_version }}.deb
           token: ${{ secrets.GITHUB_TOKEN }}
