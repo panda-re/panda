@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
 
   create_release:
-    runs_on: panda-arc
+    runs-on: panda-arc
     steps:
       - name: Create release
         id: create_release
