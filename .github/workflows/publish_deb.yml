@@ -1,0 +1,55 @@
+name: Publish deb package
+
+on: [push, pull_request]
+
+jobs:
+
+  create_release:
+    runs-on: panda-arc
+    steps:
+      - name: Create release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.sha }}
+          release_name: Release ${{ github.sha }}
+
+  build_deb:
+    needs: create_release
+    runs-on: panda-arc
+    strategy:
+      matrix:
+        ubuntu_version:
+          - 20.04
+          - 22.04
+
+    steps:
+      - name: Install git
+        run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
+
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build package
+        working-directory: panda/debian
+        run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
+
+      - name: Upload to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pandare_${{ matrix.ubuntu_version }}.deb
+          path: panda/debian/pandare.deb
+
+      - name: Upload to release
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: panda/debian/pandare.deb
+          asset_name: pandare_${{ matrix.ubuntu_version }}.deb
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: release_${{ github.sha }}
