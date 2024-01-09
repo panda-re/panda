@@ -11,6 +11,8 @@ jobs:
           - 20.04
           - 22.04
     steps:
+      - name: Install git
+        run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
       - name: Check out
         uses: actions/checkout@v4
       - name: Build package
