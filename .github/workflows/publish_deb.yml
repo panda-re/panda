@@ -13,6 +13,7 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+      - uses: easimon/maximize-build-space@master
       - name: Build package
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
