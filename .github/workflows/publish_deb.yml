@@ -14,6 +14,8 @@ jobs:
       - uses: easimon/maximize-build-space@master
       - name: Check out
         uses: actions/checkout@v4
+      - name: Show free space
+        run: df -h
       - name: Build package
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
