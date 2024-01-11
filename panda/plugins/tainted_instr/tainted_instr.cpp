@@ -139,14 +139,16 @@ void taint_change(Addr a, uint64_t size) {
 bool init_plugin(void *self) {
     panda_require("taint2");
     assert(init_taint2_api());
-    panda_require("callstack_instr");
-    assert (init_callstack_instr_api());
     panda_arg_list *args = panda_get_args("tainted_instr");
     summary = panda_parse_bool_opt(args, "summary", "summary tainted instruction info");
     num_tainted_instr = panda_parse_uint64_opt(args, "num", 0, "number of tainted instructions to log or summarize");
     suppress_redundant_taint_reports = panda_parse_bool_opt(args, "suppress_redundant_taint_reports", "don't output redundant taint change reports (only valid when not pandalogging)");
     if (summary) printf ("tainted_instr summary mode\n");
     else printf ("tainted_instr full mode\n");
+    if((!summary) && pandalog) {
+        panda_require("callstack_instr");
+        assert (init_callstack_instr_api());
+    }
     PPP_REG_CB("taint2", on_taint_change, taint_change);
     // this tells taint system to enable extra instrumentation
     // so it can tell when the taint state changes
