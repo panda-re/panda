@@ -198,8 +198,6 @@ void tbranch_on_branch_to_csv(Addr a, uint64_t size, bool from_helper,
 #endif
 
 bool init_plugin(void *self) {
-    panda_require("callstack_instr");
-    assert (init_callstack_instr_api());
     panda_require("taint2");
     assert (init_taint2_api());
     panda_arg_list *args = panda_get_args("tainted_branch");
@@ -210,6 +208,11 @@ bool init_plugin(void *self) {
             "name of CSV file, if CSV output desired");
     ignore_helpers = panda_parse_bool_opt(args, "ignore_helpers",
     		"ignore reports from helper functions");
+
+    if((!summary) && pandalog) {
+        panda_require("callstack_instr");
+        assert (init_callstack_instr_api());
+    }
 
     if (NULL != csv_filename) {
         if (liveness) {
