@@ -24,6 +24,8 @@ Note that the `taint2` plugin replaces the original `taint` plugin and is prefer
 Arguments
 ---------
 
+* `enable_hypercalls`: boolean. Set to true to enable support for taint2 hypercalls.  Leaving this as the default value of false can yield a performance boost.
+* `disable_hypercall_warnings`: boolean. Set to true to disable warnings if a hypercall is received that matches the signature for a taint2 hypercall.  The warning is only output if enable\_hypercalls is set to the default value of false. It is recommended to set this to true if taint2 hypercall support is not required.
 * `no_tp`: boolean. Whether to taint the result of dereferencing a pointer that has been tainted.
 * `inline`: boolean. Whether taint operations should be carried out in line with generated code, or through a function call.
 * `opt`:  boolean. Whether to run an optimization pass on the instrumented LLVM code.
