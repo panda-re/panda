@@ -560,12 +560,27 @@ bool init_plugin(void *self) {
     panda_enable_memcb();
     panda_disable_tb_chaining();
 
-    // hook taint2 callbacks
-#ifdef TAINT2_HYPERCALLS
+    panda_arg_list *args = panda_get_args("taint2");
+    bool enable_hypercalls = panda_parse_bool_opt(args, "enable_hypercalls",
+        "enable taint2 hypercall callbacks");
+    bool disable_hypercall_warnings = panda_parse_bool_opt(args,
+        "disable_hypercall_warnings", "disable taint2 hypercall warnings");
+
     panda_cb pcb;
-    pcb.guest_hypercall = guest_hypercall_callback;
-    panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
-#endif
+
+    // hook taint2 callbacks
+    if(enable_hypercalls) {
+        pcb.guest_hypercall = guest_hypercall_callback;
+        panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
+
+        // load dependencies
+        panda_require("callstack_instr");
+        assert(init_callstack_instr_api());
+    } else if(!disable_hypercall_warnings) {
+        pcb.guest_hypercall = guest_hypercall_warning_callback;
+        panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
+    }
+
 #if 0
     // also registered by taint2_enable_taint() - registering twice triggers assertion error
     // keep this commented until we figure out which one we should eliminate
@@ -582,7 +597,6 @@ bool init_plugin(void *self) {
 #endif
 
     // parse arguments
-    panda_arg_list *args = panda_get_args("taint2");
     tainted_pointer = !panda_parse_bool_opt(args, "no_tp", "track taint through pointer dereference");
     std::cerr << PANDA_MSG "propagation via pointer dereference " << PANDA_FLAG_STATUS(tainted_pointer) << std::endl;
     inline_taint = panda_parse_bool_opt(args, "inline", "inline taint operations");
@@ -600,10 +614,6 @@ bool init_plugin(void *self) {
         "maximum size a label set can reach before stop tracking taint on it (0=never stop)");
     std::cerr << PANDA_MSG "maximum taintset cardinality (0=unlimited) " << max_taintset_card << std::endl;
     
-    // load dependencies
-    panda_require("callstack_instr");
-    assert(init_callstack_instr_api());
-
     return true;
 }
 

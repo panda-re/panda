@@ -15,7 +15,7 @@
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
-#ifdef TAINT2_HYPERCALLS
+
 #include <iostream>
 #include <cstdio>
 #include <sstream>
@@ -66,6 +66,7 @@ static const int QUERY_REGISTER = 11;
 static const int LOG = 12;
 
 extern bool taintEnabled;
+extern void *taint2_plugin;
 
 // for writing output to text file, for testing purposes
 char taint2_log_msg[256];
@@ -521,4 +522,48 @@ bool guest_hypercall_callback(CPUState *cpu) {
 #endif // defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
     return ret;
 }
-#endif // TAINT2_HYPERCALLS
+
+// Print a warning if taint2 hypercall received while taint2 hypercall
+// callback processing is not enabled.
+bool guest_hypercall_warning_callback(CPUState *cpu) {
+    bool ret = false;
+
+#if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
+
+    // Look for taint2 hypercall (mirrors logic in guest_hypercall_callback)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    if (!taintEnabled) {
+        ret = REG_CMD == ENABLE_TAINT;
+    } else {
+        ret = REG_CMD == LABEL_BUFFER ||
+            REG_CMD == LABEL_BUFFER_POS ||
+            REG_CMD == QUERY_BUFFER ||
+            REG_CMD == LABEL_REGISTER ||
+            REG_CMD == QUERY_REGISTER ||
+            REG_CMD == LOG;
+#if defined(TARGET_I386)
+        if((!ret) && pandalog) {
+            // LAVA Hypercall
+            target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
+            if ((int)addr != -1) {
+                lavaint magic;
+                if(-1 != panda_virtual_memory_rw(cpu, env->regs[R_EAX], (uint8_t *) &magic, sizeof(magic), false)) {
+                    ret = magic == 0xabcd;
+                }
+            }
+        }
+#endif // defined(TARGET_I386)
+    }
+
+    if(ret) {
+        printf("taint2: WARNING: ignoring taint2 hypercalls - set taint2 "
+            "parameter enable_hypercalls to true to enable taint2 "
+            "hypercall processing\n");
+        panda_cb pcb;
+        pcb.guest_hypercall = guest_hypercall_warning_callback;
+        panda_disable_callback(taint2_plugin, PANDA_CB_GUEST_HYPERCALL,
+            pcb);
+    }
+#endif // defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
+    return ret;
+}
