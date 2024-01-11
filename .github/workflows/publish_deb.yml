@@ -6,6 +6,8 @@ jobs:
 
   create_release:
     runs-on: panda-arc
+    permissions:
+      contents: write
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
