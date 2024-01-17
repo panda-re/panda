@@ -142,6 +142,7 @@
           # TODO: "--enable-llvm"
         ];
         postInstall = ''
+          rm -r $out/lib/panda/*/{cosi,cosi_strace,gdb,snake_hook,rust_skeleton}
           (
             cd ../panda/python/core
             python3 setup.py install --prefix "$out"
