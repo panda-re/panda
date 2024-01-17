@@ -631,11 +631,14 @@ void on_has_mapping_prefix(CPUState *cpu, OsiProc *p, const char *prefix,
 ****************************************************************** */
 
 void task_change(CPUState *cpu) {
-  g_process_manager.reset(new WindowsProcessManager());
-
+  if(last_seen_paddr != 0) {
+    g_process_manager.reset(new WindowsProcessManager());
+  }
   auto kernel = g_kernel_manager->get_kernel_object();
   last_seen_paddr = kosi_get_current_process_address(kernel);
-  g_process_manager->initialize(kernel, last_seen_paddr);
+  if(last_seen_paddr != 0) {
+    g_process_manager->initialize(kernel, last_seen_paddr);
+  }
 
   notify_task_change(cpu);
 }
