@@ -15,7 +15,7 @@ RUN mv /tmp/$(echo "$BASE_IMAGE" | sed 's/:/_/g')_build.txt /tmp/build_dep.txt &
 # Base image just needs runtime dependencies
 RUN [ -e /tmp/base_dep.txt ] && \
     apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl $(cat /tmp/base_dep.txt | grep -o '^[^#]*') && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl $(cat /tmp/base_dep.txt | grep -o '^[^#]*' | grep -v i386) && \
     apt-get clean
 
 ### BUILD IMAGE - STAGE 2
@@ -25,9 +25,10 @@ ARG TARGET_LIST
 
 RUN [ -e /tmp/build_dep.txt ] && \
     apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
-    apt-get clean && \
-    python3 -m pip install --upgrade --no-cache-dir pip && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*' | grep -v i386 | grep -v multilib | grep -v llvm-11-dev) && \
+    apt-get clean
+
+RUN python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
     python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
@@ -44,8 +45,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo --help
 
 # install libosi
-RUN cd /tmp && \
-    git clone https://github.com/panda-re/libosi && \
+RUN git clone --depth=1 https://github.com/panda-re/libosi /tmp/libosi && \
     mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
     cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
     cd /tmp && rm -rf libosi/ && ldconfig 
@@ -63,8 +63,7 @@ RUN git -C /panda submodule update --init dtc && \
     /panda/configure \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
-        --disable-numa \
-        --enable-llvm && \
+        --disable-numa && \
     rm -rf /panda/.git
 
 RUN make -C /panda/build -j "$(nproc)"
