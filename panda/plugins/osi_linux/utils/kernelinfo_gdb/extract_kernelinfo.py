@@ -10,8 +10,11 @@ def print_size(structv, cfgmemb, cfgname):
     print(f"{cfgname}.{cfgmemb} = {size}",file=file_out)
 
 def print_offset(structp, memb, cfgname):
-    offset = gdb.execute(f'printf "%d",(int)&(({structp}*)0)->{memb}',to_string=True)
-    print(f"{cfgname}.{memb}_offset = {offset}",file=file_out)
+    try:
+        offset = gdb.execute(f'printf "%d",(int)&(({structp}*)0)->{memb}',to_string=True)
+        print(f"{cfgname}.{memb}_offset = {offset}",file=file_out)
+    except gdb.error:
+        pass
 
 def print_offset_from_member(structp, memb_base, memb_dest, cfgname):
     offset = gdb.execute(f'printf "%lld", (int64_t)&(({structp})*0)->{memb_dest} - (int64_t)&(({structp})*0)->{memb_base}',to_string=True)
