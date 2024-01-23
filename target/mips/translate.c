@@ -1423,7 +1423,7 @@ typedef struct DisasContext {
     target_ulong pc, saved_pc;
     uint32_t opcode;
     int singlestep_enabled;
-    int insn_flags;
+    uint64_t insn_flags;
     int32_t CP0_Config1;
     /* Routine used to access memory */
     int mem_idx;
@@ -19230,6 +19230,386 @@ static void gen_msa(CPUMIPSState *env, DisasContext *ctx)
 
 }
 
+typedef struct {
+    int set;
+    int rs;
+    int offset;
+    int p;
+} arg_decode0;
+
+typedef struct {
+    int rs;
+    int rt;
+    int rd;
+} arg_decode1;
+
+typedef struct {
+    int rs;
+    int rt;
+    int lenm1;
+    int p;
+} arg_decode2;
+
+typedef struct {
+    int rs;
+    int rd;
+    int dw;
+} arg_decode3;
+
+typedef struct {
+    int rs;
+    int rt;
+    int rd;
+    int ne;
+} arg_decode4;
+
+typedef struct {
+    int rs;
+    int rt;
+    int imm;
+    int ne;
+} arg_decode5;
+
+typedef arg_decode0 arg_BBIT;
+static bool trans_BBIT(DisasContext *ctx, arg_BBIT *a);
+typedef arg_decode1 arg_BADDU;
+static bool trans_BADDU(DisasContext *ctx, arg_BADDU *a);
+typedef arg_decode1 arg_DMUL;
+static bool trans_DMUL(DisasContext *ctx, arg_DMUL *a);
+typedef arg_decode2 arg_EXTS;
+static bool trans_EXTS(DisasContext *ctx, arg_EXTS *a);
+typedef arg_decode2 arg_CINS;
+static bool trans_CINS(DisasContext *ctx, arg_CINS *a);
+typedef arg_decode3 arg_POP;
+static bool trans_POP(DisasContext *ctx, arg_POP *a);
+typedef arg_decode4 arg_SEQNE;
+static bool trans_SEQNE(DisasContext *ctx, arg_SEQNE *a);
+typedef arg_decode5 arg_SEQNEI;
+static bool trans_SEQNEI(DisasContext *ctx, arg_SEQNEI *a);
+
+static bool trans_BBIT(DisasContext *ctx, arg_BBIT *a)
+{
+    TCGv p;
+
+    if (ctx->hflags & MIPS_HFLAG_BMASK) {
+        LOG_DISAS("Branch in delay / forbidden slot at PC 0x"
+                  TARGET_FMT_lx "\n", ctx->pc);
+        generate_exception_end(ctx, EXCP_RI);
+        return true;
+    }
+
+    /* Load needed operands */
+    TCGv t0 = tcg_temp_new();
+    gen_load_gpr(t0, a->rs);
+
+    p = tcg_const_tl(1ULL << a->p);
+    if (a->set) {
+        tcg_gen_and_tl(bcond, p, t0);
+    } else {
+        tcg_gen_andc_tl(bcond, p, t0);
+    }
+
+    ctx->hflags |= MIPS_HFLAG_BC;
+    ctx->btarget = ctx->pc + 4 + a->offset * 4;
+    ctx->hflags |= MIPS_HFLAG_BDS32;
+
+    tcg_temp_free(t0);
+    return true;
+}
+
+static bool trans_BADDU(DisasContext *ctx, arg_BADDU *a)
+{
+    TCGv t0, t1;
+
+    if (a->rt == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+    t1 = tcg_temp_new();
+    gen_load_gpr(t0, a->rs);
+    gen_load_gpr(t1, a->rt);
+
+    tcg_gen_add_tl(t0, t0, t1);
+    tcg_gen_andi_i64(cpu_gpr[a->rd], t0, 0xff);
+
+    tcg_temp_free(t0);
+    tcg_temp_free(t1);
+
+    return true;
+}
+
+static bool trans_DMUL(DisasContext *ctx, arg_DMUL *a)
+{
+    TCGv t0, t1;
+
+    if (a->rt == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+    t1 = tcg_temp_new();
+    gen_load_gpr(t0, a->rs);
+    gen_load_gpr(t1, a->rt);
+
+    tcg_gen_mul_i64(cpu_gpr[a->rd], t0, t1);
+
+    tcg_temp_free(t0);
+    tcg_temp_free(t1);
+
+    return true;
+}
+
+static bool trans_EXTS(DisasContext *ctx, arg_EXTS *a)
+{
+    TCGv t0;
+
+    if (a->rt == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+    gen_load_gpr(t0, a->rs);
+    tcg_gen_sextract_tl(t0, t0, a->p, a->lenm1 + 1);
+    gen_store_gpr(t0, a->rt);
+    tcg_temp_free(t0);
+
+    return true;
+}
+
+static bool trans_CINS(DisasContext *ctx, arg_CINS *a)
+{
+    TCGv t0;
+
+    if (a->rt == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+    gen_load_gpr(t0, a->rs);
+    tcg_gen_deposit_z_tl(t0, t0, a->p, a->lenm1 + 1);
+    gen_store_gpr(t0, a->rt);
+    tcg_temp_free(t0);
+
+    return true;
+}
+
+static bool trans_POP(DisasContext *ctx, arg_POP *a)
+{
+    TCGv t0;
+
+    if (a->rd == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+    gen_load_gpr(t0, a->rs);
+    if (!a->dw) {
+        tcg_gen_andi_i64(t0, t0, 0xffffffff);
+    }
+    tcg_gen_ctpop_tl(t0, t0);
+    gen_store_gpr(t0, a->rd);
+    tcg_temp_free(t0);
+
+    return true;
+}
+
+static bool trans_SEQNE(DisasContext *ctx, arg_SEQNE *a)
+{
+    TCGv t0, t1;
+
+    if (a->rd == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+    t1 = tcg_temp_new();
+
+    gen_load_gpr(t0, a->rs);
+    gen_load_gpr(t1, a->rt);
+
+    if (a->ne) {
+        tcg_gen_setcond_tl(TCG_COND_NE, cpu_gpr[a->rd], t1, t0);
+    } else {
+        tcg_gen_setcond_tl(TCG_COND_EQ, cpu_gpr[a->rd], t1, t0);
+    }
+
+    tcg_temp_free(t0);
+    tcg_temp_free(t1);
+
+    return true;
+}
+
+static bool trans_SEQNEI(DisasContext *ctx, arg_SEQNEI *a)
+{
+    TCGv t0;
+
+    if (a->rt == 0) {
+        /* nop */
+        return true;
+    }
+
+    t0 = tcg_temp_new();
+
+    gen_load_gpr(t0, a->rs);
+
+    /* Sign-extend to 64 bit value */
+    target_ulong imm = a->imm;
+    if (a->ne) {
+        tcg_gen_setcondi_tl(TCG_COND_NE, cpu_gpr[a->rt], t0, imm);
+    } else {
+        tcg_gen_setcondi_tl(TCG_COND_EQ, cpu_gpr[a->rt], t0, imm);
+    }
+
+    tcg_temp_free(t0);
+
+    return true;
+}
+
+
+static void decode_extract_bitfield(DisasContext *ctx, arg_decode2 *a, uint32_t insn)
+{
+    a->rs = extract32(insn, 21, 5);
+    a->lenm1 = extract32(insn, 11, 5);
+    a->p = deposit32(extract32(insn, 6, 5), 5, 27, extract32(insn, 0, 1));
+    a->rt = extract32(insn, 16, 5);
+}
+
+static void decode_extract_decode_Fmt_0(DisasContext *ctx, arg_decode0 *a, uint32_t insn)
+{
+    a->set = extract32(insn, 29, 1);
+    a->rs = extract32(insn, 21, 5);
+    a->p = deposit32(extract32(insn, 16, 5), 5, 27, extract32(insn, 28, 1));
+    a->offset = sextract32(insn, 0, 16);
+}
+
+static void decode_extract_decode_Fmt_3(DisasContext *ctx, arg_decode3 *a, uint32_t insn)
+{
+    a->dw = extract32(insn, 0, 1);
+    a->rs = extract32(insn, 21, 5);
+    a->rd = extract32(insn, 11, 5);
+}
+
+static void decode_extract_decode_Fmt_4(DisasContext *ctx, arg_decode4 *a, uint32_t insn)
+{
+    a->ne = extract32(insn, 0, 1);
+    a->rs = extract32(insn, 21, 5);
+    a->rd = extract32(insn, 11, 5);
+    a->rt = extract32(insn, 16, 5);
+}
+
+static void decode_extract_decode_Fmt_5(DisasContext *ctx, arg_decode5 *a, uint32_t insn)
+{
+    a->ne = extract32(insn, 0, 1);
+    a->rs = extract32(insn, 21, 5);
+    a->imm = sextract32(insn, 6, 10);
+    a->rt = extract32(insn, 16, 5);
+}
+
+static void decode_extract_r3(DisasContext *ctx, arg_decode1 *a, uint32_t insn)
+{
+    a->rs = extract32(insn, 21, 5);
+    a->rd = extract32(insn, 11, 5);
+    a->rt = extract32(insn, 16, 5);
+}
+
+static bool decode_octeon(DisasContext *ctx, uint32_t insn)
+{
+    union {
+        arg_decode0 f_decode0;
+        arg_decode1 f_decode1;
+        arg_decode2 f_decode2;
+        arg_decode3 f_decode3;
+        arg_decode4 f_decode4;
+        arg_decode5 f_decode5;
+    } u;
+
+    switch (insn & 0xcc000000u) {
+    case 0x40000000:
+        /* 01..00.. ........ ........ ........ */
+        switch (insn & 0x3000003e) {
+        case 0x30000002:
+            /* 011100.. ........ ........ ..00001. */
+            decode_extract_r3(ctx, &u.f_decode1, insn);
+            switch (insn & 0x000007c1) {
+            case 0x00000001:
+                /* 011100.. ........ .....000 00000011 */
+                /* target/mips/tcg/octeon.decode:36 */
+                if (trans_DMUL(ctx, &u.f_decode1)) return true;
+                break;
+            }
+            break;
+        case 0x30000028:
+            /* 011100.. ........ ........ ..10100. */
+            decode_extract_r3(ctx, &u.f_decode1, insn);
+            switch (insn & 0x000007c1) {
+            case 0x00000000:
+                /* 011100.. ........ .....000 00101000 */
+                /* target/mips/tcg/octeon.decode:35 */
+                if (trans_BADDU(ctx, &u.f_decode1)) return true;
+                break;
+            }
+            break;
+        case 0x3000002a:
+            /* 011100.. ........ ........ ..10101. */
+            decode_extract_decode_Fmt_4(ctx, &u.f_decode4, insn);
+            switch ((insn >> 6) & 0x1f) {
+            case 0x0:
+                /* 011100.. ........ .....000 0010101. */
+                /* target/mips/tcg/octeon.decode:40 */
+                if (trans_SEQNE(ctx, &u.f_decode4)) return true;
+                break;
+            }
+            break;
+        case 0x3000002c:
+            /* 011100.. ........ ........ ..10110. */
+            decode_extract_decode_Fmt_3(ctx, &u.f_decode3, insn);
+            switch (insn & 0x001f07c0) {
+            case 0x00000000:
+                /* 011100.. ...00000 .....000 0010110. */
+                /* target/mips/tcg/octeon.decode:39 */
+                if (trans_POP(ctx, &u.f_decode3)) return true;
+                break;
+            }
+            break;
+        case 0x3000002e:
+            /* 011100.. ........ ........ ..10111. */
+            /* target/mips/tcg/octeon.decode:41 */
+            decode_extract_decode_Fmt_5(ctx, &u.f_decode5, insn);
+            if (trans_SEQNEI(ctx, &u.f_decode5)) return true;
+            break;
+        case 0x30000032:
+            /* 011100.. ........ ........ ..11001. */
+            /* target/mips/tcg/octeon.decode:38 */
+            decode_extract_bitfield(ctx, &u.f_decode2, insn);
+            if (trans_CINS(ctx, &u.f_decode2)) return true;
+            break;
+        case 0x3000003a:
+            /* 011100.. ........ ........ ..11101. */
+            /* target/mips/tcg/octeon.decode:37 */
+            decode_extract_bitfield(ctx, &u.f_decode2, insn);
+            if (trans_EXTS(ctx, &u.f_decode2)) return true;
+            break;
+        }
+        break;
+    case 0xc8000000u:
+        /* 11..10.. ........ ........ ........ */
+        /* target/mips/tcg/octeon.decode:15 */
+        decode_extract_decode_Fmt_0(ctx, &u.f_decode0, insn);
+        if (trans_BBIT(ctx, &u.f_decode0)) return true;
+        break;
+    }
+    return false;
+}
+
+#define INSN_OCTEON       0x0000200000000000ULL
+
 static void decode_opc(CPUMIPSState *env, DisasContext *ctx)
 {
     int32_t offset;
@@ -19260,6 +19640,13 @@ static void decode_opc(CPUMIPSState *env, DisasContext *ctx)
     rd = (ctx->opcode >> 11) & 0x1f;
     sa = (ctx->opcode >> 6) & 0x1f;
     imm = (int16_t)ctx->opcode;
+
+#if defined(TARGET_MIPS64)
+    if ((ctx->insn_flags & INSN_OCTEON) != 0 && decode_octeon(ctx, ctx->opcode)){
+        return;
+    }
+#endif
+
     switch (op) {
     case OPC_SPECIAL:
         decode_opc_special(env, ctx);
