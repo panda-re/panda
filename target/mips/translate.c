@@ -19230,6 +19230,7 @@ static void gen_msa(CPUMIPSState *env, DisasContext *ctx)
 
 }
 
+#if defined(TARGET_MIPS64)
 typedef struct {
     int set;
     int rs;
@@ -19609,6 +19610,7 @@ static bool decode_octeon(DisasContext *ctx, uint32_t insn)
 }
 
 #define INSN_OCTEON       0x0000200000000000ULL
+#endif
 
 static void decode_opc(CPUMIPSState *env, DisasContext *ctx)
 {
