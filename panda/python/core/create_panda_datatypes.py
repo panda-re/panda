@@ -37,7 +37,7 @@ INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pan
 INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
 INCLUDE_DIR_CORE = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "..", "include"]))   # panda-git/include
 
-GLOBAL_MAX_SYSCALL_ARG_SIZE = 64
+GLOBAL_MAX_SYSCALL_ARG_SIZE = 8
 GLOBAL_MAX_SYSCALL_ARGS = 17
 
 
