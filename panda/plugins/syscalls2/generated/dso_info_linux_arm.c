@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include "../syscalls2_info.h"
 #define MAX_SYSCALL_NO 983045
-#define MAX_SYSCALL_GENERIC_NO 390
+#define MAX_SYSCALL_GENERIC_NO 397
 #define MAX_SYSCALL_ARGS 6
 
 #if !defined(__clang__) && __GNUC__ < 5
@@ -1418,6 +1418,10 @@ static syscall_argtype_t argt_390[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL
 static uint8_t argsz_390[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
 static const char* const argn_390[] = {"start", "len", "flags", 0};
 static const char* const argtn_390[] = {"n/a", "n/a", "n/a", 0};
+static syscall_argtype_t argt_397[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_STRUCT_PTR};
+static uint8_t argsz_397[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static const char* const argn_397[] = {"dfd", "path", "flags", "mask", "buffer", 0};
+static const char* const argtn_397[] = {"n/a", "n/a", "n/a", "n/a", "statx", 0};
 /* skipping non generic system call ARM_breakpoint: [983041] */
 /* skipping non generic system call ARM_cacheflush: [983042] */
 /* skipping non generic system call ARM_user26_mode: [983043] */
@@ -4925,6 +4929,16 @@ syscall_info_t __syscall_info_a[] = {
 		.argsz = argsz_390,
 		.argn = argn_390,
 		.argtn = argtn_390,
+		.noreturn = false
+	},
+	[397] = {
+		.no = 397,
+		.name = "sys_statx",
+		.nargs = 5,
+		.argt = argt_397,
+		.argsz = argsz_397,
+		.argn = argn_397,
+		.argtn = argtn_397,
 		.noreturn = false
 	},
 	/* skipping non generic system call ARM_breakpoint: [983041] */

@@ -348,6 +348,7 @@
 388 long sys_userfaultfd(int flags);
 389 long sys_membarrier(int cmd, int flags);
 390 long sys_mlock2(unsigned long start, size_t len, int flags);
+397 long sys_statx(int dfd, const char __user *path, unsigned flags, unsigned mask, struct statx __user *buffer);
 983041 long ARM_breakpoint(void);
 983042 long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);
 983043 long ARM_user26_mode(void);

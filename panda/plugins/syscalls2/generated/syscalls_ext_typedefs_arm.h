@@ -622,6 +622,8 @@ PPP_CB_TYPEDEF(void, on_sys_statfs_enter, CPUState* cpu, target_ulong pc, uint32
 PPP_CB_TYPEDEF(void, on_sys_statfs_return, CPUState* cpu, target_ulong pc, uint32_t path, uint32_t buf);
 PPP_CB_TYPEDEF(void, on_sys_statfs64_enter, CPUState* cpu, target_ulong pc, uint32_t path, uint32_t sz, uint32_t buf);
 PPP_CB_TYPEDEF(void, on_sys_statfs64_return, CPUState* cpu, target_ulong pc, uint32_t path, uint32_t sz, uint32_t buf);
+PPP_CB_TYPEDEF(void, on_sys_statx_enter, CPUState* cpu, target_ulong pc, int32_t dfd, uint32_t path, uint32_t flags, uint32_t mask, uint32_t buffer);
+PPP_CB_TYPEDEF(void, on_sys_statx_return, CPUState* cpu, target_ulong pc, int32_t dfd, uint32_t path, uint32_t flags, uint32_t mask, uint32_t buffer);
 PPP_CB_TYPEDEF(void, on_sys_stime_enter, CPUState* cpu, target_ulong pc, uint32_t tptr);
 PPP_CB_TYPEDEF(void, on_sys_stime_return, CPUState* cpu, target_ulong pc, uint32_t tptr);
 PPP_CB_TYPEDEF(void, on_sys_swapoff_enter, CPUState* cpu, target_ulong pc, uint32_t specialfile);
