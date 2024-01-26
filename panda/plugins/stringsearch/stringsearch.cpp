@@ -300,7 +300,7 @@ bool init_plugin(void *self) {
             }
             printf("]\n");
 
-            if (num_strings == 1) {
+            if (num_strings == 0) {
                 // First string - enable callback
                 panda_enable_callback(self, PANDA_CB_VIRT_MEM_AFTER_READ,  pcb_memread);
                 panda_enable_callback(self, PANDA_CB_VIRT_MEM_AFTER_WRITE, pcb_memwrite);
