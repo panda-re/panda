@@ -5,9 +5,9 @@ import time
 
 def main(logfile, prefix, num_callers=1):
     if logfile.endswith('.gz'):
-        f = gzip.GzipFile(logfile)
+        f = gzip.open(logfile, mode='rt')
     else:
-        f = open(logfile)
+        f = open(logfile,'r')
 
     filemap = {}
 
@@ -21,9 +21,9 @@ def main(logfile, prefix, num_callers=1):
         callers = callers.split()
         fname = prefix + "." + ".".join( callers[-num_callers:] + [pc, stack_kind, sid_first, sid_second] ) + ".dat"
         if fname not in filemap:
-            filemap[fname] = open(fname,'a')
+            filemap[fname] = open(fname,'ab')
 
-        val = val.decode('hex')
+        val = bytes.fromhex(val)
         filemap[fname].write(val)
 
 if __name__ == "__main__":
