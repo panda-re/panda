@@ -288,7 +288,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
             int no;               /**< number */
             target_ptr_t asid;    /**< calling process asid */
             target_ptr_t retaddr; /**< return address */
-            uint8_t args[{GLOBAL_MAX_SYSCALL_ARG_SIZE}]
+            uint8_t args[{GLOBAL_MAX_SYSCALL_ARGS}]
                  [{GLOBAL_MAX_SYSCALL_ARG_SIZE}]; /**< arguments */
                  '''
         +'''
