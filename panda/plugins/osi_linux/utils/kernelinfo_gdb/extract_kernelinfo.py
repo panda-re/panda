@@ -37,6 +37,7 @@ class KernelInfo(gdb.Command):
         versions = release.split(".")
         # version.c can have a bunch of junk - just extract a number
         versions[2] = re.search("\d+",versions[2]).group(0)
+        versions = tuple(int(ver) for ver in versions)
         print(f"version.a = {versions[0]}",file=file_out)
         print(f"version.b = {versions[1]}",file=file_out)
         print(f"version.c = {versions[2]}",file=file_out)
@@ -75,7 +76,8 @@ class KernelInfo(gdb.Command):
         print_offset("struct task_struct",      "pid",          "task");
         print_offset("struct task_struct",      "tgid",         "task");
         print_offset("struct task_struct",      "group_leader", "task");
-        print_offset("struct task_struct",      "thread_group", "task");
+        if versions < (6, 7, 0):
+            print_offset("struct task_struct",      "thread_group", "task");
         print_offset("struct task_struct",      "real_parent",  "task");
         print_offset("struct task_struct",      "parent",           "task");
         print_offset("struct task_struct",      "mm",               "task");
@@ -91,7 +93,8 @@ class KernelInfo(gdb.Command):
         print_offset("struct cred",             "euid",         "cred");
         print_offset("struct cred",             "egid",         "cred");
         print_size("struct mm_struct",          "size",         "mm");
-        print_offset("struct mm_struct",            "mmap",         "mm");
+        if versions < (6, 1, 0):
+            print_offset("struct mm_struct",            "mmap",         "mm");
         print_offset("struct mm_struct",            "pgd",          "mm");
         print_offset("struct mm_struct",            "arg_start",        "mm");
         print_offset("struct mm_struct",            "start_brk",        "mm");
@@ -102,7 +105,8 @@ class KernelInfo(gdb.Command):
         print_offset("struct vm_area_struct",       "vm_mm",            "vma");
         print_offset("struct vm_area_struct",       "vm_start",     "vma");
         print_offset("struct vm_area_struct",       "vm_end",           "vma");
-        print_offset("struct vm_area_struct",       "vm_next",      "vma");
+        if versions < (6, 1, 0):
+            print_offset("struct vm_area_struct",       "vm_next",      "vma");
         print_offset("struct vm_area_struct",       "vm_flags",     "vma");
         print_offset("struct vm_area_struct",       "vm_file",      "vma");
 
@@ -128,7 +132,7 @@ class KernelInfo(gdb.Command):
         print_offset("struct dentry",               "d_op",                 "path");
         print_offset("struct dentry_operations",    "d_dname",              "path");
         print_offset("struct vfsmount",         "mnt_root",             "path");
-        if int(versions[0]) >= 3:
+        if versions[0] >= 3:
             # fields in struct mount 
             print_offset_from_member("struct mount",    "mnt", "mnt_parent",        "path");
             print_offset_from_member("struct mount",    "mnt", "mnt_mountpoint",    "path");
