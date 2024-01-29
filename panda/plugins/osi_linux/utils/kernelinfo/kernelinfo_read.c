@@ -145,7 +145,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 		READ_INFO_INT(ki, fs.f_vfsmnt_offset, gerr, err.fs, &errbmp);
 	}
 
-	READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
+	OPTIONAL_READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.pid_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.tgid_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.mm_offset, gerr, err.task, &errbmp);
@@ -157,7 +157,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
         
 	/* read mm information */
 	READ_INFO_INT(ki, mm.size, gerr, err.mm, &errbmp);
-	READ_INFO_INT(ki, mm.mmap_offset, gerr, err.mm, &errbmp);
+	OPTIONAL_READ_INFO_INT(ki, mm.mmap_offset, gerr, err.mm, &errbmp);
 	READ_INFO_INT(ki, mm.pgd_offset, gerr, err.mm, &errbmp);
 	READ_INFO_INT(ki, mm.arg_start_offset, gerr, err.mm, &errbmp);
 	READ_INFO_INT(ki, mm.start_brk_offset, gerr, err.mm, &errbmp);
@@ -169,7 +169,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, vma.vm_mm_offset, gerr, err.vma, &errbmp);
 	READ_INFO_INT(ki, vma.vm_start_offset, gerr, err.vma, &errbmp);
 	READ_INFO_INT(ki, vma.vm_end_offset, gerr, err.vma, &errbmp);
-	READ_INFO_INT(ki, vma.vm_next_offset, gerr, err.vma, &errbmp);
+	OPTIONAL_READ_INFO_INT(ki, vma.vm_next_offset, gerr, err.vma, &errbmp);
 	READ_INFO_INT(ki, vma.vm_file_offset, gerr, err.vma, &errbmp);
 	READ_INFO_INT(ki, vma.vm_flags_offset, gerr, err.vma, &errbmp);
 

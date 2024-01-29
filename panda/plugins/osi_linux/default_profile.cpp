@@ -43,6 +43,11 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
         // We need to expose that as a part of the OSI config - See issue #651
         target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
 
+        //for kernel versions >= 5.18.0
+        if (PROFILE_KVER_GE(ki, 5, 18, 0)) {
+            return task_thread_info;
+        }
+
         current_task_addr=task_thread_info+0xC;
 
         //because some kernel versions use both per_cpu variables AND access the task_struct 
@@ -59,6 +64,13 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     // First field of struct is task - no offset needed
     current_task_addr = get_id(cpu); // HWID returned by hw_proc_id is the cached r28 value
     OG_printf("Got current task struct at " TARGET_FMT_lx "\n", current_task_addr);
+
+    //because some kernel versions use both per_cpu variables AND access the task_struct
+    //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
+    err = struct_get(cpu, &ts, current_task_addr, 0);
+    assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+    fixupendian2(ts);
+    return ts;
 
 #else // x86/64
     current_task_addr = ki.task.current_task_addr;
