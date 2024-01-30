@@ -1423,7 +1423,7 @@ typedef struct DisasContext {
     target_ulong pc, saved_pc;
     uint32_t opcode;
     int singlestep_enabled;
-    uint64_t insn_flags;
+    int insn_flags;
     int32_t CP0_Config1;
     /* Routine used to access memory */
     int mem_idx;
@@ -15304,7 +15304,9 @@ static void gen_mipsdsp_ld(DisasContext *ctx, uint32_t opc,
 {
     TCGv t0;
 
-    check_dsp(ctx);
+    if ((ctx->insn_flags & INSN_OCTEON) == 0){ 
+        check_dsp(ctx);
+    }
     t0 = tcg_temp_new();
 
     if (base == 0) {
@@ -19231,6 +19233,10 @@ static void gen_msa(CPUMIPSState *env, DisasContext *ctx)
 }
 
 #if defined(TARGET_MIPS64)
+#define INFO(msg) \
+    fprintf(stderr, "info: %s:%d: ", __FILE__, __LINE__); \
+    fprintf(stderr, "%s", msg);
+
 typedef struct {
     int set;
     int rs;
@@ -19271,6 +19277,11 @@ typedef struct {
     int ne;
 } arg_decode5;
 
+typedef struct {
+    int base;
+    int rt;
+} arg_decode6;
+
 typedef arg_decode0 arg_BBIT;
 static bool trans_BBIT(DisasContext *ctx, arg_BBIT *a);
 typedef arg_decode1 arg_BADDU;
@@ -19287,11 +19298,104 @@ typedef arg_decode4 arg_SEQNE;
 static bool trans_SEQNE(DisasContext *ctx, arg_SEQNE *a);
 typedef arg_decode5 arg_SEQNEI;
 static bool trans_SEQNEI(DisasContext *ctx, arg_SEQNEI *a);
+typedef arg_decode6 arg_SAA;
+static bool trans_SAA(DisasContext *ctx, arg_SAA *a);
+typedef arg_decode6 arg_SAAD;
+static bool trans_SAAD(DisasContext *ctx, arg_SAAD *a);
+typedef arg_decode1 arg_LAI;
+static bool trans_LAI(DisasContext *ctx, arg_LAI *a);
+typedef arg_decode1 arg_LAID;
+static bool trans_LAID(DisasContext *ctx, arg_LAID *a);
+typedef arg_decode1 arg_LAD;
+static bool trans_LAD(DisasContext *ctx, arg_LAD *a);
+typedef arg_decode1 arg_LADD;
+static bool trans_LADD(DisasContext *ctx, arg_LADD *a);
+typedef arg_decode1 arg_LAS;
+static bool trans_LAS(DisasContext *ctx, arg_LAS *a);
+typedef arg_decode1 arg_LASD;
+static bool trans_LASD(DisasContext *ctx, arg_LASD *a);
+typedef arg_decode1 arg_LAC;
+static bool trans_LAC(DisasContext *ctx, arg_LAC *a);
+typedef arg_decode1 arg_LACD;
+static bool trans_LACD(DisasContext *ctx, arg_LACD *a);
+typedef arg_decode1 arg_LAA;
+static bool trans_LAA(DisasContext *ctx, arg_LAA *a);
+typedef arg_decode1 arg_LAAD;
+static bool trans_LAAD(DisasContext *ctx, arg_LAAD *a);
+typedef arg_decode1 arg_LAW;
+static bool trans_LAW(DisasContext *ctx, arg_LAW *a);
+typedef arg_decode1 arg_LAWD;
+static bool trans_LAWD(DisasContext *ctx, arg_LAWD *a);
+typedef arg_decode1 arg_LWX;
+static bool trans_LWX(DisasContext *ctx, arg_LWX *a);
+typedef arg_decode1 arg_LHX;
+static bool trans_LHX(DisasContext *ctx, arg_LHX *a);
+typedef arg_decode1 arg_LDX;
+static bool trans_LDX(DisasContext *ctx, arg_LDX *a);
+typedef arg_decode1 arg_LBUX;
+static bool trans_LBUX(DisasContext *ctx, arg_LBUX *a);
+typedef arg_decode1 arg_LWUX;
+static bool trans_LWUX(DisasContext *ctx, arg_LWUX *a);
+typedef arg_decode1 arg_LHUX;
+static bool trans_LHUX(DisasContext *ctx, arg_LHUX *a);
+typedef arg_decode1 arg_LBX;
+static bool trans_LBX(DisasContext *ctx, arg_LBX *a);
+
+static void decode_extract_bitfield(DisasContext *ctx, arg_decode2 *a, uint32_t insn)
+{
+    a->lenm1 = extract32(insn, 11, 5);
+    a->rt = extract32(insn, 16, 5);
+    a->p = deposit32(extract32(insn, 6, 5), 5, 27, extract32(insn, 0, 1));
+    a->rs = extract32(insn, 21, 5);
+}
+
+static void decode_extract_decode_Fmt_0(DisasContext *ctx, arg_decode0 *a, uint32_t insn)
+{
+    a->offset = sextract32(insn, 0, 16);
+    a->set = extract32(insn, 29, 1);
+    a->p = deposit32(extract32(insn, 16, 5), 5, 27, extract32(insn, 28, 1));
+    a->rs = extract32(insn, 21, 5);
+}
+
+static void decode_extract_decode_Fmt_3(DisasContext *ctx, arg_decode3 *a, uint32_t insn)
+{
+    a->dw = extract32(insn, 0, 1);
+    a->rd = extract32(insn, 11, 5);
+    a->rs = extract32(insn, 21, 5);
+}
+
+static void decode_extract_decode_Fmt_4(DisasContext *ctx, arg_decode4 *a, uint32_t insn)
+{
+    a->rt = extract32(insn, 16, 5);
+    a->rd = extract32(insn, 11, 5);
+    a->ne = extract32(insn, 0, 1);
+    a->rs = extract32(insn, 21, 5);
+}
+
+static void decode_extract_decode_Fmt_5(DisasContext *ctx, arg_decode5 *a, uint32_t insn)
+{
+    a->imm = sextract32(insn, 6, 10);
+    a->rt = extract32(insn, 16, 5);
+    a->ne = extract32(insn, 0, 1);
+    a->rs = extract32(insn, 21, 5);
+}
+
+static void decode_extract_decode_Fmt_6(DisasContext *ctx, arg_decode6 *a, uint32_t insn)
+{
+    a->rt = extract32(insn, 16, 5);
+    a->base = extract32(insn, 21, 5);
+}
+
+static void decode_extract_r3(DisasContext *ctx, arg_decode1 *a, uint32_t insn)
+{
+    a->rt = extract32(insn, 16, 5);
+    a->rd = extract32(insn, 11, 5);
+    a->rs = extract32(insn, 21, 5);
+}
 
 static bool trans_BBIT(DisasContext *ctx, arg_BBIT *a)
 {
     TCGv p;
-
     if (ctx->hflags & MIPS_HFLAG_BMASK) {
         LOG_DISAS("Branch in delay / forbidden slot at PC 0x"
                   TARGET_FMT_lx "\n", ctx->pc);
@@ -19321,8 +19425,8 @@ static bool trans_BBIT(DisasContext *ctx, arg_BBIT *a)
 static bool trans_BADDU(DisasContext *ctx, arg_BADDU *a)
 {
     TCGv t0, t1;
-
-    if (a->rt == 0) {
+    if (a->rt == 0)
+    {
         /* nop */
         return true;
     }
@@ -19474,50 +19578,286 @@ static bool trans_SEQNEI(DisasContext *ctx, arg_SEQNEI *a)
 }
 
 
-static void decode_extract_bitfield(DisasContext *ctx, arg_decode2 *a, uint32_t insn)
+/*
+ * Octeon+
+ *  https://sourceware.org/legacy-ml/binutils/2011-11/msg00085.html
+ */
+static bool trans_SAA(DisasContext *ctx, arg_SAA *a)
 {
-    a->rs = extract32(insn, 21, 5);
-    a->lenm1 = extract32(insn, 11, 5);
-    a->p = deposit32(extract32(insn, 6, 5), 5, 27, extract32(insn, 0, 1));
-    a->rt = extract32(insn, 16, 5);
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->base], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    tcg_gen_add_tl(t0, t0, cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->base], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    return true;
 }
 
-static void decode_extract_decode_Fmt_0(DisasContext *ctx, arg_decode0 *a, uint32_t insn)
+static bool trans_SAAD(DisasContext *ctx, arg_SAAD *a)
 {
-    a->set = extract32(insn, 29, 1);
-    a->rs = extract32(insn, 21, 5);
-    a->p = deposit32(extract32(insn, 16, 5), 5, 27, extract32(insn, 28, 1));
-    a->offset = sextract32(insn, 0, 16);
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->base], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    tcg_gen_add_tl(t0, t0, cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->base], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
 }
 
-static void decode_extract_decode_Fmt_3(DisasContext *ctx, arg_decode3 *a, uint32_t insn)
+/*
+ *  Octeon2
+ *   
+ttps://chromium.googlesource.com/chromiumos/third_party/gdb/+/refs/heads/master/opcodes/mips-opc.c
+ *   https://github.com/MarvellEmbeddedProcessors/Octeon-Toolchain
+ *   https://bugs.kde.org/show_bug.cgi?id=326444
+ *   https://gcc.gnu.org/legacy-ml/gcc-patches/2011-12/msg01134.html
+ */
+static bool trans_LAI(DisasContext *ctx, arg_LAI *a)
 {
-    a->dw = extract32(insn, 0, 1);
-    a->rs = extract32(insn, 21, 5);
-    a->rd = extract32(insn, 11, 5);
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_addi_tl(t0, t0, 1);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    return true;
 }
 
-static void decode_extract_decode_Fmt_4(DisasContext *ctx, arg_decode4 *a, uint32_t insn)
+static bool trans_LAID(DisasContext *ctx, arg_LAID *a)
 {
-    a->ne = extract32(insn, 0, 1);
-    a->rs = extract32(insn, 21, 5);
-    a->rd = extract32(insn, 11, 5);
-    a->rt = extract32(insn, 16, 5);
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_addi_tl(t0, t0, 1);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
 }
 
-static void decode_extract_decode_Fmt_5(DisasContext *ctx, arg_decode5 *a, uint32_t insn)
+static bool trans_LAD(DisasContext *ctx, arg_LAD *a)
 {
-    a->ne = extract32(insn, 0, 1);
-    a->rs = extract32(insn, 21, 5);
-    a->imm = sextract32(insn, 6, 10);
-    a->rt = extract32(insn, 16, 5);
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_subi_tl(t0, t0, 1);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    return true;
 }
 
-static void decode_extract_r3(DisasContext *ctx, arg_decode1 *a, uint32_t insn)
+static bool trans_LADD(DisasContext *ctx, arg_LADD *a)
 {
-    a->rs = extract32(insn, 21, 5);
-    a->rd = extract32(insn, 11, 5);
-    a->rt = extract32(insn, 16, 5);
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_subi_tl(t0, t0, 1);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+/* Load Atomic Set Word - LAS; Cavium OCTEON2 */
+static bool trans_LAS(DisasContext *ctx, arg_LAS *a)
+{
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_movi_tl(t0, 0xffffffff);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+
+    return true;
+}
+/* Load Atomic Set Doubleword - LASD; Cavium OCTEON2 */
+static bool trans_LASD(DisasContext *ctx, arg_LASD *a)
+{
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_movi_tl(t0, 0xffffffffffffffffULL);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+/* Load Atomic Clear Word - LAC; Cavium OCTEON2 */
+static bool trans_LAC(DisasContext *ctx, arg_LAC *a)
+{
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_movi_tl(t0, 0);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+/* Load Atomic Clear Doubleword - LACD; Cavium OCTEON2 */
+static bool trans_LACD(DisasContext *ctx, arg_LACD *a)
+{
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_movi_tl(t0, 0xffffffffffffffffULL);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+
+/* Load Atomic Add Word - LAA; Cavium OCTEON2 */
+static bool trans_LAA(DisasContext *ctx, arg_LAA *a)
+{
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_add_tl(t0, t0, cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+
+/* Load Atomic Add Doubleword - LAAD; Cavium OCTEON2 */
+static bool trans_LAAD(DisasContext *ctx, arg_LAAD *a)
+{
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_add_tl(t0, t0, cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+/* Load Atomic Swap Word - LAW; Cavium OCTEON2 */
+static bool trans_LAW(DisasContext *ctx, arg_LAW *a)
+{
+    TCGv t0 = tcg_temp_new();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_mov_tl(t0, cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+
+static bool trans_LAWD(DisasContext *ctx, arg_LAWD *a)
+{
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    tcg_gen_qemu_ld_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    gen_store_gpr(t0, a->rd);
+    tcg_gen_mov_tl(t0, cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_st_tl(t0, cpu_gpr[a->rs], ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    return true;
+}
+
+
+static bool trans_LWX(DisasContext *ctx, arg_LWX *a)
+{
+    TCGv t0 = tcg_temp_new();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_TESL |
+                           ctx->default_tcg_memop_mask);
+
+    /* on mips64, 32 extend to 64 */
+    tcg_gen_ext32s_tl(cpu_gpr[a->rd], t0);
+    return true;
+}
+
+static bool trans_LHX(DisasContext *ctx, arg_LHX *a)
+{
+    TCGv t0 = tcg_temp_new();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_TESW |
+                           ctx->default_tcg_memop_mask);
+
+    /* 16 extend to 32/64 */
+    tcg_gen_ext16s_tl(cpu_gpr[a->rd], t0);
+    return true;
+}
+
+static bool trans_LDX(DisasContext *ctx, arg_LDX *a)
+{
+    TCGv_i64 t0 = tcg_temp_new_i64();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_TEQ |
+                           ctx->default_tcg_memop_mask);
+    /* not extend */
+    gen_store_gpr(t0, a->rd);
+    return true;
+}
+
+static bool trans_LBUX(DisasContext *ctx, arg_LBUX *a)
+{
+    TCGv t0 = tcg_temp_new();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_UB |
+                           ctx->default_tcg_memop_mask);
+
+    tcg_gen_ext8u_tl(cpu_gpr[a->rd], t0);
+    return true;
+}
+
+static bool trans_LWUX(DisasContext *ctx, arg_LWUX *a)
+{
+    TCGv t0 = tcg_temp_new();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_TEUL |
+                           ctx->default_tcg_memop_mask);
+
+    tcg_gen_ext32u_tl(cpu_gpr[a->rd], t0);
+    return true;
+}
+
+static bool trans_LHUX(DisasContext *ctx, arg_LHUX *a)
+{
+    TCGv t0 = tcg_temp_new();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_TEUW |
+                           ctx->default_tcg_memop_mask);
+
+    tcg_gen_ext16u_tl(cpu_gpr[a->rd], t0);
+    return true;
+}
+
+static bool trans_LBX(DisasContext *ctx, arg_LBX *a)
+{
+    TCGv t0 = tcg_temp_new();
+    gen_op_addr_add(ctx, t0, cpu_gpr[a->rs], cpu_gpr[a->rt]);
+
+    tcg_gen_qemu_ld_tl(t0, t0, ctx->mem_idx, MO_SB |
+                           ctx->default_tcg_memop_mask);
+
+    tcg_gen_ext8s_tl(cpu_gpr[a->rd], t0);
+    return true;
 }
 
 static bool decode_octeon(DisasContext *ctx, uint32_t insn)
@@ -19529,6 +19869,7 @@ static bool decode_octeon(DisasContext *ctx, uint32_t insn)
         arg_decode3 f_decode3;
         arg_decode4 f_decode4;
         arg_decode5 f_decode5;
+        arg_decode6 f_decode6;
     } u;
 
     switch (insn & 0xcc000000u) {
@@ -19543,6 +19884,88 @@ static bool decode_octeon(DisasContext *ctx, uint32_t insn)
                 /* 011100.. ........ .....000 00000011 */
                 /* target/mips/tcg/octeon.decode:36 */
                 if (trans_DMUL(ctx, &u.f_decode1)) return true;
+                break;
+            }
+            break;
+        case 0x30000018:
+            /* 011100.. ........ ........ ..01100. */
+            decode_extract_decode_Fmt_6(ctx, &u.f_decode6, insn);
+            switch (insn & 0x0000ffc1) {
+            case 0x00000000:
+                /* 011100.. ........ 00000000 00011000 */
+                /* target/mips/tcg/octeon.decode:47 */
+                if (trans_SAA(ctx, &u.f_decode6)) return true;
+                break;
+            case 0x00000001:
+                /* 011100.. ........ 00000000 00011001 */
+                /* target/mips/tcg/octeon.decode:48 */
+                if (trans_SAAD(ctx, &u.f_decode6)) return true;
+                break;
+            }
+            break;
+        case 0x3000001e:
+            /* 011100.. ........ ........ ..01111. */
+            decode_extract_r3(ctx, &u.f_decode1, insn);
+            switch (insn & 0x000007c1) {
+            case 0x00000081:
+                /* 011100.. ........ .....000 10011111 */
+                /* target/mips/tcg/octeon.decode:50 */
+                if (trans_LAI(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x000000c1:
+                /* 011100.. ........ .....000 11011111 */
+                /* target/mips/tcg/octeon.decode:51 */
+                if (trans_LAID(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x00000181:
+                /* 011100.. ........ .....001 10011111 */
+                /* target/mips/tcg/octeon.decode:52 */
+                if (trans_LAD(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x000001c1:
+                /* 011100.. ........ .....001 11011111 */
+                /* target/mips/tcg/octeon.decode:53 */
+                if (trans_LADD(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x00000281:
+                /* 011100.. ........ .....010 10011111 */
+                /* target/mips/tcg/octeon.decode:54 */
+                if (trans_LAS(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x000002c1:
+                /* 011100.. ........ .....010 11011111 */
+                /* target/mips/tcg/octeon.decode:55 */
+                if (trans_LASD(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x00000381:
+                /* 011100.. ........ .....011 10011111 */
+                /* target/mips/tcg/octeon.decode:56 */
+                if (trans_LAC(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x000003c1:
+                /* 011100.. ........ .....011 11011111 */
+                /* target/mips/tcg/octeon.decode:57 */
+                if (trans_LACD(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x00000481:
+                /* 011100.. ........ .....100 10011111 */
+                /* target/mips/tcg/octeon.decode:58 */
+                if (trans_LAA(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x000004c1:
+                /* 011100.. ........ .....100 11011111 */
+                /* target/mips/tcg/octeon.decode:59 */
+                if (trans_LAAD(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x00000581:
+                /* 011100.. ........ .....101 10011111 */
+                /* target/mips/tcg/octeon.decode:60 */
+                if (trans_LAW(ctx, &u.f_decode1)) return true;
+                break;
+            case 0x000005c1:
+                /* 011100.. ........ .....101 11011111 */
+                /* target/mips/tcg/octeon.decode:61 */
+                if (trans_LAWD(ctx, &u.f_decode1)) return true;
                 break;
             }
             break;
@@ -19599,6 +20022,47 @@ static bool decode_octeon(DisasContext *ctx, uint32_t insn)
             break;
         }
         break;
+    case 0x4c000000:
+        /* 01..11.. ........ ........ ........ */
+        decode_extract_r3(ctx, &u.f_decode1, insn);
+        switch (insn & 0x300007ff) {
+        case 0x3000000a:
+            /* 011111.. ........ .....000 00001010 */
+            /* target/mips/tcg/octeon.decode:71 */
+            if (trans_LWX(ctx, &u.f_decode1)) return true;
+            break;
+        case 0x3000010a:
+            /* 011111.. ........ .....001 00001010 */
+            /* target/mips/tcg/octeon.decode:72 */
+            if (trans_LHX(ctx, &u.f_decode1)) return true;
+            break;
+        case 0x3000018a:
+            /* 011111.. ........ .....001 10001010 */
+            /* target/mips/tcg/octeon.decode:74 */
+            if (trans_LBUX(ctx, &u.f_decode1)) return true;
+            break;
+        case 0x3000020a:
+            /* 011111.. ........ .....010 00001010 */
+            /* target/mips/tcg/octeon.decode:73 */
+            if (trans_LDX(ctx, &u.f_decode1)) return true;
+            break;
+        case 0x3000040a:
+            /* 011111.. ........ .....100 00001010 */
+            /* target/mips/tcg/octeon.decode:75 */
+            if (trans_LWUX(ctx, &u.f_decode1)) return true;
+            break;
+        case 0x3000050a:
+            /* 011111.. ........ .....101 00001010 */
+            /* target/mips/tcg/octeon.decode:76 */
+            if (trans_LHUX(ctx, &u.f_decode1)) return true;
+            break;
+        case 0x3000058a:
+            /* 011111.. ........ .....101 10001010 */
+            /* target/mips/tcg/octeon.decode:77 */
+            if (trans_LBX(ctx, &u.f_decode1)) return true;
+            break;
+        }
+        break;
     case 0xc8000000u:
         /* 11..10.. ........ ........ ........ */
         /* target/mips/tcg/octeon.decode:15 */
@@ -19609,7 +20073,6 @@ static bool decode_octeon(DisasContext *ctx, uint32_t insn)
     return false;
 }
 
-#define INSN_OCTEON       0x0000200000000000ULL
 #endif
 
 static void decode_opc(CPUMIPSState *env, DisasContext *ctx)
@@ -19644,8 +20107,15 @@ static void decode_opc(CPUMIPSState *env, DisasContext *ctx)
     imm = (int16_t)ctx->opcode;
 
 #if defined(TARGET_MIPS64)
-    if ((ctx->insn_flags & INSN_OCTEON) != 0 && decode_octeon(ctx, ctx->opcode)){
-        return;
+    if ((ctx->insn_flags & INSN_OCTEON) != 0){
+        // printf("is octeon\n");
+        if (decode_octeon(ctx, ctx->opcode))
+        {
+            // printf("decoded octeon insn\n");
+            return;
+        }
+    }else{
+        // printf("isn't octeon "  "\n", ctx->insn_flags);
     }
 #endif
 

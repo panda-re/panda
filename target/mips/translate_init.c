@@ -19,7 +19,6 @@
  */
 
 /* CPU / CPU family specific config register values. */
-#define INSN_OCTEON       0x0000200000000000ULL
 
 /* Have config1, uncached coherency */
 #define MIPS_CONFIG0                                              \
@@ -102,7 +101,7 @@ struct mips_def_t {
     int32_t CP0_SRSConf4;
     int32_t CP0_PageGrain_rw_bitmask;
     int32_t CP0_PageGrain;
-    uint64_t insn_flags;
+    int insn_flags;
     enum mips_mmu_types mmu_type;
 };
 
@@ -673,7 +672,7 @@ static const mips_def_t mips_defs[] =
         .CP1_fcr31_rw_bitmask = 0xFF83FFFF,
         .SEGBITS = 42,
         .PABITS = 36,
-        .insn_flags = INSN_OCTEON | CPU_MIPS64R2 | ASE_MIPS3D,
+        .insn_flags = CPU_MIPS64R2 | INSN_OCTEON | ASE_MIPS3D,
         .mmu_type = MMU_TYPE_R4000,
     },
     {
