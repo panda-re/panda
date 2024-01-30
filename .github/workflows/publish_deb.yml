@@ -2,7 +2,6 @@ name: Publish deb package
 
 on:
   push:
-    branches: dev
     tags: v*
 
 jobs:
