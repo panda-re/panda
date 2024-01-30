@@ -333,7 +333,7 @@ impl ext::section_offsets::SectionOffsets for PandaTarget {
     fn get_section_offsets(&mut self) -> Result<ext::section_offsets::Offsets<<Self::Arch as Arch>::Usize>, Self::Error> {
         let cpu = STATE.wait_for_cpu();
         let mut process = OSI.get_current_process(cpu);
-        let mappings = OSI.get_mappings(cpu, &mut *process);
+        let mappings = OSI.get_mappings(cpu, &mut *process.unwrap());
         if mappings.len() >= 3 {
             let text = &mappings[0];
             let data = &mappings[1];

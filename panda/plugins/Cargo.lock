@@ -112,7 +112,7 @@ version = "0.1.0"
 dependencies = [
  "curl",
  "once_cell",
- "panda-re 0.46.1",
+ "panda-re",
  "regex",
  "volatility_profile",
 ]
@@ -124,7 +124,7 @@ dependencies = [
  "chumsky",
  "log",
  "once_cell",
- "panda-re 0.45.1",
+ "panda-re",
 ]
 
 [[package]]
@@ -256,7 +256,7 @@ dependencies = [
  "gdbstub",
  "gdbstub_arch",
  "lazy_static",
- "panda-re 0.14.0",
+ "panda-re",
  "peg",
  "tabwriter",
 ]
@@ -514,46 +514,6 @@ dependencies = [
 
 [[package]]
 name = "panda-re"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03153860245f365c1f01452404eddd0a0741beafd88acf6e6afe167d1ac6c874"
-dependencies = [
- "dirs",
- "glib-sys",
- "inventory",
- "lazy_static",
- "libloading",
- "panda-re-macros 0.10.0",
- "panda-re-sys 0.5.0",
- "paste",
- "strum 0.20.0",
- "strum_macros 0.20.1",
- "thiserror",
-]
-
-[[package]]
-name = "panda-re"
-version = "0.45.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca671a99ad5cbfb16f9019548dd4bf85145c6e386b3b3989b1e1ed088dc9d032"
-dependencies = [
- "array-init",
- "dirs",
- "glib-sys",
- "inventory",
- "lazy_static",
- "libloading",
- "once_cell",
- "panda-re-macros 0.25.1",
- "panda-re-sys 0.7.0",
- "paste",
- "strum 0.20.0",
- "strum_macros 0.20.1",
- "thiserror",
-]
-
-[[package]]
-name = "panda-re"
 version = "0.46.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758a684eb7563df43de73e64e2e96cc1b8233a4c2c55c47ecfaa59e5064239cb"
@@ -565,24 +525,12 @@ dependencies = [
  "lazy_static",
  "libloading",
  "once_cell",
- "panda-re-macros 0.25.1",
- "panda-re-sys 0.7.0",
+ "panda-re-macros",
+ "panda-re-sys",
  "paste",
  "strum 0.20.0",
  "strum_macros 0.20.1",
  "thiserror",
-]
-
-[[package]]
-name = "panda-re-macros"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0ebc6c9d873a7285c7a09bfe4c80dc80efa8d3ea28bcb18a1d6a933dd3242be"
-dependencies = [
- "darling",
- "doc-comment",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -600,15 +548,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re-sys"
-version = "0.5.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b9fe3ab684d3cf027c816a724de1ea40373b6438dc2240d64bdca0ca99f2e01"
-
-[[package]]
-name = "panda-re-sys"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
+checksum = "c105b1cd05389f58c73d4f47541c68036d6be6a8a736d0ab89af457da7ff83f7"
 
 [[package]]
 name = "parking_lot"
@@ -803,7 +745,7 @@ checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 name = "rust_skeleton"
 version = "0.1.0"
 dependencies = [
- "panda-re 0.46.1",
+ "panda-re",
 ]
 
 [[package]]
@@ -872,7 +814,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "once_cell",
- "panda-re 0.14.0",
+ "panda-re",
  "pyo3",
 ]
 

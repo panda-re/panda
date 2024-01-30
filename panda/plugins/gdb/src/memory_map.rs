@@ -1,12 +1,12 @@
-use panda::prelude::*;
 use panda::plugins::osi::OSI;
+use panda::prelude::*;
 
-use std::ffi::CStr;
 use gdbstub::outputln;
+use std::ffi::CStr;
 
 pub(crate) fn print(cpu: &mut CPUState) {
     let mut proc = OSI.get_current_process(cpu);
-    let mappings = OSI.get_mappings(cpu, &mut *proc);
+    let mappings = OSI.get_mappings(cpu, &mut *proc.unwrap());
 
     println!("Memory map:");
     for mapping in mappings.iter() {
@@ -34,7 +34,7 @@ pub(crate) fn print(cpu: &mut CPUState) {
 
 pub(crate) fn print_to_gdb(cpu: &mut CPUState, mut out: impl std::fmt::Write) {
     let mut proc = OSI.get_current_process(cpu);
-    let mappings = OSI.get_mappings(cpu, &mut *proc);
+    let mappings = OSI.get_mappings(cpu, &mut *proc.unwrap());
 
     outputln!(out);
     outputln!(out, "Memory map:");
