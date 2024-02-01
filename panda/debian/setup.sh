@@ -43,10 +43,16 @@ if [[ ! -f "../dependencies/ubuntu_${version}_base.txt" ]]; then
 fi
 
 # First build main panda container for the target ubuntu version
-DOCKER_BUILDKIT=1 docker build --target panda -t panda --build-arg BASE_IMAGE="ubuntu:${version}" ../.. 
+DOCKER_BUILDKIT=1 docker build --target panda -t panda --build-arg BASE_IMAGE="ubuntu:${version}" ../..
+
+# Also build the installer, since that's where the whl file is built
+DOCKER_BUILDKIT=1 docker build --target installer -t panda_installer --build-arg BASE_IMAGE="ubuntu:${version}" ../..
 
 # Now build the packager container from that
 docker build -t packager .
 
 # Copy deb file out of container to host
 docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
+
+# Copy whl file out of container to host
+docker run --rm -v $(pwd):/out packager bash -c "cp /pandare_latest.whl /out"

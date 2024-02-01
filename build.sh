@@ -138,7 +138,7 @@ fi
 
 # will install to $(pwd)/install UNLESS $prefix is set when script is run
 if [ -z "$prefix" ]; then
-    prefix="$(pwd)/install"
+    prefix="/usr/local"
     echo "Using default prefix: $prefix"
 else
     echo "Using specified prefix: $prefix"
