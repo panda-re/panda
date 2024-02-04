@@ -55,4 +55,4 @@ docker build -t packager .
 docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
 
 # Copy whl file out of container to host, this also preserves wheel name, which is important as pip install WILL fail if you arbitarily change the generated wheel file name
-docker run --rm -v $(pwd):/out panda_installer bash -c "cp /panda/panda/python/core/dist/*.whl /out
+docker run --rm -v $(pwd):/out panda_installer bash -c "cp /panda/panda/python/core/dist/*.whl /out"
