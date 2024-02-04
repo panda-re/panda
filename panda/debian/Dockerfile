@@ -33,8 +33,5 @@ RUN dependencies=$(grep '^[a-zA-Z]' /tmp/base_dep.txt | tr '\n' ',' | sed 's/,,\
 # Build the package
 RUN fakeroot dpkg-deb --build /package-root /pandare.deb
 
-# Copy the whl into the root from the installer
-COPY --from=panda_installer /panda/panda/python/core/dist/*.whl /pandare_latest.whl
-
 # The user can now extract the .deb file from the container with something like
 #docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
