@@ -69,7 +69,7 @@ SUPPORT_CALLBACK_TYPE(after_block_exec)
 SUPPORT_CALLBACK_TYPE(start_block_exec)
 SUPPORT_CALLBACK_TYPE(end_block_exec)
 
-panda_cb before_block_translate_block_invalidator_callback;
+panda_cb block_invalidator_callback;
 
 // Handle to self
 void* self = NULL;
@@ -156,30 +156,18 @@ set<target_ulong> pcs_to_flush;
 
 void hooks_flush_pc(target_ulong pc){
     pcs_to_flush.insert(pc);
-    panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
+    panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, block_invalidator_callback);
 }
 
-void before_block_translate_invalidator(CPUState* cpu, target_ulong pc_val){
+bool block_invalidator(CPUState* cpu, TranslationBlock *tb){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    target_ulong pc, cs_base;
-    uint32_t flags;
-    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-    set<target_ulong>::iterator it = pcs_to_flush.begin();
-    while (it != pcs_to_flush.end()){
-        target_ulong pc_target = *it;
-        uint32_t h = tb_jmp_cache_hash_func(pc_target);
-        TranslationBlock *tb = atomic_read(&cpu->tb_jmp_cache[h]);
-        if (unlikely(tb && tb->pc == pc_target && tb->cs_base == cs_base)){
-            tb_phys_invalidate(tb, tb->page_addr[0]);
-            atomic_set(&cpu->tb_jmp_cache[h], NULL);
-            it = pcs_to_flush.erase(it);
-            continue;
-        }
-        ++it;
+    if (unlikely(pcs_to_flush.find(tb->pc) != pcs_to_flush.end())) {
+        pcs_to_flush.erase(tb->pc);
+        if (pcs_to_flush.empty())
+            panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, block_invalidator_callback);
+        return true;
     }
-    if (pcs_to_flush.empty())
-        panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
+    return false;
 }
 
 void add_hook(struct hook* h) {
@@ -372,9 +360,9 @@ bool init_plugin(void *_self) {
     REGISTER_AND_DISABLE_CALLBACK(_self, start_block_exec, START_BLOCK_EXEC)
     REGISTER_AND_DISABLE_CALLBACK(_self, end_block_exec, END_BLOCK_EXEC)
     
-    before_block_translate_block_invalidator_callback.before_block_translate = before_block_translate_invalidator; 
-    panda_register_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
-    panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
+    block_invalidator_callback.before_block_exec_invalidate_opt = block_invalidator;
+    panda_register_callback(_self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, block_invalidator_callback);
+    panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, block_invalidator_callback);
     return true;
 }
 
