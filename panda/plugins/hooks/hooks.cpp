@@ -161,16 +161,12 @@ void hooks_flush_pc(target_ulong pc){
 
 void before_block_translate_invalidator(CPUState* cpu, target_ulong pc_val){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    target_ulong pc, cs_base;
-    uint32_t flags;
-    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
     set<target_ulong>::iterator it = pcs_to_flush.begin();
     while (it != pcs_to_flush.end()){
         target_ulong pc_target = *it;
         uint32_t h = tb_jmp_cache_hash_func(pc_target);
         TranslationBlock *tb = atomic_read(&cpu->tb_jmp_cache[h]);
-        if (unlikely(tb && tb->pc == pc_target && tb->cs_base == cs_base)){
+        if (unlikely(tb && tb->pc == pc_target)){
             tb_phys_invalidate(tb, tb->page_addr[0]);
             atomic_set(&cpu->tb_jmp_cache[h], NULL);
             it = pcs_to_flush.erase(it);
