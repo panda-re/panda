@@ -35,7 +35,7 @@ Example
 
 Generating the still frames:
 
-    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64/panda-system-x86_64 -replay foo \
         -panda replaymovie
 
 Creating the movie:

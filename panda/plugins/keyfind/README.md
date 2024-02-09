@@ -38,7 +38,7 @@ Example
 
 First, create a recording in which the guest establishes a TLS connection, and create a .pcap file at the same time. Start the guest under PANDA with normal arguments, and set a filename for the recorded packet capture
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 \
+    $PANDA_PATH/x86_64/qemu-system-x86_64 \
         -net dump,file=tls_session.pcap
         
 Once the guest is running, open the QEMU monitor (Ctrl-a) and run `begin_record [tls_recording_name]` to start the record. Close the monitor, then run commands which will establish a TLS connection. Then, open the monitor again and run `end_record` to save the recording. 
@@ -46,13 +46,13 @@ Once the guest is running, open the QEMU monitor (Ctrl-a) and run `begin_record 
 
 Once a recording is created, run PANDA with `keyfind` and provide either the name of the ciphersuite, or the ciphersuite ID:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 \
+    $PANDA_PATH/x86_64/qemu-system-x86_64 \
         -replay tls_recording_name \
         -panda keyfind:ciphersuite_name=TLS_AES_256_GCM_SHA384
 
 OR
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 \
+    $PANDA_PATH/x86_64/qemu-system-x86_64 \
         -replay tls_recording_name \
         -panda keyfind:ciphersuite_id=4866
 

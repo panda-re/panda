@@ -51,7 +51,7 @@ Example
 A typical run might first try to find out where the file `foo.txt` is first used:
 
 ```
-    $PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo -panda osi \
+    $PANDA_PATH/i386/panda-system-i386 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
         -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt
 ```

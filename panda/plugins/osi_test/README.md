@@ -34,7 +34,7 @@ guest-os-specific plugin.
 E.g. to run `osi_test` on an Windows 7 32-bit replay:
 
 ```sh
-  $PANDA_PATH/i386-softmmu/panda-system-i386 -replay mytrace \
+  $PANDA_PATH/i386/panda-system-i386 -replay mytrace \
     -os windows-32-7sp1 -panda osi_test
 ```
 The os-specific plugin is loaded implicitly by specifying `-os windows-32-7sp1`.

@@ -36,4 +36,4 @@ None.
 Example
 -------
 
-`$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda callstack_instr -panda correlatetaps`
+`$PANDA_PATH/x86_64/qemu-system-x86_64 -replay foo -panda callstack_instr -panda correlatetaps`

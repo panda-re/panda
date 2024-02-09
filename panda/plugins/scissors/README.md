@@ -35,7 +35,7 @@ Example
 Snipping from instruction 12345 to 8675309 into `foo_reduced[.rr2]`:
 
 ```sh
-$PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo[.rr2] \
+$PANDA_PATH/x86_64/panda-system-x86_64 -replay foo[.rr2] \
     -panda scissors:name=foo_reduced[.rr2],start=12345,end=8675309
 ```
 

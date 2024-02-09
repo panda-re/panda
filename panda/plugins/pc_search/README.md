@@ -34,17 +34,17 @@ Example
 
 Passing a single pc:
 
-    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64/panda-system-x86_64 -replay foo \
         -panda pc_search:pc=0x77c47f06
         
 Passing multiple pcs and getting just first and last occurrence:
 
-    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64/panda-system-x86_64 -replay foo \
         -panda pc_search:first_last_only=true,pc_file="pc_input.txt",out_file="my_pc_matches.txt"
         
 Passing a range of pcs:
 
-    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64/panda-system-x86_64 -replay foo \
         -panda pc_search:pc_range=0x79a33c06-0x79a33d32,out_file="my_pc_matches.txt"
 
 

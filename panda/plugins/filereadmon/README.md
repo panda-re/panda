@@ -28,6 +28,6 @@ Example
 -------
 
 ```
-    $PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo \
+    $PANDA_PATH/i386/panda-system-i386 -replay foo \
         -os windows-32-xpsp3 -panda filereadmon
 ```

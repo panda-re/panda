@@ -25,6 +25,6 @@ Example
 -------
 
 ```
-    $PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo \
+    $PANDA_PATH/i386/panda-system-i386 -replay foo \
         -panda loaded -os linux-32-debian-3.2.81-686-pae
 ```

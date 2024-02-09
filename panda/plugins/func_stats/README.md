@@ -17,7 +17,7 @@ Note that, in hex reporting mode, addresses are reported in the simplest form. E
 
 If you use the following command to dump the assembly in a given replay:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -d in_asm,op,int,rr > asm.out 2>&113.
+    $PANDA_PATH/x86_64/qemu-system-x86_64 -replay foo -d in_asm,op,int,rr > asm.out 2>&113.
     
 Then you search by the `pc` in the instructions, you will find the following (for the above example record):
 
@@ -60,4 +60,4 @@ None.
 Example
 -------
 
-`$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda func_stats:asids=0x0fb45000_0x08ca0000,hex=true,call_limit=200,stack_limit=16`
+`$PANDA_PATH/x86_64/qemu-system-x86_64 -replay foo -panda func_stats:asids=0x0fb45000_0x08ca0000,hex=true,call_limit=200,stack_limit=16`

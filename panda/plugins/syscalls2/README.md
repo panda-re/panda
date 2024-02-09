@@ -171,7 +171,7 @@ bool init_plugin(void *self) {
 And then invoke it as:
 
 ```sh
-$PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
+$PANDA_PATH/x86_64/panda-system-x86_64 -replay foo \
     -os windows-32-7sp1 -panda syscalls2 -panda filereadmon
 ```
 

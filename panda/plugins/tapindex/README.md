@@ -28,12 +28,12 @@ Example
 
 Generate an index:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64/qemu-system-x86_64 -replay foo \
         -panda tapindex
 
 Then dump memory with `memdump`:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64/qemu-system-x86_64 -replay foo \
         -panda memdump
 
 Now search for something in the memory reads dump and store the offsets where it's found into a file named `foo_offsets.txt`:

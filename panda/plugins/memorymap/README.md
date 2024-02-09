@@ -57,4 +57,4 @@ Example
 
 To run `memorymap` on a Windows 2000 32-bit recording and report on two instructions specified by their addresses:
 
-`$PANDA_PATH/i386-softmmu/qemu-system-i386 -replay foo -os windows-32-2000 -panda memorymap:pcs=0xbfeee8bd-0x80069a0f`
+`$PANDA_PATH/i386/qemu-system-i386 -replay foo -os windows-32-2000 -panda memorymap:pcs=0xbfeee8bd-0x80069a0f`
