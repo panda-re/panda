@@ -1947,7 +1947,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
     //if (!correct_asid(cpu)) return;
     OsiProc *p = get_current_process(cpu);
     GArray *libs = NULL;
-    libs = get_libraries(cpu, p);
+    libs = get_mappings(cpu, p);
     free_osiproc(p);
     if (!libs)
         return false;
