@@ -24,6 +24,7 @@ PANDAENDCOMMENT */
 #include <sstream>
 #include <string>
 #include <iostream>
+#include <array>
 
 #include "panda/plugin.h"
 
