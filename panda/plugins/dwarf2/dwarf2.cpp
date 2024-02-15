@@ -1887,7 +1887,7 @@ std::string libc_name;
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr, target_ulong size) {
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
     if (!correct_asid(cpu)) {
-        printf ("current_asid=%x is not monitored\n", panda_current_asid(cpu));
+        printf ("current_asid=" TARGET_FMT_lx " is not monitored\n", panda_current_asid(cpu));
         return;
     }
     active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
@@ -1920,7 +1920,7 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
                            host_debug_path +
                            lib.substr(found+strlen(guest_debug_path));
     char *lib_name = strdup(host_lib.c_str());
-    printf("Trying to load symbols for %s at 0x%x.\n", lib_name, base_addr);
+    printf("Trying to load symbols for %s at 0x" TARGET_FMT_lx ".\n", lib_name, base_addr);
     printf("access(%s, F_OK): %x\n", lib_name, access(lib_name, F_OK));
     if (access(lib_name, F_OK) == -1) {
         fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name);
@@ -1974,7 +1974,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
         //strcpy(fname, host_name.c_str());
         strcpy(fname, bin_path.c_str());
 
-        printf("[ensure_main_exec_initialized] Trying to load symbols for %s at 0x%x.\n", fname, m->base);
+        printf("[ensure_main_exec_initialized] Trying to load symbols for %s at 0x" TARGET_FMT_lx ".\n", fname, m->base);
         printf("[ensure_main_exec_initialized] access(%s, F_OK): %x\n", fname, access(fname, F_OK));
         if (access(fname, F_OK) == -1) {
             fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
@@ -2067,12 +2067,12 @@ void on_call(CPUState *cpu, target_ulong pc) {
     if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
-            if (debug) printf ("CALL: Found line info for 0x%x\n", pc);
+            if (debug) printf ("CALL: Found line info for 0x" TARGET_FMT_lx "\n", pc);
             pri_runcb_on_fn_start(cpu, pc, NULL, it_dyn->second.c_str());
         }
         else {
             if (debug)
-                printf("CALL: Could not find line info for 0x%x\n", pc);
+                printf("CALL: Could not find line info for 0x" TARGET_FMT_lx "\n", pc);
         }
         return;
     }
@@ -2122,11 +2122,11 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     if (it == line_range_list.end() || pc_func < it->lowpc) {
         auto it_dyn = addr_to_dynl_function.find(pc_func);
         if (it_dyn != addr_to_dynl_function.end()){
-            if (debug) printf("RET: Found line info for 0x%x\n", pc_func);
+            if (debug) printf("RET: Found line info for 0x" TARGET_FMT_lx "\n", pc_func);
             pri_runcb_on_fn_return(cpu, pc_func, NULL, it_dyn->second.c_str());
         }
         else {
-            if (debug) printf("RET: Could not find line info for 0x%x\n", pc_func);
+            if (debug) printf("RET: Could not find line info for 0x" TARGET_FMT_lx "\n", pc_func);
         }
         return;
     }
@@ -2159,13 +2159,13 @@ void __livevar_iter(CPUState *cpu,
         if (debug) {
             switch (loc){
                 case LocReg:
-                    printf(" [livevar_iter] VAR %s in REG %d\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s in REG " TARGET_FMT_lu "\n", var_name.c_str(), var_loc);
                     break;
                 case LocMem:
-                    printf(" [livevar_iter] VAR %s in MEM 0x"TARGET_FMT_lx"\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s in MEM 0x" TARGET_FMT_lx "\n", var_name.c_str(), var_loc);
                     break;
                 case LocConst:
-                    printf(" [livevar_iter] VAR %s CONST VAL "TARGET_FMT_lx"\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s CONST VAL " TARGET_FMT_lx "\n", var_name.c_str(), var_loc);
                     break;
                 case LocErr:
                     printf(" [livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
@@ -2428,7 +2428,7 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
     if (strncmp(p->name, proc_to_monitor, strlen(p->name)) == 0) {
         target_ulong current_asid = panda_current_asid(cpu);
         monitored_asid.insert(current_asid);
-        printf ("monitoring asid %x\n", current_asid);
+        printf ("monitoring asid " TARGET_FMT_lx "\n", current_asid);
     }
     if (correct_asid(cpu) && !main_exec_initialized){
         main_exec_initialized = ensure_main_exec_initialized(cpu);
