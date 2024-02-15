@@ -742,6 +742,19 @@ class Panda():
         name_ffi = self.ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
+    def _unload_pyplugins(self):
+        # First unload python plugins, should be safe to do anytime
+        while len(list(self.registered_callbacks)) > 0:
+            try:
+                self.delete_callback(list(self.registered_callbacks.keys())[0])
+            except IndexError:
+                continue
+            #self.disable_callback(name)
+
+        # Next, unload any pyplugins
+        if hasattr(self, "_pyplugin_manager"):
+            self.pyplugins.unload_all()
+
     def unload_plugins(self):
         '''
         Disable all python plugins and request to unload all c plugins
@@ -754,18 +767,8 @@ class Panda():
         if debug:
             progress ("Disabling all python plugins, unloading all C plugins")
 
-        # First unload python plugins, should be safe to do anytime
-        #for name in self.registered_callbacks.keys():
-        while len(list(self.registered_callbacks)) > 0:
-            try:
-                self.delete_callback(list(self.registered_callbacks.keys())[0])
-            except IndexError:
-                continue
-            #self.disable_callback(name)
-
-        # Next, unload any pyplugins
-        if hasattr(self, "_pyplugin_manager"):
-            self.pyplugins.unload_all()
+        # In next main loop wait, unload all python plugin
+        self.queue_main_loop_wait_fn(self._unload_pyplugins)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
