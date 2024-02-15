@@ -183,7 +183,7 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
         Addr a = loc_t == LocMem ? make_maddr(RamOffset + offset) : make_greg(buf, offset); /* HACK: presumes for the same physical page ram_addr_t(x + i) == ram_addr_t(x) + i */
         if (taint2_query(a)) {
             if (loc_t == LocMem) {
-                dprintf("\"%s\" @ 0x%x is tainted\n", astnodename, buf + offset);
+                dprintf("\"%s\" @ 0x" TARGET_FMT_lx " is tainted\n", astnodename, buf + offset);
             } else {
                 dprintf("\"%s\" in REG " TARGET_FMT_ld ", byte %d is tainted\n", astnodename, buf, offset);
             }
@@ -245,7 +245,7 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     //size_t i;
     switch (loc_t){
         case LocReg:
-            dprintf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+            dprintf("VAR REG:   %s %s in Reg " TARGET_FMT_lu "\n", var_ty, var_nm, loc);
             dwarf2_type_iter(pfun_cpu, loc, loc_t, (DwarfVarType *) var_ty_void, lava_taint_query, 3);
             break;
         case LocMem:
@@ -276,7 +276,7 @@ void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const
 }
 void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     struct args args = {cpu, file_Name, lno, 0};
-    dprintf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
+    dprintf("fn-start: %s() [%s], ln: %4lld, pc @ 0x" TARGET_FMT_lx "\n",funct_name,file_Name,lno,pc);
     pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
 }
 
