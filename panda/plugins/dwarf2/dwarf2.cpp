@@ -203,7 +203,7 @@ struct VarInfo {
     VarInfo(target_ulong cu, target_ulong var_type, std::string var_name,
             target_ulong lowpc, target_ulong highpc, Json::Value ops, target_ulong dl, std::string fn) :
         cu(cu), var_type(var_type), var_name(var_name),
-        lowpc(lowpc), highpc(highpc), loc_ops(ops), dec_line(dl), fname(fn) {}
+        lowpc(lowpc), highpc(highpc), dec_line(dl), loc_ops(ops), fname(fn) {}
     VarInfo() {}
 };
 
@@ -502,8 +502,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
     //process_dwarf_locs(loc_list, loc_cnt);
     //printf("} = \n");
     target_ulong stack[64];	/* ??? Assume this is enough.  */
-    int stack_elt, loc_idx, i;
-    unsigned int next_offset;
+    int stack_elt, loc_idx;
     target_ulong result;
     bool inReg = false;
     //stack[0] = initial;
@@ -1318,7 +1317,6 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
 }
 
 int die_get_type_size (DwarfTypeInfo *ty){
-    int rc;
 
     // initialize tag to DW_TAG_pointer_type to enter the while loop
     while (ty->type == SugarType)
@@ -1639,7 +1637,7 @@ void load_func_info(const char *dbg_prefix,
                 // when resolving dwarf information for .plt functions
                 // NOTE: this assumes that all function names are unique.
 
-                fn_name_to_line_info.insert(std::make_pair(std::string(die_name),
+                fn_name_to_line_info.insert(std::make_pair(die_name,
                             LineRange(lowpc,
                                 highpc,
                                 funct_line_it->line_number,
@@ -1650,9 +1648,9 @@ void load_func_info(const char *dbg_prefix,
                 // now check if current function we are processing is in dynl_functions if so
                 // point the dynl_function to this function's line number, filename, and line_off
                 for (auto lib_name : processed_libs) {
-                    if (dynl_functions.find(lib_name + ":plt!" + std::string(die_name)) != dynl_functions.end()){
-                        //printf("Trying to match function to %s\n",(lib_name + ":plt!" + std::string(die_name)).c_str());
-                        target_ulong plt_addr = dynl_functions[lib_name + ":plt!" + std::string(die_name)];
+                    if (dynl_functions.find(lib_name + ":plt!" + die_name) != dynl_functions.end()){
+                        //printf("Trying to match function to %s\n",(lib_name + ":plt!" + die_name).c_str());
+                        target_ulong plt_addr = dynl_functions[lib_name + ":plt!" + die_name];
                         //printf("Found it at 0x%llx, adding to line_range_list\n", plt_addr);
                         //printf(" found a plt function defintion for %s\n", basename);
 
@@ -1666,7 +1664,7 @@ void load_func_info(const char *dbg_prefix,
                     }
                 }
             } else {
-                printf("Could not find start of function [%s] in line number table something went wrong\n", die_name);
+                printf("Could not find start of function [%s] in line number table something went wrong\n", die_name.c_str());
             }
 
             // this is if we want the start of the function to be one PAST the line that represents start of function
@@ -2164,10 +2162,10 @@ void __livevar_iter(CPUState *cpu,
                     printf(" [livevar_iter] VAR %s in REG %d\n", var_name.c_str(), var_loc);
                     break;
                 case LocMem:
-                    printf(" [livevar_iter] VAR %s in MEM 0x%llx\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s in MEM 0x"TARGET_FMT_lx"\n", var_name.c_str(), var_loc);
                     break;
                 case LocConst:
-                    printf(" [livevar_iter] VAR %s CONST VAL %llx\n", var_name.c_str(), var_loc);
+                    printf(" [livevar_iter] VAR %s CONST VAL "TARGET_FMT_lx"\n", var_name.c_str(), var_loc);
                     break;
                 case LocErr:
                     printf(" [livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
@@ -2198,7 +2196,7 @@ int livevar_find(CPUState *cpu,
         //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
         //printf("\n");
         LocType loc = execute_stack_op(cpu,pc, it.loc_ops, fp, &var_loc);
-        if (pred(it.var_type, it.var_name.c_str(),loc, var_loc, args)){
+        if (pred((void*)&it.var_type, it.var_name.c_str(),loc, var_loc, args)){
             ret_var.cu = it.cu;
             ret_var.var_type = it.var_type;
             ret_var.var_name = it.var_name;
