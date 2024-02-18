@@ -16,6 +16,7 @@ edge_coverage
 filereadmon
 findcall
 forcedexec
+fault_hooks
 gdb
 hooks
 hooks2
