@@ -35,6 +35,8 @@ typedef struct FWCfgDmaAccess {
 
 typedef void (*FWCfgReadCallback)(void *opaque);
 
+typedef void (*FWCfgWriteCallback)(void *opaque, off_t start, size_t len);
+
 /**
  * fw_cfg_add_bytes:
  * @s: fw_cfg device being modified
@@ -152,6 +154,11 @@ void fw_cfg_add_file(FWCfgState *s, const char *filename, void *data,
  */
 void fw_cfg_add_file_callback(FWCfgState *s, const char *filename,
                               FWCfgReadCallback callback, void *callback_opaque,
+                              void *data, size_t len, bool read_only);
+
+void fw_cfg_add_file_callback_write(FWCfgState *s, const char *filename,
+                              FWCfgReadCallback callback, FWCfgWriteCallback write_callbac,
+                              void *callback_opaque,
                               void *data, size_t len, bool read_only);
 
 /**
