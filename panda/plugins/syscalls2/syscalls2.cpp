@@ -18,13 +18,14 @@ PANDAENDCOMMENT */
 // correctly. This needs further investigation.
 // Uncomment next lines to enable debug prints for tracking of system
 // call context. Only for x86
-//#define SYSCALL_RETURN_DEBUG
-//#define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
+// #define DEBUG
+// #define SYSCALL_RETURN_DEBUG
+// #define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-utils.h"
-#include "hooks/hooks_int_fns.h"
+#include "hooks3/hooks3.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -44,6 +45,9 @@ PANDAENDCOMMENT */
 void syscall_callback(CPUState *cpu, TranslationBlock* tb, target_ulong pc, int static_callno);
 
 void (*hooks_add_hook)(struct hook*);
+void (*hooks_unregister_plugin)(PluginReg num);
+
+PluginReg plugin_reg_num;
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -998,7 +1002,6 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
         if (ctx->double_return){
             ctx->double_return = false;
-            return;
         }else{
             running_syscalls.erase(ctxi);
         }
@@ -1015,8 +1018,6 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
 #endif
     }
 #endif
-    h->enabled = false;
-    return;
 }
 #endif
 
@@ -1137,7 +1138,6 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
     return 0; // helpful as a catchall for other architectures
 #endif
 }
-
 
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     int static_callno = -1; // Set to non -1 if syscall num can be
@@ -1355,10 +1355,10 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    //(void) self;
     // if we don't clear tb's when this exits we have TBs which can call
     // into our exited plugin.
     panda_do_flush_tb();
+
 #ifdef DEBUG
     std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){

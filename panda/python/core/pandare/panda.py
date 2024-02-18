@@ -3464,5 +3464,51 @@ class Panda():
         Decorator to hook virtual memory writes with the mem_hooks plugin
         '''
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
+    
+    def hook3(self, pc, asid=None, always_starts_block=False):
+        '''
+        Decorator to create a hook with the hooks3 plugin.
+        '''
+
+        '''
+        Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
+        the function will be called with args (CPUState, TranslationBlock, Hook)
+        '''
+        if not hasattr(self, "hooks3_plugin_num"):
+            self.hooks3_plugin_num = self.plugins["hooks3"].register_plugin()
+            self.hook3_list = []
+        if asid is None:
+            asid = 0
+        def decorator(fun):
+            hook_cb_type = self.ffi.callback("FnCb")
+
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        if r is None:
+                            return False
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return True
+            
+            hook_cb_passed = hook_cb_type(_run_and_catch)
+            self.plugins["hooks3"].add_hook3(self.hooks3_plugin_num, pc, asid, always_starts_block, hook_cb_passed)
+            self.hook3_list.append(hook_cb_passed)
+
+            def wrapper(*args, **kw):
+                _run_and_catch(args,kw)
+            return wrapper
+        return decorator
+        
+
+
 
 # vim: expandtab:tabstop=4:

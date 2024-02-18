@@ -759,6 +759,7 @@ void tcg_pool_reset(TCGContext *s);
 
 void tb_lock(void);
 void tb_unlock(void);
+int tb_trylock(void);
 void tb_lock_reset(void);
 
 /* Called with tb_lock held.  */
