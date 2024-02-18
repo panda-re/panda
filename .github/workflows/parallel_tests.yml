@@ -51,25 +51,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      #- name: Set up Docker Buildx
-      #  uses: docker/setup-buildx-action@v3
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ github.workspace }}
-          tags: ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}
-          target: developer
-      - name: Minimal test of built container # Just test to see if one of our binaries is built
-        run: docker run --rm "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
-      - name: 'Login to Github Container Registry'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push to ghcr.io
-        run: docker push ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}
-
   tests:
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
