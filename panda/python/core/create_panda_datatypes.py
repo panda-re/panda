@@ -3,6 +3,8 @@ import re
 import os
 import sys
 import shutil
+from glob import glob    
+from pathlib import Path
 if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
 
@@ -389,24 +391,15 @@ def main(install=False,recompile=True):
 
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
+    # programatically copy anything that ends with _ppp.h
+    for ppp_file in glob(f"{PLUGINS_DIR}/*/*_ppp.h", recursive=True):
+        ppp = Path(ppp_file)
+        copy_ppp_header(ppp_file)
 
-    #programtically copy anything that ends with _ppp.h
-
-    #for each subdirectory under PLUGINS_DIR
-    plugin_dirs = [os.path.join(PLUGINS_DIR, f) for f in os.listdir(PLUGINS_DIR) if os.path.isdir(os.path.join(PLUGINS_DIR, f))]
-
-    pattern = re.compile(r"_ppp\.h$")           #matches strings ending with _ppp.h
-    for plugin_dir in plugin_dirs:
-        plugin_files = os.listdir(plugin_dir)
-
-        for plugin_file in plugin_files:
-            if pattern.search(plugin_file):
-                copy_ppp_header(f"{plugin_dir}/{plugin_file}")
-
-                #if the directory with the _ppp.h file also has a [plugin_name].h file, include it
-                header_filepath = f"{plugin_dir}/{os.path.basename(plugin_dir) + '.h'}"
-                if os.path.isfile(header_filepath):
-                    create_pypanda_header(header_filepath)
+        plugin_dir = ppp.parent
+        header_filepath = Path(plugin_dir, f"{plugin_dir.name}.h")
+        if header_filepath.exists():
+            create_pypanda_header(str(header_filepath))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""from __future__ import print_function
