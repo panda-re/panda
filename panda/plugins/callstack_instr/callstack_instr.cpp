@@ -55,8 +55,10 @@ extern "C" {
 #include "panda/plog.h"
 #include "callstack_instr_int_fns.h"
 
-void start_block_exec(CPUState* cpu, TranslationBlock *tb);
-void end_block_exec(CPUState* cpu, TranslationBlock *tb);
+bool translate_callback(CPUState* cpu, target_ulong pc);
+int exec_callback(CPUState* cpu, target_ulong pc);
+void before_block_exec(CPUState* cpu, TranslationBlock *tb);
+void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
 void after_block_translate(CPUState* cpu, TranslationBlock *tb);
 
 bool init_plugin(void *);
@@ -320,7 +322,7 @@ void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     return;
 }
 
-void start_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
   // if the block a call returns to was interrupted before it completed, this
   // function will be called twice - only want to remove the return value from
   // the stack once
@@ -364,7 +366,7 @@ void start_block_exec(CPUState *cpu, TranslationBlock *tb) {
   }
 }
 
-void end_block_exec(CPUState* cpu, TranslationBlock *tb) {
+void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
     target_ulong pc = 0x0;
     target_ulong cs_base = 0x0;
     uint32_t flags = 0x0;
@@ -375,19 +377,35 @@ void end_block_exec(CPUState* cpu, TranslationBlock *tb) {
 
     // sometimes an attempt to run a block is interrupted, but this callback is
     // still made - only update the callstack if the block has run to completion
-    if (tb_type == INSTR_CALL) {
-        stack_entry se = {tb->pc + tb->size, tb_type};
-        callstacks[curStackid].push_back(se);
+    if (exitCode <= TB_EXIT_IDX1) {
+        if (tb_type == INSTR_CALL) {
+            stack_entry se = {tb->pc + tb->size, tb_type};
+            callstacks[curStackid].push_back(se);
 
-        // Also track the function that gets called
-        // This retrieves the pc in an architecture-neutral way
+            // Also track the function that gets called
+            // This retrieves the pc in an architecture-neutral way
+            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+            function_stacks[curStackid].push_back(pc);
+
+            PPP_RUN_CB(on_call, cpu, pc);
+        } else if (tb_type == INSTR_RET) {
+            //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
+            //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+        }
+    }
+    // in case this block is one that a call returns to, need to node that its
+    // execution was interrupted, so don't try to remove it from the callstack
+    // when try (as already removed before this attempt)
+    else {
+        // verbose output is helpful in regression testing
+        if (tb_type == INSTR_CALL) {
+            verbose_log("callstack_instr not adding Stopped caller to stack",
+                    tb, curStackid, true);
+        }
         cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-        function_stacks[curStackid].push_back(pc);
-
-        PPP_RUN_CB(on_call, cpu, pc);
-    } else if (tb_type == INSTR_RET) {
-        //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
-        //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+        // erase nicely does nothing if key DNE
+        stoppedInfo.erase(curStackid);
+        stoppedInfo[curStackid] = pc;
     }
 }
 
@@ -593,9 +611,9 @@ bool init_plugin(void *self) {
 
     pcb.after_block_translate = after_block_translate;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
-    pcb.end_block_exec = end_block_exec;
+    pcb.after_block_exec = after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    pcb.start_block_exec = start_block_exec;
+    pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
     bool setup_ok = true;
