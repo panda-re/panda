@@ -2,6 +2,7 @@
 #define GEN_ICOUNT_H
 
 #include "qemu/timer.h"
+// #include "panda/callbacks/cb-support.h"
 
 /* Helpers for instruction counting code generation.  */
 
@@ -12,6 +13,7 @@ static TCGLabel *exitreq_label;
 static inline void gen_tb_start(TranslationBlock *tb)
 {
     TCGv_i32 count, flag, imm;
+    TCGv_i64 tb_tcg;
 
     exitreq_label = gen_new_label();
     flag = tcg_temp_new_i32();
@@ -19,6 +21,10 @@ static inline void gen_tb_start(TranslationBlock *tb)
                    offsetof(CPUState, tcg_exit_req) - ENV_OFFSET);
     tcg_gen_brcondi_i32(TCG_COND_NE, flag, 0, exitreq_label);
     tcg_temp_free_i32(flag);
+
+    tb_tcg = tcg_const_i64((uint64_t)tb);
+    gen_helper_panda_start_block_exec(cpu_env, tb_tcg);
+    tcg_temp_free_i64(tb_tcg);
 
     if (!(tb->cflags & CF_USE_ICOUNT)) {
         return;
@@ -47,6 +53,9 @@ static inline void gen_tb_start(TranslationBlock *tb)
 
 static void gen_tb_end(TranslationBlock *tb, int num_insns)
 {
+    TCGv_i64 tb_tcg;
+    tb_tcg = tcg_const_i64((uint64_t)tb);
+    gen_helper_panda_end_block_exec(cpu_env, tb_tcg);  
     gen_set_label(exitreq_label);
     tcg_gen_exit_tb((uintptr_t)tb + TB_EXIT_REQUESTED);
 
