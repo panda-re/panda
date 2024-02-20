@@ -12,26 +12,37 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QDialog, QPushButton, QTableWidget, QHeaderView, QAbstractItemView,
-        QTableWidgetItem, QCheckBox, QHBoxLayout, QVBoxLayout, QGridLayout, QFileDialog, QLabel)
+from PyQt5.QtWidgets import (QDialog, QPushButton, QCheckBox, QHBoxLayout,
+                             QVBoxLayout, QGridLayout, QFileDialog, QLabel)
 
 import ida_funcs
 import ida_kernwin
 import idautils
+
+# assumes the ida_taint2_common.py file is placed in %IDAUSR%/plugins/common
+from common.ida_taint2_common import (MaxTCNSelectDialog, ProcessSelectDialog,
+                                      skip_csv_header)
 
 FUNCS_WINDOW_CAPTION = "Functions window"
 
 # an orangish shade
 INST_COLOR = 0x55AAFF
 
+# index of minimum TCN in ida_taint2 CSV file
+TCN_INDEX = 4
+# index of the process ID in the ida_taint2 CSV file
+PID_INDEX = 1
+
 # dialog to let user enable old taint info, disable current taint info, or
-# change file and process from which taint information is acquired
+# change displayed max TCN, file and process from which taint information is
+# acquired
 class ReuseTaintDialog(QDialog):
     GET_NEW_FILE = 1
     GET_NEW_PROCESS = 2
+    GET_NEW_MAX_TCN = 3
     CANCEL_REQUEST = -1
     
-    def __init__(self, filename, selected_process):
+    def __init__(self, filename, selected_process, process_tcn, maxtcn_displayed):
         super(ReuseTaintDialog, self).__init__()
         
         self.setWindowTitle("Reuse ida_taint2 Settings?")
@@ -49,11 +60,24 @@ class ReuseTaintDialog(QDialog):
         self.lbl_process.setText("Process:  " + selected_process['process_name'] +
         " (ID=" + str(selected_process['process_id']) + ")")
         
+        self.lbl_tcn = QLabel()
+        if (process_tcn is None):
+            self.lbl_tcn.setText(
+                "No taint compute numbers are available in this file.")
+        else:
+            self.lbl_tcn.setText("Displaying maximum taint compute number of " +
+                                 str(maxtcn_displayed) + " out of " +
+                                 str(process_tcn) + ".")
+            
         self.chkbx_reuse_file = QCheckBox("Reuse File")
         self.chkbx_reuse_file.setChecked(True)
         
         self.chkbx_reuse_process = QCheckBox("Reuse Process")
         self.chkbx_reuse_process.setChecked(True)
+        
+        # will not add to GUI later if not applicable for this situation
+        self.chkbx_reuse_maxtcn = QCheckBox("Reuse Maximum Taint Computer Number")
+        self.chkbx_reuse_maxtcn.setChecked(True)
         
         btns_hbox = QHBoxLayout()
         btns_hbox.addStretch(1)
@@ -68,6 +92,12 @@ class ReuseTaintDialog(QDialog):
         info_grid.addWidget(self.chkbx_reuse_file, 0, 1)
         info_grid.addWidget(self.lbl_process, 1, 0)
         info_grid.addWidget(self.chkbx_reuse_process, 1, 1)
+        if ((process_tcn is not None) and (process_tcn > 0)):
+            info_grid.addWidget(self.lbl_tcn, 2, 0)
+            info_grid.addWidget(self.chkbx_reuse_maxtcn, 2, 1)
+        else:
+            # span both columns if only have label
+            info_grid.addWidget(self.lbl_tcn, 2, 0, 1, 2)
         
         vbox = QVBoxLayout()
         vbox.addLayout(info_grid)
@@ -81,80 +111,25 @@ class ReuseTaintDialog(QDialog):
     def isReuseFile(self):
         return self.chkbx_reuse_file.isChecked()
         
+    def isReuseMaxTCN(self):
+        return self.chkbx_reuse_maxtcn.isChecked()
+        
     @classmethod
-    def askToReuse(cls, filename, selected_process):
-        rd = cls(filename, selected_process)
+    def askToReuse(cls, filename, selected_process, process_tcn, maxtcn_displayed):
+        rd = cls(filename, selected_process, process_tcn, maxtcn_displayed)
         if QDialog.Accepted == rd.exec_():
             if (not rd.isReuseFile()):
                 return ReuseTaintDialog.GET_NEW_FILE
             elif (not rd.isReuseProcess()):
                 return ReuseTaintDialog.GET_NEW_PROCESS
+            elif (not rd.isReuseMaxTCN()):
+                return ReuseTaintDialog.GET_NEW_MAX_TCN
             else:
                 # silly, but really a no-op
                 return ReuseTaintDialog.CANCEL_REQUEST
         else:
             return ReuseTaintDialog.CANCEL_REQUEST
-            
-# dialog to select a process from the list provided
-class ProcessSelectDialog(QDialog):
-    def __init__(self, processes):
-        super(ProcessSelectDialog, self).__init__()
-        
-        self.setWindowTitle("Select Process")
-        
-        btn_ok = QPushButton("OK")
-        btn_ok.clicked.connect(self.accept)
-        btn_cancel = QPushButton("Cancel")
-        btn_cancel.clicked.connect(self.reject)
-        
-        self.process_table = QTableWidget()
-        self.process_table.setColumnCount(2)
-        self.process_table.setHorizontalHeaderLabels(("Process Name", "PID"))
-        self.process_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.process_table.setRowCount(len(processes))
-        self.process_table.verticalHeader().setVisible(False)
-        self.process_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.process_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        i = 0
-        for p in processes:
-            process_name_item = QTableWidgetItem(p[0])
-            process_name_item.setFlags(process_name_item.flags() & ~(Qt.ItemIsEditable))
-            self.process_table.setItem(i, 0, process_name_item)
-            process_id_item = QTableWidgetItem(str(p[1]))
-            process_id_item.setFlags(process_id_item.flags() & ~(Qt.ItemIsEditable))
-            self.process_table.setItem(i, 1, process_id_item)
-            i += 1
-        # sort by process name (not stable, so pointless to sort by ID too)
-        self.process_table.sortItems(0)
-        
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(btn_ok)
-        hbox.addWidget(btn_cancel)
 
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.process_table)
-        vbox.addLayout(hbox)
-
-        self.setLayout(vbox)
-
-    def selectedProcess(self):
-        selectionModel = self.process_table.selectionModel()
-        if not selectionModel.hasSelection():
-            return None
-        if len(selectionModel.selectedRows()) > 1:
-            raise Exception("Supposedly impossible condition reached!")
-        row = selectionModel.selectedRows()[0].row()
-        return {'process_name': self.process_table.item(row, 0).data(0),
-        'process_id': int(self.process_table.item(row, 1).data(0))}
-
-
-    @classmethod
-    def selectProcess(cls, processes):
-        psd = cls(processes)
-        if QDialog.Accepted == psd.exec_():
-            return psd.selectedProcess()
-        return None
         
 # chooser window for showing tainted funcions and letting user select one for
 # display in the disassembly window
@@ -304,16 +279,6 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
     def have_semantic_labels(self):
         return self._have_semantic_labels
         
-    def _skip_csv_header(self, reader, show_metadata):
-        # newer ida_taint2 output files have some metadata before the header
-        line1 = next(reader, None)
-        if (line1[0].startswith("PANDA Build Date")):
-            exec_time = next(reader, None)
-            if (show_metadata):
-                idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
-                idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
-            next(reader, None)
-        
     # read semantic label information, if it exists
     def _read_semantic_labels(self):
         semantic_labels = dict()
@@ -338,13 +303,18 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
             input_file = open(self._taint_file, "r")
             reader = csv.reader(input_file)
             self._tainted_funcs.clear()
-            self._skip_csv_header(reader, False)
+            skip_csv_header(reader, False)
             for row in reader:
-                pid = int(row[1])
+                pid = int(row[PID_INDEX])
                 pc = int(row[2], 16)
 
                 if pid != self._tainted_process['process_id']:
                     continue
+                if (self._has_tcns):
+                    cur_tcn = int(row[TCN_INDEX])
+                    if (cur_tcn > self._maxtcn_displayed):
+                        continue
+                    
                 fn = ida_funcs.get_func(pc)
                 if not fn:
                     continue
@@ -354,14 +324,15 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
             ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
         
     def _read_taint_info(self):
+        idaapi.msg("Processing taint information...\n")
         semantic_labels = self._read_semantic_labels()
         input_file = open(self._taint_file, "r")
         reader = csv.reader(input_file)
         self._ea_to_labels.clear()
         self._tainted_funcs.clear()
-        self._skip_csv_header(reader, False)
+        skip_csv_header(reader, False)
         for row in reader:
-            pid = int(row[1])
+            pid = int(row[PID_INDEX])
             pc = int(row[2], 16)
             label = int(row[3])
 
@@ -372,6 +343,11 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
 
             if pid != self._tainted_process['process_id']:
                 continue
+            if (self._has_tcns):
+                cur_tcn = int(row[TCN_INDEX])
+                if (cur_tcn > self._maxtcn_displayed):
+                    continue
+                
             fn = ida_funcs.get_func(pc)
             if not fn:
                 continue
@@ -381,6 +357,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                 self._ea_to_labels[pc] = set()
             self._ea_to_labels[pc].add(label)
         input_file.close()
+        idaapi.msg("...done processing taint information.\n")
         
     # select a new process from the current file, and update the associated
     # taint information
@@ -393,6 +370,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
             # to wipe the file as don't have a process for it
             if (not self._seen_file):
                 self._taint_file = None
+                self._tainted_process = None
             return False
         self._ea_to_labels.clear()
         self._tainted_funcs.clear()
@@ -416,16 +394,95 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         
     def _get_tainted_process(self):
         processes = set()
+        maxtcn_for_pid = dict()
         input_file = open(self._taint_file, "r")
         reader = csv.reader(input_file)
-        self._skip_csv_header(reader, not self._seen_file)
+        self._has_tcns = skip_csv_header(reader, not self._seen_file)
         for row in reader:
-            processes.add((row[0], int(row[1])))
+            processes.add((row[0], int(row[PID_INDEX])))
+            if (self._has_tcns):
+                cur_tcn = int(row[TCN_INDEX])
+                if (row[PID_INDEX] not in maxtcn_for_pid):
+                    maxtcn_for_pid[row[PID_INDEX]] = cur_tcn
+                elif (cur_tcn > maxtcn_for_pid[row[PID_INDEX]]):
+                    maxtcn_for_pid[row[PID_INDEX]] = cur_tcn
         input_file.close()
         
-        selected_process = ProcessSelectDialog.selectProcess(processes)
+        selected_process = ProcessSelectDialog.selectProcess(processes,
+            maxtcn_for_pid)
+        if (None == selected_process):
+            return selected_process
+        
+        # if taint compute numbers are available, ask for the maximum to show
+        if (not self._has_tcns):
+            self._process_tcn = None
+            self._maxtcn_displayed = None
+            return selected_process
+        
+        selected_pid = selected_process['process_id']
+        sspid = str(selected_pid)
+        new_process_tcn = maxtcn_for_pid[sspid]
+        if (new_process_tcn > 0):
+            new_maxtcn_displayed = MaxTCNSelectDialog.getMaxTCN(
+                selected_process['process_name'], selected_pid, new_process_tcn)
+            # user changed mind - just cancel the entire process selection
+            if (None == new_maxtcn_displayed):
+                selected_process = None
+            else:
+                self._process_tcn = new_process_tcn
+                self._maxtcn_displayed = new_maxtcn_displayed
+        else:
+            # only one TCN available for this process - 0
+            self._process_tcn = 0
+            self._maxtcn_displayed = 0
+        
         return selected_process
         
+    def _reuse_taint_info(self):
+        # note that _update_process wipes _tainted_process and _taint_file
+        # if the user cancels the process selection for a newly selected
+        # file, so we should not have _taint_file set without
+        # _tainted_process also being set
+        request = ReuseTaintDialog.askToReuse(self._taint_file,
+            self._tainted_process, self._process_tcn, self._maxtcn_displayed)
+        if (ReuseTaintDialog.GET_NEW_PROCESS == request):
+            if (self._update_process()):
+                if (self.showing_taint()):
+                    idaapi.refresh_idaview_anyway()
+                    ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
+                else:
+                    self.show_taint_info()
+        elif (ReuseTaintDialog.GET_NEW_FILE == request):
+            filename, _ = QFileDialog.getOpenFileName(None,
+            self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
+            if filename == "":
+                # user must've changed his mind
+                return
+            self._taint_file = filename
+            self._seen_file = False
+            self._has_tcns = False
+            self._process_tcn = None
+            self._maxtcn_displayed = None
+            if (self._update_process()):
+                self._seen_file = True
+                if (self.showing_taint()):
+                    idaapi.refresh_idaview_anyway()
+                    ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
+                else:
+                    self.show_taint_info()
+        elif (ReuseTaintDialog.GET_NEW_MAX_TCN == request):
+            new_displayed_max = MaxTCNSelectDialog.getMaxTCN(
+                self._tainted_process['process_name'],
+                self._tainted_process['process_id'],
+                self._process_tcn, self._maxtcn_displayed)
+            if (new_displayed_max is not None):
+                self._maxtcn_displayed = new_displayed_max
+                self._read_taint_info()
+                if (self.showing_taint()):
+                    idaapi.refresh_idaview_anyway()
+                else:
+                    self.show_taint_info()
+                
     def init(self):
         self._instr_painter = InstrPainter(self)
         self._instr_hint_hook = InstrHintHook(self)
@@ -434,6 +491,9 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         self._ww_hook.hook()
         self._taint_file = None
         self._tainted_process = None
+        self._has_tcns = False
+        self._process_tcn = None
+        self._maxtcn_displayed = None
         self._ea_to_labels = dict()
         self._tainted_funcs = set()
         self._have_semantic_labels = False
@@ -462,46 +522,14 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                 # taint must already be disabled, so no need to re-disable
                 return
             self._taint_file = filename
+            self._has_tcns = False
+            self._process_tcn = None
+            self._maxtcn_dispalyed = None
             if (self._update_process()):
                 self.show_taint_info()
                 self._seen_file = True
-        elif (self.showing_taint()):
-            request = ReuseTaintDialog.askToReuse(self._taint_file, self._tainted_process)
-            if (ReuseTaintDialog.GET_NEW_PROCESS == request):
-                if (self._update_process()):
-                    idaapi.refresh_idaview_anyway()
-                    ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
-            elif (ReuseTaintDialog.GET_NEW_FILE == request):
-                filename, _ = QFileDialog.getOpenFileName(None,
-                self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
-                if filename == "":
-                    # user must've changed his mind
-                    return
-                self._taint_file = filename
-                self._seen_file = False
-                if (self._update_process()):
-                    self._seen_file = True
-                    idaapi.refresh_idaview_anyway()
-                    ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
         else:
-            # must have an old file and process selected, but taint disabled
-            # note that _update_process wipes _tainted_process and _taint_file
-            # if the user cancels the process selection, so we should not have
-            # _taint_file set without _tainted_process also being set
-            request = ReuseTaintDialog.askToReuse(self._taint_file, self._tainted_process)
-            if (ReuseTaintDialog.GET_NEW_PROCESS == request):
-                if (self._update_process()):
-                    self.show_taint_info()
-            elif (ReuseTaintDialog.GET_NEW_FILE == request):
-                filename, _ = QFileDialog.getOpenFileName(None,
-                self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
-                if (filename == ""):
-                    return
-                self._taint_file = filename
-                self._seen_file = False
-                if (self._update_process()):
-                    self.show_taint_info()
-                    self._seen_file = True
+            self._reuse_taint_info()
 
 # class to change background color on tainted instructions in disassembly view
 class InstrPainter(idaapi.IDP_Hooks):
