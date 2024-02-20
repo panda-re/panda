@@ -381,6 +381,7 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/forcedexec",   "forcedexec_ppp.h"))
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/stringsearch", "stringsearch_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hypercaller", "hypercaller.h"))
     
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
