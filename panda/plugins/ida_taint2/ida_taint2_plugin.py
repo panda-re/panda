@@ -76,7 +76,7 @@ class ReuseTaintDialog(QDialog):
         self.chkbx_reuse_process.setChecked(True)
         
         # will not add to GUI later if not applicable for this situation
-        self.chkbx_reuse_maxtcn = QCheckBox("Reuse Maximum Taint Computer Number")
+        self.chkbx_reuse_maxtcn = QCheckBox("Reuse Maximum Taint Compute Number")
         self.chkbx_reuse_maxtcn.setChecked(True)
         
         btns_hbox = QHBoxLayout()

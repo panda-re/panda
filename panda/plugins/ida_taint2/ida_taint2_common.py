@@ -92,12 +92,12 @@ class ProcessSelectDialog(QDialog):
         return None
 
 
-# dialog to select the maximum taint computer number to display
+# dialog to select the maximum taint compute number to display
 class MaxTCNSelectDialog(QDialog):
     def __init__(self, process_name, pid, maxtcn, initial_max=None):
         super(MaxTCNSelectDialog, self).__init__()
         
-        self.setWindowTitle("Select Maximum Taint Computer Number")
+        self.setWindowTitle("Select Maximum Taint Compute Number")
         
         btn_ok = QPushButton("OK")
         btn_ok.clicked.connect(self.accept)
