@@ -1,7 +1,7 @@
 """
 IDAPython plugin to ingest an ida_taint2 report to pseudocode windows.
 The initial selections can be reused in a new pseudocode window, or the
-sections can be changed.
+selections can be changed.
 """
 import csv
 import idaapi
