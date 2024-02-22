@@ -2,11 +2,7 @@ name: Publish deb package
 
 on:
   push:
-    branches:
-    - dev
-  pull_request:
-    branches:
-    - dev
+    tags: v*
 
 jobs:
 
@@ -17,7 +13,6 @@ jobs:
     steps:
       - name: Create release
         id: create_release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,14 +40,7 @@ jobs:
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
 
-      - name: Upload to artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pandare_${{ matrix.ubuntu_version }}.deb
-          path: panda/debian/pandare.deb
-
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

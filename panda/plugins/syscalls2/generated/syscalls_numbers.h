@@ -1063,6 +1063,9 @@ namespace syscalls2 {
 			const int sys_mlock2 = 390;
 			
 			
+			const int sys_statx = 397;
+			
+			
 			const int ARM_breakpoint = 983041;
 			
 			

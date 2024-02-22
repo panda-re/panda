@@ -13,68 +13,18 @@ import ida_nalt
 import ida_bytes
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QDialog, QPushButton, QTableWidget, QHeaderView, QAbstractItemView,
-        QTableWidgetItem, QHBoxLayout, QVBoxLayout, QFileDialog, QMessageBox)
+from PyQt5.QtWidgets import (QFileDialog, QMessageBox)
+
+# assumes user has placed this script and ida_taint2_common.py in same folder
+from ida_taint2_common import (MaxTCNSelectDialog, ProcessSelectDialog, skip_csv_header)
 
 FUNC_COLOR = 0x90EE90
 INST_COLOR = 0x55AAFF
 
-class ProcessSelectDialog(QDialog):
-    def __init__(self, processes):
-        super(ProcessSelectDialog, self).__init__()
-        
-        self.setWindowTitle("Select Process")
-        
-        btn_ok = QPushButton("OK")
-        btn_ok.clicked.connect(self.accept)
-        btn_cancel = QPushButton("Cancel")
-        btn_cancel.clicked.connect(self.reject)
-        
-        self.process_table = QTableWidget()
-        self.process_table.setColumnCount(2)
-        self.process_table.setHorizontalHeaderLabels(("Process Name", "PID"))
-        self.process_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.process_table.setRowCount(len(processes))
-        self.process_table.verticalHeader().setVisible(False)
-        self.process_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.process_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        i = 0
-        for p in processes:
-            process_name_item = QTableWidgetItem(p[0])
-            process_name_item.setFlags(process_name_item.flags() & ~(Qt.ItemIsEditable))
-            self.process_table.setItem(i, 0, process_name_item)
-            process_id_item = QTableWidgetItem(str(p[1]))
-            process_id_item.setFlags(process_id_item.flags() & ~(Qt.ItemIsEditable))
-            self.process_table.setItem(i, 1, process_id_item)
-            i += 1
-
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(btn_ok)
-        hbox.addWidget(btn_cancel)
-
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.process_table)
-        vbox.addLayout(hbox)
-
-        self.setLayout(vbox)
-
-    def selectedProcess(self):
-        selectionModel = self.process_table.selectionModel()
-        if not selectionModel.hasSelection():
-            return None
-        if len(selectionModel.selectedRows()) > 1:
-            raise Exception("Supposedly impossible condition reached!")
-        row = selectionModel.selectedRows()[0].row()
-        return int(self.process_table.item(row, 1).data(0))
-
-
-    @classmethod
-    def selectProcess(cls, processes):
-        psd = cls(processes)
-        if QDialog.Accepted == psd.exec_():
-            return psd.selectedProcess()
-        return None
+# index in the CSV file of the PID column (first = 0)
+PID_INDEX = 1
+# index in the CSV file of the minimum TCN column
+TCN_INDEX = 4
 
 class LabelsCompressor:
     def __init__(self, have_semantic_labels):
@@ -211,37 +161,8 @@ def read_semantic_labels(filename):
 
     return semantic_labels
 
-def skip_csv_header(reader, show_metadata):
-    # newer ida_taint2 output files have some metadata before the header
-    line1 = next(reader, None)
-    if (line1[0].startswith("PANDA Build Date")):
-        exec_time = next(reader, None)
-        if (show_metadata):
-            idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
-            idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
-        next(reader, None)
-        
-def main():
-    filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
-    if filename == "":
-        return
-
-    processes = set()
-    input_file = open(filename, "r")
-    reader = csv.reader(input_file)
-    
-    skip_csv_header(reader, True)
-    for row in reader:
-        processes.add((row[0], int(row[1])))
-    input_file.close()
-
-    selected_pid = ProcessSelectDialog.selectProcess(processes)
-    # N.B.:  0 is a valid process ID
-    if (None == selected_pid):
-        return
-
-    semantic_labels = read_semantic_labels(filename + ".semantic_labels")
-
+def update_db(filename, semantic_labels, selected_pid, maxtcn):
+    idaapi.msg("Processing ida_taint2 output for taint labels...\n")
     snapshot = ida_loader.snapshot_t()
     snapshot.desc = "Before ida_taint2.py @ %s" % (datetime.datetime.now())
     ida_kernwin.take_database_snapshot(snapshot)
@@ -249,7 +170,7 @@ def main():
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
     labels_for_pc = {}
-    skip_csv_header(reader, False)
+    has_tcns = skip_csv_header(reader, False)
     for row in reader:
         pid = int(row[1])
         pc = int(row[2], 16)
@@ -262,6 +183,11 @@ def main():
 
         if pid != selected_pid:
             continue
+        if (has_tcns):
+            cur_tcn = int(row[TCN_INDEX])
+            if (cur_tcn > maxtcn):
+                continue
+            
         fn = ida_funcs.get_func(pc)
         if not fn:
             continue
@@ -288,6 +214,49 @@ def main():
         else:
             comment += ", " + label_portion
         ida_bytes.set_cmt(pc, comment, 0)        
+    idaapi.msg("...found " + str(len(labels_for_pc)) + " tainted instructions.\n")
+    
+def main():
+    filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".",
+                                              "CSV Files(*.csv)")
+    if filename == "":
+        return
+    
+    processes = set()
+    maxtcn_for_pid = dict()
+    input_file = open(filename, "r")
+    reader = csv.reader(input_file)
+    
+    has_tcns = skip_csv_header(reader, True)
+    for row in reader:
+        processes.add((row[0], int(row[PID_INDEX])))
+        if (has_tcns):
+            cur_tcn = int(row[TCN_INDEX])
+            if (row[PID_INDEX] not in maxtcn_for_pid):
+                maxtcn_for_pid[row[PID_INDEX]] = cur_tcn
+            elif (cur_tcn > maxtcn_for_pid[row[PID_INDEX]]):
+                maxtcn_for_pid[row[PID_INDEX]] = cur_tcn
+    input_file.close()
+
+    selected_process = ProcessSelectDialog.selectProcess(processes, maxtcn_for_pid)
+    if (None == selected_process):
+        return
+    
+    # N.B.:  0 is a valid process ID
+    selected_pid = selected_process['process_id']
+    sspid = str(selected_pid)
+    maxtcn = 0
+    if (has_tcns and (maxtcn_for_pid[sspid] > 0)):
+        maxtcn = MaxTCNSelectDialog.getMaxTCN(
+               selected_process['process_name'], selected_pid,
+               maxtcn_for_pid[sspid])
+        if (None == maxtcn):
+            return
+          
+    semantic_labels = read_semantic_labels(filename + ".semantic_labels")
+
+    update_db(filename, semantic_labels, selected_pid, maxtcn)
+
 
 if __name__ == "__main__":
     try:

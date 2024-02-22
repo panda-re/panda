@@ -50,7 +50,6 @@ jobs:
       - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
         with:
           fetch-depth: 0
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and push

@@ -79,7 +79,7 @@
 4081 long sys_setgroups(int gidsetsize, gid_t __user *grouplist);
 // 4082 - RESERVED
 4083 long sys_symlink(const char __user *old, const char __user *new);
-4084 long sys_lstat(const char __user *filename, struct __old_kernel_stat __user *statbuf);)
+4084 long sys_lstat(const char __user *filename, struct __old_kernel_stat __user *statbuf);
 4085 long sys_readlink(const char __user *path, char __user *buf, int bufsiz);
 4086 long sys_uselib(const char __user *library);
 4087 long sys_swapon(const char __user *specialfile, int swap_flags);

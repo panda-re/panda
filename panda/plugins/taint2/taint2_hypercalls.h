@@ -16,7 +16,6 @@
  * See the COPYING file in the top-level directory.
  */
 #pragma once
-#ifdef TAINT2_HYPERCALLS
 
 #include "qemu/osdep.h"
 
@@ -46,8 +45,7 @@ typedef struct panda_hypercall_struct {
 extern "C" {
 #endif
 bool guest_hypercall_callback(CPUState *cpu);
+bool guest_hypercall_warning_callback(CPUState *cpu);
 #ifdef __cplusplus
 }
-#endif
-
 #endif

@@ -603,8 +603,8 @@ static void vhost_iommu_unmap_notify(IOMMUNotifier *n, IOMMUTLBEntry *iotlb)
     struct vhost_dev *hdev = iommu->hdev;
     hwaddr iova = iotlb->iova + iommu->iommu_offset;
 
-    if (hdev->vhost_ops->vhost_invalidate_device_iotlb(hdev, iova,
-                                                       iotlb->addr_mask + 1)) {
+    if (vhost_backend_invalidate_device_iotlb(hdev, iova,
+                                              iotlb->addr_mask + 1)) {
         error_report("Fail to invalidate device iotlb");
     }
 }
@@ -838,10 +838,11 @@ static int vhost_memory_region_lookup(struct vhost_dev *hdev,
     return -EFAULT;
 }
 
-void vhost_device_iotlb_miss(struct vhost_dev *dev, uint64_t iova, int write)
+int vhost_device_iotlb_miss(struct vhost_dev *dev, uint64_t iova, int write)
 {
     IOMMUTLBEntry iotlb;
     uint64_t uaddr, len;
+    int ret = -EFAULT;
 
     rcu_read_lock();
 
@@ -858,14 +859,16 @@ void vhost_device_iotlb_miss(struct vhost_dev *dev, uint64_t iova, int write)
         len = MIN(iotlb.addr_mask + 1, len);
         iova = iova & ~iotlb.addr_mask;
 
-        if (dev->vhost_ops->vhost_update_device_iotlb(dev, iova, uaddr,
-                                                      len, iotlb.perm)) {
+        ret = vhost_backend_update_device_iotlb(dev, iova, uaddr,
+                                                len, iotlb.perm);
+        if (ret) {
             error_report("Fail to update device iotlb");
             goto out;
         }
     }
 out:
     rcu_read_unlock();
+    return ret;
 }
 
 static int vhost_virtqueue_start(struct vhost_dev *dev,
@@ -1356,6 +1359,38 @@ void vhost_ack_features(struct vhost_dev *hdev, const int *feature_bits,
         }
         bit++;
     }
+}
+
+int vhost_dev_get_config(struct vhost_dev *hdev, uint8_t *config,
+                         uint32_t config_len)
+{
+    assert(hdev->vhost_ops);
+
+    if (hdev->vhost_ops->vhost_get_config) {
+        return hdev->vhost_ops->vhost_get_config(hdev, config, config_len);
+    }
+
+    return -1;
+}
+
+int vhost_dev_set_config(struct vhost_dev *hdev, const uint8_t *data,
+                         uint32_t offset, uint32_t size, uint32_t flags)
+{
+    assert(hdev->vhost_ops);
+
+    if (hdev->vhost_ops->vhost_set_config) {
+        return hdev->vhost_ops->vhost_set_config(hdev, data, offset,
+                                                 size, flags);
+    }
+
+    return -1;
+}
+
+void vhost_dev_set_config_notifier(struct vhost_dev *hdev,
+                                   const VhostDevConfigOps *ops)
+{
+    assert(hdev->vhost_ops);
+    hdev->config_ops = ops;
 }
 
 /* Host notifiers must be enabled at this point. */

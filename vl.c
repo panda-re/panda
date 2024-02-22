@@ -1655,6 +1655,7 @@ void vm_state_notify(int running, RunState state)
 
 static int reset_requested;
 static int shutdown_requested, shutdown_signal = -1;
+static int panda_exit_code;
 static pid_t shutdown_pid;
 static int powerdown_requested;
 static int debug_requested;
@@ -1686,6 +1687,7 @@ static int qemu_shutdown_requested(void)
 static void qemu_kill_report(void)
 {
     if (!qtest_driver() && shutdown_signal != -1) {
+        panda_exit_code = 128 + shutdown_signal;
         if (shutdown_pid == 0) {
             /* This happens for eg ^C at the terminal, so it's worth
              * avoiding printing an odd message in that case.
@@ -5124,5 +5126,5 @@ PANDA_MAIN_FINISH:
     }
 
 
-    return 0;
+    return panda_exit_code;
 }
