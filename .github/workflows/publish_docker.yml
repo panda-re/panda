@@ -23,10 +23,11 @@ jobs:
       with:
           fetch-depth: 0
     - name: Get next version
-      uses: reecetech/version-increment@2023.10.1
+      uses: reecetech/version-increment@2023.10.2
       id: version
       with:
         release_branch: dev
+        use_api: true
     - name: Build panda:latest
       uses: docker/build-push-action@v5
       with:
