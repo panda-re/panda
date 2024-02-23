@@ -17,7 +17,7 @@ jobs:
         username: pandare
         password: ${{secrets.pandare_dockerhub}}
     - name: Install git
-      run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
+      run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
     - name: Checkout PANDA at current commit
       uses: actions/checkout@v4
       with:
