@@ -5,7 +5,6 @@ on: push
 jobs:
 
   build_deb:
-    needs: create_release
     runs-on: panda-arc
     strategy:
       matrix:
