@@ -51,7 +51,7 @@ jobs:
             panda/debian/pandare-*.whl
           asset_name: |
             pandare_${{ matrix.ubuntu_version }}.deb
-            pandare-$(echo "$(ls panda/dist/panda_re-*.whl)" | sed 's/^.*\/\(.*\)/\1/')
+            pandare-$(echo "$(ls panda/debian/pandare-*.whl)" | sed 's/^.*pandare-//')
           asset_content_type: |
             application/vnd.debian.binary-package
             application/octet-stream
