@@ -1,30 +1,15 @@
 name: Publish deb package
 
-on:
-  push:
-    tags: v*
+on: push
 
 jobs:
-
-  create_release:
-    runs-on: panda-arc
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
 
   build_deb:
     needs: create_release
     runs-on: panda-arc
     strategy:
       matrix:
+        debug: [1,2,3,4,5,6,7,8,9,10]
         ubuntu_version:
           - 20.04
           - 22.04
@@ -38,20 +23,4 @@ jobs:
 
       - name: Build package
         working-directory: panda/debian
-        run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
-
-      - name: Upload packages to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: |
-            panda/debian/pandare_${{ matrix.ubuntu_version }}.deb
-            panda/debian/pandare-*.whl
-          asset_name: |
-            pandare_${{ matrix.ubuntu_version }}.deb
-            pandare-$(echo "$(ls panda/debian/pandare-*.whl)" | sed 's/^.*pandare-//')
-          asset_content_type: |
-            application/vnd.debian.binary-package
-            application/octet-stream
+        run: echo ${{ matrix.debug }} && ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
