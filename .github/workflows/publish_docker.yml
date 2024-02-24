@@ -29,7 +29,7 @@ jobs:
         release_branch: dev
         use_api: true
     - name: Push tag
-      uses: actions-ecosystem/action-push-tag@v1
+      uses: thejeff77/action-push-tag@v1.0.0
       with:
         tag: ${{ steps.version.outputs.v-version }}
         message: '${{ steps.version.outputs.v-version }}'
