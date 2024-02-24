@@ -28,6 +28,11 @@ jobs:
       with:
         release_branch: dev
         use_api: true
+    - name: Push tag
+      uses: actions-ecosystem/action-push-tag@v1
+      with:
+        tag: ${{ steps.version.outputs.v-version }}
+        message: '${{ steps.version.outputs.v-version }}'
     - name: Build panda:latest
       uses: docker/build-push-action@v5
       with:
@@ -67,11 +72,6 @@ jobs:
            git add . &&
            git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
            git push || true
-    - name: Push tag
-      uses: actions-ecosystem/action-push-tag@v1
-      with:
-        tag: ${{ steps.version.outputs.v-version }}
-        message: '${{ steps.version.outputs.v-version }}'
 
   build_stable:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/stable'
