@@ -63,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: panda/debian/pandare-*.whl
+          asset_path: panda/debian/*.whl
           asset_name: pandare-${{ matrix.ubuntu_version }}.whl
           asset_content_type:  application/octet-stream
       
