@@ -84,13 +84,13 @@ jobs:
           username: pandare
           password: ${{secrets.pandare_dockerhub}}
       
-      - name: 'Login to GHCR Registry'
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      #- name: 'Login to GHCR Registry'
+      #  if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
+      #  uses: docker/login-action@v3
+      #  with:
+      #    registry: ghcr.io
+      #    username: ${{ github.repository_owner }}
+      #    password: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Build panda:latest
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
@@ -102,9 +102,9 @@ jobs:
             pandare/panda:${{ github.sha }}
             pandare/panda:${{ needs.create_release.outputs.v-version }}
             pandare/panda:latest
-            ghcr.io/pandare/panda:${{ github.sha }}
-            ghcr.io/pandare/panda:${{ needs.create_release.outputs.v-version }}
-            ghcr.io/pandare/panda:latest
+        #    ghcr.io/pandare/panda:${{ github.sha }}
+        #    ghcr.io/pandare/panda:${{ needs.create_release.outputs.v-version }}
+        #    ghcr.io/pandare/panda:latest
           target: panda
       - name: Build pandadev:latest
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
@@ -116,9 +116,9 @@ jobs:
             pandare/pandadev:${{ github.sha }}
             pandare/pandadev:${{ needs.create_release.outputs.v-version }}
             pandare/pandadev:latest
-            ghcr.io/pandare/pandadev:${{ github.sha }}
-            ghcr.io/pandare/pandadev:${{ needs.create_release.outputs.v-version }}
-            ghcr.io/pandare/pandadev:latest
+         #   ghcr.io/pandare/pandadev:${{ github.sha }}
+         #   ghcr.io/pandare/pandadev:${{ needs.create_release.outputs.v-version }}
+         #   ghcr.io/pandare/pandadev:latest
           target: developer
       - name: Checkout docs and reset
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
