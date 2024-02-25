@@ -7,9 +7,71 @@ on:
       - stable
 
 jobs:
+  create_release:
+    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    runs-on: panda-arc
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      v-version: ${{ steps.version.outputs.v-version }}
+    steps:
+      - name: Install git
+        run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
+      - name: Get next version
+        uses: reecetech/version-increment@2023.10.2
+        id: version
+        with:
+          release_branch: dev
+          use_api: true
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.v-version }}
+          release_name: ${{ steps.version.outputs.v-version }}
+
+  build_deb:
+    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    needs: create_release
+    runs-on: panda-arc
+    strategy:
+      matrix:
+        ubuntu_version:
+          - 20.04
+          - 22.04
+
+    steps:
+      - name: Install git
+        run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
+
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build package
+        working-directory: panda/debian
+        run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
+
+      - name: Upload packages to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: |
+            panda/debian/pandare_${{ matrix.ubuntu_version }}.deb
+            panda/debian/pandare-*.whl
+          asset_name: |
+            pandare_${{ matrix.ubuntu_version }}.deb
+            pandare-$(echo "$(ls panda/debian/pandare-*.whl)" | sed 's/^.*pandare-//')
+          asset_content_type: |
+            application/vnd.debian.binary-package
+            application/octet-stream
+  
   build_dev:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     runs-on: panda-arc
+    needs: create_release
     steps:
     - name: 'Login to Docker Registry'
       uses: docker/login-action@v3
@@ -22,30 +84,19 @@ jobs:
       uses: actions/checkout@v4
       with:
           fetch-depth: 0
-    - name: Get next version
-      uses: reecetech/version-increment@2023.10.2
-      id: version
-      with:
-        release_branch: dev
-        use_api: true
-    - name: Push tag
-      uses: thejeff77/action-push-tag@v1.0.0
-      with:
-        tag: ${{ steps.version.outputs.v-version }}
-        message: '${{ steps.version.outputs.v-version }}'
     - name: Build panda:latest
       uses: docker/build-push-action@v5
       with:
         push: true
         context: ${{ github.workspace }}
-        tags: pandare/panda:${{ github.sha }}, pandare/panda:${{ steps.version.outputs.v-version }}, pandare/panda:latest
+        tags: pandare/panda:${{ github.sha }}, pandare/panda:${{ needs.create_release.outputs.v-version }}, pandare/panda:latest
         target: panda
     - name: Build pandadev:latest
       uses: docker/build-push-action@v5
       with:
         push: true
         context: ${{ github.workspace }}
-        tags: pandare/pandadev:${{ github.sha }}, pandare/pandadev:${{ steps.version.outputs.v-version }}, pandare/pandadev:latest
+        tags: pandare/pandadev:${{ github.sha }}, pandare/pandadev:${{ needs.create_release.outputs.v-version }}, pandare/pandadev:latest
         target: developer
 
     - name: Checkout docs and reset
