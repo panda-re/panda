@@ -6,6 +6,9 @@ on:
       - dev
       - stable
 
+env:
+  PANDA_CONTAINER_UBUNTU_VERSION: 20.04
+
 jobs:
   create_release:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
@@ -31,7 +34,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.v-version }}
           release_name: ${{ steps.version.outputs.v-version }}
 
-  build_deb:
+  build_release_assets:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs: create_release
     runs-on: panda-arc
@@ -43,15 +46,17 @@ jobs:
 
     steps:
       - name: Install git
-        run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
+        run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
 
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build package
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
-
+      
       - name: Upload packages to release
         uses: actions/upload-release-asset@v1
         env:
@@ -59,7 +64,7 @@ jobs:
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: |
-            panda/debian/pandare_${{ matrix.ubuntu_version }}.deb
+            panda/debian/pandare.deb
             panda/debian/pandare-*.whl
           asset_name: |
             pandare_${{ matrix.ubuntu_version }}.deb
@@ -67,62 +72,76 @@ jobs:
           asset_content_type: |
             application/vnd.debian.binary-package
             application/octet-stream
-  
-  build_dev:
-    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
-    runs-on: panda-arc
-    needs: create_release
-    steps:
-    - name: 'Login to Docker Registry'
-      uses: docker/login-action@v3
-      with:
-        username: pandare
-        password: ${{secrets.pandare_dockerhub}}
-    - name: Install git
-      run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
-    - name: Checkout PANDA at current commit
-      uses: actions/checkout@v4
-      with:
-          fetch-depth: 0
-    - name: Build panda:latest
-      uses: docker/build-push-action@v5
-      with:
-        push: true
-        context: ${{ github.workspace }}
-        tags: pandare/panda:${{ github.sha }}, pandare/panda:${{ needs.create_release.outputs.v-version }}, pandare/panda:latest
-        target: panda
-    - name: Build pandadev:latest
-      uses: docker/build-push-action@v5
-      with:
-        push: true
-        context: ${{ github.workspace }}
-        tags: pandare/pandadev:${{ github.sha }}, pandare/pandadev:${{ needs.create_release.outputs.v-version }}, pandare/pandadev:latest
-        target: developer
 
-    - name: Checkout docs and reset
-      run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
-           git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
-
-    - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
-      # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
-      # we want to copy auto_pydoc/dev/pandare to auto_pydoc/pandare/ and /auto_pydoc/stable/pandare to /auto_pydoc/pandare/stable
-      #
-      # This is a bit complicated, sorry. We want to keep pandare/{CNAME,.git/} and nothing else
-      # then we copy in the new files (and merge doc-search.html and index.js with dev/pandare/
-    - name: Push PYPANDA docs to GitHub Pages if docs changed
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
-           mv pandare/CNAME dev &&
-           rm -rf pandare/* &&
-           mv dev/pandare/* pandare &&
-           rmdir dev/pandare &&
-           mv dev/* pandare/ &&
-           cd pandare &&
-           git config --global user.email "panda-ci@panda-re.mit.edu" &&
-           git config --global user.name "PANDA Bot" &&
-           git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
-           git push || true
+      - name: 'Login to Docker Registry'
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        uses: docker/login-action@v3
+        with:
+          username: pandare
+          password: ${{secrets.pandare_dockerhub}}
+      
+      - name: 'Login to GHCR Registry'
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build panda:latest
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: ${{ github.workspace }}
+          tags: |
+            pandare/panda:${{ github.sha }}
+            pandare/panda:${{ needs.create_release.outputs.v-version }}
+            pandare/panda:latest
+            ghcr.io/pandare/panda:${{ github.sha }}
+            ghcr.io/pandare/panda:${{ needs.create_release.outputs.v-version }}
+            ghcr.io/pandare/panda:latest
+          target: panda
+      - name: Build pandadev:latest
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: ${{ github.workspace }}
+          tags: |
+            pandare/pandadev:${{ github.sha }}
+            pandare/pandadev:${{ needs.create_release.outputs.v-version }}
+            pandare/pandadev:latest
+            ghcr.io/pandare/pandadev:${{ github.sha }}
+            ghcr.io/pandare/pandadev:${{ needs.create_release.outputs.v-version }}
+            ghcr.io/pandare/pandadev:latest
+          target: developer
+      - name: Checkout docs and reset
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
+             git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
+      - name: Update PYPANDA docs in container
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
+        # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
+        # we want to copy auto_pydoc/dev/pandare to auto_pydoc/pandare/ and /auto_pydoc/stable/pandare to /auto_pydoc/pandare/stable
+        #
+        # This is a bit complicated, sorry. We want to keep pandare/{CNAME,.git/} and nothing else
+        # then we copy in the new files (and merge doc-search.html and index.js with dev/pandare/
+      - name: Push PYPANDA docs to GitHub Pages if docs changed
+        if: matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION
+        run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
+             mv pandare/CNAME dev &&
+             rm -rf pandare/* &&
+             mv dev/pandare/* pandare &&
+             rmdir dev/pandare &&
+             mv dev/* pandare/ &&
+             cd pandare &&
+             git config --global user.email "panda-ci@panda-re.mit.edu" &&
+             git config --global user.name "PANDA Bot" &&
+             git add . &&
+             git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
+             git push || true
 
   build_stable:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/stable'
