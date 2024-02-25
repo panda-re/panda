@@ -50,7 +50,7 @@ jobs:
             panda/debian/pandare_${{ matrix.ubuntu_version }}.deb
             panda/debian/pandare-*.whl
           asset_name: |
-            pandare_${{ matrix.ubuntu_version }}.deb
+            pandare.deb
             pandare-$(echo "$(ls panda/debian/pandare-*.whl)" | sed 's/^.*pandare-//')
           asset_content_type: |
             application/vnd.debian.binary-package
