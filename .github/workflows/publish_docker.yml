@@ -57,15 +57,11 @@ jobs:
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
       
-      #- name: Upload whl to release
-      #  uses: actions/upload-release-asset@v1
-      #  env:
-      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #  with:
-      #    upload_url: ${{ needs.create_release.outputs.upload_url }}
-      #    asset_path: panda/debian/*.whl
-      #    asset_name: pandare-${{ matrix.ubuntu_version }}.whl
-      #    asset_content_type:  application/octet-stream
+      - name: Store the Pypanda wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-package-distributions
+          path: panda/debian/
       
       - name: Upload deb to release
         uses: actions/upload-release-asset@v1
