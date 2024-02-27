@@ -56,12 +56,23 @@ jobs:
       - name: Build package
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
+
+      - name: Get Name of Generated Wheel file
+        run: |
+          ARTIFACT_PATHNAME=$(ls panda/debian/*.whl | head -n 1)
+          ARTIFACT_NAME=$(basename $ARTIFACT_PATHNAME)
+          echo ::set-env name=ARTIFACT_NAME::${ARTIFACT_NAME}
+          echo ::set-env name=ARTIFACT_PATHNAME::${ARTIFACT_PATHNAME}
       
-      - name: Store the Pypanda wheel
-        uses: actions/upload-artifact@v2
+      - name: Upload wheel to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: python-package-distributions
-          path: panda/debian/
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_PATHNAME }}
+          asset_name: ${{ env.ARTIFACT_NAME }}
+          asset_content_type:  application/octet-stream
       
       - name: Upload deb to release
         uses: actions/upload-release-asset@v1
