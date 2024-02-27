@@ -154,6 +154,28 @@ jobs:
              git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
              git push || true
 
+  publish-to-pypi:
+    name: >-
+      Publish Python 🐍 distribution 📦 to PyPI
+    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    needs:
+    - build_release_assets
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pandare  # Replace <package-name> with your PyPI project name
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: pandare
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages-dir: panda/debian/
+        verbose: true
+        
   build_stable:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/stable'
     runs-on: panda-arc
