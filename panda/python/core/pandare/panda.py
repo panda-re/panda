@@ -2733,7 +2733,13 @@ class Panda():
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
                         #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
-                        return r
+                        if return_type:
+                            try:
+                                return self.ffi.cast(return_type, r)
+                            except TypeError:
+                                print("TypeError in _run_and_catch")
+                                # consider throwing an exception
+                                return self.ffi.cast(return_type, 0)
                     except Exception as e:
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
@@ -2746,6 +2752,11 @@ class Panda():
 
             cast_rc = pandatype(_run_and_catch)
             cast_rc_string = str(self.ffi.typeof(cast_rc))
+            return_type = self.ffi.typeof(cast_rc).result
+            
+            if return_type.cname == "void":
+                return_type = None
+            
             return_from_exception = 0
             if "void(*)(" in cast_rc_string:
                 return_from_exception = None
