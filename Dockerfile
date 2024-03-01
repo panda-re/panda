@@ -1,5 +1,6 @@
 ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu"
+ARG LIBOSI_VERSION="0.1.3"
 
 ### BASE IMAGE
 FROM $BASE_IMAGE as base
@@ -22,6 +23,7 @@ RUN [ -e /tmp/base_dep.txt ] && \
 FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
+ARG LIBOSI_VERSION
 
 RUN [ -e /tmp/build_dep.txt ] && \
     apt-get -qq update && \
@@ -44,11 +46,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo --help
 
 # install libosi
-RUN cd /tmp && \
-    git clone https://github.com/panda-re/libosi && \
-    mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
-    cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
-    cd /tmp && rm -rf libosi/ && ldconfig 
+RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory

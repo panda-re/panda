@@ -48,6 +48,7 @@
 #define   ASE_MSA       0x01000000
 
 /* Chip specific instructions. */
+#define		INSN_OCTEON  0x10000000
 #define		INSN_LOONGSON2E  0x20000000
 #define		INSN_LOONGSON2F  0x40000000
 #define		INSN_VR54XX	0x80000000

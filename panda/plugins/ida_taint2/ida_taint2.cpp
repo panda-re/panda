@@ -9,6 +9,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <vector>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "panda/plugin.h"
@@ -38,6 +39,7 @@ struct IDATaintReport {
     target_pid_t pid;
     target_ptr_t pc;
     uint32_t label;
+    bool in_kernel;
 };
 
 template <typename T> inline void hash_combine(std::size_t &seed, const T &v)
@@ -46,8 +48,8 @@ template <typename T> inline void hash_combine(std::size_t &seed, const T &v)
     seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-// Inject the hash function for PidPcPair into the std namespace, allows us to
-// store PidPcPair in an unordered set.
+// Inject the hash function for IDATaintReport into the std namespace, allows us
+// to store IDATaintReport in an unordered set.
 namespace std
 {
 template <> struct hash<IDATaintReport> {
@@ -59,6 +61,7 @@ template <> struct hash<IDATaintReport> {
         hash_combine(h, s.pid);
         hash_combine(h, s.pc);
         hash_combine(h, s.label);
+        hash_combine(h, s.in_kernel);
         return h;
     }
 };
@@ -68,32 +71,44 @@ template <> struct hash<IDATaintReport> {
 // collision).
 bool operator==(const IDATaintReport &lhs, const IDATaintReport &rhs)
 {
-    return lhs.pid == rhs.pid && lhs.pc == rhs.pc && lhs.label == rhs.label;
+    return (lhs.pid == rhs.pid) && (lhs.pc == rhs.pc) &&
+            (lhs.label == rhs.label) && (lhs.in_kernel == rhs.in_kernel);
 }
+
+// Keep track of reports that we've already seen (ignoring the TCN)
+static std::unordered_set<IDATaintReport> seen;
+
+// Keep track of the minimum taint compute number seen for each report
+static std::unordered_map<IDATaintReport, uint32_t> mintcn_for_report;
+
+static std::unordered_map<target_pid_t, std::string> name_for_pid;
 
 void taint_state_changed(Addr a, uint64_t size)
 {
-    // Keep track of reports that we've already seen.
-    static std::unordered_set<IDATaintReport> seen;
-
     // Get current PID (if in user-mode and OSI gave us a process) and PC.
     IDATaintReport report;
     report.pc = panda_current_pc(first_cpu);
     report.pid = 0;
-    char *process_name = NULL;
-    if (false == panda_in_kernel(first_cpu)) {
+
+    // unfortunately 0 is a valid PID for a non-kernel process so need to
+    // distinguish between the two cases another way
+    report.in_kernel = panda_in_kernel(first_cpu);
+    if (false == report.in_kernel) {
         OsiProc *proc = get_current_process(first_cpu);
         report.pid = proc ? proc->pid : 0;
 
-        process_name = g_strdup(proc->name);
+        // haven't seen this process ID before - save its name to report later
+        if (name_for_pid.find(report.pid) == name_for_pid.end()) {
+            std::string process_name(proc->name);
+            name_for_pid[report.pid] = process_name;
+        }
 
         if (proc) {
             free_osiproc(proc);
         }
-    } else {
-        process_name = g_strdup("(kernel)");
     }
 
+    uint32_t mintcn = UINT32_MAX;
     for (int i = 0; i < size; i++) {
         a.off = i;
         uint32_t label_count = taint2_query(a);
@@ -101,13 +116,21 @@ void taint_state_changed(Addr a, uint64_t size)
         taint2_query_set(a, labels.data());
 
         if (label_count > 0) {
+            // the TCNs for a particular pid/pc/label triplet do not necessarily
+            // arrive in non-decreasing order, so have to calculate as go and
+            // write out final value at end
+            uint32_t cur_tcn = taint2_query_tcn(a);
+            if (mintcn > cur_tcn) {
+                mintcn = cur_tcn;
+            }
+
             for (int j = 0; j < label_count; j++) {
                 report.label = labels[j];
                 if (seen.find(report) == seen.end()) {
                     seen.insert(report);
-                    fprintf(pidpclog,
-                            "%s," TARGET_PID_FMT ",0x" TARGET_PTR_FMT ",%u\n",
-                            process_name, report.pid, report.pc, report.label);
+                    mintcn_for_report[report] = mintcn;
+                } else if (mintcn_for_report[report] > mintcn) {
+                    mintcn_for_report[report] = mintcn;
                 }
             }
         }
@@ -157,12 +180,29 @@ bool init_plugin(void *self)
     pidpclog = fopen(filename, "w");
     fprintf(pidpclog, "PANDA Build Date,%s\n", build_date);
     fprintf(pidpclog, "Execution Timestamp,%s\n", time_string);
-    fprintf(pidpclog, "process name,pid,pc,label\n");
+    fprintf(pidpclog, "process name,pid,pc,label,minimum tcn\n");
+    fclose(pidpclog);
 
     return true;
 }
 
 void uninit_plugin(void *self)
 {
-    fclose(pidpclog);
+    // Now that we know the minimum taint compute number for each taint report,
+    // we can save the information to the file.
+    if (seen.size() > 0) {
+        pidpclog = fopen(filename, "a+");
+        for (auto it = seen.begin(); it != seen.end(); ++it) {
+            uint32_t cur_mintcn = mintcn_for_report[*it];
+            if (it->in_kernel) {
+                fprintf(pidpclog, "(kernel)," TARGET_PID_FMT ",0x" TARGET_PTR_FMT ",%u,%u\n",
+                        it->pid, it->pc, it->label, cur_mintcn);
+            } else {
+                fprintf(pidpclog, "%s," TARGET_PID_FMT ",0x" TARGET_PTR_FMT ",%u,%u\n",
+                        name_for_pid[it->pid].c_str(), it->pid, it->pc,
+                        it->label, cur_mintcn);
+            }
+        }
+        fclose(pidpclog);
+    }
 }
