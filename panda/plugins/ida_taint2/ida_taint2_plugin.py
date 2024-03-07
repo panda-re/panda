@@ -135,14 +135,12 @@ class ReuseTaintDialog(QDialog):
 # display in the disassembly window
 class TaintedFuncsChooser(ida_kernwin.Choose):
     def __init__(self, title, taintinfo):
+        # the default is to not allow editting, deleting or inserting
         ida_kernwin.Choose.__init__(
             self,
             title,
             [ ["Address", 10 | ida_kernwin.Choose.CHCOL_HEX],
-              ["Name",    30 | ida_kernwin.Choose.CHCOL_PLAIN] ],
-            forbidden_cb=ida_kernwin.Choose.CHOOSE_HAVE_INS | 
-            ida_kernwin.Choose.CHOOSE_HAVE_DEL | 
-            ida_kernwin.Choose.CHOOSE_HAVE_EDIT)
+              ["Name",    30 | ida_kernwin.Choose.CHCOL_PLAIN] ])
         self._taintinfo = taintinfo
         self.items = []
         # icon 41 seems to be a piece of paper with an italic f on it
