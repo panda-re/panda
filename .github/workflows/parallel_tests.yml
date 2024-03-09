@@ -12,7 +12,7 @@ on:
   #push:
   #  paths: ['Dockerfile'] # If this file changed, we'd need to do a clean build (this action)
   #  otherwise we could speed this up by pulling the last container of 'dev', copying
-  #  code into it, and then rebuilding
+  #  code into it, and then rebuilding.
 
 jobs:
 
