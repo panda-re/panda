@@ -112,7 +112,7 @@
 
 /* The memory helpers for tcg-generated code need tcg_target_long etc.  */
 #include "tcg.h"
-
+#define PANDA_DO_CBS_DATA_ACCESS
 #ifdef MMU_MODE0_SUFFIX
 #define CPU_MMU_INDEX 0
 #define MEMSUFFIX MMU_MODE0_SUFFIX
@@ -359,6 +359,7 @@
 #include "exec/cpu_ldst_template.h"
 #undef CPU_MMU_INDEX
 #undef MEMSUFFIX
+#undef PANDA_DO_CBS_DATA_ACCESS
 
 #define CPU_MMU_INDEX (cpu_mmu_index(env, true))
 #define MEMSUFFIX _code
