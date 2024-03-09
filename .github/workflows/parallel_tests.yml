@@ -1,15 +1,31 @@
 name: Parallel Tests
-on: 
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'     
-        required: true
-        default: 'warning'
-      tags:
-        description: 'Test scenario tags'
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - stable
+      - candidate_release_*
 
 jobs:
+  request-approval:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+    - name: Wait for approval
+      uses: actions/github-script@v5
+      with:
+        script: |
+          const { repo: { owner, repo }, runId } = context;
+          await github.actions.createWorkflowRunApproval({
+            owner,
+            repo,
+            run_id: runId
+          });
+          console.log(`Requested approval for run id ${runId}`);
 
   test_installer: # test install_ubuntu.sh
     runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
