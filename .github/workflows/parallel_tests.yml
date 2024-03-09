@@ -1,13 +1,13 @@
 name: Parallel Tests
-on:
-  pull_request:
-    branches:
-      - test_branch_tmp # Add your feature branch here to trigger the workflow on PRs to this branch
-  push:
-    branches:
-      - test_branch_tmp # Trigger the workflow on pushes to your feature branch
-  workflow_dispatch: # Keep this to manually trigger the workflow from the GitHub UI
-
+on: 
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test scenario tags'
 
 jobs:
 
