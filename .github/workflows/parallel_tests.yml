@@ -2,17 +2,16 @@ name: Parallel Tests
 # For PRs to dev or pushes that modify the root Dockerfile, build from scratch
 # then run CI tests using that container in parallel
 # For forked repos that can't use our panda-arc test suite, just build and run make check
+name: Parallel Tests
 on:
   pull_request:
     branches:
-      - dev
-      - stable
-      - candidate_release_*
-  workflow_dispatch:
-  #push:
-  #  paths: ['Dockerfile'] # If this file changed, we'd need to do a clean build (this action)
-  #  otherwise we could speed this up by pulling the last container of 'dev', copying
-  #  code into it, and then rebuilding.
+      - test_branch_tmp # Add your feature branch here to trigger the workflow on PRs to this branch
+  push:
+    branches:
+      - test_branch_tmp # Trigger the workflow on pushes to your feature branch
+  workflow_dispatch: # Keep this to manually trigger the workflow from the GitHub UI
+
 
 jobs:
 
