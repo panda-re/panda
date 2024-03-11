@@ -83,6 +83,9 @@ MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
 
 // Non-macroized version for SBE - if panda_please_retranslate is set, we'll break
 void PCB(start_block_exec)(CPUState *cpu, TranslationBlock *tb) {
+    if (unlikely(panda_exit_loop)){
+        return;
+    }
     panda_cb_list *plist;
     for (plist = panda_cbs[PANDA_CB_START_BLOCK_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
         if (plist->enabled)
