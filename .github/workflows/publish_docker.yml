@@ -57,23 +57,6 @@ jobs:
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
 
-      - name: Get Name of Generated Wheel file
-        run: |
-          ARTIFACT_PATHNAME=$(ls panda/debian/*.whl | head -n 1)
-          ARTIFACT_NAME=$(basename $ARTIFACT_PATHNAME)
-          echo ::set-env name=ARTIFACT_NAME::${ARTIFACT_NAME}
-          echo ::set-env name=ARTIFACT_PATHNAME::${ARTIFACT_PATHNAME}
-      
-      - name: Upload wheel to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_PATHNAME }}
-          asset_name: ${{ env.ARTIFACT_NAME }}
-          asset_content_type:  application/octet-stream
-      
       - name: Upload deb to release
         uses: actions/upload-release-asset@v1
         env:
@@ -83,6 +66,14 @@ jobs:
           asset_path: panda/debian/pandare.deb
           asset_name: pandare_${{ matrix.ubuntu_version }}.deb
           asset_content_type: application/vnd.debian.binary-package
+
+      - name: Upload wheel to release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            panda/debian/pandare-*.whl
 
       - name: 'Login to Docker Registry'
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
