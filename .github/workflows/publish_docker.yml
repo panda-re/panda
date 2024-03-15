@@ -56,23 +56,16 @@ jobs:
       - name: Build package
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
-
-      - name: Get Name of Generated Wheel file
-        run: |
-          ARTIFACT_PATHNAME=$(ls panda/debian/*.whl | head -n 1)
-          ARTIFACT_NAME=$(basename $ARTIFACT_PATHNAME)
-          echo ::set-env name=ARTIFACT_NAME::${ARTIFACT_NAME}
-          echo ::set-env name=ARTIFACT_PATHNAME::${ARTIFACT_PATHNAME}
       
-      - name: Upload wheel to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_PATHNAME }}
-          asset_name: ${{ env.ARTIFACT_NAME }}
-          asset_content_type:  application/octet-stream
+      #- name: Upload whl to release
+      #  uses: actions/upload-release-asset@v1
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #  with:
+      #    upload_url: ${{ needs.create_release.outputs.upload_url }}
+      #    asset_path: panda/debian/*.whl
+      #    asset_name: pandare-${{ matrix.ubuntu_version }}.whl
+      #    asset_content_type:  application/octet-stream
       
       - name: Upload deb to release
         uses: actions/upload-release-asset@v1
@@ -154,28 +147,6 @@ jobs:
              git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
              git push || true
 
-  publish-to-pypi:
-    name: >-
-      Publish Python 🐍 distribution 📦 to PyPI
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
-    needs:
-    - build_release_assets
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/pandare  # Replace <package-name> with your PyPI project name
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
-    steps:
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: pandare
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        packages-dir: panda/debian/
-        verbose: true
-        
   build_stable:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/stable'
     runs-on: panda-arc
