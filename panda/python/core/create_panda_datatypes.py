@@ -261,7 +261,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h")
     elif arch == "mips64" and int(bits) == 64:
         define_clean_header(ffi, include_dir + "/panda_datatypes_MIPS_64.h")
-        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips64.h") # syscalls are the same?
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips64.h")
     else:
         print("PANDA_DATATYPES: Architecture not supported")
 
