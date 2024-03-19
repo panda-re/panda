@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="ubuntu:20.04"
+ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu"
 ARG LIBOSI_VERSION="0.1.3"
 
