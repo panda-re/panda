@@ -3,6 +3,8 @@ import re
 import os
 import sys
 import shutil
+from glob import glob    
+from pathlib import Path
 if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
 
@@ -298,13 +300,22 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     # MANUAL curated list of PPP headers
     define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs.h")
-
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
 
-    define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
-    define_clean_header(ffi, include_dir + "/proc_start_linux_ppp.h")
-    define_clean_header(ffi, include_dir + "/forcedexec_ppp.h")
-    define_clean_header(ffi, include_dir + "/stringsearch_ppp.h")
+    #define clean header for files ending in "_ppp.h"
+
+    import os
+    plugin_dirs = [os.path.join(PLUGINS_DIR, f) for f in os.listdir(PLUGINS_DIR) if os.path.isdir(os.path.join(PLUGINS_DIR, f))]
+
+    pattern = re.compile(r"_ppp\.h$")
+    for plugin_dir in plugin_dirs:
+        plugin_files = os.listdir(plugin_dir)
+
+        for plugin_file in plugin_files:
+            if pattern.search(plugin_file):
+                define_clean_header(ffi, f"{include_dir}/{os.path.basename(plugin_file)}")
+ 
+
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -376,16 +387,19 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/osi", "os_intro.h"))
     pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
 
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
-    # TODO: programtically copy anything that ends with _ppp.h
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/forcedexec",   "forcedexec_ppp.h"))
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/stringsearch", "stringsearch_ppp.h"))
-    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
-    
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
-    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/cosi", "cosi.h"))
+
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
+
+    # programatically copy anything that ends with _ppp.h
+    for ppp_file in glob(f"{PLUGINS_DIR}/*/*_ppp.h", recursive=True):
+        ppp = Path(ppp_file)
+        copy_ppp_header(ppp_file)
+
+        plugin_dir = ppp.parent
+        header_filepath = Path(plugin_dir, f"{plugin_dir.name}.h")
+        if header_filepath.exists():
+            create_pypanda_header(str(header_filepath))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""from __future__ import print_function
