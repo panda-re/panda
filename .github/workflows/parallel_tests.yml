@@ -44,6 +44,8 @@ jobs:
   build_container:
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
+    environment: 
+      name: workflow_env
     steps:
       - name: Install git
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
