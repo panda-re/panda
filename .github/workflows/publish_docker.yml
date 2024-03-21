@@ -149,7 +149,8 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    # if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
     needs:
     - build_release_assets
     runs-on: ubuntu-latest
@@ -163,8 +164,8 @@ jobs:
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        user: pandare
-        password: ${{ secrets.PYPI_API_TOKEN }}
+        # user: pandare
+        # password: ${{ secrets.PYPI_API_TOKEN }}
         packages-dir: panda/debian/
         verbose: true
         
