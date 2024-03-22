@@ -57,17 +57,7 @@ jobs:
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
 
-      - name: Upload deb to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: panda/debian/pandare.deb
-          asset_name: pandare_${{ matrix.ubuntu_version }}.deb
-          asset_content_type: application/vnd.debian.binary-package
-
-      - name: Upload wheel to release
+      - name: Upload wheel and debian packages to release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,7 +65,15 @@ jobs:
           tag_name: ${{ needs.create_release.outputs.v-version }}
           files: |
             panda/debian/pandare-*.whl
+            panda/debian/pandare_*.deb
 
+      - name: Store the PyPanda distribution packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: panda/debian/pandare-*.whl
+          if-no-files-found: error
+        
       - name: 'Login to Docker Registry'
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         uses: docker/login-action@v3
@@ -150,7 +148,6 @@ jobs:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
-    # if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
     needs:
     - build_release_assets
     runs-on: ubuntu-latest
@@ -161,12 +158,15 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+        
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        # user: pandare
-        # password: ${{ secrets.PYPI_API_TOKEN }}
-        packages-dir: panda/debian/
         verbose: true
         
   build_stable:
