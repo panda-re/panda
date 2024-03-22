@@ -40,18 +40,12 @@ jobs:
         working-directory: panda/debian
         run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
 
-      - name: Upload packages to release
-        uses: actions/upload-release-asset@v1
+      - name: Upload wheel and debian packages to release
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: |
-            panda/debian/pandare_${{ matrix.ubuntu_version }}.deb
+          tag_name: ${{ needs.create_release.outputs.v-version }}
+          files: |
             panda/debian/pandare-*.whl
-          asset_name: |
-            pandare.deb
-            pandare-$(echo "$(ls panda/debian/pandare-*.whl)" | sed 's/^.*pandare-//')
-          asset_content_type: |
-            application/vnd.debian.binary-package
-            application/octet-stream
+            panda/debian/pandare_*.deb
