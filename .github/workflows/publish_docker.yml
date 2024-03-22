@@ -25,14 +25,6 @@ jobs:
         with:
           release_branch: dev
           use_api: true
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.version.outputs.v-version }}
-          release_name: ${{ steps.version.outputs.v-version }}
 
   build_release_assets:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
