@@ -120,7 +120,8 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
     if (-1 == panda_virtual_memory_read(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType))) { \
         return (_errorRetValue); \
     } \
-    return (flipbadendian(_t)); \
+    fixupendian2(_t);\
+    return _t; \
 }
 
 /**
