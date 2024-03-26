@@ -128,6 +128,7 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     ReadKey key;
     std::unique_ptr<OsiProc, decltype(free_osiproc)*> proc { get_current_process(first_cpu), free_osiproc };
     std::unique_ptr<OsiThread, decltype(free_osithread)*> thr { get_current_thread(first_cpu), free_osithread };
+    if (!thr)   return;
     key.process_id = proc ? proc->pid : 0;
     key.thread_id = thr->tid;
     key.file_id = file_id;
@@ -328,6 +329,7 @@ void windows32_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
 void linux_read_enter(CPUState *cpu, uint32_t fd)
 {
     OsiProc *proc = get_current_process(cpu);
+    if (!proc)  return;
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     if (filename != NULL) {
