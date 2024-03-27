@@ -33,7 +33,7 @@ nasm
 # Qemu build deps
 debhelper
 device-tree-compiler
-gnutls-dev
+libgnutls28-dev
 libaio-dev
 libasound2-dev
 libattr1-dev
