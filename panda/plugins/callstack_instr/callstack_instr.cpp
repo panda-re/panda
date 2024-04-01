@@ -615,6 +615,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    panda_disable_tb_chaining(); // TODO: if we switch to SBE style callbacks we can leave chaining enabled
 
     bool setup_ok = true;
 
