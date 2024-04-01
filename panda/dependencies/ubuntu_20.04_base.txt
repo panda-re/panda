@@ -20,6 +20,7 @@ libpython3-dev
 # pypanda dependencies
 genisoimage
 libffi-dev
+python3-protobuf
 
 # Not sure what this one is needed for
 liblzo2-2
