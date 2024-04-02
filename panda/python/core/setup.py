@@ -121,7 +121,6 @@ class custom_install(install_orig):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-
 setup(name='pandare',
       description='Python Interface to PANDA',
       long_description=long_description,
