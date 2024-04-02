@@ -121,10 +121,19 @@ class custom_install(install_orig):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+# from setuptools_scm import get_version
+
+# try:
+#     version = get_version()
+# except LookupError:
+#     version = "0.0.0.0"
+#     print(f"Could not find version from git tags, using {version}")
+
 setup(name='pandare',
-      version='0.1.2.0',
       description='Python Interface to PANDA',
       long_description=long_description,
+      setup_requires=['setuptools_scm'],
+      use_scm_version = {"root": "../../..", "relative_to": __file__},
       long_description_content_type="text/markdown",
       author='Andrew Fasano, Luke Craig, and Tim Leek',
       author_email='fasano@mit.edu',
