@@ -121,13 +121,6 @@ class custom_install(install_orig):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-# from setuptools_scm import get_version
-
-# try:
-#     version = get_version()
-# except LookupError:
-#     version = "0.0.0.0"
-#     print(f"Could not find version from git tags, using {version}")
 
 setup(name='pandare',
       description='Python Interface to PANDA',
