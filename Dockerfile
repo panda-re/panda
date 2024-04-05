@@ -93,7 +93,7 @@ RUN cd /panda/panda/python/core && \
 RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
 # Build a whl too
 RUN cd /panda/panda/python/core && \
-    python3 setup.py bdist_wheel
+ SETUPTOOLS_SCM_LOCAL_SCHEME=no-local-version python3 setup.py bdist_wheel
 
 # BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/

@@ -121,6 +121,17 @@ class custom_install(install_orig):
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+scm_local_scheme = "node-and-date"
+if "SETUPTOOLS_SCM_LOCAL_SCHEME" in os.environ:
+    local_scheme_values = [
+        "node-and-date",
+        "node-and-timestamp",
+        "dirty-tag",
+        "no-local-version",
+    ]
+    if os.environ["SETUPTOOLS_SCM_LOCAL_SCHEME"] in local_scheme_values:
+        scm_local_scheme = os.environ["SETUPTOOLS_SCM_LOCAL_SCHEME"]
+
 setup(name='pandare',
       description='Python Interface to PANDA',
       long_description=long_description,
@@ -129,6 +140,7 @@ setup(name='pandare',
                     "root": "../../..", 
                     "relative_to": __file__,
                     "fallback_version": "0.0.0.1",
+                    "local_scheme": scm_local_scheme,
                         },
       long_description_content_type="text/markdown",
       author='Andrew Fasano, Luke Craig, and Tim Leek',
