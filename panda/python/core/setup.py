@@ -120,17 +120,27 @@ class custom_install(install_orig):
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
+      
+
+version_options = {
+      "setup_requires": ['setuptools_scm'],
+      "use_scm_version": {
+                    "root": "../../..", 
+                    "relative_to": __file__,
+                    "fallback_version": "0.0.0.1",
+                        },
+}
+
+if "PRETEND_VERSION" in os.environ:
+    version = os.environ["PRETEND_VERSION"]
+    version_options = {
+        "version":version,
+    }
+
 
 setup(name='pandare',
       description='Python Interface to PANDA',
       long_description=long_description,
-      setup_requires=['setuptools_scm'],
-      use_scm_version = {
-                    "root": "../../..", 
-                    "relative_to": __file__,
-                    "fallback_version": "0.0.0.1",
-                    'local_scheme': 'no-local-version',
-                        },
       long_description_content_type="text/markdown",
       author='Andrew Fasano, Luke Craig, and Tim Leek',
       author_email='fasano@mit.edu',
@@ -145,4 +155,5 @@ setup(name='pandare',
       install_requires=parse_requirements("requirements.txt"),
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
+      **version_options
       )
