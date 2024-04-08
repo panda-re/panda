@@ -89,11 +89,12 @@ RUN  make -C /panda/build install && \
 
 # Install pypanda
 RUN cd /panda/panda/python/core && \
+    export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PANDARE=$(python -m setuptools_scm -r ../../.. --strip-dev 2>/dev/null) && \
     python3 setup.py install
 RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
 # Build a whl too
 RUN cd /panda/panda/python/core && \
- SETUPTOOLS_SCM_LOCAL_SCHEME=no-local-version python3 setup.py bdist_wheel
+ python3 setup.py bdist_wheel
 
 # BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
