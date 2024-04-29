@@ -21,23 +21,6 @@ size_t target_str_len;
 char *target_str;
 std::ofstream outfile;
 
-// We track the last QUEUE_SIZE addresses we've checked to avoid rereading guest pointers
-#define QUEUE_SIZE 100
-std::atomic<size_t> queue_idx(0);
-std::atomic<target_ulong> queue[QUEUE_SIZE];
-// Now we'll define a function to add to the queue
-void add_to_queue(target_ulong addr) {
-  size_t idx = queue_idx.fetch_add(1);
-  queue[idx % QUEUE_SIZE] = addr;
-}
-// And a function to check if an address is in the queue
-bool in_queue(target_ulong addr) {
-  for (size_t i = 0; i < QUEUE_SIZE; i++) {
-    if (queue[i] == addr) return true;
-  }
-  return false;
-}
-
 // C++ set for storing unique string matches
 std::set<std::string> matches;
 
@@ -65,13 +48,6 @@ void on_match(CPUState* cpu, target_ulong func_addr, target_ulong *args, char* v
   //printf("Match in arg %d with arg1=" TARGET_FMT_lx " and arg2=" TARGET_FMT_lx "\n", matching_idx, args[0], args[1]);
 
   target_ulong target_ptr = args[matching_idx == 0 ? 1 : 0]; // If we matched arg0, we want arg1 and vice versa
-
-  // If it's in the queue, we've already checked it - bail
-  if (in_queue(target_ptr)) {
-    return;
-  }
-  // Otherwise add it to the queue
-  add_to_queue(target_ptr);
 
   size_t short_len = strlen(value);
   size_t full_len = 4*short_len;
