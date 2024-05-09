@@ -2737,7 +2737,6 @@ class Panda():
                             try:
                                 return self.ffi.cast(return_type, r)
                             except TypeError:
-                                print("TypeError in _run_and_catch")
                                 # consider throwing an exception
                                 return self.ffi.cast(return_type, 0)
                     except Exception as e:
@@ -2748,18 +2747,14 @@ class Panda():
                             self.end_analysis()
                         else:
                             raise e
-                        return return_from_exception
+                        if return_type is not None:
+                            return self.ffi.cast(return_type, 0)
 
             cast_rc = pandatype(_run_and_catch)
-            cast_rc_string = str(self.ffi.typeof(cast_rc))
             return_type = self.ffi.typeof(cast_rc).result
             
             if return_type.cname == "void":
                 return_type = None
-            
-            return_from_exception = 0
-            if "void(*)(" in cast_rc_string:
-                return_from_exception = None
 
             self.register_callback(pandatype, cast_rc, local_name, enabled=enabled, procname=procname)
             def wrapper(*args, **kw):
@@ -2989,7 +2984,11 @@ class Panda():
                         r = fun(*args, **kwargs)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
-                        return r
+                        try:
+                            return self.ffi.cast(return_type, r)
+                        except TypeError:
+                            # consider throwing an exception
+                            return self.ffi.cast(return_type, 0)
                     except Exception as e:
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
@@ -2999,8 +2998,15 @@ class Panda():
                         else:
                             raise e
                         # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                        if return_type is not None:
+                            return self.ffi.cast(return_type, 0)
 
             cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
+            return_type = self.ffi.typeof(cast_rc).result
+            
+            if return_type.cname == "void":
+                return_type = None
+
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
