@@ -2984,11 +2984,12 @@ class Panda():
                         r = fun(*args, **kwargs)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                         #assert(isinstance(r, int)), "Invalid return type?"
-                        try:
-                            return self.ffi.cast(return_type, r)
-                        except TypeError:
-                            # consider throwing an exception
-                            return self.ffi.cast(return_type, 0)
+                        if return_type is not None:
+                            try:
+                                return self.ffi.cast(return_type, r)
+                            except TypeError:
+                                # consider throwing an exception
+                                return self.ffi.cast(return_type, 0)
                     except Exception as e:
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
