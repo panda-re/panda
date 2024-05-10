@@ -20,6 +20,7 @@ gdb
 hooks
 hooks2
 hw_proc_id
+hypercaller
 keyfind
 libfi
 lighthouse_coverage
