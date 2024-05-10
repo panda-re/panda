@@ -3505,8 +3505,16 @@ class Panda():
                         return None
 
             hook_cb_passed = hypercall_cb_type(_run_and_catch)
-
-            self.plugins['hypercaller'].register_hypercall(magic, hook_cb_passed)
+            if type(magic) is int:
+                self.plugins['hypercaller'].register_hypercall(magic, hook_cb_passed)
+            elif type(magic) is list:
+                for m in magic:
+                    if type(m) is int:
+                        self.plugins['hypercaller'].register_hypercall(m, hook_cb_passed)
+                    else:
+                        raise TypeError("Magic list must consist of integers")
+            else:
+                raise TypeError("Magics must be either an int or list of ints")
 
             def wrapper(*args, **kw):
                 _run_and_catch(args,kw)
@@ -3516,7 +3524,12 @@ class Panda():
     
     def disable_hypercall(self, fn):
         if fn in self.hypercalls:
-            self.plugins['hypercaller'].unregister_hypercall(self.hypercalls[fn][1])
+            magic = self.hypercalls[fn][1]
+            if type(magic) is int:
+                self.plugins['hypercaller'].unregister_hypercall(magic)
+            elif type(magic) is list:
+                for m in magic:
+                    self.plugins['hypercaller'].unregister_hypercall(m)
         else:
             breakpoint()
             print("ERROR: Your hypercall was not in the hook list")
