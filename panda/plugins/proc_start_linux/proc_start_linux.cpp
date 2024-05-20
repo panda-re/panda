@@ -345,10 +345,7 @@ void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename
 
 bool init_plugin(void *self) {
     self_ptr = self;
-    #if defined(TARGET_AARCH64)
-        fprintf(stderr, "[ERROR] proc_start_linux: aarch64 architecture not supported!\n");
-        return false;
-    #elif defined(TARGET_PPC)
+    #if defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
