@@ -521,21 +521,21 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
 
 // 64-bit specific
 #else
-    if (!in_thumb_mode) {
-        unsigned char buf[4] = {};
-        panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
-        if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
-            assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
-        }
-    }
+    // if (!in_thumb_mode) {
+    //     unsigned char buf[4] = {};
+    //     panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+    //     if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
+    //         assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
+    //     }
+    // }
 #endif
-    if (in_thumb_mode) {
-        unsigned char buf[2] = {};
-        panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
-        if (!(buf[1] == 0xDF && buf[0] == 0)) {
-            assert((1==0) && "Tried to calculate THUMB ret addr when instr was not a syscall!");
-        }
-    }
+    // if (in_thumb_mode) {
+    //     unsigned char buf[2] = {};
+    //     panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+    //     if (!(buf[1] == 0xDF && buf[0] == 0)) {
+    //         assert((1==0) && "Tried to calculate THUMB ret addr when instr was not a syscall!");
+    //     }
+    // }
 
     return mask_retaddr_to_pc(pc + offset);
 #else

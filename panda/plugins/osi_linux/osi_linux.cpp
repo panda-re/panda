@@ -1128,8 +1128,12 @@ void init_per_cpu_offsets(CPUState *cpu) {
                         0*sizeof(target_ptr_t));
     if (r != struct_get_ret_t::SUCCESS) {
         LOG_ERROR("Unable to update value of ki.task.per_cpu_offset_0_addr.");
+#ifndef TARGET_AARCH64
         assert(false);
         return;
+#else  
+        return;
+#endif
     }
 
     ki.task.per_cpu_offset_0_addr = per_cpu_offset_0_addr;

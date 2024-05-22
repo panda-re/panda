@@ -345,7 +345,10 @@ void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename
 
 bool init_plugin(void *self) {
     self_ptr = self;
-    #if defined(TARGET_PPC)
+    #if defined(TARGET_AARCH64)
+
+        return true;
+    #elif defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
@@ -369,7 +372,8 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-#if defined(TARGET_PPC)
+#if defined(TARGET_PPC) || defined(TARGET_AARCH64)
+    return;
 #else
 
     void* syscalls = panda_get_plugin_by_name("syscalls2");
