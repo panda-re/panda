@@ -21,8 +21,6 @@ libpython3-dev
 # pypanda dependencies
 genisoimage
 libffi-dev
-python3-protobuf
-python3-colorama
 
 # apt-rdepends qemu-system-common
 acl

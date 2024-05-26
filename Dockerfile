@@ -29,9 +29,6 @@ RUN [ -e /tmp/build_dep.txt ] && \
     apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
     apt-get clean && \
-    python3 -m pip install --upgrade --no-cache-dir pip && \
-    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
-    python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
 # Then install capstone from source
@@ -53,6 +50,9 @@ RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${
 # Note .dockerignore file keeps us from copying things we don't need
 COPY . /panda/
 COPY .git /panda/
+
+# Install all the python requirements including pypanda requirements
+RUN pip install -r /panda/panda/python/core/requirements.txt
 
 # Note we diable NUMA for docker builds because it causes make check to fail in docker
 RUN git -C /panda submodule update --init dtc && \
@@ -94,8 +94,8 @@ RUN  make -C /panda/build install && \
 # Install pypanda
 RUN cd /panda/panda/python/core && \
     PRETEND_VERSION=$(cat /tmp/savedversion) python3 setup.py install
-RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
-# Build a whl too
+
+# Build a wheel too for pypanda distribution
 RUN cd /panda/panda/python/core && \
     PRETEND_VERSION=$(cat /tmp/savedversion) python3 setup.py bdist_wheel
 

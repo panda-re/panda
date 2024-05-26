@@ -27,6 +27,7 @@ git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install 
 # some globals
 PANDA_GIT="https://github.com/panda-re/panda.git"
 LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
+LIBOSI_VERSION="0.1.3"
 
 # system information
 #vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
@@ -116,26 +117,16 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
   popd
 fi
 
-# if the windows introspection library is not installed, clone and install
+# if the windows introspection library is not installed, install the debian package
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
-  libosi_name=libosi-$(date +"%Y%m%d")
-  libosi_branch=master
-  libosi_repo=https://github.com/panda-re/libosi
-
-  echo "Installing libosi"
-  pushd .
-  git clone -b $libosi_branch $libosi_repo $libosi_name && cd $_
-  mkdir build && cd $_
-  cmake -GNinja .. && \
-    ninja && ninja package && \
-    $SUDO dpkg -i libosi*.deb
-  popd && rm -rf $libosi_name
+  pushd /tmp  # Save the current directory and change to /tmp
+  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$version" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$version" | awk -F':' '{print $2}').deb
+  popd  # Return to the original directory
 fi
 
 # PyPANDA needs CFFI from pip (the version in apt is too old)
 # Install system-wide since PyPANDA install will also be system-wide
 $SUDO python3 -m pip install pip
-$SUDO python3 -m pip install "cffi>1.14.3"
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true

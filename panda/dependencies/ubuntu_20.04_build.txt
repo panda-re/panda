@@ -21,7 +21,7 @@ python3-dev
 libpixman-1-dev
 zip
 
-# pypanda dependencies
+# python tools to install and distribute PyPanda
 python3-setuptools
 python3-wheel
 
@@ -69,7 +69,6 @@ libusbredirparser-dev
 libvirglrenderer-dev
 nettle-dev
 python3
-python3-sphinx
 texinfo
 uuid-dev
 xfslibs-dev

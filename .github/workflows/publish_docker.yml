@@ -62,7 +62,7 @@ jobs:
       - name: Store the PyPanda distribution packages
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: pypanda
           path: panda/debian/pandare-*.whl
           if-no-files-found: error
         
@@ -150,12 +150,12 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
-    - name: Download all the dists
+    - name: Download PyPanda from build_release_assets
       uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
+        name: pypanda
         path: dist/
-        
+    
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
