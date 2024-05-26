@@ -22,8 +22,10 @@ libpixman-1-dev
 zip
 
 # python tools to install and distribute PyPanda
+# Sphinx is used wihtin GitHub Actions to update Documentation in the container
 python3-setuptools
 python3-wheel
+python3-sphinx
 
 # pypanda test dependencies
 gcc-multilib

@@ -3,4 +3,3 @@ protobuf>=4.25.1
 colorama
 capstone
 pycparser
-sphinx

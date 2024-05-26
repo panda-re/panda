@@ -26,7 +26,6 @@ git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install 
 
 # some globals
 PANDA_GIT="https://github.com/panda-re/panda.git"
-LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
 LIBOSI_VERSION="0.1.3"
 
 # system information
@@ -123,10 +122,6 @@ if [[ !$(dpkg -l | grep -q libosi) ]]; then
   curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$version" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$version" | awk -F':' '{print $2}').deb
   popd  # Return to the original directory
 fi
-
-# PyPANDA needs CFFI from pip (the version in apt is too old)
-# Install system-wide since PyPANDA install will also be system-wide
-$SUDO python3 -m pip install pip
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
