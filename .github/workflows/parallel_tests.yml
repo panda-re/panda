@@ -25,7 +25,7 @@ jobs:
     - name: Install ssl
       run: apt-get -qq install -y libssl-dev
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
     - name: Install Python dev headers
@@ -155,7 +155,7 @@ jobs:
     runs-on: panda-arc
 
     steps:
-    - uses: actions/checkout@v1 # Clones code into to /home/runner/work/panda
+    - uses: actions/checkout@v4 # Clones code into to /home/runner/work/panda
 
     - name: Build docker container from project root
       run: cd $GITHUB_WORKSPACE && docker build -t panda_local .

@@ -5,12 +5,19 @@
 
 name: Local
 
+on: 
+  workflow_dispatch:
+
 jobs:
   local_build_container:
     runs-on: panda-arc
     steps:
-    - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
-
+    
+    - name: Check out
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
     - name: Build docker container from project root
       run: echo $GITHUB_WORKSPACE; cd $GITHUB_WORKSPACE && DOCKER_BUILDKIT=1 docker build --progress=plain --target developer -t panda_local:${{ github.sha }} .
 

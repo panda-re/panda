@@ -60,7 +60,7 @@ jobs:
             panda/debian/pandare_*.deb
 
       - name: Store the PyPanda distribution packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
           path: panda/debian/pandare-*.whl
@@ -151,7 +151,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
