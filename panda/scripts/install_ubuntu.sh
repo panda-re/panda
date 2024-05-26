@@ -27,6 +27,8 @@ git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install 
 # some globals
 PANDA_GIT="https://github.com/panda-re/panda.git"
 LIBOSI_VERSION="0.1.3"
+VERSION=$(lsb_release -r | awk '{print $2}')
+BASE_IMAGE="ubuntu:${VERSION}"
 
 # system information
 #vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
