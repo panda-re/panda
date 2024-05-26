@@ -17,8 +17,6 @@ arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']
 
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."])  # panda-git/ root dir
 
-pypi_build = False  # Set to true if trying to minimize size for pypi package upload. Note this disables some architectures
-
 lib_dir = os.path.join("pandare", "data")
 
 
@@ -27,7 +25,6 @@ def copy_objs():
     Run to copy objects into a (local and temporary) python module before installing to the system.
     Shouldn't be run if you're just installing in develop mode
     '''
-    build_root = os.path.join(root_dir, "build")
 
     if os.path.isdir(lib_dir):
         shutil.rmtree(lib_dir)
