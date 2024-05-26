@@ -34,30 +34,6 @@ then
   sudo -H easy_install pip
 fi
 
-if python -c 'import pycparser' 2>/dev/null
-then
-    if python <<EOF
-import sys
-import pycparser
-version = [int(x) for x in pycparser.__version__.split(".")]
-if version[0] < 2 or (version[0] == 2 and version[1] < 10):
-  print "pycparser too old. Please upgrade it!"
-  sys.exit(1)
-else:
-  print "pycparser version good."
-  sys.exit(0)
-EOF
-  then
-    progress "Skipping pycparser..."
-  else
-    progress "Your pycparser is too old. Please upgrade using your method of choice."
-    exit 1
-  fi
-else
-  progress "Installing pycparser..."
-  sudo -H pip install pycparser
-fi
-
 if [ ! -e "build.sh" ]
 then
   progress "Cloning PANDA into $(pwd) ..."
