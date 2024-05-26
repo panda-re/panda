@@ -121,7 +121,9 @@ fi
 # if the windows introspection library is not installed, install the debian package
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
   pushd /tmp  # Save the current directory and change to /tmp
-  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$version" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$version" | awk -F':' '{print $2}').deb
+  # This is based on Docker Image download
+  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
+  $SUDO dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
   popd  # Return to the original directory
 fi
 
