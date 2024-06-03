@@ -42,9 +42,6 @@ RUN cd /tmp && \
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Sanity check to ensure cargo is installed
-RUN cargo --help
-
 # install libosi
 RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
 
