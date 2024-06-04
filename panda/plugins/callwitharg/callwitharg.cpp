@@ -18,7 +18,7 @@ extern "C" {
 PPP_CB_BOILERPLATE(on_call_match_str);
 PPP_CB_BOILERPLATE(on_call_match_num);
 
-uint N;
+uint32_t N;
 bool verbose;
 void on_call_with_args(CPUState *cpu, target_ulong func_pc);
 
@@ -154,7 +154,7 @@ void on_call_with_args(CPUState *cpu, target_ulong func_pc) {
   }
 
   // Check the up to N arguments for matches
-  for (uint i=0; i < N; i++) {
+  for (uint32_t i=0; i < N; i++) {
     // Is argument a string or a number?
     if (have_nums) {
       if (int_targets.find(args.args[i]) != int_targets.end()) {
