@@ -98,9 +98,14 @@ typedef struct {
 } Arguments;
 
 bool _get_args_for_arch(CPUArchState *env, Arguments *args, int N) {
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
   for (int i = 0; i < N; ++i) {
     args->args[i] = env->regs[i];
+  }
+#elif defined(TARGET_AARCH64)
+  for (int i = 0; i < N; ++i) {
+    // aarch64 uses xregs over regs
+    args->args[i] = env->xregs[i];
   }
 #elif defined(TARGET_MIPS)
   for (int i = 0; i < N; ++i) {
