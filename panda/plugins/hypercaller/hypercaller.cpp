@@ -25,7 +25,7 @@ bool hypercall(CPUState *cpu);
 
 std::unordered_map<target_ulong, hypercall_t> hypercalls;
 
-void register_hypercall(target_ulong magic, hypercall_t hyp){
+void register_hypercall(uint32_t magic, hypercall_t hyp){
     if (hypercalls.find(magic) == hypercalls.end()){
         hypercalls[magic] = hyp;
     }else{
@@ -33,19 +33,22 @@ void register_hypercall(target_ulong magic, hypercall_t hyp){
     }
 }
 
-void unregister_hypercall(target_ulong magic){
+void unregister_hypercall(uint32_t magic){
     hypercalls.erase(magic);
 }
-
-target_ulong get_magic(CPUState *cpu){
-    target_ulong magic;
+// Use syscall notation
+uint32_t get_magic(CPUState *cpu){
+    uint32_t magic;
     CPUArchState * env = (CPUArchState *)cpu->env_ptr;
-#if defined(TARGET_ARM)
-    // r0
-    magic =env->regs[0];
+#if defined(TARGET_AARCH64)
+    //XR
+    magic = env->xregs[8];
+#elif defined(TARGET_ARM)
+    // r7
+    magic = env->regs[7];
 #elif defined(TARGET_MIPS)
-    // a0
-    magic =env->active_tc.gpr[4];
+    // V0
+    magic = env->active_tc.gpr[2];
 #elif defined(TARGET_I386)
     // eax
     magic = env->regs[R_EAX];
@@ -59,7 +62,7 @@ target_ulong get_magic(CPUState *cpu){
 }
 
 bool guest_hypercall(CPUState *cpu) {
-    target_ulong magic = get_magic(cpu);
+    uint32_t magic = get_magic(cpu);
     if (hypercalls.find(magic) != hypercalls.end()){
         hypercalls[magic](cpu);
         return true;
