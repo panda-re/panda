@@ -6,8 +6,8 @@
 // files in this directory that contain subsections like this one.
 
 typedef void (*hypercall_t)(CPUState *cpu);
-void register_hypercall(target_ulong magic, hypercall_t);
-void unregister_hypercall(target_ulong magic);
+void register_hypercall(uint32_t magic, hypercall_t);
+void unregister_hypercall(uint32_t magic);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
