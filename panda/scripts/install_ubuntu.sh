@@ -135,16 +135,13 @@ if [ -d "build" ]; then
   rm -rf "build"
 fi
 
+# Install all dependancies
+
 progress "Building PANDA..."
 mkdir build
 pushd build
 ../build.sh "$@"
 ./i386-softmmu/panda-system-i386 --version | head # Make sure it worked
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."
-
-cd ../panda/python/core
-$SUDO -H pip install -r requirements.txt
-$SUDO python3 setup.py install
-python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
 progress "Pypanda successfully installed"
 popd

@@ -21,16 +21,6 @@ msg() {
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu"
 LLVM_CONFIG_BINARY="${LLVM_CONFIG_BINARY:-llvm-config-11}"
 
-pypanda=""
-# Check if first argument is --python
-if [ $# -ge 1 ]; then
-    if [ "$1" = "--python" ]; then
-        echo "Installing PyPANDA"
-        pypanda="yes"
-        shift
-    fi
-fi
-
 # If there are more arguments, the first arg is target list or 'small'. subsequent args are passed to configure
 if [ $# -ge 1 ]; then if [ "$1" = "small" ]; then
         TARGET_LIST="i386-softmmu"
@@ -145,6 +135,9 @@ else
     echo "Using specified prefix: $prefix"
 fi
 
+# Install all Python requirements
+pip install -r ../panda/python/core/requirements.txt
+
 ## Configure/compile/test.
 msg "Configuring PANDA..."
 set -x
@@ -159,9 +152,12 @@ set +x
 msg "Compiling PANDA..."
 make -j ${PANDA_NPROC}
 
-if [ -n "$pypanda" ]; then
-    msg "Installing PyPANDA (developer mode)..."
-    pip install -e ../panda/python/core
-fi
+msg "Installing PyPANDA..."
+pushd ../panda/python/core/
+python3 setup.py install
+popd
+
+python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
+msg "Pypanda successfully installed"
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :
