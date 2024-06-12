@@ -14,7 +14,6 @@ jobs:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     runs-on: panda-arc
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       v-version: ${{ steps.version.outputs.v-version }}
     steps:
       - name: Install git
@@ -71,7 +70,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: pandare
-          password: ${{secrets.pandare_dockerhub}}
+          password: ${{secrets.ALL_PANDARE_DOCKERHUB}}
       
       #- name: 'Login to GHCR Registry'
       #  if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
@@ -172,7 +171,7 @@ jobs:
       uses: docker/login-action@v3
       with:
         username: pandare
-        password: ${{secrets.pandare_dockerhub}}
+        password: ${{secrets.ALL_PANDARE_DOCKERHUB}}
 
     - name: Build Bionic container
       # Push both dev and regular container
