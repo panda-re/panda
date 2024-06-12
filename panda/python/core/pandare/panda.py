@@ -242,6 +242,7 @@ class Panda():
         self.hook_list2 = {}
         self.mem_hooks = {}
         self.sr_hooks = []
+        self.hypercalls = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -3482,5 +3483,55 @@ class Panda():
         Decorator to hook virtual memory writes with the mem_hooks plugin
         '''
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
+    
+    # HYPERCALLS
+    def hypercall(self, magic):
+        def decorator(fun):
+            hypercall_cb_type = self.ffi.callback("hypercall_t")
+            
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                if not hasattr(self, "exit_exception"):
+                    try:
+                        r = fun(*args, **kwargs)
+                        return r
+                    except Exception as e:
+                        # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                        # machine exits.
+                        if self.catch_exceptions:
+                            self.exit_exception = e
+                            self.end_analysis()
+                        else:
+                            raise e
+                        return None
+
+            hook_cb_passed = hypercall_cb_type(_run_and_catch)
+            if type(magic) is int:
+                self.plugins['hypercaller'].register_hypercall(magic, hook_cb_passed)
+            elif type(magic) is list:
+                for m in magic:
+                    if type(m) is int:
+                        self.plugins['hypercaller'].register_hypercall(m, hook_cb_passed)
+                    else:
+                        raise TypeError("Magic list must consist of integers")
+            else:
+                raise TypeError("Magics must be either an int or list of ints")
+
+            def wrapper(*args, **kw):
+                _run_and_catch(args,kw)
+            self.hypercalls[wrapper] = [hook_cb_passed,magic]
+            return wrapper
+        return decorator
+    
+    def disable_hypercall(self, fn):
+        if fn in self.hypercalls:
+            magic = self.hypercalls[fn][1]
+            if type(magic) is int:
+                self.plugins['hypercaller'].unregister_hypercall(magic)
+            elif type(magic) is list:
+                for m in magic:
+                    self.plugins['hypercaller'].unregister_hypercall(m)
+        else:
+            breakpoint()
+            print("ERROR: Your hypercall was not in the hook list")
 
 # vim: expandtab:tabstop=4:

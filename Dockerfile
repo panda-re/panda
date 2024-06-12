@@ -33,14 +33,11 @@ RUN [ -e /tmp/build_dep.txt ] && \
 
 # Then install capstone from source
 RUN cd /tmp && \
-    git clone https://github.com/capstone-engine/capstone/ -b 4.0.2 && \
+    git clone https://github.com/capstone-engine/capstone/ -b v5 && \
     cd capstone/ && ./make.sh && make install && cd /tmp && \
     rm -rf /tmp/capstone && ldconfig
 
 ENV PATH="/root/.cargo/bin:${PATH}"
-
-# Sanity check to ensure cargo is installed
-RUN cargo --help
 
 # install libosi
 RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb

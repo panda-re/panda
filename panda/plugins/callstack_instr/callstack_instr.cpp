@@ -33,8 +33,10 @@ PANDAENDCOMMENT */
 #include <capstone/capstone.h>
 #if defined(TARGET_I386)
 #include <capstone/x86.h>
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 #include <capstone/arm.h>
+#elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+#include <capstone/arm64.h>
 #elif defined(TARGET_PPC)
 #include <capstone/ppc.h>
 #elif defined(TARGET_MIPS)
@@ -72,6 +74,8 @@ PPP_CB_BOILERPLATE(on_call);
 PPP_CB_BOILERPLATE(on_ret);
 
 stack_type stack_segregation = STACK_ASID;
+
+bool old_capstone=false; // Should we use fallback instruction group detection logic?
 
 // callstack_instr arguments
 static bool verbose = false;
@@ -249,7 +253,8 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
         cs_option(handle, CS_OPT_MODE, CS_MODE_32);
     }
 #endif
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    // Arm32, need to check for thumb mode
     csh handle = cs_handle_32;
 
     if (env->thumb){
@@ -258,6 +263,9 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     else {
         cs_option(handle, CS_OPT_MODE, CS_MODE_ARM);
     }
+#elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+    // Aarch64 has no thumb mode
+    csh handle = cs_handle_64;
 
 #elif defined(TARGET_PPC)
     csh handle = cs_handle_32;
@@ -276,6 +284,12 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     if (count <= 0) goto done2;
 
     for (end = insn + count - 1; end >= insn; end--) {
+
+        // Log instructions if running verbosely
+        if (verbose) {
+            printf("0x%lx: %s %s\n", end->address, end->mnemonic, end->op_str);
+        }
+
         if (cs_insn_group(handle, end, CS_GRP_CALL)) {
             res = INSTR_CALL;
         } else if (cs_insn_group(handle, end, CS_GRP_RET)) {
@@ -284,9 +298,24 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
             res = INSTR_UNKNOWN;
         }
 
-        // Temporary workaround for https://github.com/aquynh/capstone/issues/1680
         // Mnemonic/operand comparision as fallback for incorrect grouping
-        #if defined(TARGET_MIPS)
+        #if defined(TARGET_AARCH64)
+            if (old_capstone) {
+                // Capstone for aarch64 doesn't seem to support groups
+                if (res == INSTR_UNKNOWN) {
+                    // XXX is this incomplete?
+                    if (!strncasecmp(end->mnemonic, "bl", 32)) {
+                        res = INSTR_CALL;   // Direct absolute call
+                    } else if  (!strncasecmp(end->mnemonic, "blr", 32)) {
+                        res = INSTR_CALL;   // Direct relative call
+                    } else if  (!strncasecmp(end->mnemonic, "ret", 32)) {
+                        res = INSTR_RET;    // Jump to LR -> ret
+                    }
+                }
+            }
+        #elif defined(TARGET_MIPS)
+            // Temporary workaround for https://github.com/aquynh/capstone/issues/1680
+            // XXX: was this resolved by upgrading to capstone 5?
             #define MAX_MNEMONIC_LEN 32 // CS_MNEMONIC_SIZE not imported?
             if (res == INSTR_UNKNOWN) {
                 if (!strncasecmp(end->mnemonic, "jal", 32)) {
@@ -564,16 +593,32 @@ bool init_plugin(void *self) {
 #elif defined(TARGET_X86_64)
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &cs_handle_64) != CS_ERR_OK)
         return false;
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    // Arm32: depends on capstone 4.0 and up
     if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
         return false;
 
-    // Run-time check: is current version below 4.0?
     if (cs_version(NULL, NULL) < CS_MAKE_VERSION(4, 0)) {
       printf("\n[ERROR] Capstone versions prior to 4.0.1 are unusable with ARM so callstack instr will fail! Please upgrade your libcapstone install and rebuild to use this plugin\n\n");
       return false;
     }
+#elif defined(TARGET_AARCH64)
+    // Aarch64: depends on capstone 5 and up, if 4 and up we can handle with old_capstone hack
+    if (cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &cs_handle_64) != CS_ERR_OK)
+        return false;
 
+    if (cs_version(NULL, NULL) < CS_MAKE_VERSION(4, 0)) {
+        // Pre 4.0 is fatal
+        printf("\n[ERROR] Capstone versions prior to 4.0.1 are unusable with ARM so callstack instr will fail! "\
+            "Please upgrade your libcapstone install and rebuild to use this plugin\n\n");
+        return false;
+    }
+    if (cs_version(NULL, NULL) < CS_MAKE_VERSION(5, 0)) {
+        // 4.0-5.0 is okay, but not ideal.
+        old_capstone = true;
+        printf("\n[ERROR] Capstone versions prior to 5 may fail to support Aarch64 instruction groups. Using imprecise fallback method. " \
+             "Please upgrade your libcapstone if possible\n\n");
+    }
 
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
@@ -598,7 +643,7 @@ bool init_plugin(void *self) {
 #endif
 
 // Need details in capstone to have instruction groupings
-#if defined(TARGET_X86_64) || defined(TARGET_MIPS64)
+#if defined(TARGET_X86_64) || defined(TARGET_MIPS64) || defined(TARGET_AARCH64)
     cs_option(cs_handle_64, CS_OPT_DETAIL, CS_OPT_ON);
 #else
     cs_option(cs_handle_32, CS_OPT_DETAIL, CS_OPT_ON);

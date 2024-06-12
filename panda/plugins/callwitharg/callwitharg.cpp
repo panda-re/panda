@@ -18,7 +18,7 @@ extern "C" {
 PPP_CB_BOILERPLATE(on_call_match_str);
 PPP_CB_BOILERPLATE(on_call_match_num);
 
-uint N;
+uint32_t N;
 bool verbose;
 void on_call_with_args(CPUState *cpu, target_ulong func_pc);
 
@@ -98,9 +98,14 @@ typedef struct {
 } Arguments;
 
 bool _get_args_for_arch(CPUArchState *env, Arguments *args, int N) {
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
   for (int i = 0; i < N; ++i) {
     args->args[i] = env->regs[i];
+  }
+#elif defined(TARGET_AARCH64)
+  for (int i = 0; i < N; ++i) {
+    // aarch64 uses xregs over regs
+    args->args[i] = env->xregs[i];
   }
 #elif defined(TARGET_MIPS)
   for (int i = 0; i < N; ++i) {
@@ -154,7 +159,7 @@ void on_call_with_args(CPUState *cpu, target_ulong func_pc) {
   }
 
   // Check the up to N arguments for matches
-  for (uint i=0; i < N; i++) {
+  for (uint32_t i=0; i < N; i++) {
     // Is argument a string or a number?
     if (have_nums) {
       if (int_targets.find(args.args[i]) != int_targets.end()) {
