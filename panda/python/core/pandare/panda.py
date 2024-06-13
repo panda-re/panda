@@ -2728,7 +2728,11 @@ class Panda():
             return_from_exception = 0
 
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
-                if not hasattr(self, "exit_exception"):
+                if hasattr(self, "exit_exception"):
+                    # An exception has been raised previously - do not even run the function. But we need to match the expected
+                    # return type or we'll raise more errors.
+                    return self.ffi.cast(return_type, 0)
+                else:
                     try:
                         r = fun(*args, **kwargs)
                         #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
