@@ -56,9 +56,12 @@ $ docker run --rm pandadev panda-system-i386 --help
 ```
 
 ### Quickstart: Python pip
-The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work. You can also install pypanda by building PANDA and then running `python3 setup.py install` from the directory `panda/panda/python/core`.
+The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work. You can also install pypanda by building PANDA and then running `python3 setup.py install` from the directory `panda/panda/python/core`.
 
 ###  Debian, Ubuntu
+The fastest way to install PANDA would be through installing [the debian packages](https://github.com/pandare/
+panda/releases). There is a debian package for both Ubuntu 20.04 and Ubuntu 22.04, and its corresponding PyPanda package.
+
 Because PANDA has a few dependencies, we've encoded the build instructions into
 the [install\_ubuntu.sh](panda/scripts/install\_ubuntu.sh). The script should
 work on the latest Debian stable/Ubuntu LTS versions.
@@ -73,8 +76,8 @@ commands into whatever package manager your distribution uses.
 Note that if you want to use our LLVM features (mainly the dynamic taint
 system), you will need to install LLVM 11 from OS packages or compiled from
 source. On Ubuntu this should happen automatically via `install_ubuntu.sh`.
-Additionally, it is **strongly** recommended that you only build PANDA as 64bit
-binary. Creating a 32bit build should be possible, but best avoided.
+Additionally, it is **strongly** recommended that you only build PANDA as 64-bit
+binary. Creating a 32-bit build should be possible, but best avoided.
 See the limitations section for details.
 
 ### Arch Linux

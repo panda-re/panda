@@ -1,6 +1,6 @@
 # Building on Ubuntu
 
-Panda's build and runtime dependencies are listed in `panda/panda/dependencies/` for ubuntu 18, 19 and 20.
+Panda's build and runtime dependencies are listed in `panda/panda/dependencies/` for ubuntu 18, 20 and 22.
 
 If you install all the packages listed there, clone panda, and run build.sh you should be able to build panda:
 
@@ -19,10 +19,7 @@ mkdir -p build && cd build
 If you would like to use **PyPANDA** you'll need to also install it and its dependencies:
 
 ```sh
-# Pypanda dependencies
-pip3 install pycparser "protobuf==3.0.0" "https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip" colorama
-
-# Install pypanda
+# Install pypanda, see requirements.txt for the installed python dependancies
 cd panda/panda/python/core
 python3 setup.py install
 ```
