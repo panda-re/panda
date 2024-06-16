@@ -130,7 +130,7 @@ jobs:
     # https://docs.docker.com/reference/cli/docker/image/load/
     - name: Load Docker image
       run: |
-        gzip -d panda.tar.gz
+        cat panda.tar.gz | gzip -d > panda.tar
         docker load -i panda.tar
     
     - name: Run Taint Tests
