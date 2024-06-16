@@ -19,6 +19,9 @@ if [ $EUID -ne 0 ]; then
   SUDO=sudo
 fi
 
+LIBOSI_VERSION="0.1.3"
+UBUNTU_VERSION=$(lsb_release -rs)
+
 # Install lsb_release and git before anything else if either are missing
 # Note package names should be consistent across Ubuntu versions.
 lsb_release --help &>/dev/null || $SUDO apt-get update -qq && $SUDO apt-get -qq install -y --no-install-recommends lsb-release
@@ -26,7 +29,6 @@ git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install 
 
 # some globals
 PANDA_GIT="https://github.com/panda-re/panda.git"
-LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
 
 # system information
 #vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
@@ -105,6 +107,7 @@ if [ "$version" -eq 18 ]; then
   rm z3-4.8.7-x64-ubuntu-16.04.zip
 fi
 
+# TODO: Needs be upgraded to Capstone 5.0
 # Because libcapstone for Ubuntu 18 or 20 is really old, we download and install the v4.0.2 release if it's not present
 if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
   echo "Installing libcapstone v4"
@@ -118,18 +121,10 @@ fi
 
 # if the windows introspection library is not installed, clone and install
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
-  libosi_name=libosi-$(date +"%Y%m%d")
-  libosi_branch=master
-  libosi_repo=https://github.com/panda-re/libosi
-
-  echo "Installing libosi"
-  pushd .
-  git clone -b $libosi_branch $libosi_repo $libosi_name && cd $_
-  mkdir build && cd $_
-  cmake -GNinja .. && \
-    ninja && ninja package && \
-    $SUDO dpkg -i libosi*.deb
-  popd && rm -rf $libosi_name
+  pushd /tmp
+  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
+  $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
+  popd
 fi
 
 # PyPANDA needs CFFI from pip (the version in apt is too old)
