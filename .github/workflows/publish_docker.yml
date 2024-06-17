@@ -149,8 +149,8 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v4
+    - name: Download PyPanda from Release Assets
+      uses: actions/download-artifact@v3
       with:
         name: pypanda
         path: dist/
