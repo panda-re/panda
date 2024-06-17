@@ -150,7 +150,7 @@ jobs:
 
     steps:
     - name: Download PyPanda from Release Assets
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: pypanda
         path: dist/
