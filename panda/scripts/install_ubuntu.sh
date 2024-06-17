@@ -18,22 +18,20 @@ sudo=""
 if [ $EUID -ne 0 ]; then
   SUDO=sudo
 fi
-
-LIBOSI_VERSION="0.1.3"
-UBUNTU_VERSION=$(lsb_release -rs)
-
 # Install lsb_release and git before anything else if either are missing
 # Note package names should be consistent across Ubuntu versions.
 lsb_release --help &>/dev/null || $SUDO apt-get update -qq && $SUDO apt-get -qq install -y --no-install-recommends lsb-release
 git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install -y --no-install-recommends git
 
 # some globals
+LIBOSI_VERSION="0.1.3"
+UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 PANDA_GIT="https://github.com/panda-re/panda.git"
 
 # system information
 #vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
 #codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
-version=$(lsb_release -r| awk '{print $2}' | awk -F'.' '{print $1}')
+version=$(lsb_release -r | awk '{print $2}' | awk -F'.' '{print $1}')
 
 progress() {
   echo
