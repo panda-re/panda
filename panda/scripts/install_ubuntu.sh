@@ -107,12 +107,12 @@ fi
 
 # TODO: Needs be upgraded to Capstone 5.0
 # Because libcapstone for Ubuntu 18 or 20 is really old, we download and install the v4.0.2 release if it's not present
-if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
-  echo "Installing libcapstone v4"
+if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
+  echo "Installing libcapstone v5"
   pushd /tmp && \
-  curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-  tar xvf cap.tgz && cd capstone-4.0.2/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
-  rm -rf /tmp/capstone-4.0.2
+  git clone https://github.com/capstone-engine/capstone/ -b v5 && \
+  cd capstone/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
+  rm -rf /tmp/capstone
   $SUDO ldconfig
   popd
 fi
@@ -146,8 +146,8 @@ pushd build
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."
 
 cd ../panda/python/core
-$SUDO python3 -m pip install -r requirements.txt
-$SUDO python3 setup.py install
+python3 -m pip install -r requirements.txt
+python3 setup.py install
 python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
 progress "Pypanda successfully installed"
 popd
