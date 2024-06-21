@@ -1,6 +1,10 @@
 name: Build and Publish Docker Container and Pypanda Docs # Only for main panda-re repo, not forks
 
 on:
+  workflow_run:
+    workflows: ["Parallel Tests"]
+    types:
+      - completed
   push:
     branches:
       - dev
@@ -94,6 +98,7 @@ jobs:
         #    ghcr.io/pandare/panda:${{ needs.create_release.outputs.v-version }}
         #    ghcr.io/pandare/panda:latest
           target: panda
+      
       - name: Build pandadev:latest
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         uses: docker/build-push-action@v5
@@ -108,10 +113,12 @@ jobs:
          #   ghcr.io/pandare/pandadev:${{ needs.create_release.outputs.v-version }}
          #   ghcr.io/pandare/pandadev:latest
           target: developer
+      
       - name: Checkout docs and reset
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
              git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
+      
       - name: Update PYPANDA docs in container
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
@@ -120,6 +127,7 @@ jobs:
         #
         # This is a bit complicated, sorry. We want to keep pandare/{CNAME,.git/} and nothing else
         # then we copy in the new files (and merge doc-search.html and index.js with dev/pandare/
+      
       - name: Push PYPANDA docs to GitHub Pages if docs changed
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
@@ -174,14 +182,14 @@ jobs:
         password: ${{secrets.ALL_PANDARE_DOCKERHUB}}
 
     - name: Build Bionic container
-      # Push both dev and regular container
-      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda_stable:${GITHUB_SHA} $GITHUB_WORKSPACE;
-            docker tag pandare/panda_stable:${GITHUB_SHA} pandare/panda_stable:latest
-            docker push pandare/panda_stable:${GITHUB_SHA};
-            docker push pandare/panda_stable;
-            #DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:${GITHUB_SHA} $GITHUB_WORKSPACE;
-            #docker tag pandare/panadev:${GITHUB_SHA} pandare/pandadev:latest
-            #docker push pandare/pandadev;
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        context: ${{ github.workspace }}
+        tags: |
+          pandare/panda_stable:${{ github.sha }}
+          pandare/panda_stable:latest
+        target: panda
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
