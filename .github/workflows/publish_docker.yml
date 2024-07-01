@@ -74,7 +74,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: pandare
-          password: ${{secrets.ALL_PANDARE_DOCKERHUB}}
+          password: ${{secrets.pandare_dockerhub}}
       
       #- name: 'Login to GHCR Registry'
       #  if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
@@ -179,7 +179,7 @@ jobs:
       uses: docker/login-action@v3
       with:
         username: pandare
-        password: ${{secrets.ALL_PANDARE_DOCKERHUB}}
+        password: ${{secrets.pandare_dockerhub}}
 
     - name: Build Bionic container
       uses: docker/build-push-action@v5
