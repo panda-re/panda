@@ -25,13 +25,14 @@ lsb_release --help &>/dev/null || $SUDO apt-get update -qq && $SUDO apt-get -qq 
 git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install -y --no-install-recommends git
 
 # some globals
+LIBOSI_VERSION="0.1.3"
+UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 PANDA_GIT="https://github.com/panda-re/panda.git"
-LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
 
 # system information
 #vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
 #codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
-version=$(lsb_release -r| awk '{print $2}' | awk -F'.' '{print $1}')
+version=$(lsb_release -r | awk '{print $2}' | awk -F'.' '{print $1}')
 
 progress() {
   echo
@@ -106,30 +107,20 @@ if [ "$version" -eq 18 ]; then
 fi
 
 # Because libcapstone for Ubuntu 18 or 20 is really old, we download and install the v4.0.2 release if it's not present
-if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
-  echo "Installing libcapstone v4"
+if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
+  echo "Installing libcapstone v5"
   pushd /tmp && \
-  curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-  tar xvf cap.tgz && cd capstone-4.0.2/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
-  rm -rf /tmp/capstone-4.0.2
-  $SUDO ldconfig
-  popd
+  git clone https://github.com/capstone-engine/capstone/ -b v5 && \
+  cd capstone/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
+  rm -rf /tmp/capstone
 fi
 
 # if the windows introspection library is not installed, clone and install
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
-  libosi_name=libosi-$(date +"%Y%m%d")
-  libosi_branch=master
-  libosi_repo=https://github.com/panda-re/libosi
-
-  echo "Installing libosi"
-  pushd .
-  git clone -b $libosi_branch $libosi_repo $libosi_name && cd $_
-  mkdir build && cd $_
-  cmake -GNinja .. && \
-    ninja && ninja package && \
-    $SUDO dpkg -i libosi*.deb
-  popd && rm -rf $libosi_name
+  pushd /tmp
+  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
+  $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
+  popd
 fi
 
 # PyPANDA needs CFFI from pip (the version in apt is too old)
@@ -153,8 +144,8 @@ pushd build
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."
 
 cd ../panda/python/core
-$SUDO python3 -m pip install -r requirements.txt
-$SUDO python3 setup.py install
+python3 -m pip install -r requirements.txt
+python3 setup.py install
 python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
 progress "Pypanda successfully installed"
 popd
