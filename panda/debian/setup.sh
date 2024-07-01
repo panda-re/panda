@@ -42,8 +42,6 @@ if [[ ! -f "../dependencies/ubuntu_${version}_base.txt" ]]; then
 	exit 1
 fi
 
-
-
 # Build the installer to generate the wheel file
 DOCKER_BUILDKIT=1 docker build --target installer -t panda --build-arg BASE_IMAGE="ubuntu:${version}" ../..
 
@@ -60,5 +58,3 @@ docker build -t packager .
 # Copy deb file out of container to host
 docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
 mv pandare.deb pandare_${version}.deb
-
-
