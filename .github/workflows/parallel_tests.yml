@@ -3,6 +3,10 @@ name: Parallel Tests
 # then run CI tests using that container in parallel
 # For forked repos that can't use our panda-arc test suite, just build and run make check
 on:
+  # Allow to repo owner to manually run this workflow for external PRs once code is vetted
+  workflow_dispatch:
+
+  # Run automatically for internal PRs and pushes
   pull_request:
     branches:
       - dev

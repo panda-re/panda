@@ -25,7 +25,7 @@ lsb_release --help &>/dev/null || $SUDO apt-get update -qq && $SUDO apt-get -qq 
 git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install -y --no-install-recommends git
 
 # some globals
-LIBOSI_VERSION="0.1.3"
+LIBOSI_VERSION="0.1.7"
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 PANDA_GIT="https://github.com/panda-re/panda.git"
 
@@ -106,13 +106,14 @@ if [ "$version" -eq 18 ]; then
   rm z3-4.8.7-x64-ubuntu-16.04.zip
 fi
 
-# Because libcapstone for Ubuntu 18 or 20 is really old, we download and install the v4.0.2 release if it's not present
+# Install libcapstone v5 release if it's not present
 if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
   echo "Installing libcapstone v5"
   pushd /tmp && \
   git clone https://github.com/capstone-engine/capstone/ -b v5 && \
   cd capstone/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
   rm -rf /tmp/capstone
+  popd
 fi
 
 # if the windows introspection library is not installed, clone and install
@@ -120,6 +121,7 @@ if [[ !$(dpkg -l | grep -q libosi) ]]; then
   pushd /tmp
   curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
   $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
+  rm -rf /tmp/libosi_${UBUNTU_VERSION}.deb
   popd
 fi
 
