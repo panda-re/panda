@@ -113,6 +113,7 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
   git clone https://github.com/capstone-engine/capstone/ -b v5 && \
   cd capstone/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
   rm -rf /tmp/capstone
+  $SUDO ldconfig
   popd
 fi
 
