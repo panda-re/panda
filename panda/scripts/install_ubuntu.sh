@@ -120,7 +120,7 @@ fi
 # if the windows introspection library is not installed, clone and install
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
   pushd /tmp
-  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
+  curl -LJO https://github.com/panda-re/libosi/releases/download/v${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
   $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
   rm -rf /tmp/libosi_${UBUNTU_VERSION}.deb
   popd
