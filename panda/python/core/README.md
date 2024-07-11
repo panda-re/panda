@@ -25,10 +25,3 @@ from pandare import Panda
 panda = Panda(generic='i386')
 ...
 ```
-
-
-This is a beta release - Last updated Dec 2021.
----
-* Although PANDA is fairly stable, this interface is new and subject to change significantly prior to version 1.0.
-
-* This package is manually generated and may fall behind the code on GitHub.
