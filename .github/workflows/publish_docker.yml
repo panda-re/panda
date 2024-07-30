@@ -1,6 +1,7 @@
 name: Build and Publish Docker Container and Pypanda Docs # Only for main panda-re repo, not forks
 
 on:
+  workflow_run:
   push:
     branches:
       - dev
@@ -14,7 +15,6 @@ jobs:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     runs-on: panda-arc
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       v-version: ${{ steps.version.outputs.v-version }}
     steps:
       - name: Install git
@@ -60,9 +60,9 @@ jobs:
             panda/debian/pandare_*.deb
 
       - name: Store the PyPanda distribution packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: pypanda
           path: panda/debian/pandare-*.whl
           if-no-files-found: error
         
@@ -72,6 +72,7 @@ jobs:
         with:
           username: pandare
           password: ${{secrets.pandare_dockerhub}}
+
       
       #- name: 'Login to GHCR Registry'
       #  if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
@@ -151,9 +152,9 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
+        name: pypanda
         path: dist/
         
     - name: Publish distribution 📦 to PyPI
@@ -176,13 +177,14 @@ jobs:
 
     - name: Build Bionic container
       # Push both dev and regular container
-      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda_stable:${GITHUB_SHA} $GITHUB_WORKSPACE;
-            docker tag pandare/panda_stable:${GITHUB_SHA} pandare/panda_stable:latest
-            docker push pandare/panda_stable:${GITHUB_SHA};
-            docker push pandare/panda_stable;
-            #DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:${GITHUB_SHA} $GITHUB_WORKSPACE;
-            #docker tag pandare/panadev:${GITHUB_SHA} pandare/pandadev:latest
-            #docker push pandare/pandadev;
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        context: ${{ github.workspace }}
+        tags: |
+          pandare/panda_stable:${{ github.sha }}
+          pandare/panda_stable:latest
+        target: panda
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
