@@ -3496,8 +3496,7 @@ class Panda():
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
                 if not hasattr(self, "exit_exception"):
                     try:
-                        r = fun(*args, **kwargs)
-                        return r
+                        fun(*args, **kwargs)
                     except Exception as e:
                         # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                         # machine exits.
@@ -3506,7 +3505,6 @@ class Panda():
                             self.end_analysis()
                         else:
                             raise e
-                        return None
 
             hook_cb_passed = hypercall_cb_type(_run_and_catch)
             if type(magic) is int:
