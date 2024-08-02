@@ -1,7 +1,6 @@
 name: Build and Publish Docker Container and Pypanda Docs # Only for main panda-re repo, not forks
 
 on:
-  workflow_run:
   push:
     branches:
       - dev
