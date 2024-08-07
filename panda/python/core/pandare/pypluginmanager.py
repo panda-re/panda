@@ -5,6 +5,7 @@ Class to manage loading Panda PyPlugins. See docs/pyplugins.md for details.
 """
 from pathlib import Path
 from pandare import PyPlugin
+import datetime
 import inspect
 import importlib.util
 
@@ -197,6 +198,7 @@ class PyPluginManager:
             self.plugins[name].__preinit__(self, args)
             self.get_ppp_funcs(self.plugins[name])
             self.plugins[name].__init__(self.panda)
+            self.plugins[name].load_time = datetime.datetime.now()
 
             # Setup webserver if necessary
             if self.flask and hasattr(self.plugins[name], 'webserver_init') and \
@@ -272,8 +274,10 @@ class PyPluginManager:
         '''
         Unload all PyPlugins
         '''
-        while self.plugins:
-            name, cls = self.plugins.popitem()
+        # unload in reverse order of load time
+        plugin_list = {k:v for k,v in reversed(sorted(self.plugins.items(), key=lambda x: x[1].load_time))}
+        while plugin_list:
+            name, cls = plugin_list.popitem()
             self.unload(cls, do_del=False)
 
     def is_loaded(self, pluginclass):
