@@ -9,7 +9,7 @@ $PANDA_PATH/build/x86_64-softmmu/panda-system-x86_64 -replay foo -S -s -panda ch
 
 To attach the GDB client and load PANDA commands, run
 ```
-gdb -x ~/panda/panda/scripts/gdbinit -ex 'target remote localhost:1234'
+gdb -x ~/panda/panda/scripts/gdbinit -ex 'target remote localhost:1234' [kernel binary path]
 ```
 
 ## Reverse execution
