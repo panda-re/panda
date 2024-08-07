@@ -59,7 +59,7 @@ jobs:
             panda/debian/pandare_*.deb
 
       - name: Store the PyPanda distribution packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: pypanda
           path: panda/debian/pandare-*.whl
