@@ -275,7 +275,7 @@ class PyPluginManager:
         Unload all PyPlugins
         '''
         # unload in reverse order of load time
-        plugin_list = {k:v for k,v in reversed(sorted(self.plugins.items(), key=lambda x: x[1].load_time))}
+        plugin_list = {k:v for k,v in sorted(self.plugins.items(), key=lambda x: x[1].load_time)}
         while plugin_list:
             name, cls = plugin_list.popitem()
             self.unload(cls, do_del=False)
