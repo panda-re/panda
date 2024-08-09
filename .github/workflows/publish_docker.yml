@@ -55,14 +55,15 @@ jobs:
         with:
           tag_name: ${{ needs.create_release.outputs.v-version }}
           files: |
-            panda/debian/pandare-*.whl
-            panda/debian/pandare_*.deb
+            panda/debian/pandare*.whl
+            panda/debian/pandare*.deb
 
       - name: Store the PyPanda distribution packages
-        uses: actions/upload-artifact@v3
+        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
+        uses: actions/upload-artifact@v4
         with:
           name: pypanda
-          path: panda/debian/pandare-*.whl
+          path: panda/debian/pandare*.whl
           if-no-files-found: error
         
       - name: 'Login to Docker Registry'
@@ -137,8 +138,7 @@ jobs:
              git push || true
 
   publish-to-pypi:
-    name: >-
-      Publish Python 🐍 distribution 📦 to PyPI
+    name: Publish Python 🐍 distribution 📦 to PyPI
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs:
     - build_release_assets
