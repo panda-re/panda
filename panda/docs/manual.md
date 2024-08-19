@@ -295,7 +295,7 @@ int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int
 This function allows a plugin to read or write `len` bytes of guest physical
 memory at `addr` into or from the supplied buffer `buf`. This function differs
 from QEMU's `cpu_physical_memory_rw` in that it will never access I/O, only
-RAM. This function returns zero on success, and negative values on failure (page not mapped).
+RAM. This function returns zero on success, and non-zero values on failure (page not mapped).
 ```C
 int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
 ```
