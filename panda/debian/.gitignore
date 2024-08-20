@@ -1,1 +1,2 @@
-panda.deb
+*.deb
+*.whl
