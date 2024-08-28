@@ -67,6 +67,7 @@ typedef struct FWCfgEntry {
     uint8_t *data;
     void *callback_opaque;
     FWCfgReadCallback read_callback;
+    FWCfgWriteCallback write_callback;
 } FWCfgEntry;
 
 struct FWCfgState {
@@ -621,6 +622,7 @@ static const VMStateDescription vmstate_fw_cfg = {
 
 static void fw_cfg_add_bytes_read_callback(FWCfgState *s, uint16_t key,
                                            FWCfgReadCallback callback,
+                                           FWCfgWriteCallback write_callback,
                                            void *callback_opaque,
                                            void *data, size_t len,
                                            bool read_only)
@@ -635,6 +637,7 @@ static void fw_cfg_add_bytes_read_callback(FWCfgState *s, uint16_t key,
     s->entries[arch][key].data = data;
     s->entries[arch][key].len = (uint32_t)len;
     s->entries[arch][key].read_callback = callback;
+    s->entries[arch][key].write_callback = write_callback;
     s->entries[arch][key].callback_opaque = callback_opaque;
     s->entries[arch][key].allow_write = !read_only;
 }
@@ -661,7 +664,7 @@ static void *fw_cfg_modify_bytes_read(FWCfgState *s, uint16_t key,
 
 void fw_cfg_add_bytes(FWCfgState *s, uint16_t key, void *data, size_t len)
 {
-    fw_cfg_add_bytes_read_callback(s, key, NULL, NULL, data, len, true);
+    fw_cfg_add_bytes_read_callback(s, key, NULL, NULL, NULL, data, len, true);
 }
 
 void fw_cfg_add_string(FWCfgState *s, uint16_t key, const char *value)
@@ -786,10 +789,11 @@ static int get_fw_cfg_order(FWCfgState *s, const char *name)
     return FW_CFG_ORDER_OVERRIDE_LAST;
 }
 
-void fw_cfg_add_file_callback(FWCfgState *s,  const char *filename,
-                              FWCfgReadCallback callback, void *callback_opaque,
-                              void *data, size_t len, bool read_only)
-{
+void fw_cfg_add_file_callback_write(FWCfgState *s, const char *filename,
+                              FWCfgReadCallback select_cb,
+                              FWCfgWriteCallback write_cb,
+                              void *callback_opaque,
+                              void *data, size_t len, bool read_only) {
     int i, index, count;
     size_t dsize;
     MachineClass *mc = MACHINE_GET_CLASS(qdev_get_machine());
@@ -850,7 +854,7 @@ void fw_cfg_add_file_callback(FWCfgState *s,  const char *filename,
     }
 
     fw_cfg_add_bytes_read_callback(s, FW_CFG_FILE_FIRST + index,
-                                   callback, callback_opaque, data, len,
+                                   select_cb, write_cb, callback_opaque, data, len,
                                    read_only);
 
     s->files->f[index].size   = cpu_to_be32(len);
@@ -859,6 +863,15 @@ void fw_cfg_add_file_callback(FWCfgState *s,  const char *filename,
     trace_fw_cfg_add_file(s, index, s->files->f[index].name, len);
 
     s->files->count = cpu_to_be32(count+1);
+}
+
+
+
+void fw_cfg_add_file_callback(FWCfgState *s,  const char *filename,
+                              FWCfgReadCallback callback, void *callback_opaque,
+                              void *data, size_t len, bool read_only)
+{
+  fw_cfg_add_file_callback_write(s, filename, callback, NULL, callback_opaque, data, len, read_only);
 }
 
 void fw_cfg_add_file(FWCfgState *s,  const char *filename,
