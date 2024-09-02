@@ -744,13 +744,23 @@ class Panda():
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
     def _unload_pyplugins(self):
+        '''
+        Unload Python plugins first.
+        
+        We have to be careful to not remove __main_loop_wait because we're executing inside of __main_loop_wait and it more work to do
+        
+        We achieve this by first popping main loop wait and then re-adding it after unloading all other callbacks
+        '''
+        mlw = self.registered_callbacks.pop("__main_loop_wait")
+
         # First unload python plugins, should be safe to do anytime
-        while len(list(self.registered_callbacks)) > 0:
+        while self.registered_callbacks:
             try:
                 self.delete_callback(list(self.registered_callbacks.keys())[0])
             except IndexError:
                 continue
-            #self.disable_callback(name)
+    
+        self.registered_callbacks["__main_loop_wait"] = mlw
 
         # Next, unload any pyplugins
         if hasattr(self, "_pyplugin_manager"):
