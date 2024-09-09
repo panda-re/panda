@@ -43,7 +43,7 @@ RUN cd /tmp && \
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # install libosi
-RUN cd /tmp && echo curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
+RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
