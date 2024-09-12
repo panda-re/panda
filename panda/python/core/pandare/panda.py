@@ -543,8 +543,9 @@ class Panda():
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
-        self.unload_plugins() # Unload pyplugins and C plugins
+        self.unload_plugins() # Unload pyplugins
         self.delete_callbacks() # Unload any registered callbacks
+        self.libpanda.panda_unload_plugins() # Unload C plugins
         self.plugins = plugin_list(self)
         # Write PANDALOG, if any
         #self.libpanda.panda_cleanup_record()
