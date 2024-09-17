@@ -1,10 +1,10 @@
-use panda::prelude::*;
 use panda::plugins::osi::OSI;
+use panda::prelude::*;
 
 use gdbstub::outputln;
 
 pub(crate) fn print(cpu: &mut CPUState, mut out: impl std::fmt::Write) {
-    let proc = OSI.get_current_process(cpu);
+    let proc = OSI.get_current_process(cpu).unwrap();
 
     outputln!(out);
     outputln!(out, "{}", proc.get_name());
@@ -13,6 +13,10 @@ pub(crate) fn print(cpu: &mut CPUState, mut out: impl std::fmt::Write) {
     outputln!(out, "ASID: {:#x?}", proc.asid);
     outputln!(out, "Parent PID: {}", proc.ppid);
     outputln!(out, "Creation time: {}", proc.create_time);
-    outputln!(out, "PC in shared library: {}", OSI.in_shared_object(cpu, &*proc));
+    outputln!(
+        out,
+        "PC in shared library: {}",
+        OSI.in_shared_object(cpu, &*proc)
+    );
     outputln!(out);
 }

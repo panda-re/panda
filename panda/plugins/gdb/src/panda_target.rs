@@ -1,13 +1,12 @@
-use crate::{monitor_commands, target_state::{STATE, BreakStatus}};
+use crate::{
+    monitor_commands,
+    target_state::{BreakStatus, STATE},
+};
 use gdbstub::{
-    target::{Target, TargetResult, TargetError, ext},
-    target::ext::base::singlethread::{
-        SingleThreadOps,
-        StopReason,
-        ResumeAction,
-    },
     arch::Arch,
     outputln,
+    target::ext::base::singlethread::{ResumeAction, SingleThreadOps, StopReason},
+    target::{ext, Target, TargetError, TargetResult},
 };
 
 use panda::plugins::osi::OSI;
@@ -17,31 +16,37 @@ use std::convert::TryInto;
 pub struct PandaTarget;
 
 #[cfg(feature = "x86_64")]
-use gdbstub_arch::x86::{X86_64_SSE as X86_64, reg::{X86_64CoreRegs, X86SegmentRegs, F80}};
+use gdbstub_arch::x86::{
+    reg::{X86SegmentRegs, X86_64CoreRegs, F80},
+    X86_64_SSE as X86_64,
+};
 
 #[cfg(feature = "i386")]
-use gdbstub_arch::x86::{X86_SSE as X86, reg::{X86CoreRegs, F80, X86SegmentRegs}};
+use gdbstub_arch::x86::{
+    reg::{X86CoreRegs, X86SegmentRegs, F80},
+    X86_SSE as X86,
+};
 
 #[cfg(feature = "arm")]
-use gdbstub_arch::arm::{Armv4t, reg::ArmCoreRegs};
+use gdbstub_arch::arm::{reg::ArmCoreRegs, Armv4t};
 
 //#[cfg(feature = "ppc")]
 //use gdbstub_arch::ppc::{PowerPcAltivec32 as PowerPc, reg::{PowerPcCommonRegs as PowerPcCoreRegs}};
 
 #[cfg(any(feature = "mips", feature = "mipsel", feature = "mips64"))]
-use gdbstub_arch::mips::{Mips, reg::MipsCoreRegs};
+use gdbstub_arch::mips::{reg::MipsCoreRegs, Mips};
 
 #[cfg(not(any(feature = "aarch64", feature = "ppc")))]
 impl Target for PandaTarget {
     #[cfg(feature = "x86_64")]
     type Arch = X86_64;
-    
+
     #[cfg(feature = "i386")]
     type Arch = X86;
-    
+
     #[cfg(feature = "arm")]
     type Arch = Armv4t;
-    
+
     #[cfg(feature = "ppc")]
     type Arch = PowerPc;
 
@@ -51,9 +56,7 @@ impl Target for PandaTarget {
     type Error = ();
 
     fn base_ops(&mut self) -> ext::base::BaseOps<Self::Arch, Self::Error> {
-        ext::base::BaseOps::SingleThread(
-            self as _
-        )
+        ext::base::BaseOps::SingleThread(self as _)
     }
 
     fn breakpoints(&mut self) -> Option<ext::breakpoints::BreakpointsOps<Self>> {
@@ -80,23 +83,19 @@ impl SingleThreadOps for PandaTarget {
             ResumeAction::Step => {
                 STATE.start_single_stepping();
                 STATE.cont.signal(());
-                Ok(
-                    match STATE.brk.wait_for() {
-                        BreakStatus::Break => StopReason::DoneStep,
-                        BreakStatus::Exit => StopReason::Exited(0),
-                    }
-                )
+                Ok(match STATE.brk.wait_for() {
+                    BreakStatus::Break => StopReason::DoneStep,
+                    BreakStatus::Exit => StopReason::Exited(0),
+                })
             }
             ResumeAction::Continue => {
                 STATE.cont.signal(());
-                Ok(
-                    match STATE.brk.wait_for() {
-                        BreakStatus::Break => StopReason::SwBreak,
-                        BreakStatus::Exit => StopReason::Exited(0),
-                    }
-                )
+                Ok(match STATE.brk.wait_for() {
+                    BreakStatus::Break => StopReason::SwBreak,
+                    BreakStatus::Exit => StopReason::Exited(0),
+                })
             }
-            _ => panic!("signals not supported")
+            _ => panic!("signals not supported"),
         }
     }
 
@@ -104,13 +103,16 @@ impl SingleThreadOps for PandaTarget {
         &mut self,
         regs: &mut <Self::Arch as Arch>::Registers,
     ) -> TargetResult<(), Self> {
-
         let cpu = STATE.wait_for_cpu();
 
-        #[cfg(feature = "x86_64")] {
+        #[cfg(feature = "x86_64")]
+        {
             let env = unsafe { &*(cpu.env_ptr as *const panda::sys::CPUX86State) };
 
-            let segments: [u32; 6] = (&env.segs.iter().map(|seg| seg.base as u32)
+            let segments: [u32; 6] = (&env
+                .segs
+                .iter()
+                .map(|seg| seg.base as u32)
                 .collect::<Vec<_>>()[..6])
                 .try_into()
                 .unwrap();
@@ -129,19 +131,27 @@ impl SingleThreadOps for PandaTarget {
                 regs: (*env).regs.clone(),
                 rip: STATE.get_pc(),
                 segments,
-                st: (&env.fpregs.iter().map(fpreg_to_bytes).collect::<Vec<_>>()[..8]).try_into().unwrap(),
-                xmm: (&env.xmm_regs.iter().map(zmm_to_xmm).collect::<Vec<_>>()[..16]).try_into().unwrap(),
+                st: (&env.fpregs.iter().map(fpreg_to_bytes).collect::<Vec<_>>()[..8])
+                    .try_into()
+                    .unwrap(),
+                xmm: (&env.xmm_regs.iter().map(zmm_to_xmm).collect::<Vec<_>>()[..16])
+                    .try_into()
+                    .unwrap(),
                 mxcsr: env.mxcsr,
                 ..Default::default()
             };
         }
-        
-        #[cfg(feature = "i386")] {
+
+        #[cfg(feature = "i386")]
+        {
             let env = unsafe { &*(cpu.env_ptr as *const panda::sys::CPUX86State) };
 
-            use panda::sys::{R_EAX, R_EBX, R_ECX, R_EDX, R_ESP, R_EBP, R_ESI, R_EDI};
+            use panda::sys::{R_EAX, R_EBP, R_EBX, R_ECX, R_EDI, R_EDX, R_ESI, R_ESP};
 
-            let segments: [u32; 6] = (&env.segs.iter().map(|seg| seg.base as u32)
+            let segments: [u32; 6] = (&env
+                .segs
+                .iter()
+                .map(|seg| seg.base as u32)
                 .collect::<Vec<_>>()[..6])
                 .try_into()
                 .unwrap();
@@ -167,14 +177,19 @@ impl SingleThreadOps for PandaTarget {
                 edi: env.regs[R_EDI as usize],
                 eip: STATE.get_pc(),
                 segments,
-                st: (&(*env).fpregs.iter().map(fpreg_to_bytes).collect::<Vec<_>>()[..8]).try_into().unwrap(),
-                xmm: (&(*env).xmm_regs.iter().map(zmm_to_xmm).collect::<Vec<_>>()[..8]).try_into().unwrap(),
+                st: (&(*env).fpregs.iter().map(fpreg_to_bytes).collect::<Vec<_>>()[..8])
+                    .try_into()
+                    .unwrap(),
+                xmm: (&(*env).xmm_regs.iter().map(zmm_to_xmm).collect::<Vec<_>>()[..8])
+                    .try_into()
+                    .unwrap(),
                 mxcsr: (*env).mxcsr,
                 ..Default::default()
             };
         }
-        
-        #[cfg(feature = "arm")] {
+
+        #[cfg(feature = "arm")]
+        {
             let env = unsafe { &*(cpu.env_ptr as *const panda::sys::CPUARMState) };
 
             *regs = ArmCoreRegs {
@@ -187,11 +202,11 @@ impl SingleThreadOps for PandaTarget {
             };
         }
 
-        #[cfg(feature = "ppc")] {
+        #[cfg(feature = "ppc")]
+        {}
 
-        }
-        
-        #[cfg(any(feature = "mips", feature = "mipsel"))] {
+        #[cfg(any(feature = "mips", feature = "mipsel"))]
+        {
             let env = unsafe { &*(cpu.env_ptr as *const panda::sys::CPUMIPSState) };
 
             regs.r = env.active_tc.gpr;
@@ -213,7 +228,8 @@ impl SingleThreadOps for PandaTarget {
     ) -> TargetResult<(), Self> {
         let cpu = STATE.wait_for_cpu();
 
-        #[cfg(feature = "x86_64")] {
+        #[cfg(feature = "x86_64")]
+        {
             let env = cpu.env_ptr as *mut panda::sys::CPUX86State;
 
             unsafe {
@@ -222,9 +238,10 @@ impl SingleThreadOps for PandaTarget {
                 (*env).mxcsr = regs.mxcsr;
             }
         }
-        #[cfg(feature = "arm")] {
+        #[cfg(feature = "arm")]
+        {
             let env = unsafe { &mut *(cpu.env_ptr as *mut panda::sys::CPUARMState) };
-            
+
             for i in 0..13 {
                 env.regs[i] = regs.r[i];
             }
@@ -233,10 +250,11 @@ impl SingleThreadOps for PandaTarget {
             env.regs[15] = regs.pc;
             env.uncached_cpsr = regs.cpsr;
         }
-        #[cfg(feature = "i386")] {
+        #[cfg(feature = "i386")]
+        {
             let env = unsafe { &mut *(cpu.env_ptr as *mut panda::sys::CPUX86State) };
 
-            use panda::sys::{R_EAX, R_EBX, R_ECX, R_EDX, R_ESP, R_EBP, R_ESI, R_EDI};
+            use panda::sys::{R_EAX, R_EBP, R_EBX, R_ECX, R_EDI, R_EDX, R_ESI, R_ESP};
 
             for &(i, val) in &[
                 (R_EAX, regs.eax),
@@ -261,7 +279,7 @@ impl SingleThreadOps for PandaTarget {
     fn read_addrs(
         &mut self,
         addr: <Self::Arch as Arch>::Usize,
-        out: &mut [u8]
+        out: &mut [u8],
     ) -> TargetResult<(), Self> {
         let cpu = STATE.wait_for_cpu();
 
@@ -278,11 +296,11 @@ impl SingleThreadOps for PandaTarget {
         addr: <Self::Arch as Arch>::Usize,
         data: &[u8],
     ) -> TargetResult<(), Self> {
-         let cpu = STATE.wait_for_cpu();
+        let cpu = STATE.wait_for_cpu();
 
-         cpu.mem_write(addr, data);
+        cpu.mem_write(addr, data);
 
-         Ok(())
+        Ok(())
     }
 }
 
@@ -298,7 +316,7 @@ impl ext::breakpoints::SwBreakpoint for PandaTarget {
     fn add_sw_breakpoint(
         &mut self,
         addr: <Self::Arch as Arch>::Usize,
-        _kind: <Self::Arch as Arch>::BreakpointKind
+        _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> TargetResult<bool, Self> {
         Ok(STATE.add_breakpoint(addr))
     }
@@ -306,7 +324,7 @@ impl ext::breakpoints::SwBreakpoint for PandaTarget {
     fn remove_sw_breakpoint(
         &mut self,
         addr: <Self::Arch as Arch>::Usize,
-        _kind: <Self::Arch as Arch>::BreakpointKind
+        _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> TargetResult<bool, Self> {
         Ok(STATE.remove_breakpoint(addr))
     }
@@ -316,7 +334,7 @@ impl ext::monitor_cmd::MonitorCmd for PandaTarget {
     fn handle_monitor_cmd(
         &mut self,
         cmd: &[u8],
-        mut out: ext::monitor_cmd::ConsoleOutput<'_>
+        mut out: ext::monitor_cmd::ConsoleOutput<'_>,
     ) -> Result<(), Self::Error> {
         if let Ok(cmd) = std::str::from_utf8(cmd) {
             let cpu = STATE.wait_for_cpu();
@@ -330,9 +348,11 @@ impl ext::monitor_cmd::MonitorCmd for PandaTarget {
 }
 
 impl ext::section_offsets::SectionOffsets for PandaTarget {
-    fn get_section_offsets(&mut self) -> Result<ext::section_offsets::Offsets<<Self::Arch as Arch>::Usize>, Self::Error> {
+    fn get_section_offsets(
+        &mut self,
+    ) -> Result<ext::section_offsets::Offsets<<Self::Arch as Arch>::Usize>, Self::Error> {
         let cpu = STATE.wait_for_cpu();
-        let mut process = OSI.get_current_process(cpu);
+        let mut process = OSI.get_current_process(cpu).unwrap();
         let mappings = OSI.get_mappings(cpu, &mut *process);
         if mappings.len() >= 3 {
             let text = &mappings[0];
@@ -351,14 +371,10 @@ impl ext::section_offsets::SectionOffsets for PandaTarget {
 
 #[cfg(any(feature = "x86_64", feature = "i386"))]
 fn fpreg_to_bytes(x: &panda::sys::FPReg) -> F80 {
-    unsafe {
-        std::mem::transmute_copy(x)
-    }
+    unsafe { std::mem::transmute_copy(x) }
 }
 
 #[cfg(any(feature = "x86_64", feature = "i386"))]
 fn zmm_to_xmm(x: &panda::sys::ZMMReg) -> u128 {
-    unsafe {
-        std::mem::transmute_copy(x)
-    }
+    unsafe { std::mem::transmute_copy(x) }
 }

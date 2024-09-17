@@ -1,19 +1,21 @@
-use panda::prelude::*;
 use panda::plugins::osi::OSI;
+use panda::prelude::*;
 
 use gdbstub::outputln;
-use tabwriter::{TabWriter, Alignment};
+use tabwriter::{Alignment, TabWriter};
 
 use std::io::Write;
 
 pub(crate) fn print(cpu: &mut CPUState, mut out: impl std::fmt::Write) {
     let procs = OSI.get_processes(cpu);
-    let current_pid = OSI.get_current_process(cpu).pid;
+    let current_pid = OSI.get_current_process(cpu).unwrap().pid;
 
     outputln!(out);
 
     let output = Vec::new();
-    let mut output = TabWriter::new(output).padding(1).alignment(Alignment::Right);
+    let mut output = TabWriter::new(output)
+        .padding(1)
+        .alignment(Alignment::Right);
 
     let _ = writeln!(output, " \tPID\tASID\tParent\tCreate Time\tProcess Name");
     let _ = writeln!(output, " \t===\t====\t======\t===========\t============");
