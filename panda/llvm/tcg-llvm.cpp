@@ -94,7 +94,7 @@ using namespace llvm;
  * generated code (aka the section size) for use in the associated
  * TranslationBlock.
  */
-void getLLVMAssemblySize(orc::VModuleKey,
+void getLLVMAssemblySize(orc::MaterializationResponsibility&,
         const object::ObjectFile &obj,
         const RuntimeDyld::LoadedObjectInfo &objInfo) {
     if (!need_section_size) {
@@ -331,6 +331,12 @@ unsigned TCGLLVMTranslator::getValueBits(int idx)
     return 0;
 }
 
+LoadInst *TCGLLVMTranslator::createLoad(Value *Ptr, const Twine &Name,
+        bool isVolatile) {
+    return m_builder.CreateLoad(Ptr->getType()->getPointerElementType(),
+        Ptr, isVolatile, Name);
+}
+
 Value *TCGLLVMTranslator::getValue(int idx)
 {
     assert(idx >= 0 && idx < TCG_MAX_TEMPS);
@@ -343,11 +349,10 @@ Value *TCGLLVMTranslator::getValue(int idx)
 
     if(m_values[idx] == nullptr) {
         if(idx < m_tcgContext->nb_globals) {
-            m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
-                    , StringRef(temp.name) + "_v"
-                    );
+            m_values[idx] = createLoad(getPtrForValue(idx),
+                StringRef(temp.name) + "_v");
         } else if(m_tcgContext->temps[idx].temp_local) {
-            m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx));
+            m_values[idx] = createLoad(getPtrForValue(idx));
             std::ostringstream name;
             name << "loc" << (idx - m_tcgContext->nb_globals) << "_v";
             m_values[idx]->setName(name.str());
@@ -585,7 +590,7 @@ inline Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
     addr = m_builder.CreateAdd(addr, constWord(GUEST_BASE));
     addr = m_builder.CreateIntToPtr(addr, intPtrType(bits));
     if(ld) {
-        return m_builder.CreateLoad(addr);
+        return createLoad(addr);
     } else {
         m_builder.CreateStore(value, addr);
         return nullptr;
@@ -845,7 +850,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
                 || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
         v = getEnvOffsetPtr(args[2], temp);                         \
         v = m_builder.CreatePointerCast(v, intPtrType(memBits)); \
-        v = m_builder.CreateLoad(v);                                \
+        v = createLoad(v);                                \
         setValue(args[0], m_builder.Create ## signE ## Ext(         \
                     v, intType(regBits)));                          \
     } break;
@@ -1347,7 +1352,8 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         // Add instrumented helper functions to the JIT
         jitPendingModule();
 
-        m_CPUArchStateType = m_module->getTypeByName(m_CPUArchStateName);
+        m_CPUArchStateType = StructType::getTypeByName(*m_context,
+            m_CPUArchStateName);
     }
     assert(m_CPUArchStateType);
 
@@ -1385,7 +1391,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
             (uintptr_t)&first_cpu->rr_guest_instr_count);
     Value *InstrCountPtr = m_builder.CreateIntToPtr(
             InstrCountPtrInt, intPtrType(64), "rrgicp");
-    Instruction *InstrCount = m_builder.CreateLoad(InstrCountPtr, true, "rrgic");
+    Instruction *InstrCount = createLoad(InstrCountPtr, "rrgic", true);
     InstrCount->setMetadata("host", RRUpdateMD);
     Value *One64 = constInt(64, 1);
 
