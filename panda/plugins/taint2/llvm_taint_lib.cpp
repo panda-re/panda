@@ -95,7 +95,6 @@ using std::pair;
  ***/
 
 char PandaTaintFunctionPass::ID = 0;
-static PandaTaintFunctionPass *ptfp;
 extern TCGLLVMTranslator *tcg_llvm_translator;
 
 //static RegisterPass<PandaTaintFunctionPass>
@@ -205,165 +204,159 @@ void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size,
     PPP_RUN_CB(on_indirect_jump, a, size, from_helper, &tainted);
 }
 
-static void llvmTaintLibNewModuleCallback(Module *module,
-        legacy::FunctionPassManager *functionPassManager) {
-    functionPassManager->add(ptfp);
-}
+PandaTaintVisitor::PandaTaintVisitor(ShadowState *shad,
+        taint2_memlog *taint_memlog) : shad(shad), taint_memlog(taint_memlog) {
 
-bool PandaTaintFunctionPass::doInitialization(Module &M) {
     std::cout << "taint2: Initializing taint ops" << std::endl;
 
-    ptfp = this;
-    tcg_llvm_translator->addNewModuleCallback(
-        &llvmTaintLibNewModuleCallback);
     auto &ES = tcg_llvm_translator->getExecutionSession();
-    PTV->ctx = tcg_llvm_translator->getContext();
+    ctx = tcg_llvm_translator->getContext();
 
-    Type *shadT = StructType::create(*PTV->ctx, "class.Shad");
+    Type *shadT = StructType::create(*ctx, "class.Shad");
     assert(shadT && "Can't resolve class.Shad");
-    PTV->shadP = PointerType::getUnqual(shadT);
+    shadP = PointerType::getUnqual(shadT);
 
-    Type *memlogT = StructType::create(*PTV->ctx, "struct.taint2_memlog");
+    Type *memlogT = StructType::create(*ctx, "struct.taint2_memlog");
     assert(memlogT && "Can't resolve struct.taint2_memlog");
-    PTV->memlogP = PointerType::getUnqual(memlogT);
+    memlogP = PointerType::getUnqual(memlogT);
 
-    PTV->int1T = Type::getInt1Ty(*PTV->ctx);
-    PTV->int64T = Type::getInt64Ty(*PTV->ctx);
-    PTV->int128T = Type::getInt128Ty(*PTV->ctx);
-    PTV->int64P = Type::getInt64PtrTy(*PTV->ctx);
-    PTV->voidT = Type::getVoidTy(*PTV->ctx);
+    int1T = Type::getInt1Ty(*ctx);
+    int64T = Type::getInt64Ty(*ctx);
+    int128T = Type::getInt128Ty(*ctx);
+    int64P = Type::getInt64PtrTy(*ctx);
+    voidT = Type::getVoidTy(*ctx);
 
-    PTV->llvConst = PTV->const_struct_ptr(PTV->shadP, &shad->llv);
-    PTV->memConst = PTV->const_struct_ptr(PTV->shadP, &shad->ram);
-    PTV->grvConst = PTV->const_struct_ptr(PTV->shadP, &shad->grv);
-    PTV->gsvConst = PTV->const_struct_ptr(PTV->shadP, &shad->gsv);
-    PTV->retConst = PTV->const_struct_ptr(PTV->shadP, &shad->ret);
-    PTV->prevBbConst = PTV->const_i64p(&shad->prev_bb);
-    PTV->memlogConst = PTV->const_struct_ptr(PTV->memlogP, taint_memlog);
-    PTV->zeroConst = ConstantInt::get(PTV->int64T, 0);
-    PTV->oneConst = ConstantInt::get(PTV->int64T, 1);
-    PTV->maxConst = ConstantInt::get(PTV->int64T, UINT64_C(~0));
-    PTV->i64Of128Const = ConstantInt::get(PTV->int128T, 64);
+    llvConst = const_struct_ptr(shadP, &shad->llv);
+    memConst = const_struct_ptr(shadP, &shad->ram);
+    grvConst = const_struct_ptr(shadP, &shad->grv);
+    gsvConst = const_struct_ptr(shadP, &shad->gsv);
+    retConst = const_struct_ptr(shadP, &shad->ret);
+    prevBbConst = const_i64p(&shad->prev_bb);
+    memlogConst = const_struct_ptr(memlogP, taint_memlog);
+    zeroConst = ConstantInt::get(int64T, 0);
+    oneConst = ConstantInt::get(int64T, 1);
+    maxConst = ConstantInt::get(int64T, UINT64_C(~0));
+    i64Of128Const = ConstantInt::get(int128T, 64);
 
-    PTV->dataLayout = tcg_llvm_translator->getDataLayout();
+    dataLayout = tcg_llvm_translator->getDataLayout();
 
     orc::SymbolMap symbols;
 
-    vector<Type *> argTys { PTV->int64P, PTV->int64T };
+    vector<Type *> argTys { int64P, int64T };
 
-    PTV->breadcrumbF = TaintOpsFunction("taint_breadcrumb",
-        (void *) &taint_breadcrumb, argTys, PTV->voidT, false, ES, symbols);
+    breadcrumbF = TaintOpsFunction("taint_breadcrumb",
+        (void *) &taint_breadcrumb, argTys, voidT, false, ES, symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, int64T, int64T,
+        int64T, int64T, int64T, int64T,
+        int64T, int64T };
 
-    PTV->mixF = TaintOpsFunction("taint_mix", (void *) &taint_mix,
-        argTys, PTV->voidT, true, ES, symbols);
+    mixF = TaintOpsFunction("taint_mix", (void *) &taint_mix,
+        argTys, voidT, true, ES, symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->shadP, PTV->int64T,
-        PTV->int64T, PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, shadP, int64T,
+        int64T, shadP, int64T, int64T, int64T };
 
-    PTV->pointerF = TaintOpsFunction("taint_pointer",
-        (void *) &taint_pointer, argTys, PTV->voidT, false, ES, symbols);
+    pointerF = TaintOpsFunction("taint_pointer",
+        (void *) &taint_pointer, argTys, voidT, false, ES, symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, int64T, int64T,
+        int64T, int64T, int64T, int64T,
+        int64T, int64T, int64T };
 
-    PTV->mix_computeF = TaintOpsFunction("taint_mix_compute",
-        (void *) &taint_mix_compute, argTys, PTV->voidT, false, ES,
+    mix_computeF = TaintOpsFunction("taint_mix_compute",
+        (void *) &taint_mix_compute, argTys, voidT, false, ES,
         symbols);
 
-    PTV->parallel_computeF = TaintOpsFunction("taint_parallel_compute",
-        (void *) &taint_parallel_compute, argTys, PTV->voidT, false, ES,
+    parallel_computeF = TaintOpsFunction("taint_parallel_compute",
+        (void *) &taint_parallel_compute, argTys, voidT, false, ES,
         symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, int64T, int64T,
+        int64T, int64T, int64T, int64T,
+        int64T, int64T, int64T, int64T };
 
-    PTV->mul_computeF = TaintOpsFunction("taint_mul_compute",
-        (void *) &taint_mul_compute, argTys, PTV->voidT, false, ES,
+    mul_computeF = TaintOpsFunction("taint_mul_compute",
+        (void *) &taint_mul_compute, argTys, voidT, false, ES,
         symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->shadP, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, shadP, int64T,
+        int64T, int64T, int64T, int64T };
 
-    PTV->copyF = TaintOpsFunction("taint_copy", (void *) &taint_copy,
-        argTys, PTV->voidT, true, ES, symbols);
+    copyF = TaintOpsFunction("taint_copy", (void *) &taint_copy,
+        argTys, voidT, true, ES, symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, int64T, int64T,
+        int64T, int64T };
 
-    PTV->sextF = TaintOpsFunction("taint_sext", (void *) &taint_sext,
-        argTys, PTV->voidT, false, ES, symbols);
+    sextF = TaintOpsFunction("taint_sext", (void *) &taint_sext,
+        argTys, voidT, false, ES, symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, int64T, int64T };
 
-    PTV->selectF = TaintOpsFunction("taint_select", (void *) &taint_select,
-        argTys, PTV->voidT, true, ES, symbols);
+    selectF = TaintOpsFunction("taint_select", (void *) &taint_select,
+        argTys, voidT, true, ES, symbols);
 
-    argTys = { PTV->int64T, PTV->int64T, PTV->shadP, PTV->int64T,
-        PTV->shadP, PTV->shadP, PTV->shadP, PTV->int64T, PTV->int64T,
-        PTV->int1T };
+    argTys = { int64T, int64T, shadP, int64T,
+        shadP, shadP, shadP, int64T, int64T,
+        int1T };
 
-    PTV->host_copyF = TaintOpsFunction("taint_host_copy",
-        (void *) &taint_host_copy, argTys, PTV->voidT, false, ES, symbols);
+    host_copyF = TaintOpsFunction("taint_host_copy",
+        (void *) &taint_host_copy, argTys, voidT, false, ES, symbols);
 
-    argTys = { PTV->int64T, PTV->int64T, PTV->int64T, PTV->shadP,
-        PTV->shadP, PTV->int64T, PTV->int64T };
+    argTys = { int64T, int64T, int64T, shadP,
+        shadP, int64T, int64T };
 
-    PTV->host_memcpyF = TaintOpsFunction("taint_host_memcpy",
-        (void *) &taint_host_memcpy, argTys, PTV->voidT, false, ES,
+    host_memcpyF = TaintOpsFunction("taint_host_memcpy",
+        (void *) &taint_host_memcpy, argTys, voidT, false, ES,
         symbols);
 
-    argTys = { PTV->int64T, PTV->int64T, PTV->shadP, PTV->shadP,
-        PTV->int64T, PTV->int64T };
+    argTys = { int64T, int64T, shadP, shadP,
+        int64T, int64T };
 
-    PTV->host_deleteF = TaintOpsFunction("taint_host_delete",
-        (void *) &taint_host_delete, argTys, PTV->voidT, false, ES,
+    host_deleteF = TaintOpsFunction("taint_host_delete",
+        (void *) &taint_host_delete, argTys, voidT, false, ES,
         symbols);
 
-    argTys = { PTV->shadP };
+    argTys = { shadP };
 
-    PTV->push_frameF = TaintOpsFunction("taint_push_frame",
-        (void *) &taint_push_frame, argTys, PTV->voidT, false, ES, symbols);
+    push_frameF = TaintOpsFunction("taint_push_frame",
+        (void *) &taint_push_frame, argTys, voidT, false, ES, symbols);
 
-    PTV->pop_frameF = TaintOpsFunction("taint_pop_frame",
-        (void *) &taint_pop_frame, argTys, PTV->voidT, false, ES, symbols);
+    pop_frameF = TaintOpsFunction("taint_pop_frame",
+        (void *) &taint_pop_frame, argTys, voidT, false, ES, symbols);
 
-    PTV->reset_frameF = TaintOpsFunction("taint_reset_frame",
-        (void *) &taint_reset_frame, argTys, PTV->voidT, false, ES,
+    reset_frameF = TaintOpsFunction("taint_reset_frame",
+        (void *) &taint_reset_frame, argTys, voidT, false, ES,
         symbols);
 
-    argTys = { PTV->memlogP };
+    argTys = { memlogP };
 
-    PTV->memlog_popF = TaintOpsFunction("taint_memlog_pop",
-        (void *) &taint_memlog_pop, argTys, PTV->int64T, false, ES,
+    memlog_popF = TaintOpsFunction("taint_memlog_pop",
+        (void *) &taint_memlog_pop, argTys, int64T, false, ES,
         symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T };
+    argTys = { shadP, int64T, int64T };
 
-    PTV->deleteF = TaintOpsFunction("taint_delete",
-        (void *) &taint_delete, argTys, PTV->voidT, false, ES, symbols);
+    deleteF = TaintOpsFunction("taint_delete",
+        (void *) &taint_delete, argTys, voidT, false, ES, symbols);
         
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-                PTV->int64T, PTV->int1T };
+    argTys = { shadP, int64T, int64T, int64T,
+                int64T, int1T };
 
-    PTV->branch_runF = TaintOpsFunction("taint_branch_run",
-        (void *) &taint_branch_run, argTys, PTV->voidT, false, ES, symbols);
+    branch_runF = TaintOpsFunction("taint_branch_run",
+        (void *) &taint_branch_run, argTys, voidT, false, ES, symbols);
 
-    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int1T };
+    argTys = { shadP, int64T, int64T, int1T };
 
-    PTV->copyRegToPc_runF = TaintOpsFunction("taint_copyRegToPc_run",
-        (void *) &taint_copyRegToPc_run, argTys, PTV->voidT, false, ES,
+    copyRegToPc_runF = TaintOpsFunction("taint_copyRegToPc_run",
+        (void *) &taint_copyRegToPc_run, argTys, voidT, false, ES,
         symbols);
     
-    argTys = { PTV->int64T, PTV->int64T, PTV->int64T };
+    argTys = { int64T, int64T, int64T };
 
-    PTV->afterLdF = TaintOpsFunction("taint_after_ld_run",
-        (void *) &taint_after_ld_run, argTys, PTV->voidT, false, ES, symbols);
+    afterLdF = TaintOpsFunction("taint_after_ld_run",
+        (void *) &taint_after_ld_run, argTys, voidT, false, ES, symbols);
 
     if(tcg_llvm_translator->getJit()->getMainJITDylib().define(
             orc::absoluteSymbols(std::move(symbols)))) {
@@ -372,8 +365,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     std::cout << "taint2: Done initializing taint transformation." <<
         std::endl;
-
-    return true;
 }
 
 bool PandaTaintFunctionPass::runOnFunction(Function &F) {
@@ -1106,7 +1097,7 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
     vector<Value *> args { llvConst,
         constSlot(cond), const_uint64(getValueSize(cond)), Cast,
 		const_uint64(I.getOpcode()),
-        ConstantInt::get(int1T, ptfp->processingHelper()) };
+        ConstantInt::get(int1T, processing_helper) };
 
     insertCallBefore(I, branch_runF, args);
 }
@@ -1120,7 +1111,7 @@ void PandaTaintVisitor::insertTaintQueryNonConstPc(Instruction &I,
 
     vector<Value *> args { llvConst,
         constSlot(new_pc), const_uint64(getValueSize(new_pc)),
-		ConstantInt::get(int1T, ptfp->processingHelper())
+		ConstantInt::get(int1T, processing_helper)
     };
 
     insertCallBefore(I, copyRegToPc_runF, args);
