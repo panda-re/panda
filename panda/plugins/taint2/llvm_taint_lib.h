@@ -127,6 +127,7 @@ class Instruction;
  */
 class PandaTaintVisitor : public InstVisitor<PandaTaintVisitor> {
 private:
+    bool processing_helper = false;
     std::unique_ptr<PandaSlotTracker> PST;
     ShadowState *shad; // no ownership. weak ptr.
     taint2_memlog *taint_memlog; // same.
@@ -234,8 +235,7 @@ public:
     IntegerType *int128T;
     PointerType *int64P;
 
-    PandaTaintVisitor(ShadowState *shad, taint2_memlog *taint_memlog)
-        : shad(shad), taint_memlog(taint_memlog) {}
+    PandaTaintVisitor(ShadowState *shad, taint2_memlog *taint_memlog);
 
     ~PandaTaintVisitor() {}
 
@@ -276,6 +276,16 @@ public:
     void visitMemCpyInst(MemTransferInst &I);
     void visitMemMoveInst(MemTransferInst &I);
     void visitMemSetInst(MemSetInst &I);
+
+    // the processing_helper flag is used to tweak some taint op arguments based
+    // on whether or not instrumenting a helper function
+    void setProcessingHelper() {
+        processing_helper = true;
+    }
+
+    void clearProcessingHelper() {
+        processing_helper = false;
+    }
 };
 
 /* PandaTaintFunctionPass class
@@ -286,22 +296,15 @@ public:
  */
 class PandaTaintFunctionPass : public FunctionPass {
 private:
-    ShadowState *shad;
-    taint2_memlog *taint_memlog;
-    bool processing_helper;
+    PandaTaintVisitor *PTV;
 
 public:
     static char ID;
-    PandaTaintVisitor *PTV; // Our LLVM instruction visitor
 
-    PandaTaintFunctionPass(ShadowState *shad, taint2_memlog *taint_memlog)
-        : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog),
-		  processing_helper(false),
-		  PTV(new PandaTaintVisitor(shad, taint_memlog)) {}
+    explicit PandaTaintFunctionPass(PandaTaintVisitor *PTV) :
+        FunctionPass(ID), PTV(PTV) { }
 
     ~PandaTaintFunctionPass() { }
-
-    bool doInitialization(Module &M);
 
     // runOnFunction - Our custom function pass implementation
     bool runOnFunction(Function &F);
@@ -311,20 +314,6 @@ public:
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
         AU.setPreservesAll();
-    }
-
-    // the processing_helper flag is used to tweak some taint op arguments based
-    // on whether or not instrumenting a helper function
-    void setProcessingHelper() {
-    	processing_helper = true;
-    }
-
-    void clearProcessingHelper() {
-    	processing_helper = false;
-    }
-
-    bool processingHelper() {
-    	return processing_helper;
     }
 };
 

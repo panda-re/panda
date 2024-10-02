@@ -163,7 +163,8 @@ class TCGLLVMTranslator {
     llvm::Value* getEnvOffsetPtr(int64_t offset, TCGTemp &temp);
 
     /* Function pass manager (used for optimizing the code) */
-    llvm::legacy::FunctionPassManager *m_functionPassManager;
+    std::unique_ptr<llvm::legacy::FunctionPassManager> m_functionPassManager =
+        nullptr;
 
     /* Count of generated translation blocks */
     int m_tbCount;
@@ -300,7 +301,7 @@ class TCGLLVMTranslator {
     }
 
     llvm::legacy::FunctionPassManager* getFunctionPassManager() const {
-        return m_functionPassManager;
+        return m_functionPassManager.get();
     }
 
     /* Code generation */

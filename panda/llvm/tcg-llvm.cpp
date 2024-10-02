@@ -159,7 +159,8 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     m_eip = NULL;
     m_ccop = NULL;
 
-    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
+    m_functionPassManager = std::make_unique<legacy::FunctionPassManager>(
+        m_module.get());
 
     /*
     Note: if we want to use any of these, they also need to get added to the
@@ -1310,9 +1311,10 @@ void TCGLLVMTranslator::jitPendingModule()
 
     m_module = std::make_unique<Module>(("tcg-llvm" +
         std::to_string(m_tbCount)).c_str(), *m_context);
-    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
+    m_functionPassManager = std::make_unique<legacy::FunctionPassManager>(
+        m_module.get());
     for(auto cb : newModuleCallbacks) {
-        cb(m_module.get(), m_functionPassManager);
+        cb(m_module.get(), m_functionPassManager.get());
     }
 }
 
@@ -1511,10 +1513,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
  */
 TCGLLVMTranslator::~TCGLLVMTranslator()
 {
-    if (m_functionPassManager) {
-        delete m_functionPassManager;
-        m_functionPassManager = nullptr;
-    }
+    m_functionPassManager = nullptr;
 
     /*if (llvm::llvm_is_multithreaded()) {
         LLVMStopMultithreaded();

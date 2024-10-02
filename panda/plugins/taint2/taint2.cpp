@@ -125,8 +125,7 @@ void *taint2_plugin = nullptr;
 // Our pass manager to derive taint ops
 llvm::legacy::FunctionPassManager *FPM = nullptr;
 
-// Taint function pass.
-llvm::PandaTaintFunctionPass *PTFP = nullptr;
+llvm::PandaTaintVisitor* PTV = nullptr;
 
 // For now, taint becomes enabled when a label operation first occurs, and
 // becomes disabled when a query operation subsequently occurs
@@ -299,6 +298,12 @@ void taint2_enable_tainted_pointer(void) {
     tainted_pointer = true;
 }
 
+void taint2_new_module_callback(llvm::Module *module,
+        llvm::legacy::FunctionPassManager *functionPassManager) {
+    auto ptfp = new llvm::PandaTaintFunctionPass(PTV);
+    functionPassManager->add(ptfp);
+}
+
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
     std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
@@ -347,18 +352,22 @@ void taint2_enable_taint(void) {
         Builder.populateFunctionPassManager(*FPM);
     }
 
+    PTV = new llvm::PandaTaintVisitor(shadow, &taint_memlog);
+
+    tcg_llvm_translator->addNewModuleCallback(&taint2_new_module_callback);
+
     // Add the taint analysis pass to our taint pass manager
-    PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
+    auto PTFP = new llvm::PandaTaintFunctionPass(PTV);
     FPM->add(PTFP);
 
     FPM->doInitialization();
 
     // Populate module with helper function taint ops
-    PTFP->setProcessingHelper();
+    PTV->setProcessingHelper();
     for (auto i = mod->begin(); i != mod->end(); i++){
         if (!i->isDeclaration()) PTFP->runOnFunction(*i);
     }
-    PTFP->clearProcessingHelper();
+    PTV->clearProcessingHelper();
 
     std::cerr << PANDA_MSG "Done processing helper functions for taint." << std::endl;
 
