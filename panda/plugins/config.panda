@@ -31,7 +31,6 @@ memorymap
 memsavep
 mmio_trace
 net
-network
 osi
 osi_linux
 osi_test
