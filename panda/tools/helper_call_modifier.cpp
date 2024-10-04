@@ -104,8 +104,9 @@ int main(int argc, char **argv) {
              * here: http://llvm.org/bugs/show_bug.cgi?id=11089
              */
             const AttributeList AS = newFunc->getAttributes();
-            newFunc->setAttributes(AS.removeAttribute(newFunc->getContext(),
-                AttributeList::FunctionIndex, Attribute::StackProtectReq));
+            newFunc->setAttributes(AS.removeAttributeAtIndex(
+                newFunc->getContext(), AttributeList::FunctionIndex,
+                Attribute::StackProtectReq));
             f->replaceAllUsesWith(newFunc);
             f->eraseFromParent();
         }

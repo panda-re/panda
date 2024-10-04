@@ -280,6 +280,9 @@ class TCGLLVMTranslator {
 
     void jitPendingModule();
 
+    llvm::LoadInst *createLoad(llvm::Value *Ptr, const llvm::Twine &Name = "",
+        bool isVolatile = false);
+
     public:
     TCGLLVMTranslator();
     ~TCGLLVMTranslator();

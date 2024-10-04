@@ -1788,7 +1788,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
     insertCallBefore(I, deleteF, args);
 
     // And now copy taint for the arguments into the new frame
-    int numArgs = I.getNumArgOperands();
+    int numArgs = I.getNumOperands() - 1;
     for (int i = 0; i < numArgs; i++) {
         Value *arg = I.getArgOperand(i);
         int argBytes = getValueSize(arg);
