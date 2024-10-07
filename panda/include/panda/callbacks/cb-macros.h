@@ -52,7 +52,7 @@
     void panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
         panda_cb_list *plist; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
+             (plist != NULL && panda_cbs[PANDA_CB_ ## name_upper] != NULL); \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
                 plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
@@ -66,7 +66,7 @@
     int panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
         panda_cb_list *plist; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
+             (plist != NULL && panda_cbs[PANDA_CB_ ## name_upper] != NULL); \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
                 plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
@@ -85,7 +85,7 @@
         panda_cb_list *plist; \
         bool any_true = false; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
+             (plist != NULL && panda_cbs[PANDA_CB_ ## name_upper] != NULL); \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
                 any_true |= plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
@@ -112,7 +112,7 @@
         if (rr_in_replay()) { \
           panda_cb_list *plist; \
           for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-               plist != NULL; \
+             (plist != NULL && panda_cbs[PANDA_CB_ ## name_upper] != NULL); \
                plist = panda_cb_list_next(plist)) { \
                 if (plist->enabled) \
                   plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
@@ -127,7 +127,7 @@
     void panda_callbacks_ ## name(void) { \
         panda_cb_list *plist; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
+             (plist != NULL && panda_cbs[PANDA_CB_ ## name_upper] != NULL); \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
                 plist->entry. ENTRY_NAME(name, plist->context); \
@@ -142,7 +142,7 @@
         panda_cb_list *plist; \
         bool any_true = false; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
+             (plist != NULL && panda_cbs[PANDA_CB_ ## name_upper] != NULL); \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
                 any_true |= plist->entry. ENTRY_NAME(name, plist->context); \

@@ -84,7 +84,9 @@ MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
 // Non-macroized version for SBE - if panda_please_retranslate is set, we'll break
 void PCB(start_block_exec)(CPUState *cpu, TranslationBlock *tb) {
     panda_cb_list *plist;
-    for (plist = panda_cbs[PANDA_CB_START_BLOCK_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
+    for (plist = panda_cbs[PANDA_CB_START_BLOCK_EXEC]; 
+        (plist != NULL && panda_cbs[PANDA_CB_START_BLOCK_EXEC] != NULL);
+        plist = panda_cb_list_next(plist)) {
         if (plist->enabled)
             plist->entry.start_block_exec(plist->context, cpu, tb);
     }
@@ -227,7 +229,8 @@ bool PCB(after_find_fast)(CPUState *cpu, TranslationBlock *tb,
     panda_cb_list *plist;
     if (!bb_invalidate_done) {
         for (plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
-             plist != NULL; plist = panda_cb_list_next(plist)) {
+             (plist != NULL && panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT] != NULL);
+              plist = panda_cb_list_next(plist)) {
             if (plist->enabled)
               *invalidate |=
                   plist->entry.before_block_exec_invalidate_opt(plist->context, cpu, tb);
@@ -263,8 +266,9 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
     bool got_new_exception = false;
     int32_t new_exception;
 
-    for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_EXCEPTION]; plist != NULL;
-         plist = panda_cb_list_next(plist)) {
+    for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_EXCEPTION]; 
+        (plist != NULL && panda_cbs[PANDA_CB_BEFORE_HANDLE_EXCEPTION] != NULL);
+        plist = panda_cb_list_next(plist)) {
         if (plist->enabled) {
             int32_t new_e = plist->entry.before_handle_exception(plist->context, cpu, exception_index);
             if (!got_new_exception && new_e != exception_index) {
@@ -289,7 +293,8 @@ int32_t PCB(before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request) {
     bool got_new_interrupt = false;
     int32_t new_interrupt;
 
-    for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_INTERRUPT]; plist != NULL;
+    for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_INTERRUPT]; 
+        (plist != NULL && panda_cbs[PANDA_CB_BEFORE_HANDLE_INTERRUPT] != NULL);
          plist = panda_cb_list_next(plist)) {
         if (plist->enabled) {
             int32_t new_i = plist->entry.before_handle_interrupt(plist->context, cpu, interrupt_request);
@@ -328,7 +333,8 @@ MEM_CB_TRAMPOLINES(phys)
 void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
                           size_t data_size, void *ram_ptr) {
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_READ]; plist != NULL;
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_READ];
+        plist != NULL && panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_READ] != NULL;
         plist = panda_cb_list_next(plist)) {
         if (plist->enabled) plist->entry.virt_mem_before_read(plist->context, env, panda_current_pc(env), addr,
                                                               data_size);
@@ -336,7 +342,8 @@ void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
         if (paddr == -1) return;
-        for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]; plist != NULL;
+        for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]; 
+            plist != NULL && panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ] != NULL;
             plist = panda_cb_list_next(plist)) {
             if (plist->enabled) plist->entry.phys_mem_before_read(plist->context, env, panda_current_pc(env),
                                                                   paddr, data_size);
@@ -348,7 +355,8 @@ void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 void PCB(mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
                          size_t data_size, uint64_t result, void *ram_ptr) {
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_READ]; plist != NULL;
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_READ];
+            plist != NULL && panda_cbs[PANDA_CB_VIRT_MEM_AFTER_READ] != NULL;
         plist = panda_cb_list_next(plist)) {
         /* mstamat: Passing &result as the last cb arg doesn't make much sense. */
         if (plist->enabled) plist->entry.virt_mem_after_read(plist->context, env, panda_current_pc(env), addr,
@@ -357,7 +365,8 @@ void PCB(mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
         if (paddr == -1) return;
-        for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]; plist != NULL;
+        for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ];
+            plist != NULL && panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ] != NULL;
             plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &result as the last cb arg doesn't make much sense. */
             if (plist->enabled) plist->entry.phys_mem_after_read(plist->context, env, panda_current_pc(env), paddr,
@@ -370,7 +379,8 @@ void PCB(mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 void PCB(mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
                            size_t data_size, uint64_t val, void *ram_ptr) {
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_WRITE]; plist != NULL;
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_WRITE];
+        plist != NULL && panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_WRITE] != NULL;
         plist = panda_cb_list_next(plist)) {
         /* mstamat: Passing &val as the last arg doesn't make much sense. */
         if (plist->enabled) plist->entry.virt_mem_before_write(plist->context, env, panda_current_pc(env), addr,
@@ -379,7 +389,8 @@ void PCB(mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
         if (paddr == -1) return;
-        for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]; plist != NULL;
+        for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE];
+            plist != NULL && panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE] != NULL;
             plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
             if (plist->enabled) plist->entry.phys_mem_before_write(plist->context, env, panda_current_pc(env), paddr,
@@ -392,7 +403,8 @@ void PCB(mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
                           size_t data_size, uint64_t val, void *ram_ptr) {
     panda_cb_list *plist;
-    for (plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_WRITE]; plist != NULL;
+    for (plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_WRITE]; 
+        (plist != NULL && panda_cbs[PANDA_CB_VIRT_MEM_AFTER_WRITE] != NULL);
          plist = panda_cb_list_next(plist)) {
         /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
         if (plist->enabled) plist->entry.virt_mem_after_write(plist->context, env, panda_current_pc(env), addr,
@@ -401,8 +413,9 @@ void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
         if (paddr == -1) return;
-        for (plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]; plist != NULL;
-             plist = panda_cb_list_next(plist)) {
+        for (plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE];
+            (plist != NULL && panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE] != NULL);
+            plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
             if (plist->enabled) plist->entry.phys_mem_after_write(plist->context, env, panda_current_pc(env), paddr,
                                               data_size, (uint8_t *)&val);
