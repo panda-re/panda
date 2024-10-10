@@ -15,6 +15,10 @@
 #include <zlib.h> /* For crc32 */
 #include "exec/semihost.h"
 #include "sysemu/kvm.h"
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log_all.h"
+#include "panda/rr/rr_log.h"
+#endif
 
 #define ARM_CPU_FREQ 1000000000 /* FIXME: 1 GHz, should be configurable */
 
@@ -1701,6 +1705,15 @@ static uint64_t gt_cnt_read(CPUARMState *env, const ARMCPRegInfo *ri)
 
 static uint64_t gt_virt_cnt_read(CPUARMState *env, const ARMCPRegInfo *ri)
 {
+        #ifdef CONFIG_SOFTMMU
+            uint64_t now;
+             RR_DO_RECORD_OR_REPLAY(
+                /*action*/ now = gt_get_countervalue(env) - env->cp15.cntvoff_el2,
+                /*record*/ rr_input_8(&now),
+                /*replay*/ rr_input_8(&now),
+                /*location*/RR_CALLSITE_READ_8);
+             return now;
+    #endif
     return gt_get_countervalue(env) - env->cp15.cntvoff_el2;
 }
 
@@ -1812,7 +1825,18 @@ static void gt_virt_ctl_write(CPUARMState *env, const ARMCPRegInfo *ri,
 {
     gt_ctl_write(env, ri, GTIMER_VIRT, value);
 }
-
+static uint64_t gt_virt_ctl_read(CPUARMState *env, const ARMCPRegInfo *ri)
+{
+    uint64_t ctl;
+            #ifdef CONFIG_SOFTMMU
+             RR_DO_RECORD_OR_REPLAY(
+                /*action*/ ctl = env->cp15.c14_timer[GTIMER_VIRT].ctl,
+                /*record*/ rr_input_8(&ctl),
+                /*replay*/ rr_input_8(&ctl),
+                /*location*/RR_CALLSITE_READ_8);
+        #endif
+    return ctl;
+}
 static void gt_cntvoff_write(CPUARMState *env, const ARMCPRegInfo *ri,
                               uint64_t value)
 {
@@ -1961,6 +1985,7 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_vtimer_access,
       .fieldoffset = offsetoflow32(CPUARMState,
                                    cp15.c14_timer[GTIMER_VIRT].ctl),
+      .readfn = gt_virt_ctl_read,
       .writefn = gt_virt_ctl_write, .raw_writefn = raw_write,
     },
     { .name = "CNTV_CTL_EL0", .state = ARM_CP_STATE_AA64,
@@ -1969,6 +1994,7 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_vtimer_access,
       .fieldoffset = offsetof(CPUARMState, cp15.c14_timer[GTIMER_VIRT].ctl),
       .resetvalue = 0,
+      .readfn = gt_virt_ctl_read,
       .writefn = gt_virt_ctl_write, .raw_writefn = raw_write,
     },
     /* TimerValue views: a 32 bit downcounting view of the underlying state */
