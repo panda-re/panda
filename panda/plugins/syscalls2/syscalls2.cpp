@@ -514,21 +514,20 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
         offset = 4; // Note: this is NOT 8 for AARCH64!
     }
 
-// 32-bit specific
-#if !defined(TARGET_AARCH64)
+#if defined(TARGET_AARCH64)
+    //64-bit specific
+    // if (!in_thumb_mode) {
+    //     unsigned char buf[4] = {};
+    //     panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+    //     if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
+    //         assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
+    //     }
+    // }
+#else
+    // 32-bit specific
     // TODO: check syscall encoding here?
     // If so, check both EABI and OABI!
 
-// 64-bit specific
-#else
-    if (!in_thumb_mode) {
-        unsigned char buf[4] = {};
-        panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
-        if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
-            assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
-        }
-    }
-#endif
     if (in_thumb_mode) {
         unsigned char buf[2] = {};
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
@@ -536,6 +535,7 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
             assert((1==0) && "Tried to calculate THUMB ret addr when instr was not a syscall!");
         }
     }
+#endif
 
     return mask_retaddr_to_pc(pc + offset);
 #else
@@ -1074,7 +1074,7 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
         return pc;
     }
 
-#else
+#endif
     // ARM32
     // Check for ARM mode syscall
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
@@ -1105,7 +1105,6 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
             return pc;
         }
     }
-#endif
     // Arm32/aarch64 - not a match
     return 0;
 #elif defined(TARGET_MIPS)
