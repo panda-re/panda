@@ -349,6 +349,19 @@ inline bool can_read_current(CPUState *cpu) {
 // won't check again until the first syscall.
 bool r28_set = false;
 inline void check_cache_r28(CPUState *cpu);
+#elif TARGET_AARCH64
+
+target_ulong spel0 = 0;
+bool aarch64_initialized = false;
+
+void aarch64_sbe(CPUState *cpu, TranslationBlock *tb);
+void aarch64_sbe(CPUState *cpu, TranslationBlock *tb) {
+    if (unlikely(panda_in_kernel_code_linux(cpu) && ((CPUARMState*) cpu->env_ptr)->sp_el[0] != 0)){
+        aarch64_initialized = true;
+        spel0 = ((CPUARMState*) cpu->env_ptr)->sp_el[0];
+    }
+}
+
 #endif
 
 /**
@@ -375,6 +388,13 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
             // If we're on MIPS, we need to wait until r28 is set before
             // moving to a syscall strategy
             if (!id_is_initialized()){
+                *ret = NULL;
+                return false;
+            }
+        }
+        #elif defined(TARGET_AARCH64)
+        if (PROFILE_KVER_GE(ki, 4, 6, 0)){
+            if (!aarch64_initialized){
                 *ret = NULL;
                 return false;
             }
@@ -1315,6 +1335,12 @@ bool init_plugin(void *self) {
                     notify_task_change(cpu); 
                 } });
 
+#ifdef TARGET_AARCH64
+    if (PROFILE_KVER_GE(ki, 4, 6, 0)){
+        panda_cb pcb = { .start_block_exec = aarch64_sbe };
+        panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb);
+    }
+#endif
     return true;
 #else
     fprintf(stderr, PLUGIN_NAME "Unsupported guest architecture\n");
