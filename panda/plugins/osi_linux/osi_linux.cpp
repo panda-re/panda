@@ -1141,6 +1141,10 @@ void init_per_cpu_offsets(CPUState *cpu) {
                  TARGET_PTR_FMT, (target_ptr_t)ki.task.per_cpu_offset_0_addr);
         return;
     }
+// AARCH64 has per_cpu_offsets, but doesn't use them for task structs!
+#ifdef TARGET_AARCH64
+    return;
+#endif
 
     // skip update because of failure to read from per_cpu_offsets_addr
     target_ptr_t per_cpu_offset_0_addr;
