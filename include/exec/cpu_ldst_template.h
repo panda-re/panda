@@ -74,6 +74,21 @@
 #define SRETSUFFIX glue(s, SUFFIX)
 #endif
 
+#ifndef CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+#define CONFIG_SOFTMMU_EXTERN_VAR_ONCE
+extern bool panda_use_memcb;
+#endif
+
+#ifndef MEM_CBS_REFERENCED
+#define MEM_CBS_REFERENCED
+#define target_ptr_t target_ulong
+extern void panda_callbacks_mem_before_read(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, void *ram_ptr);
+extern void panda_callbacks_mem_after_read(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, uint64_t result, void *ram_ptr);
+extern void panda_callbacks_mem_before_write(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, uint64_t val, void *ram_ptr);
+extern void panda_callbacks_mem_after_write(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, uint64_t val, void *ram_ptr);
+#endif
+
+
 /* generic load/store macros */
 
 static inline RES_TYPE
@@ -103,7 +118,18 @@ glue(glue(glue(cpu_ld, USUFFIX), MEMSUFFIX), _ra)(CPUArchState *env,
                                                             oi, retaddr);
     } else {
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
+        #if defined(PANDA_DO_CBS_DATA_ACCESS)
+        if (likely(!panda_use_memcb)){
+            res = glue(glue(ld, USUFFIX), _p)((uint8_t *)hostaddr);
+        }else{
+            CPUState *cpu = ENV_GET_CPU(env);
+            panda_callbacks_mem_before_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)hostaddr);
+            res = glue(glue(ld, USUFFIX), _p)((uint8_t *)hostaddr);
+            panda_callbacks_mem_after_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)res, (void *)hostaddr);
+        }
+        #else
         res = glue(glue(ld, USUFFIX), _p)((uint8_t *)hostaddr);
+        #endif
     }
     return res;
 }
@@ -141,7 +167,18 @@ glue(glue(glue(cpu_lds, SUFFIX), MEMSUFFIX), _ra)(CPUArchState *env,
                                MMUSUFFIX)(env, addr, oi, retaddr);
     } else {
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
+        #if defined(PANDA_DO_CBS_DATA_ACCESS)
+        if (likely(!panda_use_memcb)){
+            res = glue(glue(lds, SUFFIX), _p)((uint8_t *)hostaddr);
+        }else{
+            CPUState *cpu = ENV_GET_CPU(env);
+            panda_callbacks_mem_before_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)hostaddr);
+            res = glue(glue(lds, SUFFIX), _p)((uint8_t *)hostaddr);
+            panda_callbacks_mem_after_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)res, (void *)hostaddr);
+        }
+        #else
         res = glue(glue(lds, SUFFIX), _p)((uint8_t *)hostaddr);
+        #endif
     }
     return res;
 }
@@ -183,7 +220,18 @@ glue(glue(glue(cpu_st, SUFFIX), MEMSUFFIX), _ra)(CPUArchState *env,
                                                      retaddr);
     } else {
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
+        #if defined(PANDA_DO_CBS_DATA_ACCESS)
+        if (likely(!panda_use_memcb)){
+            glue(glue(st, SUFFIX), _p)((uint8_t *)hostaddr, v);
+        }else{
+            CPUState *cpu = ENV_GET_CPU(env);
+            panda_callbacks_mem_before_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)v, (void *)hostaddr);
+            glue(glue(st, SUFFIX), _p)((uint8_t *)hostaddr, v);
+            panda_callbacks_mem_after_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)v, (void *)hostaddr);
+        }
+        #else
         glue(glue(st, SUFFIX), _p)((uint8_t *)hostaddr, v);
+        #endif
     }
 }
 
