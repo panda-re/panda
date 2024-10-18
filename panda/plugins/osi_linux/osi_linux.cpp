@@ -356,9 +356,12 @@ bool aarch64_initialized = false;
 
 void aarch64_sbe(CPUState *cpu, TranslationBlock *tb);
 void aarch64_sbe(CPUState *cpu, TranslationBlock *tb) {
-    if (unlikely(panda_in_kernel_code_linux(cpu) && ((CPUARMState*) cpu->env_ptr)->sp_el[0] != 0)){
+    target_ulong pos = ((CPUARMState *)cpu->env_ptr)->sp_el[0];
+    if (unlikely(panda_in_kernel_code_linux(cpu)) 
+        && address_in_kernel_code_linux(pos))
+    {
         aarch64_initialized = true;
-        spel0 = ((CPUARMState*) cpu->env_ptr)->sp_el[0];
+        spel0 = pos;
     }
 }
 
