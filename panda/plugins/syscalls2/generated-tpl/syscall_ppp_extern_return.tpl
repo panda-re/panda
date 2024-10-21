@@ -1,7 +1,10 @@
-{%- for arch, syscalls in syscalls_arch|dictsort -%}
-#if {{architectures[arch].qemu_target}}
+{%- for arch, syscalls in syscalls_arch.items() -%}
+#if {{architectures[arch].get('boilerplate_target', architectures[arch].qemu_target)}}
 {%- for syscall_name, syscall in syscalls|dictsort %}
+#ifndef PPP_CB_EXTERN_ON_{{syscall.name|upper}}_RETURN
+#define PPP_CB_EXTERN_ON_{{syscall.name|upper}}_RETURN
 PPP_CB_EXTERN(on_{{syscall.name}}_return)
+#endif
 {%- endfor %}
 #endif
 {% endfor %}

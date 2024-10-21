@@ -29,13 +29,14 @@ struct syscall_ctx {
     uint8_t args[GLOBAL_MAX_SYSCALL_ARGS]
                 [GLOBAL_MAX_SYSCALL_ARG_SIZE]; /**< arguments */
     bool double_return;
+    int profile;
 };
 typedef struct syscall_ctx syscall_ctx_t;
 
 /* Functions used to populate syscall_ctx_t structs. */
-target_long get_return_val(CPUState *env);
-target_ptr_t mask_retaddr_to_pc(target_ptr_t retaddr);
-target_ptr_t calc_retaddr(CPUState *env, target_ptr_t pc);
+target_long get_return_val(CPUState *env, int profile);
+target_ptr_t mask_retaddr_to_pc(target_ptr_t retaddr, syscall_ctx_t *);
+target_ptr_t calc_retaddr(CPUState *env, syscall_ctx_t*, target_ptr_t pc);
 uint32_t get_32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
 int32_t get_s32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
 uint64_t get_64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
@@ -44,9 +45,10 @@ uint32_t get_return_32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
 int32_t get_return_s32(CPUState *env, syscall_ctx_t*, uint32_t argnum);
 uint64_t get_return_64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
 int64_t get_return_s64(CPUState *env, syscall_ctx_t*, uint32_t argnum);
+void sysinfo_load_profile(int profile, syscall_info_t **syscall_info, syscall_meta_t **syscall_meta);
 
-{% for arch, syscalls in syscalls_arch|dictsort -%}
-#if {{architectures[arch].qemu_target}}
+{% for arch, syscalls in syscalls_arch.items() -%}
+#if {{architectures[arch].get('typedef_guard', architectures[arch].get('qemu_target'))}}
 #include "syscalls_ext_typedefs_{{arch}}.h"
 #endif
 {% endfor %}

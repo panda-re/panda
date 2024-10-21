@@ -7,27 +7,8 @@
 #include "syscalls2_info.h"
 #include "syscalls2_int_fns.h"
 
-const syscall_info_t *syscall_info;
-const syscall_meta_t *syscall_meta;
-
-int load_syscall_info(void) {
+void load_syscall_info(const gchar *arch, syscall_info_t **syscall_info, syscall_meta_t **syscall_meta) {
     gchar *syscall_info_dlname = NULL;
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    const gchar *arch = "x86";
-#elif defined(TARGET_ARM) &&!defined(TARGET_AARCH64)
-    const gchar *arch = "arm";
-#elif defined(TARGET_ARM) &&defined(TARGET_AARCH64)
-    const gchar *arch = "arm64";
-#elif defined(TARGET_MIPS) && defined(TARGET_MIPS64)
-    const gchar *arch = "mips64";
-#elif defined(TARGET_MIPS)
-    const gchar *arch = "mips";
-#elif defined(TARGET_X86_64)
-    const gchar *arch = "x64";
-#else
-    // will fail on dlopen because dso file won't exist
-    const gchar *arch = "unknown";
-#endif
 
     if (panda_os_familyno == OS_WINDOWS) {
     	// don't support 64-bit Windows (yet) except for Windows 7 SP 0 and 1
@@ -55,38 +36,33 @@ int load_syscall_info(void) {
     char* sys_info_dlname_path = panda_shared_library_path(syscall_info_dlname);
     if (sys_info_dlname_path == NULL) {
         fprintf(stderr, "Could not find %s\n", syscall_info_dlname);
-        return -1;
     }
 
     void *syscall_info_dl = dlopen(sys_info_dlname_path, RTLD_NOW|RTLD_NODELETE);
     if (syscall_info_dl == NULL) {
         LOG_ERROR("%s", dlerror());
         g_free(syscall_info_dlname);
-        return -1;
     }
 
     dlerror();  // clear errors
-    syscall_info = (syscall_info_t *)dlsym(syscall_info_dl, "__syscall_info_a");
-    if (syscall_info == NULL) {
+    *syscall_info = (syscall_info_t *)dlsym(syscall_info_dl, "__syscall_info_a");
+    if (*syscall_info == NULL) {
         LOG_ERROR("%s", dlerror());
         dlclose(syscall_info_dl);
         g_free(syscall_info_dlname);
-        return -1;
     }
 
     dlerror();  // clear errors
-    syscall_meta = (syscall_meta_t *)dlsym(syscall_info_dl, "__syscall_meta");
-    if (syscall_meta == NULL) {
+    *syscall_meta = (syscall_meta_t *)dlsym(syscall_info_dl, "__syscall_meta");
+    if (*syscall_meta == NULL) {
         LOG_ERROR("%s", dlerror());
         dlclose(syscall_info_dl);
         g_free(syscall_info_dlname);
-        return -1;
     }
 
     LOG_INFO("loaded syscalls info from %s", syscall_info_dlname);
     dlclose(syscall_info_dl);
     g_free(syscall_info_dlname);
-    return 0;
 }
 
 /* vim:set tabstop=4 softtabstop=4 expandtab: */
