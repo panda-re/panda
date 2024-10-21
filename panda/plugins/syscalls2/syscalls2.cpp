@@ -874,12 +874,13 @@ void sysinfo_load(int profile){
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     arch = "x86";
 #elif defined(TARGET_X86_64)
-if (profile == PROFILE_LINUX_X64) {
+if (profile == PROFILE_WINDOWS_7_X64 || profile == PROFILE_LINUX_X64
+    || profile == PROFILE_FREEBSD_X64){
     arch = "x64";
-} else if (profile == PROFILE_FREEBSD_X64) {
-    arch = "x64";
-}else{
-    assert("invalid profile");
+} else if (profile == PROFILE_LINUX_X86 || profile == PROFILE_WINDOWS_2000_X86
+    || profile == PROFILE_WINDOWS_XPSP2_X86 || profile == PROFILE_WINDOWS_XPSP3_X86
+    || profile == PROFILE_WINDOWS_7_X86) {
+    arch = "x86";
 }
 #elif defined(TARGET_ARM) &&!defined(TARGET_AARCH64)
     arch = "arm";
