@@ -96,6 +96,9 @@ def copy_ppp_header(filename):
     subcontents = trim_pypanda(contents)
     for line in subcontents.split("\n"):
         # now add void ppp_add_cb_{cb_name}({cb_name}_t);
+        forbidden = ["#ifndef", "#endif"]
+        if any(i in line for i in forbidden):
+            continue
         m = reg.match(line)
         if m:
             ret_type = m.groups(1)[0]
@@ -229,6 +232,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.cdef("typedef int target_pid_t;")
 
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
+    ffi.cdef("typedef uint"+str(bits)+"_t target_ptr_t;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 
     # PPP Headers
