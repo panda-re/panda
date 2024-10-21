@@ -6,13 +6,19 @@
 #include "hooks/hooks_int_fns.h"
 #include "hw_proc_id/hw_proc_id_ext.h"
 
-extern const syscall_info_t *syscall_info;
-extern const syscall_meta_t *syscall_meta;
+extern bool load_info;
+#if defined(TARGET_X86_64)
+static bool first_load = true;
+static syscall_info_t *info;
+static syscall_meta_t *meta;
+#endif
 
 extern "C" {
 #include "syscalls_ext_typedefs.h"
 #include "syscall_ppp_extern_enter.h"
 #include "syscall_ppp_extern_return.h"
+
+extern Profile profiles[];
 }
 
 /**
@@ -23,26 +29,36 @@ extern "C" {
  * arguments, return address) to prepare for handling the respective
  * system call return callbacks.
  */
-void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, int static_callno) {
+void syscall_enter_switch_freebsd_x64(CPUState *cpu, int profile, target_ptr_t pc, int static_callno) {
 #if defined(TARGET_X86_64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
+	ctx.profile = profile;
 	if (static_callno == -1) {
 	  ctx.no = env->regs[R_EAX];
 	} else {
 	  ctx.no = static_callno;
 	}
 	ctx.asid = get_id(cpu);
-	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.retaddr = calc_retaddr(cpu, &ctx, pc);
 	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
 	const syscall_info_t *call = NULL;
 	syscall_info_t zero = {0};
-	if (syscall_meta != NULL && ctx.no <= syscall_meta->max_generic) {
+
+	// only try this once
+	if (first_load){
+		first_load = false;
+		if (load_info){
+			sysinfo_load_profile(ctx.profile, &info, &meta);
+		}
+	}
+
+	if (meta != NULL && ctx.no <= meta->max_generic) {
 	  // If the syscall_info object from dso_info_....c doesn't have an entry
 	  // for this syscall, we want to leave it as a NULL pointer
-	  if (memcmp(&syscall_info[ctx.no], &zero, sizeof(syscall_info_t)) != 0) {
-		call = &syscall_info[ctx.no];
+	  if (memcmp(&info[ctx.no], &zero, sizeof(syscall_info_t)) != 0) {
+		call = &info[ctx.no];
 	  }
 	}
 

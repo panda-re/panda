@@ -61,7 +61,10 @@ extern "C" {
 /**
  * @brief Dynamically loads system call information.
  */
-int load_syscall_info(void);
+#ifndef gchar
+    typedef char gchar;
+#endif
+    void load_syscall_info(const gchar *arch, syscall_info_t **syscall_info, syscall_meta_t **syscall_meta);
 #if defined(__cplusplus)
 }
 #endif

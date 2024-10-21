@@ -41,7 +41,7 @@ PANDAENDCOMMENT */
 #include "syscalls2_info.h"
 #include "hw_proc_id/hw_proc_id_ext.h"
 
-void syscall_callback(CPUState *cpu, TranslationBlock* tb, target_ulong pc, int static_callno);
+void syscall_callback(TranslationBlock* tb, target_ulong pc, enum ProfileType, int static_callno);
 
 void (*hooks_add_hook)(struct hook*);
 extern "C" {
@@ -61,10 +61,10 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 }
 
 // Forward declarations
-int32_t get_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
-int64_t get_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
-int32_t get_return_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
-int64_t get_return_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum);
+int32_t get_s32_generic(CPUState *cpu,  syscall_ctx *ctx, uint32_t argnum);
+int64_t get_s64_generic(CPUState *cpu,  syscall_ctx *ctx, uint32_t argnum);
+int32_t get_return_s32_generic(CPUState *cpu,  syscall_ctx *ctx, uint32_t argnum);
+int64_t get_return_s64_generic(CPUState *cpu,  syscall_ctx *ctx, uint32_t argnum);
 target_long get_return_val_x86(CPUState *cpu);
 target_long get_return_val_x64(CPUState *cpu);
 target_long get_return_val_arm(CPUState *cpu);
@@ -92,55 +92,8 @@ target_ulong calc_retaddr_linux_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_mips(CPUState *cpu, target_ulong pc); // TODO
 
-void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_callno);
+void syscall_enter_linux_mips64(CPUState *cpu, int profile, target_ptr_t pc, int static_callno);
 void syscall_return_linux_mips64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx);
-
-enum ProfileType {
-    PROFILE_LINUX_X86,
-    PROFILE_LINUX_ARM,
-    PROFILE_LINUX_AARCH64,
-    PROFILE_LINUX_MIPS32,
-    PROFILE_LINUX_MIPS64,
-    PROFILE_WINDOWS_2000_X86,
-    PROFILE_WINDOWS_XPSP2_X86,
-    PROFILE_WINDOWS_XPSP3_X86,
-    PROFILE_WINDOWS_7_X86,
-    PROFILE_WINDOWS_7_X64,
-    PROFILE_LINUX_X64,
-    PROFILE_FREEBSD_X64,
-    PROFILE_LAST
-};
-
-
-// enter_switch:  the generated function that invokes the enter callback
-// return_switch:  the generated function that invokes the return callback
-// get_return_val:  function to get the return value for this system call
-// calc_retaddr:  function to fetch the address this system call returns to
-// get_32, get_s32, get_64 and get_s64:  used at syscall_enter to get the
-//   requested argument to the system call as the given type
-// get_return_32, get_return_s32, get_return_64, get_return_s64:  not really
-//   sure, but maybe like the above 4 but to be called during syscall_return???
-// windows_return_addr_register:  used to calculate where to read the return
-//   address from (-1 = NA)
-// windows_arg_offset:  offset from EDX where args start
-// syscall_interrupt_number:  interrupt used for system calls (ignored if NA)
-struct Profile {
-    void         (*enter_switch)(CPUState *, target_ulong, int);
-    void         (*return_switch)(CPUState *, target_ulong, const syscall_ctx_t *);
-    target_long  (*get_return_val )(CPUState *);
-    target_ulong (*calc_retaddr )(CPUState *, target_ulong);
-    uint32_t     (*get_32 )(CPUState *, syscall_ctx_t*, uint32_t);
-    int32_t      (*get_s32)(CPUState *, syscall_ctx_t*,  uint32_t);
-    uint64_t     (*get_64)(CPUState *, syscall_ctx_t*, uint32_t);
-    int64_t      (*get_s64)(CPUState *, syscall_ctx_t*, uint32_t);
-    uint32_t     (*get_return_32 )(CPUState *, syscall_ctx_t*, uint32_t);
-    int32_t      (*get_return_s32)(CPUState *, syscall_ctx_t*, uint32_t);
-    uint64_t     (*get_return_64)(CPUState *, syscall_ctx_t*, uint32_t);
-    int64_t      (*get_return_s64)(CPUState *, syscall_ctx_t*,uint32_t);
-    int          windows_return_addr_register;
-    int          windows_arg_offset;
-    int          syscall_interrupt_number;
-};
 
 Profile profiles[PROFILE_LAST] = {
     { /* PROFILE_LINUX_X86 */
@@ -197,6 +150,23 @@ Profile profiles[PROFILE_LAST] = {
     {   /* Linux MIPS32 */
         .enter_switch = syscall_enter_switch_linux_mips,
         .return_switch = syscall_return_switch_linux_mips,
+        .get_return_val = get_return_val_mips,
+        .calc_retaddr = calc_retaddr_linux_mips,
+        .get_32 = get_32_linux_mips,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_mips,
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_32_linux_mips,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_mips,
+        .get_return_s64 = get_return_s64_generic,
+        .windows_return_addr_register = -1,
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
+    },
+    {   /* Linux MIPS64N32: identical to MIPS64 */
+        .enter_switch = syscall_enter_linux_mips64,
+        .return_switch = syscall_return_linux_mips64,
         .get_return_val = get_return_val_mips,
         .calc_retaddr = calc_retaddr_linux_mips,
         .get_32 = get_32_linux_mips,
@@ -369,7 +339,8 @@ Profile profiles[PROFILE_LAST] = {
     }
 };
 
-static Profile *syscalls_profile;
+static ProfileType default_profile;
+bool load_info = false;
 
 // Reinterpret the ulong as a long. Arch and host specific.
 target_long get_return_val_x86(CPUState *cpu){
@@ -423,8 +394,8 @@ target_ulong calc_retaddr_windows_x86(CPUState* cpu, target_ulong pc) {
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     target_ulong retaddr = 0;
-    assert(syscalls_profile->windows_return_addr_register >= 0);
-    panda_virtual_memory_rw(cpu, env->regs[syscalls_profile->windows_return_addr_register], (uint8_t *) &retaddr, 4, false);
+    assert(profiles[default_profile].windows_return_addr_register >= 0);
+    panda_virtual_memory_rw(cpu, env->regs[profiles[default_profile].windows_return_addr_register], (uint8_t *) &retaddr, 4, false);
     return retaddr;
 #else
     // shouldn't happen
@@ -446,7 +417,7 @@ target_ulong calc_retaddr_windows_x64(CPUState* cpu, target_ulong pc) {
 }
 
 target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc) {
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     unsigned char buf[2] = {};
     panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05) or  sysenter (0F 34)
@@ -560,7 +531,7 @@ target_ulong calc_retaddr_linux_mips(CPUState* cpu, target_ulong pc) {
 
 // Argument getting (at syscall entry)
 uint32_t get_linux_x86_argnum(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch (argnum) {
     case 0:
@@ -630,8 +601,8 @@ static uint32_t get_win_syscall_arg(CPUState* cpu, syscall_ctx* ctx, int nr) {
     // At INT 0x2E on Windows 2000, args start at env->regs[R_EDX]
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     uint32_t arg = 0;
-    assert(syscalls_profile->windows_arg_offset >= 0);
-    panda_virtual_memory_rw(cpu, env->regs[R_EDX] + syscalls_profile->windows_arg_offset + (4*nr),
+    assert(profiles[default_profile].windows_arg_offset >= 0);
+    panda_virtual_memory_rw(cpu, env->regs[R_EDX] + profiles[default_profile].windows_arg_offset + (4*nr),
                             (uint8_t *) &arg, 4, false);
     return arg;
 #endif
@@ -650,16 +621,16 @@ uint32_t get_32_linux_arm (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
 #ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
-#if !defined(TARGET_AARCH64)
+#if defined(TARGET_AARCH64)
+    // aarch64 regs in x0-x5
+    if (ctx->profile == PROFILE_LINUX_AARCH64) {
+        assert (argnum < 6);
+        return (uint32_t) env->xregs[argnum];
+    }
+#endif
     // arm32 regs in r0-r6
     assert (argnum < 7);
     return (uint32_t) env->regs[argnum];
-#else
-    // aarch64 regs in x0-x5
-    assert (argnum < 6);
-    return (uint32_t) env->xregs[argnum];
-#endif
-
 #else
     return 0;
 #endif
@@ -851,35 +822,35 @@ uint64_t get_return_64_windows_x64(CPUState *cpu, syscall_ctx *ctx, uint32_t arg
 }
 
 // Wrappers
-target_long get_return_val (CPUState *cpu) {
-    return syscalls_profile->get_return_val(cpu);
+target_long get_return_val (CPUState *cpu, syscall_ctx *ctx) {
+    return profiles[ctx->profile].get_return_val(cpu);
 }
-target_ulong calc_retaddr (CPUState *cpu, target_ulong pc) {
-    return syscalls_profile->calc_retaddr(cpu, pc);
+target_ulong calc_retaddr (CPUState *cpu, syscall_ctx *ctx, target_ulong pc) {
+    return profiles[ctx->profile].calc_retaddr(cpu, pc);
 }
 uint32_t get_32(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_32(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_32(cpu, ctx, argnum);
 }
 int32_t get_s32(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_s32(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_s32(cpu, ctx, argnum);
 }
 uint64_t get_64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_64(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_64(cpu, ctx, argnum);
 }
 int64_t get_s64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_s64(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_s64(cpu, ctx, argnum);
 }
 uint32_t get_return_32 (CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_return_32(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_return_32(cpu, ctx, argnum);
 }
 int32_t get_return_s32(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_return_s32(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_return_s32(cpu, ctx, argnum);
 }
 uint64_t get_return_64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_return_64(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_return_64(cpu, ctx, argnum);
 }
 int64_t get_return_s64(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
-    return syscalls_profile->get_return_s64(cpu, ctx, argnum);
+    return profiles[ctx->profile].get_return_s64(cpu, ctx, argnum);
 }
 
 int32_t get_s32_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum) {
@@ -898,21 +869,74 @@ int64_t get_return_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum)
     return (int64_t) get_return_64(cpu, ctx, argnum);
 }
 
+void sysinfo_load(int profile){
+    const gchar *arch = "unknown";
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    arch = "x86";
+#elif defined(TARGET_X86_64)
+if (profile == PROFILE_LINUX_X64) {
+    arch = "x64";
+} else if (profile == PROFILE_FREEBSD_X64) {
+    arch = "x64";
+}else{
+    assert("invalid profile");
+}
+#elif defined(TARGET_ARM) &&!defined(TARGET_AARCH64)
+    arch = "arm";
+#elif defined(TARGET_ARM) &&defined(TARGET_AARCH64)
+if (profile == PROFILE_LINUX_AARCH64) {
+    arch = "arm64";
+} else if (profile == PROFILE_LINUX_ARM){
+    arch = "arm";
+}
+#elif defined(TARGET_MIPS) && defined(TARGET_MIPS64)
+if (profile == PROFILE_LINUX_MIPS64) {
+    arch = "mips64";
+}else if (profile == PROFILE_LINUX_MIPS32){
+    arch = "mips32";
+}else if (profile == PROFILE_LINUX_MIPS64N32){
+    arch = "mips64n32";
+}else{
+    assert("invalid profile");
+}
+#elif defined(TARGET_MIPS)
+    arch = "mips";
+#else
+    // will fail on dlopen because dso file won't exist
+    arch = "unknown";
+#endif
+    load_syscall_info(arch, (syscall_info_t**)&profiles[profile].syscall_info, (syscall_meta_t**)&profiles[profile].syscall_meta);
+}
+
+void sysinfo_load_profile(int profile, syscall_info_t **syscall_info, syscall_meta_t **syscall_meta){
+    if (profiles[profile].syscall_info == NULL){
+        sysinfo_load(profile);
+    }
+    *syscall_info = (syscall_info_t*)profiles[profile].syscall_info;
+    *syscall_meta = (syscall_meta_t*)profiles[profile].syscall_meta;
+    if (*syscall_info == NULL){
+        printf("syscall_info is NULL\n");
+    }
+}
+
 /**
  * MIPS64 supports 3 ABIs: o32, n32, and n64. This complicates our efforts.
 */
-void syscall_enter_linux_mips64(CPUState *cpu, target_ptr_t pc, int static_callno) {
+void syscall_enter_linux_mips64(CPUState *cpu, int profile, target_ptr_t pc, int static_callno) {
     #if defined(TARGET_MIPS) && defined(TARGET_MIPS64)
     if (static_callno == -1){
         CPUArchState *env = (CPUArchState*) cpu->env_ptr;
         static_callno = env->active_tc.gpr[2]; 
     }
     if (static_callno >= 4000 && static_callno <= 4999) {
-		syscall_enter_switch_linux_mips(cpu, pc, static_callno);
+        profile = PROFILE_LINUX_MIPS32;
+		syscall_enter_switch_linux_mips(cpu, profile, pc, static_callno);
 	}else if (static_callno >= 5000 && static_callno <= 5999) {
-        syscall_enter_switch_linux_mips64(cpu, pc, static_callno);
+        profile = PROFILE_LINUX_MIPS64;
+        syscall_enter_switch_linux_mips64(cpu, profile, pc, static_callno);
     }else if (static_callno >= 6000 && static_callno <= 6999) {
-        syscall_enter_switch_linux_mips64n32(cpu, pc, static_callno);
+        profile = PROFILE_LINUX_MIPS64N32;
+        syscall_enter_switch_linux_mips64n32(cpu, profile, pc, static_callno);
     }else{
         assert("syscall_enter_linux_mips64: static_callno not found");
     }
@@ -941,8 +965,6 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
 }
 
-extern const syscall_info_t *syscall_info;
-extern const syscall_meta_t *syscall_meta;
 
 /**
  * @brief Map holding the context of ongoing system calls. An unfinished
@@ -995,7 +1017,7 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
     if (likely(ctxi != running_syscalls.end())) {
         syscall_ctx_t *ctx = &ctxi->second;
         no = ctx->no;
-        syscalls_profile->return_switch(cpu, tb->pc, ctx);
+        profiles[ctx->profile].return_switch(cpu, tb->pc, ctx);
         if (ctx->double_return){
             ctx->double_return = false;
             return;
@@ -1027,7 +1049,7 @@ static uint32_t impossibleToReadPCs = 0;
 
 // Check if the instruction is sysenter (0F 34),
 // syscall (0F 05) or int 0x80 (CD 80)
-target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* static_callno) {
+target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* static_callno, enum ProfileType* type) {
 #if defined(TARGET_I386)
     unsigned char buf[2] = {};
     target_ulong pc = tb->pc + tb->size - sizeof(buf);
@@ -1041,22 +1063,28 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
         return pc;
     }
     // Check if the instruction is int 0x80 (CD 80)
-    else if (buf[0]== 0xCD && buf[1] == syscalls_profile->syscall_interrupt_number) {
+    else if (buf[0]== 0xCD && buf[1] == profiles[default_profile].syscall_interrupt_number) {
 #if defined(TARGET_X86_64)
-        LOG_WARNING("32-bit system call (int 0x80) found in 64-bit replay - ignoring\n");
-        return 0;
-#else
-        return pc;
+        if (*type == PROFILE_LINUX_X64){
+            *type = PROFILE_LINUX_X86;
+        }else{
+            LOG_WARNING("32-bit sysenter found in 64-bit replay - ignoring\n");
+            return 0;
+        }
 #endif
+        return pc;
     }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
 #if defined(TARGET_X86_64)
-        LOG_WARNING("32-bit sysenter found in 64-bit replay - ignoring\n");
-        return 0;
-#else
-        return pc;
+        if (*type == PROFILE_LINUX_X64){
+            *type = PROFILE_LINUX_X86;
+        }else{
+            LOG_WARNING("32-bit sysenter found in 64-bit replay - ignoring\n");
+            return 0;
+        }
 #endif
+        return pc;
     }
     else {
         return 0;
@@ -1082,6 +1110,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
         panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
         // EABI
         if ( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ) {
+#ifdef TARGET_AARCH64
+            *type = PROFILE_LINUX_ARM;
+#endif
             return pc;
         }
 #if defined(CAPTURE_ARM_OABI)
@@ -1091,6 +1122,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
         // Instruction will look like 0xFF90XXXX where XXXX is the syscall number
         else if (((buf[3] & 0x0F) == 0x0F)  && (buf[2] == 0x90)) {  // old ABI
             *static_callno = (buf[1]<<8) + (buf[0]);
+#ifdef TARGET_AARCH64
+            *type = PROFILE_LINUX_ARM;
+#endif
             return pc;
         }
 #endif
@@ -1102,6 +1136,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         // check for Thumb mode syscall
         if (buf[1] == 0xDF && buf[0] == 0){
+#ifdef TARGET_AARCH64
+            *type = PROFILE_LINUX_ARM;
+#endif
             return pc;
         }
     }
@@ -1141,7 +1178,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     int static_callno = -1; // Set to non -1 if syscall num can be
                             // statically identified
-    target_ulong res = doesBlockContainSyscall(cpu, tb, &static_callno);
+    enum ProfileType profile = default_profile;
+
+    target_ulong res = doesBlockContainSyscall(cpu, tb, &static_callno, &profile);
 #ifdef DEBUG
     if(res == (target_ulong) -1){
         impossibleToReadPCs++;
@@ -1149,14 +1188,15 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
 #endif
     if(res != 0 && res != (target_ulong) -1){
         TCGOp *op = find_guest_insn_by_addr(res);
-        insert_call(&op, syscall_callback, cpu, tb, res, static_callno);
+        insert_call(&op, syscall_callback, tb, res, profile, static_callno);
     }
 }
 
 // This will be called directly from the TCG stream for blocks that contain a
 // syscall (as identified by doesBlockContainSyscall). Inserted into TCG by
 // before_tcg_codegen.
-void syscall_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc, int callno) {
+void syscall_callback(TranslationBlock *tb, target_ulong pc, enum ProfileType profile, int callno) {
+    CPUState *cpu = first_cpu;
 #if defined(TARGET_I386) && defined(TARGET_X86_64)
     if (panda_os_familyno == OS_WINDOWS) {
         CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -1185,7 +1225,7 @@ void syscall_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc, int 
             callback(cpu, pc);
         }
         // Call into autogenerated code for the current syscall!
-        syscalls_profile->enter_switch(cpu, pc, callno);
+        profiles[profile].enter_switch(cpu, profile, pc, callno);
 
 #if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
     if (no >= 0 && !si[no].noreturn) {
@@ -1206,25 +1246,36 @@ void syscall_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc, int 
  * @brief Returns a pointer to the meta-information for the specified syscall.
  */
 target_long get_syscall_retval(CPUState *cpu) {
-    return syscalls_profile->get_return_val(cpu);
+    return profiles[default_profile].get_return_val(cpu);
 }
 
 /*!
  * @brief Returns a pointer to the meta-information for the specified syscall.
  */
 const syscall_info_t *get_syscall_info(uint32_t callno) {
-    if (syscall_info != NULL) {
-        return &syscall_info[callno];
-    } else {
+    if (!load_info){
         return NULL;
     }
+    if (profiles[default_profile].syscall_info == NULL){
+        sysinfo_load(default_profile);
+    }
+    syscall_info_t *info = (syscall_info_t*)profiles[default_profile].syscall_info;
+    return (const syscall_info_t *)&info[callno];
 }
 
 /*!
  * @brief Returns a pointer to the array containing the meta-information
  * for all syscalls.
  */
-const syscall_meta_t *get_syscall_meta(void) { return syscall_meta; }
+const syscall_meta_t *get_syscall_meta(void) { 
+    if (!load_info){
+        return NULL;
+    }
+    if (profiles[default_profile].syscall_meta == NULL){
+        sysinfo_load(default_profile);
+    }
+    return (const syscall_meta_t*)profiles[default_profile].syscall_meta;
+}
 
 
 /* ### Plugin bootstrapping ############################################# */
@@ -1236,7 +1287,9 @@ bool init_plugin(void *self) {
     // Unused in some architectures
     const char *UNUSED(abi) = panda_parse_string_opt(plugin_args, "abi", NULL, "Syscall ABI if a nonstandard value is used. Currently supported for mips(64) with values: n64, n32, and o32");
 
-    if(panda_os_familyno == OS_UNKNOWN){
+    default_profile = PROFILE_LAST;
+    if (panda_os_familyno == OS_UNKNOWN)
+    {
         std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7sp[01]' " << std::endl;
         return false;
     }
@@ -1245,29 +1298,29 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386)
 #if !defined(TARGET_X86_64)
         std::cerr << PANDA_MSG "using profile for linux x86 32-bit" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_X86];
+        default_profile = PROFILE_LINUX_X86;
 #else
         std::cerr << PANDA_MSG "using profile for linux x64 64-bit" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_X64];
+        default_profile = PROFILE_LINUX_X64;
 #endif
 #endif
 #if defined(TARGET_ARM)
 #if !defined(TARGET_AARCH64)
         std::cerr << PANDA_MSG "using profile for linux arm" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_ARM];
+        default_profile = PROFILE_LINUX_ARM;
 #else
         std::cerr << PANDA_MSG "using profile for linux aarch64" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_AARCH64];
+        default_profile = PROFILE_LINUX_AARCH64;
 #endif
 #endif
     
 #if defined(TARGET_MIPS)
 #if defined(TARGET_MIPS64)
         std::cerr << PANDA_MSG "using profile for linux mips64" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_MIPS64];
+        default_profile = PROFILE_LINUX_MIPS64;
 #else
         std::cerr << PANDA_MSG "using profile for linux mips32" << std::endl;
-        syscalls_profile = &profiles[PROFILE_LINUX_MIPS32];
+        default_profile = PROFILE_LINUX_MIPS32;
 #endif
 #endif
     } else if (panda_os_familyno == OS_WINDOWS) {
@@ -1279,40 +1332,40 @@ bool init_plugin(void *self) {
 #if !defined(TARGET_X86_64)
         if (0 == strcmp(panda_os_variant, "xpsp2")) {
             std::cerr << PANDA_MSG "using profile for windows sp2 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP2_X86];
+            default_profile = PROFILE_WINDOWS_XPSP2_X86;
         }
         if (0 == strcmp(panda_os_variant, "xpsp3")) {
             std::cerr << PANDA_MSG "using profile for windows sp3 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP3_X86];
+            default_profile = PROFILE_WINDOWS_XPSP3_X86;
         }
         if (0 == strncmp(panda_os_variant, "7", 1)) {
             std::cerr << PANDA_MSG "using profile for windows 7 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWS_7_X86];
+            default_profile = PROFILE_WINDOWS_7_X86;
         }
         if (0 == strcmp(panda_os_variant, "2000")) {
             std::cerr << PANDA_MSG "using profile for windows 2000 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWS_2000_X86];
+            default_profile = PROFILE_WINDOWS_2000_X86;
         }
 #else
         if (0 == strncmp(panda_os_variant, "7", 1)) {
             std::cerr << PANDA_MSG "using profile for windows 7 x64 64-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWS_7_X64];
+            default_profile = PROFILE_WINDOWS_7_X64;
         }
 #endif
 #endif
     } else if (panda_os_familyno == OS_FREEBSD) {
 #if defined(TARGET_X86_64)
     std::cerr << PANDA_MSG "using profile for freebsd x64 64-bit" << std::endl;
-    syscalls_profile = &profiles[PROFILE_FREEBSD_X64];
+    default_profile = PROFILE_FREEBSD_X64;
 #else
     std::cerr << PANDA_MSG "ERROR: using profile for freebsd x86 32-bit not yet supported!" << std::endl;
-    //syscalls_profile = &profiles[PROFILE_FREEBSD_X86];
+    //default_profile = PROFILE_FREEBSD_X86;
     return false;
 #endif
     }
 
     // make sure a system calls profile has been loaded
-    if(!syscalls_profile){
+    if(default_profile == PROFILE_LAST){
         std::cerr << PANDA_MSG "ERROR Couldn't find a syscall profile for the specified OS" << std::endl;
         return false;
     }
@@ -1324,7 +1377,8 @@ bool init_plugin(void *self) {
 
     // load system call info
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
-        if (load_syscall_info() < 0) return false;
+        printf("load_info\n");
+        load_info = true;
     }
 
 #if defined(SYSCALL_RETURN_DEBUG)

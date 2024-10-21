@@ -4,8 +4,12 @@
 #include "syscalls2.h"
 #include "syscalls2_info.h"
 
-extern const syscall_info_t *syscall_info;
-extern const syscall_meta_t *syscall_meta;
+extern bool load_info;
+#if defined(TARGET_ARM)
+static bool first_load = true;
+static syscall_info_t *info;
+static syscall_meta_t *meta;
+#endif
 
 extern "C" {
 #include "syscalls_ext_typedefs.h"
@@ -13,14 +17,21 @@ extern "C" {
 }
 
 void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
-#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+#if defined(TARGET_ARM)
 	const syscall_info_t *call = NULL;
 	syscall_info_t zero = {0};
-	if (syscall_meta != NULL && ctx->no <= syscall_meta->max_generic) {
+	// only try this once
+	if (first_load){
+		first_load = false;
+		if (load_info){
+			sysinfo_load_profile(ctx->profile, &info, &meta);
+		}
+	}
+	if (meta != NULL && ctx->no <= meta->max_generic) {
 	  // If the syscall_info object from dso_info_....c doesn't have an entry
 	  // for this syscall, we want to leave it as a NULL pointer
-	  if (memcmp(&syscall_info[ctx->no], &zero, sizeof(syscall_info_t)) != 0) {
-		call = &syscall_info[ctx->no];
+	  if (memcmp(&info[ctx->no], &zero, sizeof(syscall_info_t)) != 0) {
+		call = &info[ctx->no];
 	  }
 	}
 	switch (ctx->no) {

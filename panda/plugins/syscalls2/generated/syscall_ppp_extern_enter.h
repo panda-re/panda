@@ -1,3681 +1,14744 @@
-#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
-PPP_CB_EXTERN(on_ARM_breakpoint_enter)
-PPP_CB_EXTERN(on_ARM_cacheflush_enter)
-PPP_CB_EXTERN(on_ARM_set_tls_enter)
-PPP_CB_EXTERN(on_ARM_user26_mode_enter)
-PPP_CB_EXTERN(on_ARM_usr32_mode_enter)
-PPP_CB_EXTERN(on_do_mmap2_enter)
-PPP_CB_EXTERN(on_sys_accept_enter)
-PPP_CB_EXTERN(on_sys_accept4_enter)
-PPP_CB_EXTERN(on_sys_access_enter)
-PPP_CB_EXTERN(on_sys_acct_enter)
-PPP_CB_EXTERN(on_sys_add_key_enter)
-PPP_CB_EXTERN(on_sys_adjtimex_enter)
-PPP_CB_EXTERN(on_sys_alarm_enter)
-PPP_CB_EXTERN(on_sys_arm_fadvise64_64_enter)
-PPP_CB_EXTERN(on_sys_bdflush_enter)
-PPP_CB_EXTERN(on_sys_bind_enter)
-PPP_CB_EXTERN(on_sys_bpf_enter)
-PPP_CB_EXTERN(on_sys_brk_enter)
-PPP_CB_EXTERN(on_sys_capget_enter)
-PPP_CB_EXTERN(on_sys_capset_enter)
-PPP_CB_EXTERN(on_sys_chdir_enter)
-PPP_CB_EXTERN(on_sys_chmod_enter)
-PPP_CB_EXTERN(on_sys_chown_enter)
-PPP_CB_EXTERN(on_sys_chown16_enter)
-PPP_CB_EXTERN(on_sys_chroot_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_clock_settime_enter)
-PPP_CB_EXTERN(on_sys_clone_enter)
-PPP_CB_EXTERN(on_sys_close_enter)
-PPP_CB_EXTERN(on_sys_connect_enter)
-PPP_CB_EXTERN(on_sys_creat_enter)
-PPP_CB_EXTERN(on_sys_delete_module_enter)
-PPP_CB_EXTERN(on_sys_dup_enter)
-PPP_CB_EXTERN(on_sys_dup2_enter)
-PPP_CB_EXTERN(on_sys_dup3_enter)
-PPP_CB_EXTERN(on_sys_epoll_create_enter)
-PPP_CB_EXTERN(on_sys_epoll_create1_enter)
-PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
-PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
-PPP_CB_EXTERN(on_sys_epoll_wait_enter)
-PPP_CB_EXTERN(on_sys_eventfd_enter)
-PPP_CB_EXTERN(on_sys_eventfd2_enter)
-PPP_CB_EXTERN(on_sys_execve_enter)
-PPP_CB_EXTERN(on_sys_execveat_enter)
-PPP_CB_EXTERN(on_sys_exit_enter)
-PPP_CB_EXTERN(on_sys_exit_group_enter)
-PPP_CB_EXTERN(on_sys_faccessat_enter)
-PPP_CB_EXTERN(on_sys_fallocate_enter)
-PPP_CB_EXTERN(on_sys_fanotify_init_enter)
-PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
-PPP_CB_EXTERN(on_sys_fchdir_enter)
-PPP_CB_EXTERN(on_sys_fchmod_enter)
-PPP_CB_EXTERN(on_sys_fchmodat_enter)
-PPP_CB_EXTERN(on_sys_fchown_enter)
-PPP_CB_EXTERN(on_sys_fchown16_enter)
-PPP_CB_EXTERN(on_sys_fchownat_enter)
-PPP_CB_EXTERN(on_sys_fcntl_enter)
-PPP_CB_EXTERN(on_sys_fcntl64_enter)
-PPP_CB_EXTERN(on_sys_fdatasync_enter)
-PPP_CB_EXTERN(on_sys_fgetxattr_enter)
-PPP_CB_EXTERN(on_sys_finit_module_enter)
-PPP_CB_EXTERN(on_sys_flistxattr_enter)
-PPP_CB_EXTERN(on_sys_flock_enter)
-PPP_CB_EXTERN(on_sys_fork_enter)
-PPP_CB_EXTERN(on_sys_fremovexattr_enter)
-PPP_CB_EXTERN(on_sys_fsetxattr_enter)
-PPP_CB_EXTERN(on_sys_fstat64_enter)
-PPP_CB_EXTERN(on_sys_fstatat64_enter)
-PPP_CB_EXTERN(on_sys_fstatfs_enter)
-PPP_CB_EXTERN(on_sys_fstatfs64_enter)
-PPP_CB_EXTERN(on_sys_fsync_enter)
-PPP_CB_EXTERN(on_sys_ftruncate_enter)
-PPP_CB_EXTERN(on_sys_ftruncate64_enter)
-PPP_CB_EXTERN(on_sys_futex_enter)
-PPP_CB_EXTERN(on_sys_futimesat_enter)
-PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_get_robust_list_enter)
-PPP_CB_EXTERN(on_sys_getcpu_enter)
-PPP_CB_EXTERN(on_sys_getcwd_enter)
-PPP_CB_EXTERN(on_sys_getdents_enter)
-PPP_CB_EXTERN(on_sys_getdents64_enter)
-PPP_CB_EXTERN(on_sys_getegid_enter)
-PPP_CB_EXTERN(on_sys_getegid16_enter)
-PPP_CB_EXTERN(on_sys_geteuid_enter)
-PPP_CB_EXTERN(on_sys_geteuid16_enter)
-PPP_CB_EXTERN(on_sys_getgid_enter)
-PPP_CB_EXTERN(on_sys_getgid16_enter)
-PPP_CB_EXTERN(on_sys_getgroups_enter)
-PPP_CB_EXTERN(on_sys_getgroups16_enter)
-PPP_CB_EXTERN(on_sys_getitimer_enter)
-PPP_CB_EXTERN(on_sys_getpeername_enter)
-PPP_CB_EXTERN(on_sys_getpgid_enter)
-PPP_CB_EXTERN(on_sys_getpgrp_enter)
-PPP_CB_EXTERN(on_sys_getpid_enter)
-PPP_CB_EXTERN(on_sys_getppid_enter)
-PPP_CB_EXTERN(on_sys_getpriority_enter)
-PPP_CB_EXTERN(on_sys_getrandom_enter)
-PPP_CB_EXTERN(on_sys_getresgid_enter)
-PPP_CB_EXTERN(on_sys_getresgid16_enter)
-PPP_CB_EXTERN(on_sys_getresuid_enter)
-PPP_CB_EXTERN(on_sys_getresuid16_enter)
-PPP_CB_EXTERN(on_sys_getrlimit_enter)
-PPP_CB_EXTERN(on_sys_getrusage_enter)
-PPP_CB_EXTERN(on_sys_getsid_enter)
-PPP_CB_EXTERN(on_sys_getsockname_enter)
-PPP_CB_EXTERN(on_sys_getsockopt_enter)
-PPP_CB_EXTERN(on_sys_gettid_enter)
-PPP_CB_EXTERN(on_sys_gettimeofday_enter)
-PPP_CB_EXTERN(on_sys_getuid_enter)
-PPP_CB_EXTERN(on_sys_getuid16_enter)
-PPP_CB_EXTERN(on_sys_getxattr_enter)
-PPP_CB_EXTERN(on_sys_init_module_enter)
-PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
-PPP_CB_EXTERN(on_sys_inotify_init_enter)
-PPP_CB_EXTERN(on_sys_inotify_init1_enter)
-PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
-PPP_CB_EXTERN(on_sys_io_cancel_enter)
-PPP_CB_EXTERN(on_sys_io_destroy_enter)
-PPP_CB_EXTERN(on_sys_io_getevents_enter)
-PPP_CB_EXTERN(on_sys_io_setup_enter)
-PPP_CB_EXTERN(on_sys_io_submit_enter)
-PPP_CB_EXTERN(on_sys_ioctl_enter)
-PPP_CB_EXTERN(on_sys_ioprio_get_enter)
-PPP_CB_EXTERN(on_sys_ioprio_set_enter)
-PPP_CB_EXTERN(on_sys_ipc_enter)
-PPP_CB_EXTERN(on_sys_kcmp_enter)
-PPP_CB_EXTERN(on_sys_kexec_load_enter)
-PPP_CB_EXTERN(on_sys_keyctl_enter)
-PPP_CB_EXTERN(on_sys_kill_enter)
-PPP_CB_EXTERN(on_sys_lchown_enter)
-PPP_CB_EXTERN(on_sys_lchown16_enter)
-PPP_CB_EXTERN(on_sys_lgetxattr_enter)
-PPP_CB_EXTERN(on_sys_link_enter)
-PPP_CB_EXTERN(on_sys_linkat_enter)
-PPP_CB_EXTERN(on_sys_listen_enter)
-PPP_CB_EXTERN(on_sys_listxattr_enter)
-PPP_CB_EXTERN(on_sys_llistxattr_enter)
-PPP_CB_EXTERN(on_sys_llseek_enter)
-PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
-PPP_CB_EXTERN(on_sys_lremovexattr_enter)
-PPP_CB_EXTERN(on_sys_lseek_enter)
-PPP_CB_EXTERN(on_sys_lsetxattr_enter)
-PPP_CB_EXTERN(on_sys_lstat64_enter)
-PPP_CB_EXTERN(on_sys_madvise_enter)
-PPP_CB_EXTERN(on_sys_mbind_enter)
-PPP_CB_EXTERN(on_sys_membarrier_enter)
-PPP_CB_EXTERN(on_sys_memfd_create_enter)
-PPP_CB_EXTERN(on_sys_mincore_enter)
-PPP_CB_EXTERN(on_sys_mkdir_enter)
-PPP_CB_EXTERN(on_sys_mkdirat_enter)
-PPP_CB_EXTERN(on_sys_mknod_enter)
-PPP_CB_EXTERN(on_sys_mknodat_enter)
-PPP_CB_EXTERN(on_sys_mlock_enter)
-PPP_CB_EXTERN(on_sys_mlock2_enter)
-PPP_CB_EXTERN(on_sys_mlockall_enter)
-PPP_CB_EXTERN(on_sys_mount_enter)
-PPP_CB_EXTERN(on_sys_move_pages_enter)
-PPP_CB_EXTERN(on_sys_mprotect_enter)
-PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
-PPP_CB_EXTERN(on_sys_mq_notify_enter)
-PPP_CB_EXTERN(on_sys_mq_open_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
-PPP_CB_EXTERN(on_sys_mq_unlink_enter)
-PPP_CB_EXTERN(on_sys_mremap_enter)
-PPP_CB_EXTERN(on_sys_msgctl_enter)
-PPP_CB_EXTERN(on_sys_msgget_enter)
-PPP_CB_EXTERN(on_sys_msgrcv_enter)
-PPP_CB_EXTERN(on_sys_msgsnd_enter)
-PPP_CB_EXTERN(on_sys_msync_enter)
-PPP_CB_EXTERN(on_sys_munlock_enter)
-PPP_CB_EXTERN(on_sys_munlockall_enter)
-PPP_CB_EXTERN(on_sys_munmap_enter)
-PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
-PPP_CB_EXTERN(on_sys_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_newfstat_enter)
-PPP_CB_EXTERN(on_sys_newlstat_enter)
-PPP_CB_EXTERN(on_sys_newstat_enter)
-PPP_CB_EXTERN(on_sys_newuname_enter)
-PPP_CB_EXTERN(on_sys_nice_enter)
-PPP_CB_EXTERN(on_sys_open_enter)
-PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
-PPP_CB_EXTERN(on_sys_openat_enter)
-PPP_CB_EXTERN(on_sys_pause_enter)
-PPP_CB_EXTERN(on_sys_pciconfig_iobase_enter)
-PPP_CB_EXTERN(on_sys_pciconfig_read_enter)
-PPP_CB_EXTERN(on_sys_pciconfig_write_enter)
-PPP_CB_EXTERN(on_sys_perf_event_open_enter)
-PPP_CB_EXTERN(on_sys_personality_enter)
-PPP_CB_EXTERN(on_sys_pipe_enter)
-PPP_CB_EXTERN(on_sys_pipe2_enter)
-PPP_CB_EXTERN(on_sys_pivot_root_enter)
-PPP_CB_EXTERN(on_sys_poll_enter)
-PPP_CB_EXTERN(on_sys_ppoll_enter)
-PPP_CB_EXTERN(on_sys_prctl_enter)
-PPP_CB_EXTERN(on_sys_pread64_enter)
-PPP_CB_EXTERN(on_sys_preadv_enter)
-PPP_CB_EXTERN(on_sys_prlimit64_enter)
-PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
-PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
-PPP_CB_EXTERN(on_sys_pselect6_enter)
-PPP_CB_EXTERN(on_sys_ptrace_enter)
-PPP_CB_EXTERN(on_sys_pwrite64_enter)
-PPP_CB_EXTERN(on_sys_pwritev_enter)
-PPP_CB_EXTERN(on_sys_quotactl_enter)
-PPP_CB_EXTERN(on_sys_read_enter)
-PPP_CB_EXTERN(on_sys_readahead_enter)
-PPP_CB_EXTERN(on_sys_readlink_enter)
-PPP_CB_EXTERN(on_sys_readlinkat_enter)
-PPP_CB_EXTERN(on_sys_readv_enter)
-PPP_CB_EXTERN(on_sys_reboot_enter)
-PPP_CB_EXTERN(on_sys_recv_enter)
-PPP_CB_EXTERN(on_sys_recvfrom_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_enter)
-PPP_CB_EXTERN(on_sys_recvmsg_enter)
-PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
-PPP_CB_EXTERN(on_sys_removexattr_enter)
-PPP_CB_EXTERN(on_sys_rename_enter)
-PPP_CB_EXTERN(on_sys_renameat_enter)
-PPP_CB_EXTERN(on_sys_renameat2_enter)
-PPP_CB_EXTERN(on_sys_request_key_enter)
-PPP_CB_EXTERN(on_sys_restart_syscall_enter)
-PPP_CB_EXTERN(on_sys_rmdir_enter)
-PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
-PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
-PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
-PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
-PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_getattr_enter)
-PPP_CB_EXTERN(on_sys_sched_getparam_enter)
-PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
-PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_setattr_enter)
-PPP_CB_EXTERN(on_sys_sched_setparam_enter)
-PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_yield_enter)
-PPP_CB_EXTERN(on_sys_seccomp_enter)
-PPP_CB_EXTERN(on_sys_select_enter)
-PPP_CB_EXTERN(on_sys_semctl_enter)
-PPP_CB_EXTERN(on_sys_semget_enter)
-PPP_CB_EXTERN(on_sys_semop_enter)
-PPP_CB_EXTERN(on_sys_semtimedop_enter)
-PPP_CB_EXTERN(on_sys_send_enter)
-PPP_CB_EXTERN(on_sys_sendfile_enter)
-PPP_CB_EXTERN(on_sys_sendfile64_enter)
-PPP_CB_EXTERN(on_sys_sendmmsg_enter)
-PPP_CB_EXTERN(on_sys_sendmsg_enter)
-PPP_CB_EXTERN(on_sys_sendto_enter)
-PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_set_robust_list_enter)
-PPP_CB_EXTERN(on_sys_set_tid_address_enter)
-PPP_CB_EXTERN(on_sys_setdomainname_enter)
-PPP_CB_EXTERN(on_sys_setfsgid_enter)
-PPP_CB_EXTERN(on_sys_setfsgid16_enter)
-PPP_CB_EXTERN(on_sys_setfsuid_enter)
-PPP_CB_EXTERN(on_sys_setfsuid16_enter)
-PPP_CB_EXTERN(on_sys_setgid_enter)
-PPP_CB_EXTERN(on_sys_setgid16_enter)
-PPP_CB_EXTERN(on_sys_setgroups_enter)
-PPP_CB_EXTERN(on_sys_setgroups16_enter)
-PPP_CB_EXTERN(on_sys_sethostname_enter)
-PPP_CB_EXTERN(on_sys_setitimer_enter)
-PPP_CB_EXTERN(on_sys_setns_enter)
-PPP_CB_EXTERN(on_sys_setpgid_enter)
-PPP_CB_EXTERN(on_sys_setpriority_enter)
-PPP_CB_EXTERN(on_sys_setregid_enter)
-PPP_CB_EXTERN(on_sys_setregid16_enter)
-PPP_CB_EXTERN(on_sys_setresgid_enter)
-PPP_CB_EXTERN(on_sys_setresgid16_enter)
-PPP_CB_EXTERN(on_sys_setresuid_enter)
-PPP_CB_EXTERN(on_sys_setresuid16_enter)
-PPP_CB_EXTERN(on_sys_setreuid_enter)
-PPP_CB_EXTERN(on_sys_setreuid16_enter)
-PPP_CB_EXTERN(on_sys_setrlimit_enter)
-PPP_CB_EXTERN(on_sys_setsid_enter)
-PPP_CB_EXTERN(on_sys_setsockopt_enter)
-PPP_CB_EXTERN(on_sys_settimeofday_enter)
-PPP_CB_EXTERN(on_sys_setuid_enter)
-PPP_CB_EXTERN(on_sys_setuid16_enter)
-PPP_CB_EXTERN(on_sys_setxattr_enter)
-PPP_CB_EXTERN(on_sys_shmat_enter)
-PPP_CB_EXTERN(on_sys_shmctl_enter)
-PPP_CB_EXTERN(on_sys_shmdt_enter)
-PPP_CB_EXTERN(on_sys_shmget_enter)
-PPP_CB_EXTERN(on_sys_shutdown_enter)
-PPP_CB_EXTERN(on_sys_sigaction_enter)
-PPP_CB_EXTERN(on_sys_sigaltstack_enter)
-PPP_CB_EXTERN(on_sys_signalfd_enter)
-PPP_CB_EXTERN(on_sys_signalfd4_enter)
-PPP_CB_EXTERN(on_sys_sigpending_enter)
-PPP_CB_EXTERN(on_sys_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_socket_enter)
-PPP_CB_EXTERN(on_sys_socketcall_enter)
-PPP_CB_EXTERN(on_sys_socketpair_enter)
-PPP_CB_EXTERN(on_sys_splice_enter)
-PPP_CB_EXTERN(on_sys_stat64_enter)
-PPP_CB_EXTERN(on_sys_statfs_enter)
-PPP_CB_EXTERN(on_sys_statfs64_enter)
-PPP_CB_EXTERN(on_sys_statx_enter)
-PPP_CB_EXTERN(on_sys_stime_enter)
-PPP_CB_EXTERN(on_sys_swapoff_enter)
-PPP_CB_EXTERN(on_sys_swapon_enter)
-PPP_CB_EXTERN(on_sys_symlink_enter)
-PPP_CB_EXTERN(on_sys_symlinkat_enter)
-PPP_CB_EXTERN(on_sys_sync_enter)
-PPP_CB_EXTERN(on_sys_sync_file_range2_enter)
-PPP_CB_EXTERN(on_sys_syncfs_enter)
-PPP_CB_EXTERN(on_sys_sysctl_enter)
-PPP_CB_EXTERN(on_sys_sysfs_enter)
-PPP_CB_EXTERN(on_sys_sysinfo_enter)
-PPP_CB_EXTERN(on_sys_syslog_enter)
-PPP_CB_EXTERN(on_sys_tee_enter)
-PPP_CB_EXTERN(on_sys_tgkill_enter)
-PPP_CB_EXTERN(on_sys_time_enter)
-PPP_CB_EXTERN(on_sys_timer_create_enter)
-PPP_CB_EXTERN(on_sys_timer_delete_enter)
-PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime_enter)
-PPP_CB_EXTERN(on_sys_timer_settime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_create_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
-PPP_CB_EXTERN(on_sys_times_enter)
-PPP_CB_EXTERN(on_sys_tkill_enter)
-PPP_CB_EXTERN(on_sys_truncate_enter)
-PPP_CB_EXTERN(on_sys_truncate64_enter)
-PPP_CB_EXTERN(on_sys_umask_enter)
-PPP_CB_EXTERN(on_sys_umount_enter)
-PPP_CB_EXTERN(on_sys_unlink_enter)
-PPP_CB_EXTERN(on_sys_unlinkat_enter)
-PPP_CB_EXTERN(on_sys_unshare_enter)
-PPP_CB_EXTERN(on_sys_uselib_enter)
-PPP_CB_EXTERN(on_sys_userfaultfd_enter)
-PPP_CB_EXTERN(on_sys_ustat_enter)
-PPP_CB_EXTERN(on_sys_utime_enter)
-PPP_CB_EXTERN(on_sys_utimensat_enter)
-PPP_CB_EXTERN(on_sys_utimes_enter)
-PPP_CB_EXTERN(on_sys_vfork_enter)
-PPP_CB_EXTERN(on_sys_vhangup_enter)
-PPP_CB_EXTERN(on_sys_vmsplice_enter)
-PPP_CB_EXTERN(on_sys_wait4_enter)
-PPP_CB_EXTERN(on_sys_waitid_enter)
-PPP_CB_EXTERN(on_sys_write_enter)
-PPP_CB_EXTERN(on_sys_writev_enter)
-#endif
-#if defined(TARGET_ARM) && defined(TARGET_AARCH64)
-PPP_CB_EXTERN(on_sys_accept_enter)
-PPP_CB_EXTERN(on_sys_accept4_enter)
-PPP_CB_EXTERN(on_sys_acct_enter)
-PPP_CB_EXTERN(on_sys_add_key_enter)
-PPP_CB_EXTERN(on_sys_adjtimex_enter)
-PPP_CB_EXTERN(on_sys_bind_enter)
-PPP_CB_EXTERN(on_sys_bpf_enter)
-PPP_CB_EXTERN(on_sys_brk_enter)
-PPP_CB_EXTERN(on_sys_capget_enter)
-PPP_CB_EXTERN(on_sys_capset_enter)
-PPP_CB_EXTERN(on_sys_chdir_enter)
-PPP_CB_EXTERN(on_sys_chroot_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_clock_settime_enter)
-PPP_CB_EXTERN(on_sys_clone_enter)
-PPP_CB_EXTERN(on_sys_clone3_enter)
-PPP_CB_EXTERN(on_sys_close_enter)
-PPP_CB_EXTERN(on_sys_connect_enter)
-PPP_CB_EXTERN(on_sys_copy_file_range_enter)
-PPP_CB_EXTERN(on_sys_delete_module_enter)
-PPP_CB_EXTERN(on_sys_dup_enter)
-PPP_CB_EXTERN(on_sys_dup3_enter)
-PPP_CB_EXTERN(on_sys_epoll_create1_enter)
-PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
-PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
-PPP_CB_EXTERN(on_sys_eventfd2_enter)
-PPP_CB_EXTERN(on_sys_execve_enter)
-PPP_CB_EXTERN(on_sys_execveat_enter)
-PPP_CB_EXTERN(on_sys_exit_enter)
-PPP_CB_EXTERN(on_sys_exit_group_enter)
-PPP_CB_EXTERN(on_sys_faccessat_enter)
-PPP_CB_EXTERN(on_sys_faccessat2_enter)
-PPP_CB_EXTERN(on_sys_fadvise64_enter)
-PPP_CB_EXTERN(on_sys_fallocate_enter)
-PPP_CB_EXTERN(on_sys_fanotify_init_enter)
-PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
-PPP_CB_EXTERN(on_sys_fchdir_enter)
-PPP_CB_EXTERN(on_sys_fchmod_enter)
-PPP_CB_EXTERN(on_sys_fchmodat_enter)
-PPP_CB_EXTERN(on_sys_fchown_enter)
-PPP_CB_EXTERN(on_sys_fchownat_enter)
-PPP_CB_EXTERN(on_sys_fcntl_enter)
-PPP_CB_EXTERN(on_sys_fdatasync_enter)
-PPP_CB_EXTERN(on_sys_fgetxattr_enter)
-PPP_CB_EXTERN(on_sys_finit_module_enter)
-PPP_CB_EXTERN(on_sys_flistxattr_enter)
-PPP_CB_EXTERN(on_sys_flock_enter)
-PPP_CB_EXTERN(on_sys_fremovexattr_enter)
-PPP_CB_EXTERN(on_sys_fsetxattr_enter)
-PPP_CB_EXTERN(on_sys_fstat_enter)
-PPP_CB_EXTERN(on_sys_fstatfs_enter)
-PPP_CB_EXTERN(on_sys_fsync_enter)
-PPP_CB_EXTERN(on_sys_ftruncate_enter)
-PPP_CB_EXTERN(on_sys_futex_enter)
-PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_get_robust_list_enter)
-PPP_CB_EXTERN(on_sys_getcpu_enter)
-PPP_CB_EXTERN(on_sys_getcwd_enter)
-PPP_CB_EXTERN(on_sys_getdents64_enter)
-PPP_CB_EXTERN(on_sys_getegid_enter)
-PPP_CB_EXTERN(on_sys_geteuid_enter)
-PPP_CB_EXTERN(on_sys_getgid_enter)
-PPP_CB_EXTERN(on_sys_getgroups_enter)
-PPP_CB_EXTERN(on_sys_getitimer_enter)
-PPP_CB_EXTERN(on_sys_getpeername_enter)
-PPP_CB_EXTERN(on_sys_getpgid_enter)
-PPP_CB_EXTERN(on_sys_getpid_enter)
-PPP_CB_EXTERN(on_sys_getppid_enter)
-PPP_CB_EXTERN(on_sys_getpriority_enter)
-PPP_CB_EXTERN(on_sys_getrandom_enter)
-PPP_CB_EXTERN(on_sys_getresgid_enter)
-PPP_CB_EXTERN(on_sys_getresuid_enter)
-PPP_CB_EXTERN(on_sys_getrlimit_enter)
-PPP_CB_EXTERN(on_sys_getrusage_enter)
-PPP_CB_EXTERN(on_sys_getsid_enter)
-PPP_CB_EXTERN(on_sys_getsockname_enter)
-PPP_CB_EXTERN(on_sys_getsockopt_enter)
-PPP_CB_EXTERN(on_sys_gettid_enter)
-PPP_CB_EXTERN(on_sys_gettimeofday_enter)
-PPP_CB_EXTERN(on_sys_getuid_enter)
-PPP_CB_EXTERN(on_sys_getxattr_enter)
-PPP_CB_EXTERN(on_sys_init_module_enter)
-PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
-PPP_CB_EXTERN(on_sys_inotify_init1_enter)
-PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
-PPP_CB_EXTERN(on_sys_io_cancel_enter)
-PPP_CB_EXTERN(on_sys_io_destroy_enter)
-PPP_CB_EXTERN(on_sys_io_getevents_enter)
-PPP_CB_EXTERN(on_sys_io_setup_enter)
-PPP_CB_EXTERN(on_sys_io_submit_enter)
-PPP_CB_EXTERN(on_sys_ioctl_enter)
-PPP_CB_EXTERN(on_sys_ioprio_get_enter)
-PPP_CB_EXTERN(on_sys_ioprio_set_enter)
-PPP_CB_EXTERN(on_sys_kcmp_enter)
-PPP_CB_EXTERN(on_sys_kexec_file_load_enter)
-PPP_CB_EXTERN(on_sys_kexec_load_enter)
-PPP_CB_EXTERN(on_sys_keyctl_enter)
-PPP_CB_EXTERN(on_sys_kill_enter)
-PPP_CB_EXTERN(on_sys_lgetxattr_enter)
-PPP_CB_EXTERN(on_sys_linkat_enter)
-PPP_CB_EXTERN(on_sys_listen_enter)
-PPP_CB_EXTERN(on_sys_listxattr_enter)
-PPP_CB_EXTERN(on_sys_llistxattr_enter)
-PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
-PPP_CB_EXTERN(on_sys_lremovexattr_enter)
-PPP_CB_EXTERN(on_sys_lseek_enter)
-PPP_CB_EXTERN(on_sys_lsetxattr_enter)
-PPP_CB_EXTERN(on_sys_madvise_enter)
-PPP_CB_EXTERN(on_sys_mbind_enter)
-PPP_CB_EXTERN(on_sys_membarrier_enter)
-PPP_CB_EXTERN(on_sys_memfd_create_enter)
-PPP_CB_EXTERN(on_sys_migrate_pages_enter)
-PPP_CB_EXTERN(on_sys_mincore_enter)
-PPP_CB_EXTERN(on_sys_mkdirat_enter)
-PPP_CB_EXTERN(on_sys_mknodat_enter)
-PPP_CB_EXTERN(on_sys_mlock_enter)
-PPP_CB_EXTERN(on_sys_mlock2_enter)
-PPP_CB_EXTERN(on_sys_mlockall_enter)
-PPP_CB_EXTERN(on_sys_mmap_enter)
-PPP_CB_EXTERN(on_sys_mount_enter)
-PPP_CB_EXTERN(on_sys_move_pages_enter)
-PPP_CB_EXTERN(on_sys_mprotect_enter)
-PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
-PPP_CB_EXTERN(on_sys_mq_notify_enter)
-PPP_CB_EXTERN(on_sys_mq_open_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
-PPP_CB_EXTERN(on_sys_mq_unlink_enter)
-PPP_CB_EXTERN(on_sys_mremap_enter)
-PPP_CB_EXTERN(on_sys_msgctl_enter)
-PPP_CB_EXTERN(on_sys_msgget_enter)
-PPP_CB_EXTERN(on_sys_msgrcv_enter)
-PPP_CB_EXTERN(on_sys_msgsnd_enter)
-PPP_CB_EXTERN(on_sys_msync_enter)
-PPP_CB_EXTERN(on_sys_munlock_enter)
-PPP_CB_EXTERN(on_sys_munlockall_enter)
-PPP_CB_EXTERN(on_sys_munmap_enter)
-PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
-PPP_CB_EXTERN(on_sys_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_newfstatat_enter)
-PPP_CB_EXTERN(on_sys_nfsservctl_enter)
-PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
-PPP_CB_EXTERN(on_sys_openat_enter)
-PPP_CB_EXTERN(on_sys_openat2_enter)
-PPP_CB_EXTERN(on_sys_perf_event_open_enter)
-PPP_CB_EXTERN(on_sys_personality_enter)
-PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
-PPP_CB_EXTERN(on_sys_pidfd_open_enter)
-PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
-PPP_CB_EXTERN(on_sys_pipe2_enter)
-PPP_CB_EXTERN(on_sys_pivot_root_enter)
-PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
-PPP_CB_EXTERN(on_sys_pkey_free_enter)
-PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
-PPP_CB_EXTERN(on_sys_ppoll_enter)
-PPP_CB_EXTERN(on_sys_prctl_enter)
-PPP_CB_EXTERN(on_sys_pread64_enter)
-PPP_CB_EXTERN(on_sys_preadv_enter)
-PPP_CB_EXTERN(on_sys_preadv2_enter)
-PPP_CB_EXTERN(on_sys_prlimit64_enter)
-PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
-PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
-PPP_CB_EXTERN(on_sys_pselect6_enter)
-PPP_CB_EXTERN(on_sys_ptrace_enter)
-PPP_CB_EXTERN(on_sys_pwrite64_enter)
-PPP_CB_EXTERN(on_sys_pwritev_enter)
-PPP_CB_EXTERN(on_sys_pwritev2_enter)
-PPP_CB_EXTERN(on_sys_quotactl_enter)
-PPP_CB_EXTERN(on_sys_read_enter)
-PPP_CB_EXTERN(on_sys_readahead_enter)
-PPP_CB_EXTERN(on_sys_readlinkat_enter)
-PPP_CB_EXTERN(on_sys_readv_enter)
-PPP_CB_EXTERN(on_sys_reboot_enter)
-PPP_CB_EXTERN(on_sys_recvfrom_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_enter)
-PPP_CB_EXTERN(on_sys_recvmsg_enter)
-PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
-PPP_CB_EXTERN(on_sys_removexattr_enter)
-PPP_CB_EXTERN(on_sys_renameat_enter)
-PPP_CB_EXTERN(on_sys_renameat2_enter)
-PPP_CB_EXTERN(on_sys_request_key_enter)
-PPP_CB_EXTERN(on_sys_restart_syscall_enter)
-PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
-PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
-PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
-PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
-PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_getattr_enter)
-PPP_CB_EXTERN(on_sys_sched_getparam_enter)
-PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
-PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_setattr_enter)
-PPP_CB_EXTERN(on_sys_sched_setparam_enter)
-PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_yield_enter)
-PPP_CB_EXTERN(on_sys_seccomp_enter)
-PPP_CB_EXTERN(on_sys_semctl_enter)
-PPP_CB_EXTERN(on_sys_semget_enter)
-PPP_CB_EXTERN(on_sys_semop_enter)
-PPP_CB_EXTERN(on_sys_semtimedop_enter)
-PPP_CB_EXTERN(on_sys_sendfile_enter)
-PPP_CB_EXTERN(on_sys_sendmmsg_enter)
-PPP_CB_EXTERN(on_sys_sendmsg_enter)
-PPP_CB_EXTERN(on_sys_sendto_enter)
-PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_set_robust_list_enter)
-PPP_CB_EXTERN(on_sys_set_tid_address_enter)
-PPP_CB_EXTERN(on_sys_setdomainname_enter)
-PPP_CB_EXTERN(on_sys_setfsgid_enter)
-PPP_CB_EXTERN(on_sys_setfsuid_enter)
-PPP_CB_EXTERN(on_sys_setgid_enter)
-PPP_CB_EXTERN(on_sys_setgroups_enter)
-PPP_CB_EXTERN(on_sys_sethostname_enter)
-PPP_CB_EXTERN(on_sys_setitimer_enter)
-PPP_CB_EXTERN(on_sys_setns_enter)
-PPP_CB_EXTERN(on_sys_setpgid_enter)
-PPP_CB_EXTERN(on_sys_setpriority_enter)
-PPP_CB_EXTERN(on_sys_setregid_enter)
-PPP_CB_EXTERN(on_sys_setresgid_enter)
-PPP_CB_EXTERN(on_sys_setresuid_enter)
-PPP_CB_EXTERN(on_sys_setreuid_enter)
-PPP_CB_EXTERN(on_sys_setrlimit_enter)
-PPP_CB_EXTERN(on_sys_setsid_enter)
-PPP_CB_EXTERN(on_sys_setsockopt_enter)
-PPP_CB_EXTERN(on_sys_settimeofday_enter)
-PPP_CB_EXTERN(on_sys_setuid_enter)
-PPP_CB_EXTERN(on_sys_setxattr_enter)
-PPP_CB_EXTERN(on_sys_shmat_enter)
-PPP_CB_EXTERN(on_sys_shmctl_enter)
-PPP_CB_EXTERN(on_sys_shmdt_enter)
-PPP_CB_EXTERN(on_sys_shmget_enter)
-PPP_CB_EXTERN(on_sys_shutdown_enter)
-PPP_CB_EXTERN(on_sys_sigaltstack_enter)
-PPP_CB_EXTERN(on_sys_signalfd4_enter)
-PPP_CB_EXTERN(on_sys_socket_enter)
-PPP_CB_EXTERN(on_sys_socketpair_enter)
-PPP_CB_EXTERN(on_sys_splice_enter)
-PPP_CB_EXTERN(on_sys_statfs_enter)
-PPP_CB_EXTERN(on_sys_statx_enter)
-PPP_CB_EXTERN(on_sys_swapoff_enter)
-PPP_CB_EXTERN(on_sys_swapon_enter)
-PPP_CB_EXTERN(on_sys_symlinkat_enter)
-PPP_CB_EXTERN(on_sys_sync_enter)
-PPP_CB_EXTERN(on_sys_sync_file_range_enter)
-PPP_CB_EXTERN(on_sys_syncfs_enter)
-PPP_CB_EXTERN(on_sys_sysinfo_enter)
-PPP_CB_EXTERN(on_sys_syslog_enter)
-PPP_CB_EXTERN(on_sys_tee_enter)
-PPP_CB_EXTERN(on_sys_tgkill_enter)
-PPP_CB_EXTERN(on_sys_timer_create_enter)
-PPP_CB_EXTERN(on_sys_timer_delete_enter)
-PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime_enter)
-PPP_CB_EXTERN(on_sys_timer_settime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_create_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
-PPP_CB_EXTERN(on_sys_times_enter)
-PPP_CB_EXTERN(on_sys_tkill_enter)
-PPP_CB_EXTERN(on_sys_truncate_enter)
-PPP_CB_EXTERN(on_sys_umask_enter)
-PPP_CB_EXTERN(on_sys_umount2_enter)
-PPP_CB_EXTERN(on_sys_uname_enter)
-PPP_CB_EXTERN(on_sys_unlinkat_enter)
-PPP_CB_EXTERN(on_sys_unshare_enter)
-PPP_CB_EXTERN(on_sys_userfaultfd_enter)
-PPP_CB_EXTERN(on_sys_utimensat_enter)
-PPP_CB_EXTERN(on_sys_vhangup_enter)
-PPP_CB_EXTERN(on_sys_vmsplice_enter)
-PPP_CB_EXTERN(on_sys_wait4_enter)
-PPP_CB_EXTERN(on_sys_waitid_enter)
-PPP_CB_EXTERN(on_sys_write_enter)
-PPP_CB_EXTERN(on_sys_writev_enter)
-#endif
-#if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
-PPP_CB_EXTERN(on_create_module_enter)
-PPP_CB_EXTERN(on_get_kernel_syms_enter)
-PPP_CB_EXTERN(on_mmap2_enter)
-PPP_CB_EXTERN(on_modify_ldt_enter)
-PPP_CB_EXTERN(on_set_thread_area_enter)
-PPP_CB_EXTERN(on_sys_accept_enter)
-PPP_CB_EXTERN(on_sys_accept4_enter)
-PPP_CB_EXTERN(on_sys_access_enter)
-PPP_CB_EXTERN(on_sys_acct_enter)
-PPP_CB_EXTERN(on_sys_add_key_enter)
-PPP_CB_EXTERN(on_sys_adjtimex_time32_enter)
-PPP_CB_EXTERN(on_sys_alarm_enter)
-PPP_CB_EXTERN(on_sys_bdflush_enter)
-PPP_CB_EXTERN(on_sys_bind_enter)
-PPP_CB_EXTERN(on_sys_bpf_enter)
-PPP_CB_EXTERN(on_sys_brk_enter)
-PPP_CB_EXTERN(on_sys_cacheflush_enter)
-PPP_CB_EXTERN(on_sys_capget_enter)
-PPP_CB_EXTERN(on_sys_capset_enter)
-PPP_CB_EXTERN(on_sys_chdir_enter)
-PPP_CB_EXTERN(on_sys_chmod_enter)
-PPP_CB_EXTERN(on_sys_chown_enter)
-PPP_CB_EXTERN(on_sys_chroot_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime32_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_time32_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime32_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_time32_enter)
-PPP_CB_EXTERN(on_sys_clock_settime_enter)
-PPP_CB_EXTERN(on_sys_clock_settime32_enter)
-PPP_CB_EXTERN(on_sys_clone_enter)
-PPP_CB_EXTERN(on_sys_close_enter)
-PPP_CB_EXTERN(on_sys_connect_enter)
-PPP_CB_EXTERN(on_sys_copy_file_range_enter)
-PPP_CB_EXTERN(on_sys_creat_enter)
-PPP_CB_EXTERN(on_sys_delete_module_enter)
-PPP_CB_EXTERN(on_sys_dup_enter)
-PPP_CB_EXTERN(on_sys_dup2_enter)
-PPP_CB_EXTERN(on_sys_dup3_enter)
-PPP_CB_EXTERN(on_sys_epoll_create_enter)
-PPP_CB_EXTERN(on_sys_epoll_create1_enter)
-PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
-PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
-PPP_CB_EXTERN(on_sys_epoll_wait_enter)
-PPP_CB_EXTERN(on_sys_eventfd_enter)
-PPP_CB_EXTERN(on_sys_eventfd2_enter)
-PPP_CB_EXTERN(on_sys_execve_enter)
-PPP_CB_EXTERN(on_sys_execveat_enter)
-PPP_CB_EXTERN(on_sys_exit_enter)
-PPP_CB_EXTERN(on_sys_exit_group_enter)
-PPP_CB_EXTERN(on_sys_faccessat_enter)
-PPP_CB_EXTERN(on_sys_faccessat2_enter)
-PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
-PPP_CB_EXTERN(on_sys_fallocate_enter)
-PPP_CB_EXTERN(on_sys_fanotify_init_enter)
-PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
-PPP_CB_EXTERN(on_sys_fchdir_enter)
-PPP_CB_EXTERN(on_sys_fchmod_enter)
-PPP_CB_EXTERN(on_sys_fchmodat_enter)
-PPP_CB_EXTERN(on_sys_fchown_enter)
-PPP_CB_EXTERN(on_sys_fchownat_enter)
-PPP_CB_EXTERN(on_sys_fcntl_enter)
-PPP_CB_EXTERN(on_sys_fcntl64_enter)
-PPP_CB_EXTERN(on_sys_fdatasync_enter)
-PPP_CB_EXTERN(on_sys_fgetxattr_enter)
-PPP_CB_EXTERN(on_sys_finit_module_enter)
-PPP_CB_EXTERN(on_sys_flistxattr_enter)
-PPP_CB_EXTERN(on_sys_flock_enter)
-PPP_CB_EXTERN(on_sys_fork_enter)
-PPP_CB_EXTERN(on_sys_fremovexattr_enter)
-PPP_CB_EXTERN(on_sys_fsconfig_enter)
-PPP_CB_EXTERN(on_sys_fsetxattr_enter)
-PPP_CB_EXTERN(on_sys_fsmount_enter)
-PPP_CB_EXTERN(on_sys_fsopen_enter)
-PPP_CB_EXTERN(on_sys_fspick_enter)
-PPP_CB_EXTERN(on_sys_fstat_enter)
-PPP_CB_EXTERN(on_sys_fstat64_enter)
-PPP_CB_EXTERN(on_sys_fstatat64_enter)
-PPP_CB_EXTERN(on_sys_fstatfs_enter)
-PPP_CB_EXTERN(on_sys_fstatfs64_enter)
-PPP_CB_EXTERN(on_sys_fsync_enter)
-PPP_CB_EXTERN(on_sys_ftruncate_enter)
-PPP_CB_EXTERN(on_sys_ftruncate64_enter)
-PPP_CB_EXTERN(on_sys_futex_enter)
-PPP_CB_EXTERN(on_sys_futex_time32_enter)
-PPP_CB_EXTERN(on_sys_futimesat_time32_enter)
-PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_get_robust_list_enter)
-PPP_CB_EXTERN(on_sys_getcpu_enter)
-PPP_CB_EXTERN(on_sys_getcwd_enter)
-PPP_CB_EXTERN(on_sys_getdents_enter)
-PPP_CB_EXTERN(on_sys_getdents64_enter)
-PPP_CB_EXTERN(on_sys_getegid_enter)
-PPP_CB_EXTERN(on_sys_geteuid_enter)
-PPP_CB_EXTERN(on_sys_getgid_enter)
-PPP_CB_EXTERN(on_sys_getgroups_enter)
-PPP_CB_EXTERN(on_sys_getitimer_enter)
-PPP_CB_EXTERN(on_sys_getpeername_enter)
-PPP_CB_EXTERN(on_sys_getpgid_enter)
-PPP_CB_EXTERN(on_sys_getpgrp_enter)
-PPP_CB_EXTERN(on_sys_getpid_enter)
-PPP_CB_EXTERN(on_sys_getppid_enter)
-PPP_CB_EXTERN(on_sys_getpriority_enter)
-PPP_CB_EXTERN(on_sys_getrandom_enter)
-PPP_CB_EXTERN(on_sys_getresgid_enter)
-PPP_CB_EXTERN(on_sys_getresuid_enter)
-PPP_CB_EXTERN(on_sys_getrlimit_enter)
-PPP_CB_EXTERN(on_sys_getrusage_enter)
-PPP_CB_EXTERN(on_sys_getsid_enter)
-PPP_CB_EXTERN(on_sys_getsockname_enter)
-PPP_CB_EXTERN(on_sys_getsockopt_enter)
-PPP_CB_EXTERN(on_sys_gettid_enter)
-PPP_CB_EXTERN(on_sys_gettimeofday_enter)
-PPP_CB_EXTERN(on_sys_getuid_enter)
-PPP_CB_EXTERN(on_sys_getxattr_enter)
-PPP_CB_EXTERN(on_sys_idle_enter)
-PPP_CB_EXTERN(on_sys_init_module_enter)
-PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
-PPP_CB_EXTERN(on_sys_inotify_init_enter)
-PPP_CB_EXTERN(on_sys_inotify_init1_enter)
-PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
-PPP_CB_EXTERN(on_sys_io_cancel_enter)
-PPP_CB_EXTERN(on_sys_io_destroy_enter)
-PPP_CB_EXTERN(on_sys_io_getevents_time32_enter)
-PPP_CB_EXTERN(on_sys_io_pgetevents_enter)
-PPP_CB_EXTERN(on_sys_io_pgetevents_time32_enter)
-PPP_CB_EXTERN(on_sys_io_setup_enter)
-PPP_CB_EXTERN(on_sys_io_submit_enter)
-PPP_CB_EXTERN(on_sys_io_uring_enter_enter)
-PPP_CB_EXTERN(on_sys_io_uring_register_enter)
-PPP_CB_EXTERN(on_sys_io_uring_setup_enter)
-PPP_CB_EXTERN(on_sys_ioctl_enter)
-PPP_CB_EXTERN(on_sys_ioperm_enter)
-PPP_CB_EXTERN(on_sys_iopl_enter)
-PPP_CB_EXTERN(on_sys_ioprio_get_enter)
-PPP_CB_EXTERN(on_sys_ioprio_set_enter)
-PPP_CB_EXTERN(on_sys_ipc_enter)
-PPP_CB_EXTERN(on_sys_kcmp_enter)
-PPP_CB_EXTERN(on_sys_kexec_load_enter)
-PPP_CB_EXTERN(on_sys_keyctl_enter)
-PPP_CB_EXTERN(on_sys_kill_enter)
-PPP_CB_EXTERN(on_sys_lchown_enter)
-PPP_CB_EXTERN(on_sys_lgetxattr_enter)
-PPP_CB_EXTERN(on_sys_link_enter)
-PPP_CB_EXTERN(on_sys_linkat_enter)
-PPP_CB_EXTERN(on_sys_listen_enter)
-PPP_CB_EXTERN(on_sys_listxattr_enter)
-PPP_CB_EXTERN(on_sys_llistxattr_enter)
-PPP_CB_EXTERN(on_sys_llseek_enter)
-PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
-PPP_CB_EXTERN(on_sys_lremovexattr_enter)
-PPP_CB_EXTERN(on_sys_lseek_enter)
-PPP_CB_EXTERN(on_sys_lsetxattr_enter)
-PPP_CB_EXTERN(on_sys_lstat_enter)
-PPP_CB_EXTERN(on_sys_lstat64_enter)
-PPP_CB_EXTERN(on_sys_madvise_enter)
-PPP_CB_EXTERN(on_sys_mbind_enter)
-PPP_CB_EXTERN(on_sys_membarrier_enter)
-PPP_CB_EXTERN(on_sys_memfd_create_enter)
-PPP_CB_EXTERN(on_sys_migrate_pages_enter)
-PPP_CB_EXTERN(on_sys_mincore_enter)
-PPP_CB_EXTERN(on_sys_mkdir_enter)
-PPP_CB_EXTERN(on_sys_mkdirat_enter)
-PPP_CB_EXTERN(on_sys_mknod_enter)
-PPP_CB_EXTERN(on_sys_mknodat_enter)
-PPP_CB_EXTERN(on_sys_mlock_enter)
-PPP_CB_EXTERN(on_sys_mlock2_enter)
-PPP_CB_EXTERN(on_sys_mlockall_enter)
-PPP_CB_EXTERN(on_sys_mmap_enter)
-PPP_CB_EXTERN(on_sys_mount_enter)
-PPP_CB_EXTERN(on_sys_move_mount_enter)
-PPP_CB_EXTERN(on_sys_move_pages_enter)
-PPP_CB_EXTERN(on_sys_mprotect_enter)
-PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
-PPP_CB_EXTERN(on_sys_mq_notify_enter)
-PPP_CB_EXTERN(on_sys_mq_open_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_time32_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_time32_enter)
-PPP_CB_EXTERN(on_sys_mq_unlink_enter)
-PPP_CB_EXTERN(on_sys_mremap_enter)
-PPP_CB_EXTERN(on_sys_msgctl_enter)
-PPP_CB_EXTERN(on_sys_msgget_enter)
-PPP_CB_EXTERN(on_sys_msgrcv_enter)
-PPP_CB_EXTERN(on_sys_msgsnd_enter)
-PPP_CB_EXTERN(on_sys_msync_enter)
-PPP_CB_EXTERN(on_sys_munlock_enter)
-PPP_CB_EXTERN(on_sys_munlockall_enter)
-PPP_CB_EXTERN(on_sys_munmap_enter)
-PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
-PPP_CB_EXTERN(on_sys_nanosleep_time32_enter)
-PPP_CB_EXTERN(on_sys_newfstat_enter)
-PPP_CB_EXTERN(on_sys_newlstat_enter)
-PPP_CB_EXTERN(on_sys_newstat_enter)
-PPP_CB_EXTERN(on_sys_newuname_enter)
-PPP_CB_EXTERN(on_sys_nfsservctl_enter)
-PPP_CB_EXTERN(on_sys_ni_syscall_enter)
-PPP_CB_EXTERN(on_sys_nice_enter)
-PPP_CB_EXTERN(on_sys_old_readdir_enter)
-PPP_CB_EXTERN(on_sys_oldumount_enter)
-PPP_CB_EXTERN(on_sys_olduname_enter)
-PPP_CB_EXTERN(on_sys_open_enter)
-PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
-PPP_CB_EXTERN(on_sys_open_tree_enter)
-PPP_CB_EXTERN(on_sys_openat_enter)
-PPP_CB_EXTERN(on_sys_openat2_enter)
-PPP_CB_EXTERN(on_sys_pause_enter)
-PPP_CB_EXTERN(on_sys_perf_event_open_enter)
-PPP_CB_EXTERN(on_sys_personality_enter)
-PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
-PPP_CB_EXTERN(on_sys_pidfd_open_enter)
-PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
-PPP_CB_EXTERN(on_sys_pipe_enter)
-PPP_CB_EXTERN(on_sys_pipe2_enter)
-PPP_CB_EXTERN(on_sys_pivot_root_enter)
-PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
-PPP_CB_EXTERN(on_sys_pkey_free_enter)
-PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
-PPP_CB_EXTERN(on_sys_poll_enter)
-PPP_CB_EXTERN(on_sys_ppoll_enter)
-PPP_CB_EXTERN(on_sys_ppoll_time32_enter)
-PPP_CB_EXTERN(on_sys_prctl_enter)
-PPP_CB_EXTERN(on_sys_pread64_enter)
-PPP_CB_EXTERN(on_sys_preadv_enter)
-PPP_CB_EXTERN(on_sys_preadv2_enter)
-PPP_CB_EXTERN(on_sys_prlimit64_enter)
-PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
-PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
-PPP_CB_EXTERN(on_sys_pselect6_enter)
-PPP_CB_EXTERN(on_sys_pselect6_time32_enter)
-PPP_CB_EXTERN(on_sys_ptrace_enter)
-PPP_CB_EXTERN(on_sys_pwrite64_enter)
-PPP_CB_EXTERN(on_sys_pwritev_enter)
-PPP_CB_EXTERN(on_sys_pwritev2_enter)
-PPP_CB_EXTERN(on_sys_query_module_enter)
-PPP_CB_EXTERN(on_sys_quotactl_enter)
-PPP_CB_EXTERN(on_sys_read_enter)
-PPP_CB_EXTERN(on_sys_readahead_enter)
-PPP_CB_EXTERN(on_sys_readlink_enter)
-PPP_CB_EXTERN(on_sys_readlinkat_enter)
-PPP_CB_EXTERN(on_sys_readv_enter)
-PPP_CB_EXTERN(on_sys_reboot_enter)
-PPP_CB_EXTERN(on_sys_recv_enter)
-PPP_CB_EXTERN(on_sys_recvfrom_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_time32_enter)
-PPP_CB_EXTERN(on_sys_recvmsg_enter)
-PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
-PPP_CB_EXTERN(on_sys_removexattr_enter)
-PPP_CB_EXTERN(on_sys_rename_enter)
-PPP_CB_EXTERN(on_sys_renameat_enter)
-PPP_CB_EXTERN(on_sys_renameat2_enter)
-PPP_CB_EXTERN(on_sys_request_key_enter)
-PPP_CB_EXTERN(on_sys_restart_syscall_enter)
-PPP_CB_EXTERN(on_sys_rmdir_enter)
-PPP_CB_EXTERN(on_sys_rseq_enter)
-PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
-PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
-PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_time32_enter)
-PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
-PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_getattr_enter)
-PPP_CB_EXTERN(on_sys_sched_getparam_enter)
-PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_time32_enter)
-PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_setattr_enter)
-PPP_CB_EXTERN(on_sys_sched_setparam_enter)
-PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_yield_enter)
-PPP_CB_EXTERN(on_sys_seccomp_enter)
-PPP_CB_EXTERN(on_sys_select_enter)
-PPP_CB_EXTERN(on_sys_semctl_enter)
-PPP_CB_EXTERN(on_sys_semget_enter)
-PPP_CB_EXTERN(on_sys_semtimedop_enter)
-PPP_CB_EXTERN(on_sys_send_enter)
-PPP_CB_EXTERN(on_sys_sendfile_enter)
-PPP_CB_EXTERN(on_sys_sendfile64_enter)
-PPP_CB_EXTERN(on_sys_sendmmsg_enter)
-PPP_CB_EXTERN(on_sys_sendmsg_enter)
-PPP_CB_EXTERN(on_sys_sendto_enter)
-PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_set_robust_list_enter)
-PPP_CB_EXTERN(on_sys_set_tid_address_enter)
-PPP_CB_EXTERN(on_sys_setdomainname_enter)
-PPP_CB_EXTERN(on_sys_setfsgid_enter)
-PPP_CB_EXTERN(on_sys_setfsuid_enter)
-PPP_CB_EXTERN(on_sys_setgid_enter)
-PPP_CB_EXTERN(on_sys_setgroups_enter)
-PPP_CB_EXTERN(on_sys_sethostname_enter)
-PPP_CB_EXTERN(on_sys_setitimer_enter)
-PPP_CB_EXTERN(on_sys_setns_enter)
-PPP_CB_EXTERN(on_sys_setpgid_enter)
-PPP_CB_EXTERN(on_sys_setpriority_enter)
-PPP_CB_EXTERN(on_sys_setregid_enter)
-PPP_CB_EXTERN(on_sys_setresgid_enter)
-PPP_CB_EXTERN(on_sys_setresuid_enter)
-PPP_CB_EXTERN(on_sys_setreuid_enter)
-PPP_CB_EXTERN(on_sys_setrlimit_enter)
-PPP_CB_EXTERN(on_sys_setsid_enter)
-PPP_CB_EXTERN(on_sys_setsockopt_enter)
-PPP_CB_EXTERN(on_sys_settimeofday_enter)
-PPP_CB_EXTERN(on_sys_setuid_enter)
-PPP_CB_EXTERN(on_sys_setup_enter)
-PPP_CB_EXTERN(on_sys_setxattr_enter)
-PPP_CB_EXTERN(on_sys_sgetmask_enter)
-PPP_CB_EXTERN(on_sys_shmat_enter)
-PPP_CB_EXTERN(on_sys_shmctl_enter)
-PPP_CB_EXTERN(on_sys_shmdt_enter)
-PPP_CB_EXTERN(on_sys_shmget_enter)
-PPP_CB_EXTERN(on_sys_shutdown_enter)
-PPP_CB_EXTERN(on_sys_sigaction_enter)
-PPP_CB_EXTERN(on_sys_sigaltstack_enter)
-PPP_CB_EXTERN(on_sys_signal_enter)
-PPP_CB_EXTERN(on_sys_signalfd_enter)
-PPP_CB_EXTERN(on_sys_signalfd4_enter)
-PPP_CB_EXTERN(on_sys_sigpending_enter)
-PPP_CB_EXTERN(on_sys_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_socket_enter)
-PPP_CB_EXTERN(on_sys_socketcall_enter)
-PPP_CB_EXTERN(on_sys_socketpair_enter)
-PPP_CB_EXTERN(on_sys_splice_enter)
-PPP_CB_EXTERN(on_sys_ssetmask_enter)
-PPP_CB_EXTERN(on_sys_stat_enter)
-PPP_CB_EXTERN(on_sys_stat64_enter)
-PPP_CB_EXTERN(on_sys_statfs_enter)
-PPP_CB_EXTERN(on_sys_statfs64_enter)
-PPP_CB_EXTERN(on_sys_statx_enter)
-PPP_CB_EXTERN(on_sys_stime32_enter)
-PPP_CB_EXTERN(on_sys_swapoff_enter)
-PPP_CB_EXTERN(on_sys_swapon_enter)
-PPP_CB_EXTERN(on_sys_symlink_enter)
-PPP_CB_EXTERN(on_sys_symlinkat_enter)
-PPP_CB_EXTERN(on_sys_sync_enter)
-PPP_CB_EXTERN(on_sys_sync_file_range_enter)
-PPP_CB_EXTERN(on_sys_syncfs_enter)
-PPP_CB_EXTERN(on_sys_sysctl_enter)
-PPP_CB_EXTERN(on_sys_sysfs_enter)
-PPP_CB_EXTERN(on_sys_sysinfo_enter)
-PPP_CB_EXTERN(on_sys_syslog_enter)
-PPP_CB_EXTERN(on_sys_tee_enter)
-PPP_CB_EXTERN(on_sys_tgkill_enter)
-PPP_CB_EXTERN(on_sys_time32_enter)
-PPP_CB_EXTERN(on_sys_timer_create_enter)
-PPP_CB_EXTERN(on_sys_timer_delete_enter)
-PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime32_enter)
-PPP_CB_EXTERN(on_sys_timer_settime_enter)
-PPP_CB_EXTERN(on_sys_timer_settime32_enter)
-PPP_CB_EXTERN(on_sys_timerfd_create_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime32_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime32_enter)
-PPP_CB_EXTERN(on_sys_times_enter)
-PPP_CB_EXTERN(on_sys_tkill_enter)
-PPP_CB_EXTERN(on_sys_truncate_enter)
-PPP_CB_EXTERN(on_sys_truncate64_enter)
-PPP_CB_EXTERN(on_sys_umask_enter)
-PPP_CB_EXTERN(on_sys_umount_enter)
-PPP_CB_EXTERN(on_sys_uname_enter)
-PPP_CB_EXTERN(on_sys_unlink_enter)
-PPP_CB_EXTERN(on_sys_unlinkat_enter)
-PPP_CB_EXTERN(on_sys_unshare_enter)
-PPP_CB_EXTERN(on_sys_uselib_enter)
-PPP_CB_EXTERN(on_sys_userfaultfd_enter)
-PPP_CB_EXTERN(on_sys_ustat_enter)
-PPP_CB_EXTERN(on_sys_utime32_enter)
-PPP_CB_EXTERN(on_sys_utimensat_enter)
-PPP_CB_EXTERN(on_sys_utimensat_time32_enter)
-PPP_CB_EXTERN(on_sys_utimes_time32_enter)
-PPP_CB_EXTERN(on_sys_vhangup_enter)
-PPP_CB_EXTERN(on_sys_vmsplice_enter)
-PPP_CB_EXTERN(on_sys_wait4_enter)
-PPP_CB_EXTERN(on_sys_waitid_enter)
-PPP_CB_EXTERN(on_sys_waitpid_enter)
-PPP_CB_EXTERN(on_sys_write_enter)
-PPP_CB_EXTERN(on_sys_writev_enter)
-#endif
-#if defined(TARGET_MIPS) && defined(TARGET_MIPS64)
-PPP_CB_EXTERN(on_create_module_enter)
-PPP_CB_EXTERN(on_get_kernel_syms_enter)
-PPP_CB_EXTERN(on_mmap2_enter)
-PPP_CB_EXTERN(on_modify_ldt_enter)
-PPP_CB_EXTERN(on_set_thread_area_enter)
-PPP_CB_EXTERN(on_sys_accept_enter)
-PPP_CB_EXTERN(on_sys_accept4_enter)
-PPP_CB_EXTERN(on_sys_access_enter)
-PPP_CB_EXTERN(on_sys_acct_enter)
-PPP_CB_EXTERN(on_sys_add_key_enter)
-PPP_CB_EXTERN(on_sys_adjtimex_enter)
-PPP_CB_EXTERN(on_sys_adjtimex_time32_enter)
-PPP_CB_EXTERN(on_sys_alarm_enter)
-PPP_CB_EXTERN(on_sys_bdflush_enter)
-PPP_CB_EXTERN(on_sys_bind_enter)
-PPP_CB_EXTERN(on_sys_bpf_enter)
-PPP_CB_EXTERN(on_sys_brk_enter)
-PPP_CB_EXTERN(on_sys_cacheflush_enter)
-PPP_CB_EXTERN(on_sys_capget_enter)
-PPP_CB_EXTERN(on_sys_capset_enter)
-PPP_CB_EXTERN(on_sys_chdir_enter)
-PPP_CB_EXTERN(on_sys_chmod_enter)
-PPP_CB_EXTERN(on_sys_chown_enter)
-PPP_CB_EXTERN(on_sys_chroot_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime32_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_time32_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime32_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_time32_enter)
-PPP_CB_EXTERN(on_sys_clock_settime_enter)
-PPP_CB_EXTERN(on_sys_clock_settime32_enter)
-PPP_CB_EXTERN(on_sys_clone_enter)
-PPP_CB_EXTERN(on_sys_clone3_enter)
-PPP_CB_EXTERN(on_sys_close_enter)
-PPP_CB_EXTERN(on_sys_connect_enter)
-PPP_CB_EXTERN(on_sys_copy_file_range_enter)
-PPP_CB_EXTERN(on_sys_creat_enter)
-PPP_CB_EXTERN(on_sys_delete_module_enter)
-PPP_CB_EXTERN(on_sys_dup_enter)
-PPP_CB_EXTERN(on_sys_dup2_enter)
-PPP_CB_EXTERN(on_sys_dup3_enter)
-PPP_CB_EXTERN(on_sys_epoll_create_enter)
-PPP_CB_EXTERN(on_sys_epoll_create1_enter)
-PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
-PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
-PPP_CB_EXTERN(on_sys_epoll_wait_enter)
-PPP_CB_EXTERN(on_sys_eventfd_enter)
-PPP_CB_EXTERN(on_sys_eventfd2_enter)
-PPP_CB_EXTERN(on_sys_execve_enter)
-PPP_CB_EXTERN(on_sys_execveat_enter)
-PPP_CB_EXTERN(on_sys_exit_enter)
-PPP_CB_EXTERN(on_sys_exit_group_enter)
-PPP_CB_EXTERN(on_sys_faccessat_enter)
-PPP_CB_EXTERN(on_sys_faccessat2_enter)
-PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
-PPP_CB_EXTERN(on_sys_fallocate_enter)
-PPP_CB_EXTERN(on_sys_fanotify_init_enter)
-PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
-PPP_CB_EXTERN(on_sys_fchdir_enter)
-PPP_CB_EXTERN(on_sys_fchmod_enter)
-PPP_CB_EXTERN(on_sys_fchmodat_enter)
-PPP_CB_EXTERN(on_sys_fchown_enter)
-PPP_CB_EXTERN(on_sys_fchownat_enter)
-PPP_CB_EXTERN(on_sys_fcntl_enter)
-PPP_CB_EXTERN(on_sys_fcntl64_enter)
-PPP_CB_EXTERN(on_sys_fdatasync_enter)
-PPP_CB_EXTERN(on_sys_fgetxattr_enter)
-PPP_CB_EXTERN(on_sys_finit_module_enter)
-PPP_CB_EXTERN(on_sys_flistxattr_enter)
-PPP_CB_EXTERN(on_sys_flock_enter)
-PPP_CB_EXTERN(on_sys_fork_enter)
-PPP_CB_EXTERN(on_sys_fremovexattr_enter)
-PPP_CB_EXTERN(on_sys_fsconfig_enter)
-PPP_CB_EXTERN(on_sys_fsetxattr_enter)
-PPP_CB_EXTERN(on_sys_fsmount_enter)
-PPP_CB_EXTERN(on_sys_fsopen_enter)
-PPP_CB_EXTERN(on_sys_fspick_enter)
-PPP_CB_EXTERN(on_sys_fstat_enter)
-PPP_CB_EXTERN(on_sys_fstat64_enter)
-PPP_CB_EXTERN(on_sys_fstatat64_enter)
-PPP_CB_EXTERN(on_sys_fstatfs_enter)
-PPP_CB_EXTERN(on_sys_fstatfs64_enter)
-PPP_CB_EXTERN(on_sys_fsync_enter)
-PPP_CB_EXTERN(on_sys_ftruncate_enter)
-PPP_CB_EXTERN(on_sys_ftruncate64_enter)
-PPP_CB_EXTERN(on_sys_futex_enter)
-PPP_CB_EXTERN(on_sys_futex_time32_enter)
-PPP_CB_EXTERN(on_sys_futimesat_enter)
-PPP_CB_EXTERN(on_sys_futimesat_time32_enter)
-PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_get_robust_list_enter)
-PPP_CB_EXTERN(on_sys_getcpu_enter)
-PPP_CB_EXTERN(on_sys_getcwd_enter)
-PPP_CB_EXTERN(on_sys_getdents_enter)
-PPP_CB_EXTERN(on_sys_getdents64_enter)
-PPP_CB_EXTERN(on_sys_getegid_enter)
-PPP_CB_EXTERN(on_sys_geteuid_enter)
-PPP_CB_EXTERN(on_sys_getgid_enter)
-PPP_CB_EXTERN(on_sys_getgroups_enter)
-PPP_CB_EXTERN(on_sys_getitimer_enter)
-PPP_CB_EXTERN(on_sys_getpeername_enter)
-PPP_CB_EXTERN(on_sys_getpgid_enter)
-PPP_CB_EXTERN(on_sys_getpgrp_enter)
-PPP_CB_EXTERN(on_sys_getpid_enter)
-PPP_CB_EXTERN(on_sys_getppid_enter)
-PPP_CB_EXTERN(on_sys_getpriority_enter)
-PPP_CB_EXTERN(on_sys_getrandom_enter)
-PPP_CB_EXTERN(on_sys_getresgid_enter)
-PPP_CB_EXTERN(on_sys_getresuid_enter)
-PPP_CB_EXTERN(on_sys_getrlimit_enter)
-PPP_CB_EXTERN(on_sys_getrusage_enter)
-PPP_CB_EXTERN(on_sys_getsid_enter)
-PPP_CB_EXTERN(on_sys_getsockname_enter)
-PPP_CB_EXTERN(on_sys_getsockopt_enter)
-PPP_CB_EXTERN(on_sys_gettid_enter)
-PPP_CB_EXTERN(on_sys_gettimeofday_enter)
-PPP_CB_EXTERN(on_sys_getuid_enter)
-PPP_CB_EXTERN(on_sys_getxattr_enter)
-PPP_CB_EXTERN(on_sys_idle_enter)
-PPP_CB_EXTERN(on_sys_init_module_enter)
-PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
-PPP_CB_EXTERN(on_sys_inotify_init_enter)
-PPP_CB_EXTERN(on_sys_inotify_init1_enter)
-PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
-PPP_CB_EXTERN(on_sys_io_cancel_enter)
-PPP_CB_EXTERN(on_sys_io_destroy_enter)
-PPP_CB_EXTERN(on_sys_io_getevents_enter)
-PPP_CB_EXTERN(on_sys_io_getevents_time32_enter)
-PPP_CB_EXTERN(on_sys_io_pgetevents_enter)
-PPP_CB_EXTERN(on_sys_io_pgetevents_time32_enter)
-PPP_CB_EXTERN(on_sys_io_setup_enter)
-PPP_CB_EXTERN(on_sys_io_submit_enter)
-PPP_CB_EXTERN(on_sys_io_uring_enter_enter)
-PPP_CB_EXTERN(on_sys_io_uring_register_enter)
-PPP_CB_EXTERN(on_sys_io_uring_setup_enter)
-PPP_CB_EXTERN(on_sys_ioctl_enter)
-PPP_CB_EXTERN(on_sys_ioperm_enter)
-PPP_CB_EXTERN(on_sys_iopl_enter)
-PPP_CB_EXTERN(on_sys_ioprio_get_enter)
-PPP_CB_EXTERN(on_sys_ioprio_set_enter)
-PPP_CB_EXTERN(on_sys_ipc_enter)
-PPP_CB_EXTERN(on_sys_kcmp_enter)
-PPP_CB_EXTERN(on_sys_kexec_load_enter)
-PPP_CB_EXTERN(on_sys_keyctl_enter)
-PPP_CB_EXTERN(on_sys_kill_enter)
-PPP_CB_EXTERN(on_sys_lchown_enter)
-PPP_CB_EXTERN(on_sys_lgetxattr_enter)
-PPP_CB_EXTERN(on_sys_link_enter)
-PPP_CB_EXTERN(on_sys_linkat_enter)
-PPP_CB_EXTERN(on_sys_listen_enter)
-PPP_CB_EXTERN(on_sys_listxattr_enter)
-PPP_CB_EXTERN(on_sys_llistxattr_enter)
-PPP_CB_EXTERN(on_sys_llseek_enter)
-PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
-PPP_CB_EXTERN(on_sys_lremovexattr_enter)
-PPP_CB_EXTERN(on_sys_lseek_enter)
-PPP_CB_EXTERN(on_sys_lsetxattr_enter)
-PPP_CB_EXTERN(on_sys_lstat_enter)
-PPP_CB_EXTERN(on_sys_lstat64_enter)
-PPP_CB_EXTERN(on_sys_madvise_enter)
-PPP_CB_EXTERN(on_sys_mbind_enter)
-PPP_CB_EXTERN(on_sys_membarrier_enter)
-PPP_CB_EXTERN(on_sys_memfd_create_enter)
-PPP_CB_EXTERN(on_sys_migrate_pages_enter)
-PPP_CB_EXTERN(on_sys_mincore_enter)
-PPP_CB_EXTERN(on_sys_mkdir_enter)
-PPP_CB_EXTERN(on_sys_mkdirat_enter)
-PPP_CB_EXTERN(on_sys_mknod_enter)
-PPP_CB_EXTERN(on_sys_mknodat_enter)
-PPP_CB_EXTERN(on_sys_mlock_enter)
-PPP_CB_EXTERN(on_sys_mlock2_enter)
-PPP_CB_EXTERN(on_sys_mlockall_enter)
-PPP_CB_EXTERN(on_sys_mmap_enter)
-PPP_CB_EXTERN(on_sys_mount_enter)
-PPP_CB_EXTERN(on_sys_move_mount_enter)
-PPP_CB_EXTERN(on_sys_move_pages_enter)
-PPP_CB_EXTERN(on_sys_mprotect_enter)
-PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
-PPP_CB_EXTERN(on_sys_mq_notify_enter)
-PPP_CB_EXTERN(on_sys_mq_open_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_time32_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_time32_enter)
-PPP_CB_EXTERN(on_sys_mq_unlink_enter)
-PPP_CB_EXTERN(on_sys_mremap_enter)
-PPP_CB_EXTERN(on_sys_msgctl_enter)
-PPP_CB_EXTERN(on_sys_msgget_enter)
-PPP_CB_EXTERN(on_sys_msgrcv_enter)
-PPP_CB_EXTERN(on_sys_msgsnd_enter)
-PPP_CB_EXTERN(on_sys_msync_enter)
-PPP_CB_EXTERN(on_sys_munlock_enter)
-PPP_CB_EXTERN(on_sys_munlockall_enter)
-PPP_CB_EXTERN(on_sys_munmap_enter)
-PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
-PPP_CB_EXTERN(on_sys_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_nanosleep_time32_enter)
-PPP_CB_EXTERN(on_sys_newfstat_enter)
-PPP_CB_EXTERN(on_sys_newfstatat_enter)
-PPP_CB_EXTERN(on_sys_newlstat_enter)
-PPP_CB_EXTERN(on_sys_newstat_enter)
-PPP_CB_EXTERN(on_sys_newuname_enter)
-PPP_CB_EXTERN(on_sys_nfsservctl_enter)
-PPP_CB_EXTERN(on_sys_ni_syscall_enter)
-PPP_CB_EXTERN(on_sys_nice_enter)
-PPP_CB_EXTERN(on_sys_old_mmap_enter)
-PPP_CB_EXTERN(on_sys_old_msgctl_enter)
-PPP_CB_EXTERN(on_sys_old_readdir_enter)
-PPP_CB_EXTERN(on_sys_old_semctl_enter)
-PPP_CB_EXTERN(on_sys_old_shmctl_enter)
-PPP_CB_EXTERN(on_sys_oldumount_enter)
-PPP_CB_EXTERN(on_sys_olduname_enter)
-PPP_CB_EXTERN(on_sys_open_enter)
-PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
-PPP_CB_EXTERN(on_sys_open_tree_enter)
-PPP_CB_EXTERN(on_sys_openat_enter)
-PPP_CB_EXTERN(on_sys_openat2_enter)
-PPP_CB_EXTERN(on_sys_pause_enter)
-PPP_CB_EXTERN(on_sys_perf_event_open_enter)
-PPP_CB_EXTERN(on_sys_personality_enter)
-PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
-PPP_CB_EXTERN(on_sys_pidfd_open_enter)
-PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
-PPP_CB_EXTERN(on_sys_pipe_enter)
-PPP_CB_EXTERN(on_sys_pipe2_enter)
-PPP_CB_EXTERN(on_sys_pivot_root_enter)
-PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
-PPP_CB_EXTERN(on_sys_pkey_free_enter)
-PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
-PPP_CB_EXTERN(on_sys_poll_enter)
-PPP_CB_EXTERN(on_sys_ppoll_enter)
-PPP_CB_EXTERN(on_sys_ppoll_time32_enter)
-PPP_CB_EXTERN(on_sys_prctl_enter)
-PPP_CB_EXTERN(on_sys_pread64_enter)
-PPP_CB_EXTERN(on_sys_preadv_enter)
-PPP_CB_EXTERN(on_sys_preadv2_enter)
-PPP_CB_EXTERN(on_sys_prlimit64_enter)
-PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
-PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
-PPP_CB_EXTERN(on_sys_pselect6_enter)
-PPP_CB_EXTERN(on_sys_pselect6_time32_enter)
-PPP_CB_EXTERN(on_sys_ptrace_enter)
-PPP_CB_EXTERN(on_sys_pwrite64_enter)
-PPP_CB_EXTERN(on_sys_pwritev_enter)
-PPP_CB_EXTERN(on_sys_pwritev2_enter)
-PPP_CB_EXTERN(on_sys_query_module_enter)
-PPP_CB_EXTERN(on_sys_quotactl_enter)
-PPP_CB_EXTERN(on_sys_read_enter)
-PPP_CB_EXTERN(on_sys_readahead_enter)
-PPP_CB_EXTERN(on_sys_readlink_enter)
-PPP_CB_EXTERN(on_sys_readlinkat_enter)
-PPP_CB_EXTERN(on_sys_readv_enter)
-PPP_CB_EXTERN(on_sys_reboot_enter)
-PPP_CB_EXTERN(on_sys_recv_enter)
-PPP_CB_EXTERN(on_sys_recvfrom_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_time32_enter)
-PPP_CB_EXTERN(on_sys_recvmsg_enter)
-PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
-PPP_CB_EXTERN(on_sys_removexattr_enter)
-PPP_CB_EXTERN(on_sys_rename_enter)
-PPP_CB_EXTERN(on_sys_renameat_enter)
-PPP_CB_EXTERN(on_sys_renameat2_enter)
-PPP_CB_EXTERN(on_sys_request_key_enter)
-PPP_CB_EXTERN(on_sys_restart_syscall_enter)
-PPP_CB_EXTERN(on_sys_rmdir_enter)
-PPP_CB_EXTERN(on_sys_rseq_enter)
-PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
-PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
-PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_time32_enter)
-PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
-PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_getattr_enter)
-PPP_CB_EXTERN(on_sys_sched_getparam_enter)
-PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_time32_enter)
-PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_setattr_enter)
-PPP_CB_EXTERN(on_sys_sched_setparam_enter)
-PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_yield_enter)
-PPP_CB_EXTERN(on_sys_seccomp_enter)
-PPP_CB_EXTERN(on_sys_select_enter)
-PPP_CB_EXTERN(on_sys_semctl_enter)
-PPP_CB_EXTERN(on_sys_semget_enter)
-PPP_CB_EXTERN(on_sys_semop_enter)
-PPP_CB_EXTERN(on_sys_semtimedop_enter)
-PPP_CB_EXTERN(on_sys_semtimedop_time32_enter)
-PPP_CB_EXTERN(on_sys_send_enter)
-PPP_CB_EXTERN(on_sys_sendfile_enter)
-PPP_CB_EXTERN(on_sys_sendfile64_enter)
-PPP_CB_EXTERN(on_sys_sendmmsg_enter)
-PPP_CB_EXTERN(on_sys_sendmsg_enter)
-PPP_CB_EXTERN(on_sys_sendto_enter)
-PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_set_robust_list_enter)
-PPP_CB_EXTERN(on_sys_set_tid_address_enter)
-PPP_CB_EXTERN(on_sys_setdomainname_enter)
-PPP_CB_EXTERN(on_sys_setfsgid_enter)
-PPP_CB_EXTERN(on_sys_setfsuid_enter)
-PPP_CB_EXTERN(on_sys_setgid_enter)
-PPP_CB_EXTERN(on_sys_setgroups_enter)
-PPP_CB_EXTERN(on_sys_sethostname_enter)
-PPP_CB_EXTERN(on_sys_setitimer_enter)
-PPP_CB_EXTERN(on_sys_setns_enter)
-PPP_CB_EXTERN(on_sys_setpgid_enter)
-PPP_CB_EXTERN(on_sys_setpriority_enter)
-PPP_CB_EXTERN(on_sys_setregid_enter)
-PPP_CB_EXTERN(on_sys_setresgid_enter)
-PPP_CB_EXTERN(on_sys_setresuid_enter)
-PPP_CB_EXTERN(on_sys_setreuid_enter)
-PPP_CB_EXTERN(on_sys_setrlimit_enter)
-PPP_CB_EXTERN(on_sys_setsid_enter)
-PPP_CB_EXTERN(on_sys_setsockopt_enter)
-PPP_CB_EXTERN(on_sys_settimeofday_enter)
-PPP_CB_EXTERN(on_sys_setuid_enter)
-PPP_CB_EXTERN(on_sys_setup_enter)
-PPP_CB_EXTERN(on_sys_setxattr_enter)
-PPP_CB_EXTERN(on_sys_sgetmask_enter)
-PPP_CB_EXTERN(on_sys_shmat_enter)
-PPP_CB_EXTERN(on_sys_shmctl_enter)
-PPP_CB_EXTERN(on_sys_shmdt_enter)
-PPP_CB_EXTERN(on_sys_shmget_enter)
-PPP_CB_EXTERN(on_sys_shutdown_enter)
-PPP_CB_EXTERN(on_sys_sigaction_enter)
-PPP_CB_EXTERN(on_sys_sigaltstack_enter)
-PPP_CB_EXTERN(on_sys_signal_enter)
-PPP_CB_EXTERN(on_sys_signalfd_enter)
-PPP_CB_EXTERN(on_sys_signalfd4_enter)
-PPP_CB_EXTERN(on_sys_sigpending_enter)
-PPP_CB_EXTERN(on_sys_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_socket_enter)
-PPP_CB_EXTERN(on_sys_socketcall_enter)
-PPP_CB_EXTERN(on_sys_socketpair_enter)
-PPP_CB_EXTERN(on_sys_splice_enter)
-PPP_CB_EXTERN(on_sys_ssetmask_enter)
-PPP_CB_EXTERN(on_sys_stat_enter)
-PPP_CB_EXTERN(on_sys_stat64_enter)
-PPP_CB_EXTERN(on_sys_statfs_enter)
-PPP_CB_EXTERN(on_sys_statfs64_enter)
-PPP_CB_EXTERN(on_sys_statx_enter)
-PPP_CB_EXTERN(on_sys_stime32_enter)
-PPP_CB_EXTERN(on_sys_swapoff_enter)
-PPP_CB_EXTERN(on_sys_swapon_enter)
-PPP_CB_EXTERN(on_sys_symlink_enter)
-PPP_CB_EXTERN(on_sys_symlinkat_enter)
-PPP_CB_EXTERN(on_sys_sync_enter)
-PPP_CB_EXTERN(on_sys_sync_file_range_enter)
-PPP_CB_EXTERN(on_sys_syncfs_enter)
-PPP_CB_EXTERN(on_sys_sysctl_enter)
-PPP_CB_EXTERN(on_sys_sysfs_enter)
-PPP_CB_EXTERN(on_sys_sysinfo_enter)
-PPP_CB_EXTERN(on_sys_syslog_enter)
-PPP_CB_EXTERN(on_sys_tee_enter)
-PPP_CB_EXTERN(on_sys_tgkill_enter)
-PPP_CB_EXTERN(on_sys_time32_enter)
-PPP_CB_EXTERN(on_sys_timer_create_enter)
-PPP_CB_EXTERN(on_sys_timer_delete_enter)
-PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime32_enter)
-PPP_CB_EXTERN(on_sys_timer_settime_enter)
-PPP_CB_EXTERN(on_sys_timer_settime32_enter)
-PPP_CB_EXTERN(on_sys_timerfd_create_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime32_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime32_enter)
-PPP_CB_EXTERN(on_sys_times_enter)
-PPP_CB_EXTERN(on_sys_tkill_enter)
-PPP_CB_EXTERN(on_sys_truncate_enter)
-PPP_CB_EXTERN(on_sys_truncate64_enter)
-PPP_CB_EXTERN(on_sys_umask_enter)
-PPP_CB_EXTERN(on_sys_umount_enter)
-PPP_CB_EXTERN(on_sys_uname_enter)
-PPP_CB_EXTERN(on_sys_unlink_enter)
-PPP_CB_EXTERN(on_sys_unlinkat_enter)
-PPP_CB_EXTERN(on_sys_unshare_enter)
-PPP_CB_EXTERN(on_sys_uselib_enter)
-PPP_CB_EXTERN(on_sys_userfaultfd_enter)
-PPP_CB_EXTERN(on_sys_ustat_enter)
-PPP_CB_EXTERN(on_sys_utime_enter)
-PPP_CB_EXTERN(on_sys_utime32_enter)
-PPP_CB_EXTERN(on_sys_utimensat_enter)
-PPP_CB_EXTERN(on_sys_utimensat_time32_enter)
-PPP_CB_EXTERN(on_sys_utimes_enter)
-PPP_CB_EXTERN(on_sys_utimes_time32_enter)
-PPP_CB_EXTERN(on_sys_vhangup_enter)
-PPP_CB_EXTERN(on_sys_vmsplice_enter)
-PPP_CB_EXTERN(on_sys_wait4_enter)
-PPP_CB_EXTERN(on_sys_waitid_enter)
-PPP_CB_EXTERN(on_sys_waitpid_enter)
-PPP_CB_EXTERN(on_sys_write_enter)
-PPP_CB_EXTERN(on_sys_writev_enter)
-#endif
-#if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
-PPP_CB_EXTERN(on_sys_accept_enter)
-PPP_CB_EXTERN(on_sys_accept4_enter)
-PPP_CB_EXTERN(on_sys_access_enter)
-PPP_CB_EXTERN(on_sys_acct_enter)
-PPP_CB_EXTERN(on_sys_add_key_enter)
-PPP_CB_EXTERN(on_sys_adjtimex_enter)
-PPP_CB_EXTERN(on_sys_alarm_enter)
-PPP_CB_EXTERN(on_sys_bind_enter)
-PPP_CB_EXTERN(on_sys_bpf_enter)
-PPP_CB_EXTERN(on_sys_brk_enter)
-PPP_CB_EXTERN(on_sys_capget_enter)
-PPP_CB_EXTERN(on_sys_capset_enter)
-PPP_CB_EXTERN(on_sys_chdir_enter)
-PPP_CB_EXTERN(on_sys_chmod_enter)
-PPP_CB_EXTERN(on_sys_chown_enter)
-PPP_CB_EXTERN(on_sys_chroot_enter)
-PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
-PPP_CB_EXTERN(on_sys_clock_getres_enter)
-PPP_CB_EXTERN(on_sys_clock_gettime_enter)
-PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_clock_settime_enter)
-PPP_CB_EXTERN(on_sys_clone_enter)
-PPP_CB_EXTERN(on_sys_clone3_enter)
-PPP_CB_EXTERN(on_sys_close_enter)
-PPP_CB_EXTERN(on_sys_connect_enter)
-PPP_CB_EXTERN(on_sys_copy_file_range_enter)
-PPP_CB_EXTERN(on_sys_creat_enter)
-PPP_CB_EXTERN(on_sys_delete_module_enter)
-PPP_CB_EXTERN(on_sys_dup_enter)
-PPP_CB_EXTERN(on_sys_dup2_enter)
-PPP_CB_EXTERN(on_sys_dup3_enter)
-PPP_CB_EXTERN(on_sys_epoll_create_enter)
-PPP_CB_EXTERN(on_sys_epoll_create1_enter)
-PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
-PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
-PPP_CB_EXTERN(on_sys_epoll_wait_enter)
-PPP_CB_EXTERN(on_sys_eventfd_enter)
-PPP_CB_EXTERN(on_sys_eventfd2_enter)
-PPP_CB_EXTERN(on_sys_execve_enter)
-PPP_CB_EXTERN(on_sys_execveat_enter)
-PPP_CB_EXTERN(on_sys_exit_enter)
-PPP_CB_EXTERN(on_sys_exit_group_enter)
-PPP_CB_EXTERN(on_sys_faccessat_enter)
-PPP_CB_EXTERN(on_sys_faccessat2_enter)
-PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
-PPP_CB_EXTERN(on_sys_fallocate_enter)
-PPP_CB_EXTERN(on_sys_fanotify_init_enter)
-PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
-PPP_CB_EXTERN(on_sys_fchdir_enter)
-PPP_CB_EXTERN(on_sys_fchmod_enter)
-PPP_CB_EXTERN(on_sys_fchmodat_enter)
-PPP_CB_EXTERN(on_sys_fchown_enter)
-PPP_CB_EXTERN(on_sys_fchownat_enter)
-PPP_CB_EXTERN(on_sys_fcntl_enter)
-PPP_CB_EXTERN(on_sys_fdatasync_enter)
-PPP_CB_EXTERN(on_sys_fgetxattr_enter)
-PPP_CB_EXTERN(on_sys_finit_module_enter)
-PPP_CB_EXTERN(on_sys_flistxattr_enter)
-PPP_CB_EXTERN(on_sys_flock_enter)
-PPP_CB_EXTERN(on_sys_fork_enter)
-PPP_CB_EXTERN(on_sys_fremovexattr_enter)
-PPP_CB_EXTERN(on_sys_fsconfig_enter)
-PPP_CB_EXTERN(on_sys_fsetxattr_enter)
-PPP_CB_EXTERN(on_sys_fsmount_enter)
-PPP_CB_EXTERN(on_sys_fsopen_enter)
-PPP_CB_EXTERN(on_sys_fspick_enter)
-PPP_CB_EXTERN(on_sys_fstatfs_enter)
-PPP_CB_EXTERN(on_sys_fsync_enter)
-PPP_CB_EXTERN(on_sys_ftruncate_enter)
-PPP_CB_EXTERN(on_sys_futex_enter)
-PPP_CB_EXTERN(on_sys_futimesat_enter)
-PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_get_robust_list_enter)
-PPP_CB_EXTERN(on_sys_getcpu_enter)
-PPP_CB_EXTERN(on_sys_getcwd_enter)
-PPP_CB_EXTERN(on_sys_getdents_enter)
-PPP_CB_EXTERN(on_sys_getdents64_enter)
-PPP_CB_EXTERN(on_sys_getegid_enter)
-PPP_CB_EXTERN(on_sys_geteuid_enter)
-PPP_CB_EXTERN(on_sys_getgid_enter)
-PPP_CB_EXTERN(on_sys_getgroups_enter)
-PPP_CB_EXTERN(on_sys_getitimer_enter)
-PPP_CB_EXTERN(on_sys_getpeername_enter)
-PPP_CB_EXTERN(on_sys_getpgid_enter)
-PPP_CB_EXTERN(on_sys_getpgrp_enter)
-PPP_CB_EXTERN(on_sys_getpid_enter)
-PPP_CB_EXTERN(on_sys_getppid_enter)
-PPP_CB_EXTERN(on_sys_getpriority_enter)
-PPP_CB_EXTERN(on_sys_getrandom_enter)
-PPP_CB_EXTERN(on_sys_getresgid_enter)
-PPP_CB_EXTERN(on_sys_getresuid_enter)
-PPP_CB_EXTERN(on_sys_getrlimit_enter)
-PPP_CB_EXTERN(on_sys_getrusage_enter)
-PPP_CB_EXTERN(on_sys_getsid_enter)
-PPP_CB_EXTERN(on_sys_getsockname_enter)
-PPP_CB_EXTERN(on_sys_getsockopt_enter)
-PPP_CB_EXTERN(on_sys_gettid_enter)
-PPP_CB_EXTERN(on_sys_gettimeofday_enter)
-PPP_CB_EXTERN(on_sys_getuid_enter)
-PPP_CB_EXTERN(on_sys_getxattr_enter)
-PPP_CB_EXTERN(on_sys_init_module_enter)
-PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
-PPP_CB_EXTERN(on_sys_inotify_init_enter)
-PPP_CB_EXTERN(on_sys_inotify_init1_enter)
-PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
-PPP_CB_EXTERN(on_sys_io_cancel_enter)
-PPP_CB_EXTERN(on_sys_io_destroy_enter)
-PPP_CB_EXTERN(on_sys_io_getevents_enter)
-PPP_CB_EXTERN(on_sys_io_pgetevents_enter)
-PPP_CB_EXTERN(on_sys_io_setup_enter)
-PPP_CB_EXTERN(on_sys_io_submit_enter)
-PPP_CB_EXTERN(on_sys_io_uring_enter_enter)
-PPP_CB_EXTERN(on_sys_io_uring_register_enter)
-PPP_CB_EXTERN(on_sys_io_uring_setup_enter)
-PPP_CB_EXTERN(on_sys_ioctl_enter)
-PPP_CB_EXTERN(on_sys_ioprio_get_enter)
-PPP_CB_EXTERN(on_sys_ioprio_set_enter)
-PPP_CB_EXTERN(on_sys_kcmp_enter)
-PPP_CB_EXTERN(on_sys_kexec_load_enter)
-PPP_CB_EXTERN(on_sys_keyctl_enter)
-PPP_CB_EXTERN(on_sys_kill_enter)
-PPP_CB_EXTERN(on_sys_lchown_enter)
-PPP_CB_EXTERN(on_sys_lgetxattr_enter)
-PPP_CB_EXTERN(on_sys_link_enter)
-PPP_CB_EXTERN(on_sys_linkat_enter)
-PPP_CB_EXTERN(on_sys_listen_enter)
-PPP_CB_EXTERN(on_sys_listxattr_enter)
-PPP_CB_EXTERN(on_sys_llistxattr_enter)
-PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
-PPP_CB_EXTERN(on_sys_lremovexattr_enter)
-PPP_CB_EXTERN(on_sys_lseek_enter)
-PPP_CB_EXTERN(on_sys_lsetxattr_enter)
-PPP_CB_EXTERN(on_sys_madvise_enter)
-PPP_CB_EXTERN(on_sys_mbind_enter)
-PPP_CB_EXTERN(on_sys_membarrier_enter)
-PPP_CB_EXTERN(on_sys_memfd_create_enter)
-PPP_CB_EXTERN(on_sys_migrate_pages_enter)
-PPP_CB_EXTERN(on_sys_mincore_enter)
-PPP_CB_EXTERN(on_sys_mkdir_enter)
-PPP_CB_EXTERN(on_sys_mkdirat_enter)
-PPP_CB_EXTERN(on_sys_mknod_enter)
-PPP_CB_EXTERN(on_sys_mknodat_enter)
-PPP_CB_EXTERN(on_sys_mlock_enter)
-PPP_CB_EXTERN(on_sys_mlock2_enter)
-PPP_CB_EXTERN(on_sys_mlockall_enter)
-PPP_CB_EXTERN(on_sys_mount_enter)
-PPP_CB_EXTERN(on_sys_move_mount_enter)
-PPP_CB_EXTERN(on_sys_move_pages_enter)
-PPP_CB_EXTERN(on_sys_mprotect_enter)
-PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
-PPP_CB_EXTERN(on_sys_mq_notify_enter)
-PPP_CB_EXTERN(on_sys_mq_open_enter)
-PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
-PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
-PPP_CB_EXTERN(on_sys_mq_unlink_enter)
-PPP_CB_EXTERN(on_sys_mremap_enter)
-PPP_CB_EXTERN(on_sys_msgget_enter)
-PPP_CB_EXTERN(on_sys_msgrcv_enter)
-PPP_CB_EXTERN(on_sys_msgsnd_enter)
-PPP_CB_EXTERN(on_sys_msync_enter)
-PPP_CB_EXTERN(on_sys_munlock_enter)
-PPP_CB_EXTERN(on_sys_munlockall_enter)
-PPP_CB_EXTERN(on_sys_munmap_enter)
-PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
-PPP_CB_EXTERN(on_sys_nanosleep_enter)
-PPP_CB_EXTERN(on_sys_newfstat_enter)
-PPP_CB_EXTERN(on_sys_newfstatat_enter)
-PPP_CB_EXTERN(on_sys_newlstat_enter)
-PPP_CB_EXTERN(on_sys_newstat_enter)
-PPP_CB_EXTERN(on_sys_newuname_enter)
-PPP_CB_EXTERN(on_sys_ni_syscall_enter)
-PPP_CB_EXTERN(on_sys_old_mmap_enter)
-PPP_CB_EXTERN(on_sys_old_msgctl_enter)
-PPP_CB_EXTERN(on_sys_old_semctl_enter)
-PPP_CB_EXTERN(on_sys_old_shmctl_enter)
-PPP_CB_EXTERN(on_sys_open_enter)
-PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
-PPP_CB_EXTERN(on_sys_open_tree_enter)
-PPP_CB_EXTERN(on_sys_openat_enter)
-PPP_CB_EXTERN(on_sys_openat2_enter)
-PPP_CB_EXTERN(on_sys_pause_enter)
-PPP_CB_EXTERN(on_sys_perf_event_open_enter)
-PPP_CB_EXTERN(on_sys_personality_enter)
-PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
-PPP_CB_EXTERN(on_sys_pidfd_open_enter)
-PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
-PPP_CB_EXTERN(on_sys_pipe_enter)
-PPP_CB_EXTERN(on_sys_pipe2_enter)
-PPP_CB_EXTERN(on_sys_pivot_root_enter)
-PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
-PPP_CB_EXTERN(on_sys_pkey_free_enter)
-PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
-PPP_CB_EXTERN(on_sys_poll_enter)
-PPP_CB_EXTERN(on_sys_ppoll_enter)
-PPP_CB_EXTERN(on_sys_prctl_enter)
-PPP_CB_EXTERN(on_sys_pread64_enter)
-PPP_CB_EXTERN(on_sys_preadv_enter)
-PPP_CB_EXTERN(on_sys_preadv2_enter)
-PPP_CB_EXTERN(on_sys_prlimit64_enter)
-PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
-PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
-PPP_CB_EXTERN(on_sys_pselect6_enter)
-PPP_CB_EXTERN(on_sys_ptrace_enter)
-PPP_CB_EXTERN(on_sys_pwrite64_enter)
-PPP_CB_EXTERN(on_sys_pwritev_enter)
-PPP_CB_EXTERN(on_sys_pwritev2_enter)
-PPP_CB_EXTERN(on_sys_quotactl_enter)
-PPP_CB_EXTERN(on_sys_read_enter)
-PPP_CB_EXTERN(on_sys_readahead_enter)
-PPP_CB_EXTERN(on_sys_readlink_enter)
-PPP_CB_EXTERN(on_sys_readlinkat_enter)
-PPP_CB_EXTERN(on_sys_readv_enter)
-PPP_CB_EXTERN(on_sys_reboot_enter)
-PPP_CB_EXTERN(on_sys_recvfrom_enter)
-PPP_CB_EXTERN(on_sys_recvmmsg_enter)
-PPP_CB_EXTERN(on_sys_recvmsg_enter)
-PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
-PPP_CB_EXTERN(on_sys_removexattr_enter)
-PPP_CB_EXTERN(on_sys_rename_enter)
-PPP_CB_EXTERN(on_sys_renameat_enter)
-PPP_CB_EXTERN(on_sys_renameat2_enter)
-PPP_CB_EXTERN(on_sys_request_key_enter)
-PPP_CB_EXTERN(on_sys_restart_syscall_enter)
-PPP_CB_EXTERN(on_sys_rmdir_enter)
-PPP_CB_EXTERN(on_sys_rseq_enter)
-PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
-PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
-PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
-PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
-PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
-PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
-PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
-PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
-PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_getattr_enter)
-PPP_CB_EXTERN(on_sys_sched_getparam_enter)
-PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
-PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
-PPP_CB_EXTERN(on_sys_sched_setattr_enter)
-PPP_CB_EXTERN(on_sys_sched_setparam_enter)
-PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
-PPP_CB_EXTERN(on_sys_sched_yield_enter)
-PPP_CB_EXTERN(on_sys_seccomp_enter)
-PPP_CB_EXTERN(on_sys_select_enter)
-PPP_CB_EXTERN(on_sys_semget_enter)
-PPP_CB_EXTERN(on_sys_semop_enter)
-PPP_CB_EXTERN(on_sys_semtimedop_enter)
-PPP_CB_EXTERN(on_sys_sendfile64_enter)
-PPP_CB_EXTERN(on_sys_sendmmsg_enter)
-PPP_CB_EXTERN(on_sys_sendmsg_enter)
-PPP_CB_EXTERN(on_sys_sendto_enter)
-PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
-PPP_CB_EXTERN(on_sys_set_robust_list_enter)
-PPP_CB_EXTERN(on_sys_set_tid_address_enter)
-PPP_CB_EXTERN(on_sys_setdomainname_enter)
-PPP_CB_EXTERN(on_sys_setfsgid_enter)
-PPP_CB_EXTERN(on_sys_setfsuid_enter)
-PPP_CB_EXTERN(on_sys_setgid_enter)
-PPP_CB_EXTERN(on_sys_setgroups_enter)
-PPP_CB_EXTERN(on_sys_sethostname_enter)
-PPP_CB_EXTERN(on_sys_setitimer_enter)
-PPP_CB_EXTERN(on_sys_setns_enter)
-PPP_CB_EXTERN(on_sys_setpgid_enter)
-PPP_CB_EXTERN(on_sys_setpriority_enter)
-PPP_CB_EXTERN(on_sys_setregid_enter)
-PPP_CB_EXTERN(on_sys_setresgid_enter)
-PPP_CB_EXTERN(on_sys_setresuid_enter)
-PPP_CB_EXTERN(on_sys_setreuid_enter)
-PPP_CB_EXTERN(on_sys_setrlimit_enter)
-PPP_CB_EXTERN(on_sys_setsid_enter)
-PPP_CB_EXTERN(on_sys_setsockopt_enter)
-PPP_CB_EXTERN(on_sys_settimeofday_enter)
-PPP_CB_EXTERN(on_sys_setuid_enter)
-PPP_CB_EXTERN(on_sys_setxattr_enter)
-PPP_CB_EXTERN(on_sys_shmat_enter)
-PPP_CB_EXTERN(on_sys_shmdt_enter)
-PPP_CB_EXTERN(on_sys_shmget_enter)
-PPP_CB_EXTERN(on_sys_shutdown_enter)
-PPP_CB_EXTERN(on_sys_sigaltstack_enter)
-PPP_CB_EXTERN(on_sys_signalfd_enter)
-PPP_CB_EXTERN(on_sys_signalfd4_enter)
-PPP_CB_EXTERN(on_sys_socket_enter)
-PPP_CB_EXTERN(on_sys_socketpair_enter)
-PPP_CB_EXTERN(on_sys_splice_enter)
-PPP_CB_EXTERN(on_sys_statfs_enter)
-PPP_CB_EXTERN(on_sys_statx_enter)
-PPP_CB_EXTERN(on_sys_swapoff_enter)
-PPP_CB_EXTERN(on_sys_swapon_enter)
-PPP_CB_EXTERN(on_sys_symlink_enter)
-PPP_CB_EXTERN(on_sys_symlinkat_enter)
-PPP_CB_EXTERN(on_sys_sync_enter)
-PPP_CB_EXTERN(on_sys_sync_file_range_enter)
-PPP_CB_EXTERN(on_sys_syncfs_enter)
-PPP_CB_EXTERN(on_sys_sysctl_enter)
-PPP_CB_EXTERN(on_sys_sysfs_enter)
-PPP_CB_EXTERN(on_sys_sysinfo_enter)
-PPP_CB_EXTERN(on_sys_syslog_enter)
-PPP_CB_EXTERN(on_sys_tee_enter)
-PPP_CB_EXTERN(on_sys_tgkill_enter)
-PPP_CB_EXTERN(on_sys_timer_create_enter)
-PPP_CB_EXTERN(on_sys_timer_delete_enter)
-PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
-PPP_CB_EXTERN(on_sys_timer_gettime_enter)
-PPP_CB_EXTERN(on_sys_timer_settime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_create_enter)
-PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
-PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
-PPP_CB_EXTERN(on_sys_times_enter)
-PPP_CB_EXTERN(on_sys_tkill_enter)
-PPP_CB_EXTERN(on_sys_truncate_enter)
-PPP_CB_EXTERN(on_sys_umask_enter)
-PPP_CB_EXTERN(on_sys_umount_enter)
-PPP_CB_EXTERN(on_sys_unlink_enter)
-PPP_CB_EXTERN(on_sys_unlinkat_enter)
-PPP_CB_EXTERN(on_sys_unshare_enter)
-PPP_CB_EXTERN(on_sys_userfaultfd_enter)
-PPP_CB_EXTERN(on_sys_ustat_enter)
-PPP_CB_EXTERN(on_sys_utime_enter)
-PPP_CB_EXTERN(on_sys_utimensat_enter)
-PPP_CB_EXTERN(on_sys_utimes_enter)
-PPP_CB_EXTERN(on_sys_vhangup_enter)
-PPP_CB_EXTERN(on_sys_vmsplice_enter)
-PPP_CB_EXTERN(on_sys_wait4_enter)
-PPP_CB_EXTERN(on_sys_waitid_enter)
-PPP_CB_EXTERN(on_sys_write_enter)
-PPP_CB_EXTERN(on_sys_writev_enter)
-#endif
 #if defined(TARGET_X86_64)
+#ifndef PPP_CB_EXTERN_ON___ACL_ACLCHECK_FD_ENTER
+#define PPP_CB_EXTERN_ON___ACL_ACLCHECK_FD_ENTER
 PPP_CB_EXTERN(on___acl_aclcheck_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_ACLCHECK_FILE_ENTER
+#define PPP_CB_EXTERN_ON___ACL_ACLCHECK_FILE_ENTER
 PPP_CB_EXTERN(on___acl_aclcheck_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_ACLCHECK_LINK_ENTER
+#define PPP_CB_EXTERN_ON___ACL_ACLCHECK_LINK_ENTER
 PPP_CB_EXTERN(on___acl_aclcheck_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_DELETE_FD_ENTER
+#define PPP_CB_EXTERN_ON___ACL_DELETE_FD_ENTER
 PPP_CB_EXTERN(on___acl_delete_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_DELETE_FILE_ENTER
+#define PPP_CB_EXTERN_ON___ACL_DELETE_FILE_ENTER
 PPP_CB_EXTERN(on___acl_delete_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_DELETE_LINK_ENTER
+#define PPP_CB_EXTERN_ON___ACL_DELETE_LINK_ENTER
 PPP_CB_EXTERN(on___acl_delete_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_GET_FD_ENTER
+#define PPP_CB_EXTERN_ON___ACL_GET_FD_ENTER
 PPP_CB_EXTERN(on___acl_get_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_GET_FILE_ENTER
+#define PPP_CB_EXTERN_ON___ACL_GET_FILE_ENTER
 PPP_CB_EXTERN(on___acl_get_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_GET_LINK_ENTER
+#define PPP_CB_EXTERN_ON___ACL_GET_LINK_ENTER
 PPP_CB_EXTERN(on___acl_get_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_SET_FD_ENTER
+#define PPP_CB_EXTERN_ON___ACL_SET_FD_ENTER
 PPP_CB_EXTERN(on___acl_set_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_SET_FILE_ENTER
+#define PPP_CB_EXTERN_ON___ACL_SET_FILE_ENTER
 PPP_CB_EXTERN(on___acl_set_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___ACL_SET_LINK_ENTER
+#define PPP_CB_EXTERN_ON___ACL_SET_LINK_ENTER
 PPP_CB_EXTERN(on___acl_set_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___CAP_RIGHTS_GET_ENTER
+#define PPP_CB_EXTERN_ON___CAP_RIGHTS_GET_ENTER
 PPP_CB_EXTERN(on___cap_rights_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___GETCWD_ENTER
+#define PPP_CB_EXTERN_ON___GETCWD_ENTER
 PPP_CB_EXTERN(on___getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON___MAC_EXECVE_ENTER
 PPP_CB_EXTERN(on___mac_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_GET_FD_ENTER
+#define PPP_CB_EXTERN_ON___MAC_GET_FD_ENTER
 PPP_CB_EXTERN(on___mac_get_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_GET_FILE_ENTER
+#define PPP_CB_EXTERN_ON___MAC_GET_FILE_ENTER
 PPP_CB_EXTERN(on___mac_get_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_GET_LINK_ENTER
+#define PPP_CB_EXTERN_ON___MAC_GET_LINK_ENTER
 PPP_CB_EXTERN(on___mac_get_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_GET_PID_ENTER
+#define PPP_CB_EXTERN_ON___MAC_GET_PID_ENTER
 PPP_CB_EXTERN(on___mac_get_pid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_GET_PROC_ENTER
+#define PPP_CB_EXTERN_ON___MAC_GET_PROC_ENTER
 PPP_CB_EXTERN(on___mac_get_proc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_SET_FD_ENTER
+#define PPP_CB_EXTERN_ON___MAC_SET_FD_ENTER
 PPP_CB_EXTERN(on___mac_set_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_SET_FILE_ENTER
+#define PPP_CB_EXTERN_ON___MAC_SET_FILE_ENTER
 PPP_CB_EXTERN(on___mac_set_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_SET_LINK_ENTER
+#define PPP_CB_EXTERN_ON___MAC_SET_LINK_ENTER
 PPP_CB_EXTERN(on___mac_set_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___MAC_SET_PROC_ENTER
+#define PPP_CB_EXTERN_ON___MAC_SET_PROC_ENTER
 PPP_CB_EXTERN(on___mac_set_proc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___REALPATHAT_ENTER
+#define PPP_CB_EXTERN_ON___REALPATHAT_ENTER
 PPP_CB_EXTERN(on___realpathat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON___SEMCTL_ENTER
 PPP_CB_EXTERN(on___semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___SETUGID_ENTER
+#define PPP_CB_EXTERN_ON___SETUGID_ENTER
 PPP_CB_EXTERN(on___setugid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON___SYSCTL_ENTER
 PPP_CB_EXTERN(on___sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON___SYSCTLBYNAME_ENTER
+#define PPP_CB_EXTERN_ON___SYSCTLBYNAME_ENTER
 PPP_CB_EXTERN(on___sysctlbyname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON__UMTX_OP_ENTER
+#define PPP_CB_EXTERN_ON__UMTX_OP_ENTER
 PPP_CB_EXTERN(on__umtx_op_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ABORT2_ENTER
+#define PPP_CB_EXTERN_ON_ABORT2_ENTER
 PPP_CB_EXTERN(on_abort2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_ACCEPT_ENTER
 PPP_CB_EXTERN(on_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_ACCEPT4_ENTER
 PPP_CB_EXTERN(on_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_ACCESS_ENTER
 PPP_CB_EXTERN(on_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_ACCT_ENTER
 PPP_CB_EXTERN(on_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_ADJTIME_ENTER
 PPP_CB_EXTERN(on_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AFS3_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_AFS3_SYSCALL_ENTER
 PPP_CB_EXTERN(on_afs3_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_AIO_CANCEL_ENTER
 PPP_CB_EXTERN(on_aio_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_ERROR_ENTER
+#define PPP_CB_EXTERN_ON_AIO_ERROR_ENTER
 PPP_CB_EXTERN(on_aio_error_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_AIO_FSYNC_ENTER
 PPP_CB_EXTERN(on_aio_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_AIO_MLOCK_ENTER
 PPP_CB_EXTERN(on_aio_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_READ_ENTER
+#define PPP_CB_EXTERN_ON_AIO_READ_ENTER
 PPP_CB_EXTERN(on_aio_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_RETURN_ENTER
+#define PPP_CB_EXTERN_ON_AIO_RETURN_ENTER
 PPP_CB_EXTERN(on_aio_return_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_SUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_AIO_SUSPEND_ENTER
 PPP_CB_EXTERN(on_aio_suspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_WAITCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_AIO_WAITCOMPLETE_ENTER
 PPP_CB_EXTERN(on_aio_waitcomplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AIO_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_AIO_WRITE_ENTER
 PPP_CB_EXTERN(on_aio_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AUDIT_ENTER
+#define PPP_CB_EXTERN_ON_AUDIT_ENTER
 PPP_CB_EXTERN(on_audit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AUDITCTL_ENTER
+#define PPP_CB_EXTERN_ON_AUDITCTL_ENTER
 PPP_CB_EXTERN(on_auditctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_AUDITON_ENTER
+#define PPP_CB_EXTERN_ON_AUDITON_ENTER
 PPP_CB_EXTERN(on_auditon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_BIND_ENTER
+#define PPP_CB_EXTERN_ON_BIND_ENTER
 PPP_CB_EXTERN(on_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_BINDAT_ENTER
+#define PPP_CB_EXTERN_ON_BINDAT_ENTER
 PPP_CB_EXTERN(on_bindat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_ENTER_ENTER
+#define PPP_CB_EXTERN_ON_CAP_ENTER_ENTER
 PPP_CB_EXTERN(on_cap_enter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_FCNTLS_GET_ENTER
+#define PPP_CB_EXTERN_ON_CAP_FCNTLS_GET_ENTER
 PPP_CB_EXTERN(on_cap_fcntls_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_FCNTLS_LIMIT_ENTER
+#define PPP_CB_EXTERN_ON_CAP_FCNTLS_LIMIT_ENTER
 PPP_CB_EXTERN(on_cap_fcntls_limit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_GETMODE_ENTER
+#define PPP_CB_EXTERN_ON_CAP_GETMODE_ENTER
 PPP_CB_EXTERN(on_cap_getmode_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_IOCTLS_GET_ENTER
+#define PPP_CB_EXTERN_ON_CAP_IOCTLS_GET_ENTER
 PPP_CB_EXTERN(on_cap_ioctls_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_IOCTLS_LIMIT_ENTER
+#define PPP_CB_EXTERN_ON_CAP_IOCTLS_LIMIT_ENTER
 PPP_CB_EXTERN(on_cap_ioctls_limit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CAP_RIGHTS_LIMIT_ENTER
+#define PPP_CB_EXTERN_ON_CAP_RIGHTS_LIMIT_ENTER
 PPP_CB_EXTERN(on_cap_rights_limit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_CHDIR_ENTER
 PPP_CB_EXTERN(on_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CHFLAGS_ENTER
+#define PPP_CB_EXTERN_ON_CHFLAGS_ENTER
 PPP_CB_EXTERN(on_chflags_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CHFLAGSAT_ENTER
+#define PPP_CB_EXTERN_ON_CHFLAGSAT_ENTER
 PPP_CB_EXTERN(on_chflagsat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_CHMOD_ENTER
 PPP_CB_EXTERN(on_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_CHOWN_ENTER
 PPP_CB_EXTERN(on_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_CHROOT_ENTER
 PPP_CB_EXTERN(on_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOCK_GETCPUCLOCKID2_ENTER
+#define PPP_CB_EXTERN_ON_CLOCK_GETCPUCLOCKID2_ENTER
 PPP_CB_EXTERN(on_clock_getcpuclockid2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_CLOCK_GETRES_ENTER
 PPP_CB_EXTERN(on_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_CLOCK_GETTIME_ENTER
 PPP_CB_EXTERN(on_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_CLOCK_NANOSLEEP_ENTER
 PPP_CB_EXTERN(on_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_CLOCK_SETTIME_ENTER
 PPP_CB_EXTERN(on_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_CLOSE_ENTER
 PPP_CB_EXTERN(on_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOSE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_CLOSE_RANGE_ENTER
 PPP_CB_EXTERN(on_close_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CLOSEFROM_ENTER
+#define PPP_CB_EXTERN_ON_CLOSEFROM_ENTER
 PPP_CB_EXTERN(on_closefrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_CONNECT_ENTER
 PPP_CB_EXTERN(on_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CONNECTAT_ENTER
+#define PPP_CB_EXTERN_ON_CONNECTAT_ENTER
 PPP_CB_EXTERN(on_connectat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_COPY_FILE_RANGE_ENTER
 PPP_CB_EXTERN(on_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_ENTER
 PPP_CB_EXTERN(on_cpuset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_GETAFFINITY_ENTER
 PPP_CB_EXTERN(on_cpuset_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_GETDOMAIN_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_GETDOMAIN_ENTER
 PPP_CB_EXTERN(on_cpuset_getdomain_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_GETID_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_GETID_ENTER
 PPP_CB_EXTERN(on_cpuset_getid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_SETAFFINITY_ENTER
 PPP_CB_EXTERN(on_cpuset_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_SETDOMAIN_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_SETDOMAIN_ENTER
 PPP_CB_EXTERN(on_cpuset_setdomain_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CPUSET_SETID_ENTER
+#define PPP_CB_EXTERN_ON_CPUSET_SETID_ENTER
 PPP_CB_EXTERN(on_cpuset_setid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_CREAT_ENTER
 PPP_CB_EXTERN(on_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_DUP_ENTER
+#define PPP_CB_EXTERN_ON_DUP_ENTER
 PPP_CB_EXTERN(on_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_DUP2_ENTER
 PPP_CB_EXTERN(on_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EACCESS_ENTER
+#define PPP_CB_EXTERN_ON_EACCESS_ENTER
 PPP_CB_EXTERN(on_eaccess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_EXECVE_ENTER
 PPP_CB_EXTERN(on_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_DELETE_FD_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_DELETE_FD_ENTER
 PPP_CB_EXTERN(on_extattr_delete_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_DELETE_FILE_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_DELETE_FILE_ENTER
 PPP_CB_EXTERN(on_extattr_delete_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_DELETE_LINK_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_DELETE_LINK_ENTER
 PPP_CB_EXTERN(on_extattr_delete_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_GET_FD_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_GET_FD_ENTER
 PPP_CB_EXTERN(on_extattr_get_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_GET_FILE_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_GET_FILE_ENTER
 PPP_CB_EXTERN(on_extattr_get_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_GET_LINK_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_GET_LINK_ENTER
 PPP_CB_EXTERN(on_extattr_get_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_LIST_FD_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_LIST_FD_ENTER
 PPP_CB_EXTERN(on_extattr_list_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_LIST_FILE_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_LIST_FILE_ENTER
 PPP_CB_EXTERN(on_extattr_list_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_LIST_LINK_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_LIST_LINK_ENTER
 PPP_CB_EXTERN(on_extattr_list_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_SET_FD_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_SET_FD_ENTER
 PPP_CB_EXTERN(on_extattr_set_fd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_SET_FILE_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_SET_FILE_ENTER
 PPP_CB_EXTERN(on_extattr_set_file_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTR_SET_LINK_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTR_SET_LINK_ENTER
 PPP_CB_EXTERN(on_extattr_set_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_EXTATTRCTL_ENTER
+#define PPP_CB_EXTERN_ON_EXTATTRCTL_ENTER
 PPP_CB_EXTERN(on_extattrctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_FACCESSAT_ENTER
 PPP_CB_EXTERN(on_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_FCHDIR_ENTER
 PPP_CB_EXTERN(on_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCHFLAGS_ENTER
+#define PPP_CB_EXTERN_ON_FCHFLAGS_ENTER
 PPP_CB_EXTERN(on_fchflags_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_FCHMOD_ENTER
 PPP_CB_EXTERN(on_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_FCHMODAT_ENTER
 PPP_CB_EXTERN(on_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_FCHOWN_ENTER
 PPP_CB_EXTERN(on_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_FCHOWNAT_ENTER
 PPP_CB_EXTERN(on_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_FCNTL_ENTER
 PPP_CB_EXTERN(on_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_FDATASYNC_ENTER
 PPP_CB_EXTERN(on_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FEXECVE_ENTER
+#define PPP_CB_EXTERN_ON_FEXECVE_ENTER
 PPP_CB_EXTERN(on_fexecve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FFCLOCK_GETCOUNTER_ENTER
+#define PPP_CB_EXTERN_ON_FFCLOCK_GETCOUNTER_ENTER
 PPP_CB_EXTERN(on_ffclock_getcounter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FFCLOCK_GETESTIMATE_ENTER
+#define PPP_CB_EXTERN_ON_FFCLOCK_GETESTIMATE_ENTER
 PPP_CB_EXTERN(on_ffclock_getestimate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FFCLOCK_SETESTIMATE_ENTER
+#define PPP_CB_EXTERN_ON_FFCLOCK_SETESTIMATE_ENTER
 PPP_CB_EXTERN(on_ffclock_setestimate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FHLINK_ENTER
+#define PPP_CB_EXTERN_ON_FHLINK_ENTER
 PPP_CB_EXTERN(on_fhlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FHLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_FHLINKAT_ENTER
 PPP_CB_EXTERN(on_fhlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FHOPEN_ENTER
+#define PPP_CB_EXTERN_ON_FHOPEN_ENTER
 PPP_CB_EXTERN(on_fhopen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FHREADLINK_ENTER
+#define PPP_CB_EXTERN_ON_FHREADLINK_ENTER
 PPP_CB_EXTERN(on_fhreadlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FHSTAT_ENTER
+#define PPP_CB_EXTERN_ON_FHSTAT_ENTER
 PPP_CB_EXTERN(on_fhstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FHSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_FHSTATFS_ENTER
 PPP_CB_EXTERN(on_fhstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_FLOCK_ENTER
 PPP_CB_EXTERN(on_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FORK_ENTER
+#define PPP_CB_EXTERN_ON_FORK_ENTER
 PPP_CB_EXTERN(on_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FPATHCONF_ENTER
+#define PPP_CB_EXTERN_ON_FPATHCONF_ENTER
 PPP_CB_EXTERN(on_fpathconf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FSTAT_ENTER
+#define PPP_CB_EXTERN_ON_FSTAT_ENTER
 PPP_CB_EXTERN(on_fstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FSTATAT_ENTER
+#define PPP_CB_EXTERN_ON_FSTATAT_ENTER
 PPP_CB_EXTERN(on_fstatat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_FSTATFS_ENTER
 PPP_CB_EXTERN(on_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_FSYNC_ENTER
 PPP_CB_EXTERN(on_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_FTRUNCATE_ENTER
 PPP_CB_EXTERN(on_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FUNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_FUNLINKAT_ENTER
 PPP_CB_EXTERN(on_funlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FUTIMENS_ENTER
+#define PPP_CB_EXTERN_ON_FUTIMENS_ENTER
 PPP_CB_EXTERN(on_futimens_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FUTIMES_ENTER
+#define PPP_CB_EXTERN_ON_FUTIMES_ENTER
 PPP_CB_EXTERN(on_futimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_FUTIMESAT_ENTER
+#define PPP_CB_EXTERN_ON_FUTIMESAT_ENTER
 PPP_CB_EXTERN(on_futimesat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETAUDIT_ENTER
+#define PPP_CB_EXTERN_ON_GETAUDIT_ENTER
 PPP_CB_EXTERN(on_getaudit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETAUDIT_ADDR_ENTER
+#define PPP_CB_EXTERN_ON_GETAUDIT_ADDR_ENTER
 PPP_CB_EXTERN(on_getaudit_addr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETAUID_ENTER
+#define PPP_CB_EXTERN_ON_GETAUID_ENTER
 PPP_CB_EXTERN(on_getauid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_GETCONTEXT_ENTER
 PPP_CB_EXTERN(on_getcontext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_GETDENTS_ENTER
 PPP_CB_EXTERN(on_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETDIRENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_GETDIRENTRIES_ENTER
 PPP_CB_EXTERN(on_getdirentries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_GETDOMAINNAME_ENTER
 PPP_CB_EXTERN(on_getdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETDTABLESIZE_ENTER
+#define PPP_CB_EXTERN_ON_GETDTABLESIZE_ENTER
 PPP_CB_EXTERN(on_getdtablesize_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_GETEGID_ENTER
 PPP_CB_EXTERN(on_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_GETEUID_ENTER
 PPP_CB_EXTERN(on_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETFH_ENTER
+#define PPP_CB_EXTERN_ON_GETFH_ENTER
 PPP_CB_EXTERN(on_getfh_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETFHAT_ENTER
+#define PPP_CB_EXTERN_ON_GETFHAT_ENTER
 PPP_CB_EXTERN(on_getfhat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETFSSTAT_ENTER
+#define PPP_CB_EXTERN_ON_GETFSSTAT_ENTER
 PPP_CB_EXTERN(on_getfsstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_GETGID_ENTER
 PPP_CB_EXTERN(on_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_GETGROUPS_ENTER
 PPP_CB_EXTERN(on_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETHOSTID_ENTER
+#define PPP_CB_EXTERN_ON_GETHOSTID_ENTER
 PPP_CB_EXTERN(on_gethostid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_GETHOSTNAME_ENTER
 PPP_CB_EXTERN(on_gethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_GETITIMER_ENTER
 PPP_CB_EXTERN(on_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETKERNINFO_ENTER
+#define PPP_CB_EXTERN_ON_GETKERNINFO_ENTER
 PPP_CB_EXTERN(on_getkerninfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETLOGIN_ENTER
+#define PPP_CB_EXTERN_ON_GETLOGIN_ENTER
 PPP_CB_EXTERN(on_getlogin_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETLOGINCLASS_ENTER
+#define PPP_CB_EXTERN_ON_GETLOGINCLASS_ENTER
 PPP_CB_EXTERN(on_getloginclass_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPAGESIZE_ENTER
+#define PPP_CB_EXTERN_ON_GETPAGESIZE_ENTER
 PPP_CB_EXTERN(on_getpagesize_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_GETPEERNAME_ENTER
 PPP_CB_EXTERN(on_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_GETPGID_ENTER
 PPP_CB_EXTERN(on_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_GETPGRP_ENTER
 PPP_CB_EXTERN(on_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_GETPID_ENTER
 PPP_CB_EXTERN(on_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_GETPPID_ENTER
 PPP_CB_EXTERN(on_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_GETPRIORITY_ENTER
 PPP_CB_EXTERN(on_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_GETRANDOM_ENTER
 PPP_CB_EXTERN(on_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_GETRESGID_ENTER
 PPP_CB_EXTERN(on_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_GETRESUID_ENTER
 PPP_CB_EXTERN(on_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_GETRLIMIT_ENTER
 PPP_CB_EXTERN(on_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_GETRUSAGE_ENTER
 PPP_CB_EXTERN(on_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_GETSID_ENTER
 PPP_CB_EXTERN(on_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_GETSOCKNAME_ENTER
 PPP_CB_EXTERN(on_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_GETSOCKOPT_ENTER
 PPP_CB_EXTERN(on_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_GETTIMEOFDAY_ENTER
 PPP_CB_EXTERN(on_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_GETUID_ENTER
 PPP_CB_EXTERN(on_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GSSD_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_GSSD_SYSCALL_ENTER
 PPP_CB_EXTERN(on_gssd_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_IOCTL_ENTER
 PPP_CB_EXTERN(on_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ISSETUGID_ENTER
+#define PPP_CB_EXTERN_ON_ISSETUGID_ENTER
 PPP_CB_EXTERN(on_issetugid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_JAIL_ENTER
+#define PPP_CB_EXTERN_ON_JAIL_ENTER
 PPP_CB_EXTERN(on_jail_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_JAIL_ATTACH_ENTER
+#define PPP_CB_EXTERN_ON_JAIL_ATTACH_ENTER
 PPP_CB_EXTERN(on_jail_attach_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_JAIL_GET_ENTER
+#define PPP_CB_EXTERN_ON_JAIL_GET_ENTER
 PPP_CB_EXTERN(on_jail_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_JAIL_REMOVE_ENTER
+#define PPP_CB_EXTERN_ON_JAIL_REMOVE_ENTER
 PPP_CB_EXTERN(on_jail_remove_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_JAIL_SET_ENTER
+#define PPP_CB_EXTERN_ON_JAIL_SET_ENTER
 PPP_CB_EXTERN(on_jail_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KENV_ENTER
+#define PPP_CB_EXTERN_ON_KENV_ENTER
 PPP_CB_EXTERN(on_kenv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KEVENT_ENTER
+#define PPP_CB_EXTERN_ON_KEVENT_ENTER
 PPP_CB_EXTERN(on_kevent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KILL_ENTER
+#define PPP_CB_EXTERN_ON_KILL_ENTER
 PPP_CB_EXTERN(on_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KILLPG_ENTER
+#define PPP_CB_EXTERN_ON_KILLPG_ENTER
 PPP_CB_EXTERN(on_killpg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDFIND_ENTER
+#define PPP_CB_EXTERN_ON_KLDFIND_ENTER
 PPP_CB_EXTERN(on_kldfind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDFIRSTMOD_ENTER
+#define PPP_CB_EXTERN_ON_KLDFIRSTMOD_ENTER
 PPP_CB_EXTERN(on_kldfirstmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDLOAD_ENTER
+#define PPP_CB_EXTERN_ON_KLDLOAD_ENTER
 PPP_CB_EXTERN(on_kldload_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDNEXT_ENTER
+#define PPP_CB_EXTERN_ON_KLDNEXT_ENTER
 PPP_CB_EXTERN(on_kldnext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDSTAT_ENTER
+#define PPP_CB_EXTERN_ON_KLDSTAT_ENTER
 PPP_CB_EXTERN(on_kldstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDSYM_ENTER
+#define PPP_CB_EXTERN_ON_KLDSYM_ENTER
 PPP_CB_EXTERN(on_kldsym_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDUNLOAD_ENTER
+#define PPP_CB_EXTERN_ON_KLDUNLOAD_ENTER
 PPP_CB_EXTERN(on_kldunload_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KLDUNLOADF_ENTER
+#define PPP_CB_EXTERN_ON_KLDUNLOADF_ENTER
 PPP_CB_EXTERN(on_kldunloadf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KMQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_KMQ_NOTIFY_ENTER
 PPP_CB_EXTERN(on_kmq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KMQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_KMQ_OPEN_ENTER
 PPP_CB_EXTERN(on_kmq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KMQ_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_KMQ_SETATTR_ENTER
 PPP_CB_EXTERN(on_kmq_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KMQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_KMQ_TIMEDRECEIVE_ENTER
 PPP_CB_EXTERN(on_kmq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KMQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_KMQ_TIMEDSEND_ENTER
 PPP_CB_EXTERN(on_kmq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KMQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_KMQ_UNLINK_ENTER
 PPP_CB_EXTERN(on_kmq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KQUEUE_ENTER
+#define PPP_CB_EXTERN_ON_KQUEUE_ENTER
 PPP_CB_EXTERN(on_kqueue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_CLOSE_ENTER
 PPP_CB_EXTERN(on_ksem_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_DESTROY_ENTER
 PPP_CB_EXTERN(on_ksem_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_GETVALUE_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_GETVALUE_ENTER
 PPP_CB_EXTERN(on_ksem_getvalue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_INIT_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_INIT_ENTER
 PPP_CB_EXTERN(on_ksem_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_OPEN_ENTER
 PPP_CB_EXTERN(on_ksem_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_POST_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_POST_ENTER
 PPP_CB_EXTERN(on_ksem_post_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_TIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_TIMEDWAIT_ENTER
 PPP_CB_EXTERN(on_ksem_timedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_TRYWAIT_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_TRYWAIT_ENTER
 PPP_CB_EXTERN(on_ksem_trywait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_UNLINK_ENTER
 PPP_CB_EXTERN(on_ksem_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KSEM_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_KSEM_WAIT_ENTER
 PPP_CB_EXTERN(on_ksem_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KTIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_KTIMER_CREATE_ENTER
 PPP_CB_EXTERN(on_ktimer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KTIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_KTIMER_DELETE_ENTER
 PPP_CB_EXTERN(on_ktimer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KTIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_KTIMER_GETOVERRUN_ENTER
 PPP_CB_EXTERN(on_ktimer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KTIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_KTIMER_GETTIME_ENTER
 PPP_CB_EXTERN(on_ktimer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KTIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_KTIMER_SETTIME_ENTER
 PPP_CB_EXTERN(on_ktimer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_KTRACE_ENTER
+#define PPP_CB_EXTERN_ON_KTRACE_ENTER
 PPP_CB_EXTERN(on_ktrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LCHFLAGS_ENTER
+#define PPP_CB_EXTERN_ON_LCHFLAGS_ENTER
 PPP_CB_EXTERN(on_lchflags_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_LCHMOD_ENTER
 PPP_CB_EXTERN(on_lchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_LCHOWN_ENTER
 PPP_CB_EXTERN(on_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LGETFH_ENTER
+#define PPP_CB_EXTERN_ON_LGETFH_ENTER
 PPP_CB_EXTERN(on_lgetfh_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LINK_ENTER
+#define PPP_CB_EXTERN_ON_LINK_ENTER
 PPP_CB_EXTERN(on_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_LINKAT_ENTER
 PPP_CB_EXTERN(on_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LIO_LISTIO_ENTER
+#define PPP_CB_EXTERN_ON_LIO_LISTIO_ENTER
 PPP_CB_EXTERN(on_lio_listio_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_LISTEN_ENTER
 PPP_CB_EXTERN(on_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LPATHCONF_ENTER
+#define PPP_CB_EXTERN_ON_LPATHCONF_ENTER
 PPP_CB_EXTERN(on_lpathconf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_LSEEK_ENTER
 PPP_CB_EXTERN(on_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LSTAT_ENTER
+#define PPP_CB_EXTERN_ON_LSTAT_ENTER
 PPP_CB_EXTERN(on_lstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_LUTIMES_ENTER
+#define PPP_CB_EXTERN_ON_LUTIMES_ENTER
 PPP_CB_EXTERN(on_lutimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MAC_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_MAC_SYSCALL_ENTER
 PPP_CB_EXTERN(on_mac_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_MADVISE_ENTER
 PPP_CB_EXTERN(on_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_MINCORE_ENTER
 PPP_CB_EXTERN(on_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MINHERIT_ENTER
+#define PPP_CB_EXTERN_ON_MINHERIT_ENTER
 PPP_CB_EXTERN(on_minherit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_MKDIR_ENTER
 PPP_CB_EXTERN(on_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_MKDIRAT_ENTER
 PPP_CB_EXTERN(on_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MKFIFO_ENTER
+#define PPP_CB_EXTERN_ON_MKFIFO_ENTER
 PPP_CB_EXTERN(on_mkfifo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MKFIFOAT_ENTER
+#define PPP_CB_EXTERN_ON_MKFIFOAT_ENTER
 PPP_CB_EXTERN(on_mkfifoat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_MKNOD_ENTER
 PPP_CB_EXTERN(on_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_MKNODAT_ENTER
 PPP_CB_EXTERN(on_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_MLOCK_ENTER
 PPP_CB_EXTERN(on_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_MLOCKALL_ENTER
 PPP_CB_EXTERN(on_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MODFIND_ENTER
+#define PPP_CB_EXTERN_ON_MODFIND_ENTER
 PPP_CB_EXTERN(on_modfind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MODFNEXT_ENTER
+#define PPP_CB_EXTERN_ON_MODFNEXT_ENTER
 PPP_CB_EXTERN(on_modfnext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MODNEXT_ENTER
+#define PPP_CB_EXTERN_ON_MODNEXT_ENTER
 PPP_CB_EXTERN(on_modnext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MODSTAT_ENTER
+#define PPP_CB_EXTERN_ON_MODSTAT_ENTER
 PPP_CB_EXTERN(on_modstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_MOUNT_ENTER
 PPP_CB_EXTERN(on_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_MPROTECT_ENTER
 PPP_CB_EXTERN(on_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_MSGCTL_ENTER
 PPP_CB_EXTERN(on_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_MSGGET_ENTER
 PPP_CB_EXTERN(on_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_MSGRCV_ENTER
 PPP_CB_EXTERN(on_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_MSGSND_ENTER
 PPP_CB_EXTERN(on_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_MSYNC_ENTER
 PPP_CB_EXTERN(on_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_MUNLOCK_ENTER
 PPP_CB_EXTERN(on_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_MUNMAP_ENTER
 PPP_CB_EXTERN(on_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_NANOSLEEP_ENTER
 PPP_CB_EXTERN(on_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NFSSVC_ENTER
+#define PPP_CB_EXTERN_ON_NFSSVC_ENTER
 PPP_CB_EXTERN(on_nfssvc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_NFSTAT_ENTER
 PPP_CB_EXTERN(on_nfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NLM_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_NLM_SYSCALL_ENTER
 PPP_CB_EXTERN(on_nlm_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_NLSTAT_ENTER
 PPP_CB_EXTERN(on_nlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_NMOUNT_ENTER
 PPP_CB_EXTERN(on_nmount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NNPFS_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_NNPFS_SYSCALL_ENTER
 PPP_CB_EXTERN(on_nnpfs_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NOSYS_ENTER
+#define PPP_CB_EXTERN_ON_NOSYS_ENTER
 PPP_CB_EXTERN(on_nosys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NSTAT_ENTER
+#define PPP_CB_EXTERN_ON_NSTAT_ENTER
 PPP_CB_EXTERN(on_nstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCEPTCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTACCEPTCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAcceptConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECK_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECK_ENTER
 PPP_CB_EXTERN(on_NtAccessCheck_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKANDAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKANDAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckAndAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPE_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPE_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByType_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPEANDAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPEANDAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeAndAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLIST_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLIST_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeResultList_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeResultListAndAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARMBYHANDLE_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARMBYHANDLE_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADDATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTADDATOM_ENTER
 PPP_CB_EXTERN(on_NtAddAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADDBOOTENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTADDBOOTENTRY_ENTER
 PPP_CB_EXTERN(on_NtAddBootEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADDDRIVERENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTADDDRIVERENTRY_ENTER
 PPP_CB_EXTERN(on_NtAddDriverEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADJUSTGROUPSTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTADJUSTGROUPSTOKEN_ENTER
 PPP_CB_EXTERN(on_NtAdjustGroupsToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADJUSTPRIVILEGESTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTADJUSTPRIVILEGESTOKEN_ENTER
 PPP_CB_EXTERN(on_NtAdjustPrivilegesToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALERTRESUMETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTALERTRESUMETHREAD_ENTER
 PPP_CB_EXTERN(on_NtAlertResumeThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALERTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTALERTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtAlertThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATELOCALLYUNIQUEID_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATELOCALLYUNIQUEID_ENTER
 PPP_CB_EXTERN(on_NtAllocateLocallyUniqueId_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATERESERVEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATERESERVEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtAllocateReserveObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATEUSERPHYSICALPAGES_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATEUSERPHYSICALPAGES_ENTER
 PPP_CB_EXTERN(on_NtAllocateUserPhysicalPages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATEUUIDS_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATEUUIDS_ENTER
 PPP_CB_EXTERN(on_NtAllocateUuids_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATEVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATEVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtAllocateVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCACCEPTCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCACCEPTCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcAcceptConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCANCELMESSAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCANCELMESSAGE_ENTER
 PPP_CB_EXTERN(on_NtAlpcCancelMessage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATEPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreatePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATEPORTSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATEPORTSECTION_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreatePortSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATERESOURCERESERVE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATERESOURCERESERVE_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreateResourceReserve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATESECTIONVIEW_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATESECTIONVIEW_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreateSectionView_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATESECURITYCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATESECURITYCONTEXT_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreateSecurityContext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETEPORTSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETEPORTSECTION_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeletePortSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETERESOURCERESERVE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETERESOURCERESERVE_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeleteResourceReserve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETESECTIONVIEW_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETESECTIONVIEW_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeleteSectionView_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETESECURITYCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETESECURITYCONTEXT_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeleteSecurityContext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDISCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDISCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcDisconnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCIMPERSONATECLIENTOFPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCIMPERSONATECLIENTOFPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcImpersonateClientOfPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCOPENSENDERPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCOPENSENDERPROCESS_ENTER
 PPP_CB_EXTERN(on_NtAlpcOpenSenderProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCOPENSENDERTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCOPENSENDERTHREAD_ENTER
 PPP_CB_EXTERN(on_NtAlpcOpenSenderThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtAlpcQueryInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATIONMESSAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATIONMESSAGE_ENTER
 PPP_CB_EXTERN(on_NtAlpcQueryInformationMessage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCREVOKESECURITYCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCREVOKESECURITYCONTEXT_ENTER
 PPP_CB_EXTERN(on_NtAlpcRevokeSecurityContext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCSENDWAITRECEIVEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCSENDWAITRECEIVEPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcSendWaitReceivePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCSETINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCSETINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtAlpcSetInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTAPPHELPCACHECONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTAPPHELPCACHECONTROL_ENTER
 PPP_CB_EXTERN(on_NtApphelpCacheControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTAREMAPPEDFILESTHESAME_ENTER
+#define PPP_CB_EXTERN_ON_NTAREMAPPEDFILESTHESAME_ENTER
 PPP_CB_EXTERN(on_NtAreMappedFilesTheSame_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTASSIGNPROCESSTOJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTASSIGNPROCESSTOJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtAssignProcessToJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCALLBACKRETURN_ENTER
+#define PPP_CB_EXTERN_ON_NTCALLBACKRETURN_ENTER
 PPP_CB_EXTERN(on_NtCallbackReturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELIOFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELIOFILE_ENTER
 PPP_CB_EXTERN(on_NtCancelIoFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELIOFILEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELIOFILEEX_ENTER
 PPP_CB_EXTERN(on_NtCancelIoFileEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELSYNCHRONOUSIOFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELSYNCHRONOUSIOFILE_ENTER
 PPP_CB_EXTERN(on_NtCancelSynchronousIoFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELTIMER_ENTER
 PPP_CB_EXTERN(on_NtCancelTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCLEAREVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCLEAREVENT_ENTER
 PPP_CB_EXTERN(on_NtClearEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCLOSE_ENTER
+#define PPP_CB_EXTERN_ON_NTCLOSE_ENTER
 PPP_CB_EXTERN(on_NtClose_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCLOSEOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTCLOSEOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtCloseObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMMITCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMMITCOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtCommitComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMMITENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMMITENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtCommitEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMMITTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMMITTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtCommitTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPACTKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPACTKEYS_ENTER
 PPP_CB_EXTERN(on_NtCompactKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPARETOKENS_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPARETOKENS_ENTER
 PPP_CB_EXTERN(on_NtCompareTokens_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPLETECONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPLETECONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtCompleteConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPRESSKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPRESSKEY_ENTER
 PPP_CB_EXTERN(on_NtCompressKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCONTINUE_ENTER
+#define PPP_CB_EXTERN_ON_NTCONTINUE_ENTER
 PPP_CB_EXTERN(on_NtContinue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEDEBUGOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEDEBUGOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateDebugObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEDIRECTORYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEDIRECTORYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateDirectoryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtCreateEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEEVENT_ENTER
 PPP_CB_EXTERN(on_NtCreateEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtCreateEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtCreateIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEJOBSET_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEJOBSET_ENTER
 PPP_CB_EXTERN(on_NtCreateJobSet_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEKEY_ENTER
 PPP_CB_EXTERN(on_NtCreateKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtCreateKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEKEYTRANSACTED_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEKEYTRANSACTED_ENTER
 PPP_CB_EXTERN(on_NtCreateKeyTransacted_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEMAILSLOTFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEMAILSLOTFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateMailslotFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEMUTANT_ENTER
 PPP_CB_EXTERN(on_NtCreateMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATENAMEDPIPEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATENAMEDPIPEFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateNamedPipeFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPAGINGFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPAGINGFILE_ENTER
 PPP_CB_EXTERN(on_NtCreatePagingFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPORT_ENTER
 PPP_CB_EXTERN(on_NtCreatePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPRIVATENAMESPACE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPRIVATENAMESPACE_ENTER
 PPP_CB_EXTERN(on_NtCreatePrivateNamespace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtCreateProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROCESSEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROCESSEX_ENTER
 PPP_CB_EXTERN(on_NtCreateProcessEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROFILEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROFILEEX_ENTER
 PPP_CB_EXTERN(on_NtCreateProfileEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATERESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATERESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtCreateResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATESECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATESECTION_ENTER
 PPP_CB_EXTERN(on_NtCreateSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATESEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATESEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtCreateSemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATESYMBOLICLINKOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATESYMBOLICLINKOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateSymbolicLinkObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETHREAD_ENTER
 PPP_CB_EXTERN(on_NtCreateThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETHREADEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETHREADEX_ENTER
 PPP_CB_EXTERN(on_NtCreateThreadEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETIMER_ENTER
 PPP_CB_EXTERN(on_NtCreateTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETOKEN_ENTER
 PPP_CB_EXTERN(on_NtCreateToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtCreateTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtCreateTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEUSERPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEUSERPROCESS_ENTER
 PPP_CB_EXTERN(on_NtCreateUserProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEWAITABLEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEWAITABLEPORT_ENTER
 PPP_CB_EXTERN(on_NtCreateWaitablePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtCreateWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDEBUGACTIVEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTDEBUGACTIVEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtDebugActiveProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDEBUGCONTINUE_ENTER
+#define PPP_CB_EXTERN_ON_NTDEBUGCONTINUE_ENTER
 PPP_CB_EXTERN(on_NtDebugContinue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELAYEXECUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTDELAYEXECUTION_ENTER
 PPP_CB_EXTERN(on_NtDelayExecution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEATOM_ENTER
 PPP_CB_EXTERN(on_NtDeleteAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEBOOTENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEBOOTENTRY_ENTER
 PPP_CB_EXTERN(on_NtDeleteBootEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEDRIVERENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEDRIVERENTRY_ENTER
 PPP_CB_EXTERN(on_NtDeleteDriverEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEFILE_ENTER
 PPP_CB_EXTERN(on_NtDeleteFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEKEY_ENTER
 PPP_CB_EXTERN(on_NtDeleteKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtDeleteObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEPRIVATENAMESPACE_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEPRIVATENAMESPACE_ENTER
 PPP_CB_EXTERN(on_NtDeletePrivateNamespace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtDeleteValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDEVICEIOCONTROLFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTDEVICEIOCONTROLFILE_ENTER
 PPP_CB_EXTERN(on_NtDeviceIoControlFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDISABLELASTKNOWNGOOD_ENTER
+#define PPP_CB_EXTERN_ON_NTDISABLELASTKNOWNGOOD_ENTER
 PPP_CB_EXTERN(on_NtDisableLastKnownGood_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDISPLAYSTRING_ENTER
+#define PPP_CB_EXTERN_ON_NTDISPLAYSTRING_ENTER
 PPP_CB_EXTERN(on_NtDisplayString_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDRAWTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTDRAWTEXT_ENTER
 PPP_CB_EXTERN(on_NtDrawText_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDUPLICATEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTDUPLICATEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtDuplicateObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDUPLICATETOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTDUPLICATETOKEN_ENTER
 PPP_CB_EXTERN(on_NtDuplicateToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENABLELASTKNOWNGOOD_ENTER
+#define PPP_CB_EXTERN_ON_NTENABLELASTKNOWNGOOD_ENTER
 PPP_CB_EXTERN(on_NtEnableLastKnownGood_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEBOOTENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEBOOTENTRIES_ENTER
 PPP_CB_EXTERN(on_NtEnumerateBootEntries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEDRIVERENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEDRIVERENTRIES_ENTER
 PPP_CB_EXTERN(on_NtEnumerateDriverEntries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEKEY_ENTER
 PPP_CB_EXTERN(on_NtEnumerateKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATESYSTEMENVIRONMENTVALUESEX_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATESYSTEMENVIRONMENTVALUESEX_ENTER
 PPP_CB_EXTERN(on_NtEnumerateSystemEnvironmentValuesEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATETRANSACTIONOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATETRANSACTIONOBJECT_ENTER
 PPP_CB_EXTERN(on_NtEnumerateTransactionObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtEnumerateValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTEXTENDSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTEXTENDSECTION_ENTER
 PPP_CB_EXTERN(on_NtExtendSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFILTERTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTFILTERTOKEN_ENTER
 PPP_CB_EXTERN(on_NtFilterToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFINDATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTFINDATOM_ENTER
 PPP_CB_EXTERN(on_NtFindAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHBUFFERSFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHBUFFERSFILE_ENTER
 PPP_CB_EXTERN(on_NtFlushBuffersFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHINSTALLUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHINSTALLUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtFlushInstallUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHINSTRUCTIONCACHE_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHINSTRUCTIONCACHE_ENTER
 PPP_CB_EXTERN(on_NtFlushInstructionCache_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHKEY_ENTER
 PPP_CB_EXTERN(on_NtFlushKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHPROCESSWRITEBUFFERS_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHPROCESSWRITEBUFFERS_ENTER
 PPP_CB_EXTERN(on_NtFlushProcessWriteBuffers_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtFlushVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHWRITEBUFFER_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHWRITEBUFFER_ENTER
 PPP_CB_EXTERN(on_NtFlushWriteBuffer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEUSERPHYSICALPAGES_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEUSERPHYSICALPAGES_ENTER
 PPP_CB_EXTERN(on_NtFreeUserPhysicalPages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtFreeVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEZEREGISTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEZEREGISTRY_ENTER
 PPP_CB_EXTERN(on_NtFreezeRegistry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEZETRANSACTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEZETRANSACTIONS_ENTER
 PPP_CB_EXTERN(on_NtFreezeTransactions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFSCONTROLFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTFSCONTROLFILE_ENTER
 PPP_CB_EXTERN(on_NtFsControlFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETCONTEXTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTGETCONTEXTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtGetContextThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETCURRENTPROCESSORNUMBER_ENTER
+#define PPP_CB_EXTERN_ON_NTGETCURRENTPROCESSORNUMBER_ENTER
 PPP_CB_EXTERN(on_NtGetCurrentProcessorNumber_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETDEVICEPOWERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTGETDEVICEPOWERSTATE_ENTER
 PPP_CB_EXTERN(on_NtGetDevicePowerState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETMUIREGISTRYINFO_ENTER
+#define PPP_CB_EXTERN_ON_NTGETMUIREGISTRYINFO_ENTER
 PPP_CB_EXTERN(on_NtGetMUIRegistryInfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNEXTPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNEXTPROCESS_ENTER
 PPP_CB_EXTERN(on_NtGetNextProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNEXTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNEXTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtGetNextThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNLSSECTIONPTR_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNLSSECTIONPTR_ENTER
 PPP_CB_EXTERN(on_NtGetNlsSectionPtr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNOTIFICATIONRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNOTIFICATIONRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtGetNotificationResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETPLUGPLAYEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTGETPLUGPLAYEVENT_ENTER
 PPP_CB_EXTERN(on_NtGetPlugPlayEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETWRITEWATCH_ENTER
+#define PPP_CB_EXTERN_ON_NTGETWRITEWATCH_ENTER
 PPP_CB_EXTERN(on_NtGetWriteWatch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTIMPERSONATEANONYMOUSTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTIMPERSONATEANONYMOUSTOKEN_ENTER
 PPP_CB_EXTERN(on_NtImpersonateAnonymousToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTIMPERSONATECLIENTOFPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTIMPERSONATECLIENTOFPORT_ENTER
 PPP_CB_EXTERN(on_NtImpersonateClientOfPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTIMPERSONATETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTIMPERSONATETHREAD_ENTER
 PPP_CB_EXTERN(on_NtImpersonateThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTINITIALIZENLSFILES_ENTER
+#define PPP_CB_EXTERN_ON_NTINITIALIZENLSFILES_ENTER
 PPP_CB_EXTERN(on_NtInitializeNlsFiles_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTINITIALIZEREGISTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTINITIALIZEREGISTRY_ENTER
 PPP_CB_EXTERN(on_NtInitializeRegistry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTINITIATEPOWERACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTINITIATEPOWERACTION_ENTER
 PPP_CB_EXTERN(on_NtInitiatePowerAction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTISPROCESSINJOB_ENTER
+#define PPP_CB_EXTERN_ON_NTISPROCESSINJOB_ENTER
 PPP_CB_EXTERN(on_NtIsProcessInJob_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTISSYSTEMRESUMEAUTOMATIC_ENTER
+#define PPP_CB_EXTERN_ON_NTISSYSTEMRESUMEAUTOMATIC_ENTER
 PPP_CB_EXTERN(on_NtIsSystemResumeAutomatic_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTISUILANGUAGECOMITTED_ENTER
+#define PPP_CB_EXTERN_ON_NTISUILANGUAGECOMITTED_ENTER
 PPP_CB_EXTERN(on_NtIsUILanguageComitted_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLISTENPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTLISTENPORT_ENTER
 PPP_CB_EXTERN(on_NtListenPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADDRIVER_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADDRIVER_ENTER
 PPP_CB_EXTERN(on_NtLoadDriver_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADKEY_ENTER
 PPP_CB_EXTERN(on_NtLoadKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADKEY2_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADKEY2_ENTER
 PPP_CB_EXTERN(on_NtLoadKey2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADKEYEX_ENTER
 PPP_CB_EXTERN(on_NtLoadKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKFILE_ENTER
 PPP_CB_EXTERN(on_NtLockFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKPRODUCTACTIVATIONKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKPRODUCTACTIVATIONKEYS_ENTER
 PPP_CB_EXTERN(on_NtLockProductActivationKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKREGISTRYKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKREGISTRYKEY_ENTER
 PPP_CB_EXTERN(on_NtLockRegistryKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtLockVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAKEPERMANENTOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTMAKEPERMANENTOBJECT_ENTER
 PPP_CB_EXTERN(on_NtMakePermanentObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAKETEMPORARYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTMAKETEMPORARYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtMakeTemporaryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPCMFMODULE_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPCMFMODULE_ENTER
 PPP_CB_EXTERN(on_NtMapCMFModule_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGES_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGES_ENTER
 PPP_CB_EXTERN(on_NtMapUserPhysicalPages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGESSCATTER_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGESSCATTER_ENTER
 PPP_CB_EXTERN(on_NtMapUserPhysicalPagesScatter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPVIEWOFSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPVIEWOFSECTION_ENTER
 PPP_CB_EXTERN(on_NtMapViewOfSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMODIFYBOOTENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTMODIFYBOOTENTRY_ENTER
 PPP_CB_EXTERN(on_NtModifyBootEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMODIFYDRIVERENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTMODIFYDRIVERENTRY_ENTER
 PPP_CB_EXTERN(on_NtModifyDriverEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGEDIRECTORYFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGEDIRECTORYFILE_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeDirectoryFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGEKEY_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGEMULTIPLEKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGEMULTIPLEKEYS_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeMultipleKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGESESSION_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGESESSION_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeSession_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENDIRECTORYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENDIRECTORYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtOpenDirectoryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtOpenEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENEVENT_ENTER
 PPP_CB_EXTERN(on_NtOpenEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtOpenEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENFILE_ENTER
 PPP_CB_EXTERN(on_NtOpenFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtOpenIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtOpenJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEY_ENTER
 PPP_CB_EXTERN(on_NtOpenKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYEX_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTED_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTED_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyTransacted_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTEDEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTEDEX_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyTransactedEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENMUTANT_ENTER
 PPP_CB_EXTERN(on_NtOpenMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtOpenObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPRIVATENAMESPACE_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPRIVATENAMESPACE_ENTER
 PPP_CB_EXTERN(on_NtOpenPrivateNamespace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPROCESS_ENTER
 PPP_CB_EXTERN(on_NtOpenProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPROCESSTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPROCESSTOKEN_ENTER
 PPP_CB_EXTERN(on_NtOpenProcessToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPROCESSTOKENEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPROCESSTOKENEX_ENTER
 PPP_CB_EXTERN(on_NtOpenProcessTokenEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtOpenResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSECTION_ENTER
 PPP_CB_EXTERN(on_NtOpenSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtOpenSemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSESSION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSESSION_ENTER
 PPP_CB_EXTERN(on_NtOpenSession_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSYMBOLICLINKOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSYMBOLICLINKOBJECT_ENTER
 PPP_CB_EXTERN(on_NtOpenSymbolicLinkObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTHREAD_ENTER
 PPP_CB_EXTERN(on_NtOpenThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTHREADTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTHREADTOKEN_ENTER
 PPP_CB_EXTERN(on_NtOpenThreadToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTHREADTOKENEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTHREADTOKENEX_ENTER
 PPP_CB_EXTERN(on_NtOpenThreadTokenEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTIMER_ENTER
 PPP_CB_EXTERN(on_NtOpenTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtOpenTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtOpenTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTP_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_NTP_ADJTIME_ENTER
 PPP_CB_EXTERN(on_ntp_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTP_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_NTP_GETTIME_ENTER
 PPP_CB_EXTERN(on_ntp_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPLUGPLAYCONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTPLUGPLAYCONTROL_ENTER
 PPP_CB_EXTERN(on_NtPlugPlayControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPOWERINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTPOWERINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtPowerInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPARECOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPARECOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtPrepareComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPAREENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPAREENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtPrepareEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPREPARECOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPREPARECOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtPrePrepareComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPREPAREENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPREPAREENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtPrePrepareEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPRIVILEGECHECK_ENTER
+#define PPP_CB_EXTERN_ON_NTPRIVILEGECHECK_ENTER
 PPP_CB_EXTERN(on_NtPrivilegeCheck_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPRIVILEGEDSERVICEAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTPRIVILEGEDSERVICEAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtPrivilegedServiceAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPRIVILEGEOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTPRIVILEGEOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtPrivilegeObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPROPAGATIONCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTPROPAGATIONCOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtPropagationComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPROPAGATIONFAILED_ENTER
+#define PPP_CB_EXTERN_ON_NTPROPAGATIONFAILED_ENTER
 PPP_CB_EXTERN(on_NtPropagationFailed_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPROTECTVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTPROTECTVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtProtectVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPULSEEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTPULSEEVENT_ENTER
 PPP_CB_EXTERN(on_NtPulseEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYATTRIBUTESFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYATTRIBUTESFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryAttributesFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYBOOTENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYBOOTENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtQueryBootEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYBOOTOPTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYBOOTOPTIONS_ENTER
 PPP_CB_EXTERN(on_NtQueryBootOptions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDEBUGFILTERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDEBUGFILTERSTATE_ENTER
 PPP_CB_EXTERN(on_NtQueryDebugFilterState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDEFAULTLOCALE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDEFAULTLOCALE_ENTER
 PPP_CB_EXTERN(on_NtQueryDefaultLocale_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDEFAULTUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDEFAULTUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtQueryDefaultUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDIRECTORYFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDIRECTORYFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryDirectoryFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDIRECTORYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDIRECTORYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQueryDirectoryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDRIVERENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDRIVERENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtQueryDriverEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYEAFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYEAFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryEaFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYEVENT_ENTER
 PPP_CB_EXTERN(on_NtQueryEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYFULLATTRIBUTESFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYFULLATTRIBUTESFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryFullAttributesFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONATOM_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPORT_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPROCESS_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTHREAD_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTOKEN_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINSTALLUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINSTALLUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtQueryInstallUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINTERVALPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINTERVALPROFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryIntervalProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtQueryIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYKEY_ENTER
 PPP_CB_EXTERN(on_NtQueryKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYLICENSEVALUE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYLICENSEVALUE_ENTER
 PPP_CB_EXTERN(on_NtQueryLicenseValue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYMULTIPLEVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYMULTIPLEVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtQueryMultipleValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYMUTANT_ENTER
 PPP_CB_EXTERN(on_NtQueryMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQueryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYS_ENTER
 PPP_CB_EXTERN(on_NtQueryOpenSubKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYSEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYSEX_ENTER
 PPP_CB_EXTERN(on_NtQueryOpenSubKeysEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYPERFORMANCECOUNTER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYPERFORMANCECOUNTER_ENTER
 PPP_CB_EXTERN(on_NtQueryPerformanceCounter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYPORTINFORMATIONPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYPORTINFORMATIONPROCESS_ENTER
 PPP_CB_EXTERN(on_NtQueryPortInformationProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYQUOTAINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYQUOTAINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryQuotaInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSECTION_ENTER
 PPP_CB_EXTERN(on_NtQuerySection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSECURITYATTRIBUTESTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSECURITYATTRIBUTESTOKEN_ENTER
 PPP_CB_EXTERN(on_NtQuerySecurityAttributesToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSECURITYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSECURITYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQuerySecurityObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtQuerySemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYMBOLICLINKOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYMBOLICLINKOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQuerySymbolicLinkObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUE_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemEnvironmentValue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUEEX_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemEnvironmentValueEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATIONEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATIONEX_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemInformationEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMTIME_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMTIME_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemTime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYTIMER_ENTER
 PPP_CB_EXTERN(on_NtQueryTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYTIMERRESOLUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYTIMERRESOLUTION_ENTER
 PPP_CB_EXTERN(on_NtQueryTimerResolution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtQueryValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtQueryVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYVOLUMEINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYVOLUMEINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryVolumeInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUEUEAPCTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTQUEUEAPCTHREAD_ENTER
 PPP_CB_EXTERN(on_NtQueueApcThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUEUEAPCTHREADEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUEUEAPCTHREADEX_ENTER
 PPP_CB_EXTERN(on_NtQueueApcThreadEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRAISEEXCEPTION_ENTER
+#define PPP_CB_EXTERN_ON_NTRAISEEXCEPTION_ENTER
 PPP_CB_EXTERN(on_NtRaiseException_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRAISEHARDERROR_ENTER
+#define PPP_CB_EXTERN_ON_NTRAISEHARDERROR_ENTER
 PPP_CB_EXTERN(on_NtRaiseHardError_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTREADFILE_ENTER
 PPP_CB_EXTERN(on_NtReadFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADFILESCATTER_ENTER
+#define PPP_CB_EXTERN_ON_NTREADFILESCATTER_ENTER
 PPP_CB_EXTERN(on_NtReadFileScatter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADONLYENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTREADONLYENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtReadOnlyEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADREQUESTDATA_ENTER
+#define PPP_CB_EXTERN_ON_NTREADREQUESTDATA_ENTER
 PPP_CB_EXTERN(on_NtReadRequestData_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTREADVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtReadVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRECOVERENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTRECOVERENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtRecoverEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRECOVERRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTRECOVERRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRecoverResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRECOVERTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTRECOVERTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRecoverTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREGISTERPROTOCOLADDRESSINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTREGISTERPROTOCOLADDRESSINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtRegisterProtocolAddressInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREGISTERTHREADTERMINATEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREGISTERTHREADTERMINATEPORT_ENTER
 PPP_CB_EXTERN(on_NtRegisterThreadTerminatePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASEKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASEKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtReleaseKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASEMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASEMUTANT_ENTER
 PPP_CB_EXTERN(on_NtReleaseMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASESEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASESEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtReleaseSemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASEWORKERFACTORYWORKER_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASEWORKERFACTORYWORKER_ENTER
 PPP_CB_EXTERN(on_NtReleaseWorkerFactoryWorker_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtRemoveIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETIONEX_ENTER
+#define PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETIONEX_ENTER
 PPP_CB_EXTERN(on_NtRemoveIoCompletionEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREMOVEPROCESSDEBUG_ENTER
+#define PPP_CB_EXTERN_ON_NTREMOVEPROCESSDEBUG_ENTER
 PPP_CB_EXTERN(on_NtRemoveProcessDebug_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRENAMEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTRENAMEKEY_ENTER
 PPP_CB_EXTERN(on_NtRenameKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRENAMETRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTRENAMETRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRenameTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLACEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLACEKEY_ENTER
 PPP_CB_EXTERN(on_NtReplaceKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLACEPARTITIONUNIT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLACEPARTITIONUNIT_ENTER
 PPP_CB_EXTERN(on_NtReplacePartitionUnit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYPORT_ENTER
 PPP_CB_EXTERN(on_NtReplyPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORT_ENTER
 PPP_CB_EXTERN(on_NtReplyWaitReceivePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORTEX_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORTEX_ENTER
 PPP_CB_EXTERN(on_NtReplyWaitReceivePortEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYWAITREPLYPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYWAITREPLYPORT_ENTER
 PPP_CB_EXTERN(on_NtReplyWaitReplyPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREQUESTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREQUESTPORT_ENTER
 PPP_CB_EXTERN(on_NtRequestPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREQUESTWAITREPLYPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREQUESTWAITREPLYPORT_ENTER
 PPP_CB_EXTERN(on_NtRequestWaitReplyPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESETEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTRESETEVENT_ENTER
 PPP_CB_EXTERN(on_NtResetEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESETWRITEWATCH_ENTER
+#define PPP_CB_EXTERN_ON_NTRESETWRITEWATCH_ENTER
 PPP_CB_EXTERN(on_NtResetWriteWatch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESTOREKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTRESTOREKEY_ENTER
 PPP_CB_EXTERN(on_NtRestoreKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESUMEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTRESUMEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtResumeProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESUMETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTRESUMETHREAD_ENTER
 PPP_CB_EXTERN(on_NtResumeThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLBACKCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLBACKCOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtRollbackComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLBACKENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLBACKENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtRollbackEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLBACKTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLBACKTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtRollbackTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLFORWARDTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLFORWARDTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRollforwardTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSAVEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTSAVEKEY_ENTER
 PPP_CB_EXTERN(on_NtSaveKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSAVEKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTSAVEKEYEX_ENTER
 PPP_CB_EXTERN(on_NtSaveKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSAVEMERGEDKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTSAVEMERGEDKEYS_ENTER
 PPP_CB_EXTERN(on_NtSaveMergedKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSECURECONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTSECURECONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtSecureConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSERIALIZEBOOT_ENTER
+#define PPP_CB_EXTERN_ON_NTSERIALIZEBOOT_ENTER
 PPP_CB_EXTERN(on_NtSerializeBoot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETBOOTENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETBOOTENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtSetBootEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETBOOTOPTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTSETBOOTOPTIONS_ENTER
 PPP_CB_EXTERN(on_NtSetBootOptions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETCONTEXTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTSETCONTEXTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtSetContextThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEBUGFILTERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEBUGFILTERSTATE_ENTER
 PPP_CB_EXTERN(on_NtSetDebugFilterState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEFAULTHARDERRORPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEFAULTHARDERRORPORT_ENTER
 PPP_CB_EXTERN(on_NtSetDefaultHardErrorPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEFAULTLOCALE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEFAULTLOCALE_ENTER
 PPP_CB_EXTERN(on_NtSetDefaultLocale_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEFAULTUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEFAULTUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtSetDefaultUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDRIVERENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDRIVERENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtSetDriverEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETEAFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETEAFILE_ENTER
 PPP_CB_EXTERN(on_NtSetEaFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETEVENT_ENTER
 PPP_CB_EXTERN(on_NtSetEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETEVENTBOOSTPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETEVENTBOOSTPRIORITY_ENTER
 PPP_CB_EXTERN(on_NtSetEventBoostPriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETHIGHEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETHIGHEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetHighEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETHIGHWAITLOWEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETHIGHWAITLOWEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetHighWaitLowEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONDEBUGOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONDEBUGOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationDebugObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtSetInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONKEY_ENTER
 PPP_CB_EXTERN(on_NtSetInformationKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONPROCESS_ENTER
 PPP_CB_EXTERN(on_NtSetInformationProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtSetInformationResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTHREAD_ENTER
 PPP_CB_EXTERN(on_NtSetInformationThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTOKEN_ENTER
 PPP_CB_EXTERN(on_NtSetInformationToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtSetInformationTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtSetInformationTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtSetInformationWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINTERVALPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINTERVALPROFILE_ENTER
 PPP_CB_EXTERN(on_NtSetIntervalProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtSetIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETIOCOMPLETIONEX_ENTER
+#define PPP_CB_EXTERN_ON_NTSETIOCOMPLETIONEX_ENTER
 PPP_CB_EXTERN(on_NtSetIoCompletionEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETLDTENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_NTSETLDTENTRIES_ENTER
 PPP_CB_EXTERN(on_NtSetLdtEntries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETLOWEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETLOWEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetLowEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETLOWWAITHIGHEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETLOWWAITHIGHEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetLowWaitHighEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETQUOTAINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETQUOTAINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtSetQuotaInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSECURITYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSECURITYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetSecurityObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUE_ENTER
 PPP_CB_EXTERN(on_NtSetSystemEnvironmentValue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUEEX_ENTER
 PPP_CB_EXTERN(on_NtSetSystemEnvironmentValueEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtSetSystemInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMPOWERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMPOWERSTATE_ENTER
 PPP_CB_EXTERN(on_NtSetSystemPowerState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMTIME_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMTIME_ENTER
 PPP_CB_EXTERN(on_NtSetSystemTime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTHREADEXECUTIONSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTHREADEXECUTIONSTATE_ENTER
 PPP_CB_EXTERN(on_NtSetThreadExecutionState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTIMER_ENTER
 PPP_CB_EXTERN(on_NtSetTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTIMEREX_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTIMEREX_ENTER
 PPP_CB_EXTERN(on_NtSetTimerEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTIMERRESOLUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTIMERRESOLUTION_ENTER
 PPP_CB_EXTERN(on_NtSetTimerResolution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETUUIDSEED_ENTER
+#define PPP_CB_EXTERN_ON_NTSETUUIDSEED_ENTER
 PPP_CB_EXTERN(on_NtSetUuidSeed_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtSetValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETVOLUMEINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETVOLUMEINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtSetVolumeInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSHUTDOWNSYSTEM_ENTER
+#define PPP_CB_EXTERN_ON_NTSHUTDOWNSYSTEM_ENTER
 PPP_CB_EXTERN(on_NtShutdownSystem_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSHUTDOWNWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTSHUTDOWNWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtShutdownWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSIGNALANDWAITFORSINGLEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSIGNALANDWAITFORSINGLEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSignalAndWaitForSingleObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSINGLEPHASEREJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSINGLEPHASEREJECT_ENTER
 PPP_CB_EXTERN(on_NtSinglePhaseReject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSTARTPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSTARTPROFILE_ENTER
 PPP_CB_EXTERN(on_NtStartProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSTOPPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSTOPPROFILE_ENTER
 PPP_CB_EXTERN(on_NtStopProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSUSPENDPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTSUSPENDPROCESS_ENTER
 PPP_CB_EXTERN(on_NtSuspendProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSUSPENDTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTSUSPENDTHREAD_ENTER
 PPP_CB_EXTERN(on_NtSuspendThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSYSTEMDEBUGCONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTSYSTEMDEBUGCONTROL_ENTER
 PPP_CB_EXTERN(on_NtSystemDebugControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTERMINATEJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTTERMINATEJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtTerminateJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTERMINATEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTTERMINATEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtTerminateProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTERMINATETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTTERMINATETHREAD_ENTER
 PPP_CB_EXTERN(on_NtTerminateThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTESTALERT_ENTER
+#define PPP_CB_EXTERN_ON_NTTESTALERT_ENTER
 PPP_CB_EXTERN(on_NtTestAlert_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTHAWREGISTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTTHAWREGISTRY_ENTER
 PPP_CB_EXTERN(on_NtThawRegistry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTHAWTRANSACTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTTHAWTRANSACTIONS_ENTER
 PPP_CB_EXTERN(on_NtThawTransactions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTRACECONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTTRACECONTROL_ENTER
 PPP_CB_EXTERN(on_NtTraceControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTRACEEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTTRACEEVENT_ENTER
 PPP_CB_EXTERN(on_NtTraceEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTRANSLATEFILEPATH_ENTER
+#define PPP_CB_EXTERN_ON_NTTRANSLATEFILEPATH_ENTER
 PPP_CB_EXTERN(on_NtTranslateFilePath_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUMSTHREADYIELD_ENTER
+#define PPP_CB_EXTERN_ON_NTUMSTHREADYIELD_ENTER
 PPP_CB_EXTERN(on_NtUmsThreadYield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADDRIVER_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADDRIVER_ENTER
 PPP_CB_EXTERN(on_NtUnloadDriver_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADKEY_ENTER
 PPP_CB_EXTERN(on_NtUnloadKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADKEY2_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADKEY2_ENTER
 PPP_CB_EXTERN(on_NtUnloadKey2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADKEYEX_ENTER
 PPP_CB_EXTERN(on_NtUnloadKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOCKFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOCKFILE_ENTER
 PPP_CB_EXTERN(on_NtUnlockFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOCKVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOCKVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtUnlockVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNMAPVIEWOFSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTUNMAPVIEWOFSECTION_ENTER
 PPP_CB_EXTERN(on_NtUnmapViewOfSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTVDMCONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTVDMCONTROL_ENTER
 PPP_CB_EXTERN(on_NtVdmControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORDEBUGEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORDEBUGEVENT_ENTER
 PPP_CB_EXTERN(on_NtWaitForDebugEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtWaitForKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS_ENTER
 PPP_CB_EXTERN(on_NtWaitForMultipleObjects_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS32_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS32_ENTER
 PPP_CB_EXTERN(on_NtWaitForMultipleObjects32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORSINGLEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORSINGLEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtWaitForSingleObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORWORKVIAWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORWORKVIAWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtWaitForWorkViaWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITHIGHEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITHIGHEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtWaitHighEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITLOWEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITLOWEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtWaitLowEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWORKERFACTORYWORKERREADY_ENTER
+#define PPP_CB_EXTERN_ON_NTWORKERFACTORYWORKERREADY_ENTER
 PPP_CB_EXTERN(on_NtWorkerFactoryWorkerReady_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEFILE_ENTER
 PPP_CB_EXTERN(on_NtWriteFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEFILEGATHER_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEFILEGATHER_ENTER
 PPP_CB_EXTERN(on_NtWriteFileGather_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEREQUESTDATA_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEREQUESTDATA_ENTER
 PPP_CB_EXTERN(on_NtWriteRequestData_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtWriteVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTYIELDEXECUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTYIELDEXECUTION_ENTER
 PPP_CB_EXTERN(on_NtYieldExecution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_OPEN_ENTER
 PPP_CB_EXTERN(on_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_OPENAT_ENTER
 PPP_CB_EXTERN(on_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PATHCONF_ENTER
+#define PPP_CB_EXTERN_ON_PATHCONF_ENTER
 PPP_CB_EXTERN(on_pathconf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PDFORK_ENTER
+#define PPP_CB_EXTERN_ON_PDFORK_ENTER
 PPP_CB_EXTERN(on_pdfork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PDGETPID_ENTER
+#define PPP_CB_EXTERN_ON_PDGETPID_ENTER
 PPP_CB_EXTERN(on_pdgetpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PDKILL_ENTER
+#define PPP_CB_EXTERN_ON_PDKILL_ENTER
 PPP_CB_EXTERN(on_pdkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_PIPE_ENTER
 PPP_CB_EXTERN(on_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_PIPE2_ENTER
 PPP_CB_EXTERN(on_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_POLL_ENTER
+#define PPP_CB_EXTERN_ON_POLL_ENTER
 PPP_CB_EXTERN(on_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_POSIX_FADVISE_ENTER
+#define PPP_CB_EXTERN_ON_POSIX_FADVISE_ENTER
 PPP_CB_EXTERN(on_posix_fadvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_POSIX_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_POSIX_FALLOCATE_ENTER
 PPP_CB_EXTERN(on_posix_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_POSIX_OPENPT_ENTER
+#define PPP_CB_EXTERN_ON_POSIX_OPENPT_ENTER
 PPP_CB_EXTERN(on_posix_openpt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_PPOLL_ENTER
 PPP_CB_EXTERN(on_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PREAD_ENTER
+#define PPP_CB_EXTERN_ON_PREAD_ENTER
 PPP_CB_EXTERN(on_pread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_PREADV_ENTER
 PPP_CB_EXTERN(on_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PROCCTL_ENTER
+#define PPP_CB_EXTERN_ON_PROCCTL_ENTER
 PPP_CB_EXTERN(on_procctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PROFIL_ENTER
+#define PPP_CB_EXTERN_ON_PROFIL_ENTER
 PPP_CB_EXTERN(on_profil_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PSELECT_ENTER
+#define PPP_CB_EXTERN_ON_PSELECT_ENTER
 PPP_CB_EXTERN(on_pselect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_PTRACE_ENTER
 PPP_CB_EXTERN(on_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PWRITE_ENTER
+#define PPP_CB_EXTERN_ON_PWRITE_ENTER
 PPP_CB_EXTERN(on_pwrite_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_PWRITEV_ENTER
 PPP_CB_EXTERN(on_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_QUOTA_ENTER
+#define PPP_CB_EXTERN_ON_QUOTA_ENTER
 PPP_CB_EXTERN(on_quota_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_QUOTACTL_ENTER
 PPP_CB_EXTERN(on_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RCTL_ADD_RULE_ENTER
+#define PPP_CB_EXTERN_ON_RCTL_ADD_RULE_ENTER
 PPP_CB_EXTERN(on_rctl_add_rule_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RCTL_GET_LIMITS_ENTER
+#define PPP_CB_EXTERN_ON_RCTL_GET_LIMITS_ENTER
 PPP_CB_EXTERN(on_rctl_get_limits_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RCTL_GET_RACCT_ENTER
+#define PPP_CB_EXTERN_ON_RCTL_GET_RACCT_ENTER
 PPP_CB_EXTERN(on_rctl_get_racct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RCTL_GET_RULES_ENTER
+#define PPP_CB_EXTERN_ON_RCTL_GET_RULES_ENTER
 PPP_CB_EXTERN(on_rctl_get_rules_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RCTL_REMOVE_RULE_ENTER
+#define PPP_CB_EXTERN_ON_RCTL_REMOVE_RULE_ENTER
 PPP_CB_EXTERN(on_rctl_remove_rule_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_READ_ENTER
+#define PPP_CB_EXTERN_ON_READ_ENTER
 PPP_CB_EXTERN(on_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_READLINK_ENTER
 PPP_CB_EXTERN(on_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_READLINKAT_ENTER
 PPP_CB_EXTERN(on_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_READV_ENTER
+#define PPP_CB_EXTERN_ON_READV_ENTER
 PPP_CB_EXTERN(on_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_REBOOT_ENTER
 PPP_CB_EXTERN(on_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RECV_ENTER
+#define PPP_CB_EXTERN_ON_RECV_ENTER
 PPP_CB_EXTERN(on_recv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_RECVFROM_ENTER
 PPP_CB_EXTERN(on_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_RECVMSG_ENTER
 PPP_CB_EXTERN(on_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_RENAME_ENTER
 PPP_CB_EXTERN(on_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_RENAMEAT_ENTER
 PPP_CB_EXTERN(on_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_REVOKE_ENTER
+#define PPP_CB_EXTERN_ON_REVOKE_ENTER
 PPP_CB_EXTERN(on_revoke_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RFORK_ENTER
+#define PPP_CB_EXTERN_ON_RFORK_ENTER
 PPP_CB_EXTERN(on_rfork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_RMDIR_ENTER
 PPP_CB_EXTERN(on_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RPCTLS_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_RPCTLS_SYSCALL_ENTER
 PPP_CB_EXTERN(on_rpctls_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RTPRIO_ENTER
+#define PPP_CB_EXTERN_ON_RTPRIO_ENTER
 PPP_CB_EXTERN(on_rtprio_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_RTPRIO_THREAD_ENTER
+#define PPP_CB_EXTERN_ON_RTPRIO_THREAD_ENTER
 PPP_CB_EXTERN(on_rtprio_thread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SBRK_ENTER
+#define PPP_CB_EXTERN_ON_SBRK_ENTER
 PPP_CB_EXTERN(on_sbrk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_GET_PRIORITY_MAX_ENTER
 PPP_CB_EXTERN(on_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_GET_PRIORITY_MIN_ENTER
 PPP_CB_EXTERN(on_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_GETPARAM_ENTER
 PPP_CB_EXTERN(on_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_GETSCHEDULER_ENTER
 PPP_CB_EXTERN(on_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_RR_GET_INTERVAL_ENTER
 PPP_CB_EXTERN(on_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_SETPARAM_ENTER
 PPP_CB_EXTERN(on_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_SETSCHEDULER_ENTER
 PPP_CB_EXTERN(on_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SCHED_YIELD_ENTER
 PPP_CB_EXTERN(on_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCTP_GENERIC_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SCTP_GENERIC_RECVMSG_ENTER
 PPP_CB_EXTERN(on_sctp_generic_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCTP_GENERIC_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SCTP_GENERIC_SENDMSG_ENTER
 PPP_CB_EXTERN(on_sctp_generic_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCTP_GENERIC_SENDMSG_IOV_ENTER
+#define PPP_CB_EXTERN_ON_SCTP_GENERIC_SENDMSG_IOV_ENTER
 PPP_CB_EXTERN(on_sctp_generic_sendmsg_iov_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SCTP_PEELOFF_ENTER
+#define PPP_CB_EXTERN_ON_SCTP_PEELOFF_ENTER
 PPP_CB_EXTERN(on_sctp_peeloff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SELECT_ENTER
 PPP_CB_EXTERN(on_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SEMGET_ENTER
 PPP_CB_EXTERN(on_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SEMOP_ENTER
+#define PPP_CB_EXTERN_ON_SEMOP_ENTER
 PPP_CB_EXTERN(on_semop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SEMSYS_ENTER
+#define PPP_CB_EXTERN_ON_SEMSYS_ENTER
 PPP_CB_EXTERN(on_semsys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SEND_ENTER
+#define PPP_CB_EXTERN_ON_SEND_ENTER
 PPP_CB_EXTERN(on_send_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SENDFILE_ENTER
 PPP_CB_EXTERN(on_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SENDMSG_ENTER
 PPP_CB_EXTERN(on_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SENDTO_ENTER
 PPP_CB_EXTERN(on_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETAUDIT_ENTER
+#define PPP_CB_EXTERN_ON_SETAUDIT_ENTER
 PPP_CB_EXTERN(on_setaudit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETAUDIT_ADDR_ENTER
+#define PPP_CB_EXTERN_ON_SETAUDIT_ADDR_ENTER
 PPP_CB_EXTERN(on_setaudit_addr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETAUID_ENTER
+#define PPP_CB_EXTERN_ON_SETAUID_ENTER
 PPP_CB_EXTERN(on_setauid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_SETCONTEXT_ENTER
 PPP_CB_EXTERN(on_setcontext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SETDOMAINNAME_ENTER
 PPP_CB_EXTERN(on_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SETEGID_ENTER
 PPP_CB_EXTERN(on_setegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SETEUID_ENTER
 PPP_CB_EXTERN(on_seteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETFIB_ENTER
+#define PPP_CB_EXTERN_ON_SETFIB_ENTER
 PPP_CB_EXTERN(on_setfib_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SETGID_ENTER
 PPP_CB_EXTERN(on_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SETGROUPS_ENTER
 PPP_CB_EXTERN(on_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETHOSTID_ENTER
+#define PPP_CB_EXTERN_ON_SETHOSTID_ENTER
 PPP_CB_EXTERN(on_sethostid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SETHOSTNAME_ENTER
 PPP_CB_EXTERN(on_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SETITIMER_ENTER
 PPP_CB_EXTERN(on_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETLOGIN_ENTER
+#define PPP_CB_EXTERN_ON_SETLOGIN_ENTER
 PPP_CB_EXTERN(on_setlogin_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETLOGINCLASS_ENTER
+#define PPP_CB_EXTERN_ON_SETLOGINCLASS_ENTER
 PPP_CB_EXTERN(on_setloginclass_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SETPGID_ENTER
 PPP_CB_EXTERN(on_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SETPRIORITY_ENTER
 PPP_CB_EXTERN(on_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SETREGID_ENTER
 PPP_CB_EXTERN(on_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SETRESGID_ENTER
 PPP_CB_EXTERN(on_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SETRESUID_ENTER
 PPP_CB_EXTERN(on_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SETREUID_ENTER
 PPP_CB_EXTERN(on_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SETRLIMIT_ENTER
 PPP_CB_EXTERN(on_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SETSID_ENTER
 PPP_CB_EXTERN(on_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SETSOCKOPT_ENTER
 PPP_CB_EXTERN(on_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SETTIMEOFDAY_ENTER
 PPP_CB_EXTERN(on_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SETUID_ENTER
 PPP_CB_EXTERN(on_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHM_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SHM_OPEN_ENTER
 PPP_CB_EXTERN(on_shm_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHM_OPEN2_ENTER
+#define PPP_CB_EXTERN_ON_SHM_OPEN2_ENTER
 PPP_CB_EXTERN(on_shm_open2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHM_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SHM_RENAME_ENTER
 PPP_CB_EXTERN(on_shm_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHM_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SHM_UNLINK_ENTER
 PPP_CB_EXTERN(on_shm_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SHMCTL_ENTER
 PPP_CB_EXTERN(on_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SHMDT_ENTER
 PPP_CB_EXTERN(on_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SHMGET_ENTER
 PPP_CB_EXTERN(on_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SHUTDOWN_ENTER
 PPP_CB_EXTERN(on_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SIGACTION_ENTER
 PPP_CB_EXTERN(on_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SIGALTSTACK_ENTER
 PPP_CB_EXTERN(on_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGBLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SIGBLOCK_ENTER
 PPP_CB_EXTERN(on_sigblock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGFASTBLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SIGFASTBLOCK_ENTER
 PPP_CB_EXTERN(on_sigfastblock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SIGPENDING_ENTER
 PPP_CB_EXTERN(on_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SIGPROCMASK_ENTER
 PPP_CB_EXTERN(on_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGQUEUE_ENTER
+#define PPP_CB_EXTERN_ON_SIGQUEUE_ENTER
 PPP_CB_EXTERN(on_sigqueue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SIGRETURN_ENTER
 PPP_CB_EXTERN(on_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGSETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SIGSETMASK_ENTER
 PPP_CB_EXTERN(on_sigsetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SIGSTACK_ENTER
 PPP_CB_EXTERN(on_sigstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SIGSUSPEND_ENTER
 PPP_CB_EXTERN(on_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SIGTIMEDWAIT_ENTER
 PPP_CB_EXTERN(on_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGVEC_ENTER
+#define PPP_CB_EXTERN_ON_SIGVEC_ENTER
 PPP_CB_EXTERN(on_sigvec_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SIGWAIT_ENTER
 PPP_CB_EXTERN(on_sigwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SIGWAITINFO_ENTER
+#define PPP_CB_EXTERN_ON_SIGWAITINFO_ENTER
 PPP_CB_EXTERN(on_sigwaitinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SOCKET_ENTER
 PPP_CB_EXTERN(on_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SOCKETPAIR_ENTER
 PPP_CB_EXTERN(on_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SSTK_ENTER
+#define PPP_CB_EXTERN_ON_SSTK_ENTER
 PPP_CB_EXTERN(on_sstk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_STAT_ENTER
+#define PPP_CB_EXTERN_ON_STAT_ENTER
 PPP_CB_EXTERN(on_stat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_STATFS_ENTER
 PPP_CB_EXTERN(on_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SWAPCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_SWAPCONTEXT_ENTER
 PPP_CB_EXTERN(on_swapcontext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SWAPOFF_ENTER
 PPP_CB_EXTERN(on_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SWAPON_ENTER
 PPP_CB_EXTERN(on_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYMLINK_ENTER
 PPP_CB_EXTERN(on_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYMLINKAT_ENTER
 PPP_CB_EXTERN(on_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYNC_ENTER
 PPP_CB_EXTERN(on_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
 PPP_CB_EXTERN(on_sys_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
 PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
 PPP_CB_EXTERN(on_sys_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
 PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
 PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
 PPP_CB_EXTERN(on_sys_adjtimex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
 PPP_CB_EXTERN(on_sys_alarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ARCH_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ARCH_PRCTL_ENTER
 PPP_CB_EXTERN(on_sys_arch_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
 PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
 PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
 PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
 PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
 PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
 PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
 PPP_CB_EXTERN(on_sys_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
 PPP_CB_EXTERN(on_sys_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
 PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
 PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
 PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
 PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
 PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
 PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
 PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
 PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
 PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
 PPP_CB_EXTERN(on_sys_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
 PPP_CB_EXTERN(on_sys_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
 PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
 PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
 PPP_CB_EXTERN(on_sys_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
 PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_epoll_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
 PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
 PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
 PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
 PPP_CB_EXTERN(on_sys_epoll_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
 PPP_CB_EXTERN(on_sys_eventfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
 PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
 PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
 PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
 PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
 PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
 PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_ENTER
 PPP_CB_EXTERN(on_sys_fadvise64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
 PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
 PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
 PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
 PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
 PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
 PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
 PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
 PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
 PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
 PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
 PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
 PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
 PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FORK_ENTER
 PPP_CB_EXTERN(on_sys_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
 PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
 PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
 PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
 PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
 PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
 PPP_CB_EXTERN(on_sys_futimesat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
 PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
 PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
 PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
 PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
 PPP_CB_EXTERN(on_sys_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
 PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
 PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
 PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
 PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
 PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
 PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
 PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
 PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
 PPP_CB_EXTERN(on_sys_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
 PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
 PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
 PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
 PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
 PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
 PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
 PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
 PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
 PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
 PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
 PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
 PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
 PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
 PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
 PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
 PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
 PPP_CB_EXTERN(on_sys_inotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
 PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
 PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
 PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
 PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
 PPP_CB_EXTERN(on_sys_io_getevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
 PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
 PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
 PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
 PPP_CB_EXTERN(on_sys_ioperm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
 PPP_CB_EXTERN(on_sys_iopl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
 PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
 PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
 PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_FILE_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_FILE_LOAD_ENTER
 PPP_CB_EXTERN(on_sys_kexec_file_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
 PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
 PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
 PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
 PPP_CB_EXTERN(on_sys_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINK_ENTER
 PPP_CB_EXTERN(on_sys_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
 PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
 PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
 PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
 PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
 PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
 PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
 PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
 PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
 PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
 PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
 PPP_CB_EXTERN(on_sys_migrate_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
 PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
 PPP_CB_EXTERN(on_sys_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
 PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
 PPP_CB_EXTERN(on_sys_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
 PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
 PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
 PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
 PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
 PPP_CB_EXTERN(on_sys_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MODIFY_LDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MODIFY_LDT_ENTER
 PPP_CB_EXTERN(on_sys_modify_ldt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
 PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
 PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
 PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
 PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
 PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
 PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
 PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
 PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
 PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
 PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
 PPP_CB_EXTERN(on_sys_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
 PPP_CB_EXTERN(on_sys_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
 PPP_CB_EXTERN(on_sys_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
 PPP_CB_EXTERN(on_sys_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
 PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
 PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
 PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
 PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
 PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
 PPP_CB_EXTERN(on_sys_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
 PPP_CB_EXTERN(on_sys_newfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
 PPP_CB_EXTERN(on_sys_newfstatat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
 PPP_CB_EXTERN(on_sys_newlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
 PPP_CB_EXTERN(on_sys_newstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
 PPP_CB_EXTERN(on_sys_newuname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
 PPP_CB_EXTERN(on_sys_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
 PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
 PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
 PPP_CB_EXTERN(on_sys_pause_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
 PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
 PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
 PPP_CB_EXTERN(on_sys_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
 PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
 PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
 PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
 PPP_CB_EXTERN(on_sys_pkey_free_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
 PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_POLL_ENTER
 PPP_CB_EXTERN(on_sys_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
 PPP_CB_EXTERN(on_sys_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
 PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
 PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
 PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
 PPP_CB_EXTERN(on_sys_preadv2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
 PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
 PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
 PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
 PPP_CB_EXTERN(on_sys_pselect6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
 PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
 PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
 PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
 PPP_CB_EXTERN(on_sys_pwritev2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
 PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
 PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
 PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
 PPP_CB_EXTERN(on_sys_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
 PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
 PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
 PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
 PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
 PPP_CB_EXTERN(on_sys_recvmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
 PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
 PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
 PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
 PPP_CB_EXTERN(on_sys_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
 PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
 PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
 PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
 PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
 PPP_CB_EXTERN(on_sys_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
 PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
 PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
 PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
 PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
 PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
 PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
 PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
 PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
 PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
 PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
 PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
 PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
 PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
 PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
 PPP_CB_EXTERN(on_sys_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
 PPP_CB_EXTERN(on_sys_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
 PPP_CB_EXTERN(on_sys_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
 PPP_CB_EXTERN(on_sys_semop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
 PPP_CB_EXTERN(on_sys_semtimedop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
 PPP_CB_EXTERN(on_sys_sendfile64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
 PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
 PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
 PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
 PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
 PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
 PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
 PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
 PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
 PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
 PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
 PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
 PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
 PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
 PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
 PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
 PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
 PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
 PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
 PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
 PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
 PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
 PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
 PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
 PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
 PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
 PPP_CB_EXTERN(on_sys_shmat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
 PPP_CB_EXTERN(on_sys_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
 PPP_CB_EXTERN(on_sys_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
 PPP_CB_EXTERN(on_sys_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
 PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
 PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
 PPP_CB_EXTERN(on_sys_signalfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
 PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
 PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
 PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
 PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
 PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
 PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
 PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
 PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
 PPP_CB_EXTERN(on_sys_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
 PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
 PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
 PPP_CB_EXTERN(on_sys_sync_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
 PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
 PPP_CB_EXTERN(on_sys_sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
 PPP_CB_EXTERN(on_sys_sysfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
 PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
 PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
 PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
 PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIME_ENTER
 PPP_CB_EXTERN(on_sys_time_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_timer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
 PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
 PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
 PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
 PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
 PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
 PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
 PPP_CB_EXTERN(on_sys_umount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
 PPP_CB_EXTERN(on_sys_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
 PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
 PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
 PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
 PPP_CB_EXTERN(on_sys_ustat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
 PPP_CB_EXTERN(on_sys_utime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
 PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
 PPP_CB_EXTERN(on_sys_utimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VFORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VFORK_ENTER
 PPP_CB_EXTERN(on_sys_vfork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
 PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
 PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
 PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
 PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
 PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
 PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYSARCH_ENTER
+#define PPP_CB_EXTERN_ON_SYSARCH_ENTER
 PPP_CB_EXTERN(on_sysarch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_THR_CREATE_ENTER
 PPP_CB_EXTERN(on_thr_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_THR_EXIT_ENTER
 PPP_CB_EXTERN(on_thr_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_KILL_ENTER
+#define PPP_CB_EXTERN_ON_THR_KILL_ENTER
 PPP_CB_EXTERN(on_thr_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_KILL2_ENTER
+#define PPP_CB_EXTERN_ON_THR_KILL2_ENTER
 PPP_CB_EXTERN(on_thr_kill2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_NEW_ENTER
+#define PPP_CB_EXTERN_ON_THR_NEW_ENTER
 PPP_CB_EXTERN(on_thr_new_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_SELF_ENTER
+#define PPP_CB_EXTERN_ON_THR_SELF_ENTER
 PPP_CB_EXTERN(on_thr_self_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_SET_NAME_ENTER
+#define PPP_CB_EXTERN_ON_THR_SET_NAME_ENTER
 PPP_CB_EXTERN(on_thr_set_name_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_SUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_THR_SUSPEND_ENTER
 PPP_CB_EXTERN(on_thr_suspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_THR_WAKE_ENTER
+#define PPP_CB_EXTERN_ON_THR_WAKE_ENTER
 PPP_CB_EXTERN(on_thr_wake_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_TRUNCATE_ENTER
 PPP_CB_EXTERN(on_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_UMASK_ENTER
 PPP_CB_EXTERN(on_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UNAME_ENTER
+#define PPP_CB_EXTERN_ON_UNAME_ENTER
 PPP_CB_EXTERN(on_uname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UNDELETE_ENTER
+#define PPP_CB_EXTERN_ON_UNDELETE_ENTER
 PPP_CB_EXTERN(on_undelete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_UNLINK_ENTER
 PPP_CB_EXTERN(on_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_UNLINKAT_ENTER
 PPP_CB_EXTERN(on_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UNMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_UNMOUNT_ENTER
 PPP_CB_EXTERN(on_unmount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_UTIMENSAT_ENTER
 PPP_CB_EXTERN(on_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UTIMES_ENTER
+#define PPP_CB_EXTERN_ON_UTIMES_ENTER
 PPP_CB_EXTERN(on_utimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UTRACE_ENTER
+#define PPP_CB_EXTERN_ON_UTRACE_ENTER
 PPP_CB_EXTERN(on_utrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_UUIDGEN_ENTER
+#define PPP_CB_EXTERN_ON_UUIDGEN_ENTER
 PPP_CB_EXTERN(on_uuidgen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_VADVISE_ENTER
+#define PPP_CB_EXTERN_ON_VADVISE_ENTER
 PPP_CB_EXTERN(on_vadvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_VFORK_ENTER
+#define PPP_CB_EXTERN_ON_VFORK_ENTER
 PPP_CB_EXTERN(on_vfork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_WAIT_ENTER
 PPP_CB_EXTERN(on_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_WAIT4_ENTER
 PPP_CB_EXTERN(on_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_WAIT6_ENTER
+#define PPP_CB_EXTERN_ON_WAIT6_ENTER
 PPP_CB_EXTERN(on_wait6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_WRITE_ENTER
 PPP_CB_EXTERN(on_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_WRITEV_ENTER
 PPP_CB_EXTERN(on_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_YIELD_ENTER
 PPP_CB_EXTERN(on_yield_enter)
 #endif
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#endif
+#if defined(TARGET_I386)
+#ifndef PPP_CB_EXTERN_ON_NTACCEPTCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTACCEPTCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAcceptConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECK_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECK_ENTER
 PPP_CB_EXTERN(on_NtAccessCheck_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKANDAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKANDAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckAndAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPE_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPE_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByType_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPEANDAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPEANDAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeAndAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLIST_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLIST_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeResultList_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeResultListAndAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARMBYHANDLE_ENTER
+#define PPP_CB_EXTERN_ON_NTACCESSCHECKBYTYPERESULTLISTANDAUDITALARMBYHANDLE_ENTER
 PPP_CB_EXTERN(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADDATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTADDATOM_ENTER
 PPP_CB_EXTERN(on_NtAddAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADDBOOTENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTADDBOOTENTRY_ENTER
 PPP_CB_EXTERN(on_NtAddBootEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADDDRIVERENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTADDDRIVERENTRY_ENTER
 PPP_CB_EXTERN(on_NtAddDriverEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADJUSTGROUPSTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTADJUSTGROUPSTOKEN_ENTER
 PPP_CB_EXTERN(on_NtAdjustGroupsToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTADJUSTPRIVILEGESTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTADJUSTPRIVILEGESTOKEN_ENTER
 PPP_CB_EXTERN(on_NtAdjustPrivilegesToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALERTRESUMETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTALERTRESUMETHREAD_ENTER
 PPP_CB_EXTERN(on_NtAlertResumeThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALERTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTALERTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtAlertThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATELOCALLYUNIQUEID_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATELOCALLYUNIQUEID_ENTER
 PPP_CB_EXTERN(on_NtAllocateLocallyUniqueId_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATERESERVEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATERESERVEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtAllocateReserveObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATEUSERPHYSICALPAGES_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATEUSERPHYSICALPAGES_ENTER
 PPP_CB_EXTERN(on_NtAllocateUserPhysicalPages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATEUUIDS_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATEUUIDS_ENTER
 PPP_CB_EXTERN(on_NtAllocateUuids_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALLOCATEVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTALLOCATEVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtAllocateVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCACCEPTCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCACCEPTCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcAcceptConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCANCELMESSAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCANCELMESSAGE_ENTER
 PPP_CB_EXTERN(on_NtAlpcCancelMessage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATEPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreatePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATEPORTSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATEPORTSECTION_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreatePortSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATERESOURCERESERVE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATERESOURCERESERVE_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreateResourceReserve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATESECTIONVIEW_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATESECTIONVIEW_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreateSectionView_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCCREATESECURITYCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCCREATESECURITYCONTEXT_ENTER
 PPP_CB_EXTERN(on_NtAlpcCreateSecurityContext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETEPORTSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETEPORTSECTION_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeletePortSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETERESOURCERESERVE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETERESOURCERESERVE_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeleteResourceReserve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETESECTIONVIEW_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETESECTIONVIEW_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeleteSectionView_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDELETESECURITYCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDELETESECURITYCONTEXT_ENTER
 PPP_CB_EXTERN(on_NtAlpcDeleteSecurityContext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCDISCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCDISCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcDisconnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCIMPERSONATECLIENTOFPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCIMPERSONATECLIENTOFPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcImpersonateClientOfPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCOPENSENDERPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCOPENSENDERPROCESS_ENTER
 PPP_CB_EXTERN(on_NtAlpcOpenSenderProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCOPENSENDERTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCOPENSENDERTHREAD_ENTER
 PPP_CB_EXTERN(on_NtAlpcOpenSenderThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtAlpcQueryInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATIONMESSAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCQUERYINFORMATIONMESSAGE_ENTER
 PPP_CB_EXTERN(on_NtAlpcQueryInformationMessage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCREVOKESECURITYCONTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCREVOKESECURITYCONTEXT_ENTER
 PPP_CB_EXTERN(on_NtAlpcRevokeSecurityContext_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCSENDWAITRECEIVEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCSENDWAITRECEIVEPORT_ENTER
 PPP_CB_EXTERN(on_NtAlpcSendWaitReceivePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTALPCSETINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTALPCSETINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtAlpcSetInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTAPPHELPCACHECONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTAPPHELPCACHECONTROL_ENTER
 PPP_CB_EXTERN(on_NtApphelpCacheControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTAREMAPPEDFILESTHESAME_ENTER
+#define PPP_CB_EXTERN_ON_NTAREMAPPEDFILESTHESAME_ENTER
 PPP_CB_EXTERN(on_NtAreMappedFilesTheSame_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTASSIGNPROCESSTOJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTASSIGNPROCESSTOJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtAssignProcessToJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCALLBACKRETURN_ENTER
+#define PPP_CB_EXTERN_ON_NTCALLBACKRETURN_ENTER
 PPP_CB_EXTERN(on_NtCallbackReturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELIOFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELIOFILE_ENTER
 PPP_CB_EXTERN(on_NtCancelIoFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELIOFILEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELIOFILEEX_ENTER
 PPP_CB_EXTERN(on_NtCancelIoFileEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELSYNCHRONOUSIOFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELSYNCHRONOUSIOFILE_ENTER
 PPP_CB_EXTERN(on_NtCancelSynchronousIoFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCANCELTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTCANCELTIMER_ENTER
 PPP_CB_EXTERN(on_NtCancelTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCLEAREVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCLEAREVENT_ENTER
 PPP_CB_EXTERN(on_NtClearEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCLOSE_ENTER
+#define PPP_CB_EXTERN_ON_NTCLOSE_ENTER
 PPP_CB_EXTERN(on_NtClose_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCLOSEOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTCLOSEOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtCloseObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMMITCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMMITCOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtCommitComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMMITENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMMITENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtCommitEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMMITTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMMITTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtCommitTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPACTKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPACTKEYS_ENTER
 PPP_CB_EXTERN(on_NtCompactKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPARETOKENS_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPARETOKENS_ENTER
 PPP_CB_EXTERN(on_NtCompareTokens_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPLETECONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPLETECONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtCompleteConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCOMPRESSKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTCOMPRESSKEY_ENTER
 PPP_CB_EXTERN(on_NtCompressKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCONTINUE_ENTER
+#define PPP_CB_EXTERN_ON_NTCONTINUE_ENTER
 PPP_CB_EXTERN(on_NtContinue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEDEBUGOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEDEBUGOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateDebugObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEDIRECTORYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEDIRECTORYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateDirectoryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtCreateEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEEVENT_ENTER
 PPP_CB_EXTERN(on_NtCreateEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtCreateEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtCreateIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEJOBSET_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEJOBSET_ENTER
 PPP_CB_EXTERN(on_NtCreateJobSet_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEKEY_ENTER
 PPP_CB_EXTERN(on_NtCreateKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtCreateKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEKEYTRANSACTED_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEKEYTRANSACTED_ENTER
 PPP_CB_EXTERN(on_NtCreateKeyTransacted_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEMAILSLOTFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEMAILSLOTFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateMailslotFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEMUTANT_ENTER
 PPP_CB_EXTERN(on_NtCreateMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATENAMEDPIPEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATENAMEDPIPEFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateNamedPipeFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPAGINGFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPAGINGFILE_ENTER
 PPP_CB_EXTERN(on_NtCreatePagingFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPORT_ENTER
 PPP_CB_EXTERN(on_NtCreatePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPRIVATENAMESPACE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPRIVATENAMESPACE_ENTER
 PPP_CB_EXTERN(on_NtCreatePrivateNamespace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtCreateProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROCESSEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROCESSEX_ENTER
 PPP_CB_EXTERN(on_NtCreateProcessEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROFILE_ENTER
 PPP_CB_EXTERN(on_NtCreateProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEPROFILEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEPROFILEEX_ENTER
 PPP_CB_EXTERN(on_NtCreateProfileEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATERESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATERESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtCreateResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATESECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATESECTION_ENTER
 PPP_CB_EXTERN(on_NtCreateSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATESEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATESEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtCreateSemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATESYMBOLICLINKOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATESYMBOLICLINKOBJECT_ENTER
 PPP_CB_EXTERN(on_NtCreateSymbolicLinkObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETHREAD_ENTER
 PPP_CB_EXTERN(on_NtCreateThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETHREADEX_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETHREADEX_ENTER
 PPP_CB_EXTERN(on_NtCreateThreadEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETIMER_ENTER
 PPP_CB_EXTERN(on_NtCreateTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETOKEN_ENTER
 PPP_CB_EXTERN(on_NtCreateToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtCreateTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATETRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATETRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtCreateTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEUSERPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEUSERPROCESS_ENTER
 PPP_CB_EXTERN(on_NtCreateUserProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEWAITABLEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEWAITABLEPORT_ENTER
 PPP_CB_EXTERN(on_NtCreateWaitablePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTCREATEWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTCREATEWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtCreateWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDEBUGACTIVEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTDEBUGACTIVEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtDebugActiveProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDEBUGCONTINUE_ENTER
+#define PPP_CB_EXTERN_ON_NTDEBUGCONTINUE_ENTER
 PPP_CB_EXTERN(on_NtDebugContinue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELAYEXECUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTDELAYEXECUTION_ENTER
 PPP_CB_EXTERN(on_NtDelayExecution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEATOM_ENTER
 PPP_CB_EXTERN(on_NtDeleteAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEBOOTENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEBOOTENTRY_ENTER
 PPP_CB_EXTERN(on_NtDeleteBootEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEDRIVERENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEDRIVERENTRY_ENTER
 PPP_CB_EXTERN(on_NtDeleteDriverEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEFILE_ENTER
 PPP_CB_EXTERN(on_NtDeleteFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEKEY_ENTER
 PPP_CB_EXTERN(on_NtDeleteKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtDeleteObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEPRIVATENAMESPACE_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEPRIVATENAMESPACE_ENTER
 PPP_CB_EXTERN(on_NtDeletePrivateNamespace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDELETEVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTDELETEVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtDeleteValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDEVICEIOCONTROLFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTDEVICEIOCONTROLFILE_ENTER
 PPP_CB_EXTERN(on_NtDeviceIoControlFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDISABLELASTKNOWNGOOD_ENTER
+#define PPP_CB_EXTERN_ON_NTDISABLELASTKNOWNGOOD_ENTER
 PPP_CB_EXTERN(on_NtDisableLastKnownGood_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDISPLAYSTRING_ENTER
+#define PPP_CB_EXTERN_ON_NTDISPLAYSTRING_ENTER
 PPP_CB_EXTERN(on_NtDisplayString_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDRAWTEXT_ENTER
+#define PPP_CB_EXTERN_ON_NTDRAWTEXT_ENTER
 PPP_CB_EXTERN(on_NtDrawText_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDUPLICATEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTDUPLICATEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtDuplicateObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTDUPLICATETOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTDUPLICATETOKEN_ENTER
 PPP_CB_EXTERN(on_NtDuplicateToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENABLELASTKNOWNGOOD_ENTER
+#define PPP_CB_EXTERN_ON_NTENABLELASTKNOWNGOOD_ENTER
 PPP_CB_EXTERN(on_NtEnableLastKnownGood_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEBOOTENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEBOOTENTRIES_ENTER
 PPP_CB_EXTERN(on_NtEnumerateBootEntries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEDRIVERENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEDRIVERENTRIES_ENTER
 PPP_CB_EXTERN(on_NtEnumerateDriverEntries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEKEY_ENTER
 PPP_CB_EXTERN(on_NtEnumerateKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATESYSTEMENVIRONMENTVALUESEX_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATESYSTEMENVIRONMENTVALUESEX_ENTER
 PPP_CB_EXTERN(on_NtEnumerateSystemEnvironmentValuesEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATETRANSACTIONOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATETRANSACTIONOBJECT_ENTER
 PPP_CB_EXTERN(on_NtEnumerateTransactionObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTENUMERATEVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTENUMERATEVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtEnumerateValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTEXTENDSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTEXTENDSECTION_ENTER
 PPP_CB_EXTERN(on_NtExtendSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFILTERTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTFILTERTOKEN_ENTER
 PPP_CB_EXTERN(on_NtFilterToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFINDATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTFINDATOM_ENTER
 PPP_CB_EXTERN(on_NtFindAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHBUFFERSFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHBUFFERSFILE_ENTER
 PPP_CB_EXTERN(on_NtFlushBuffersFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHINSTALLUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHINSTALLUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtFlushInstallUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHINSTRUCTIONCACHE_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHINSTRUCTIONCACHE_ENTER
 PPP_CB_EXTERN(on_NtFlushInstructionCache_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHKEY_ENTER
 PPP_CB_EXTERN(on_NtFlushKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHPROCESSWRITEBUFFERS_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHPROCESSWRITEBUFFERS_ENTER
 PPP_CB_EXTERN(on_NtFlushProcessWriteBuffers_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtFlushVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFLUSHWRITEBUFFER_ENTER
+#define PPP_CB_EXTERN_ON_NTFLUSHWRITEBUFFER_ENTER
 PPP_CB_EXTERN(on_NtFlushWriteBuffer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEUSERPHYSICALPAGES_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEUSERPHYSICALPAGES_ENTER
 PPP_CB_EXTERN(on_NtFreeUserPhysicalPages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtFreeVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEZEREGISTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEZEREGISTRY_ENTER
 PPP_CB_EXTERN(on_NtFreezeRegistry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFREEZETRANSACTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTFREEZETRANSACTIONS_ENTER
 PPP_CB_EXTERN(on_NtFreezeTransactions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTFSCONTROLFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTFSCONTROLFILE_ENTER
 PPP_CB_EXTERN(on_NtFsControlFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETCONTEXTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTGETCONTEXTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtGetContextThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETCURRENTPROCESSORNUMBER_ENTER
+#define PPP_CB_EXTERN_ON_NTGETCURRENTPROCESSORNUMBER_ENTER
 PPP_CB_EXTERN(on_NtGetCurrentProcessorNumber_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETDEVICEPOWERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTGETDEVICEPOWERSTATE_ENTER
 PPP_CB_EXTERN(on_NtGetDevicePowerState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETMUIREGISTRYINFO_ENTER
+#define PPP_CB_EXTERN_ON_NTGETMUIREGISTRYINFO_ENTER
 PPP_CB_EXTERN(on_NtGetMUIRegistryInfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNEXTPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNEXTPROCESS_ENTER
 PPP_CB_EXTERN(on_NtGetNextProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNEXTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNEXTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtGetNextThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNLSSECTIONPTR_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNLSSECTIONPTR_ENTER
 PPP_CB_EXTERN(on_NtGetNlsSectionPtr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETNOTIFICATIONRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTGETNOTIFICATIONRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtGetNotificationResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETPLUGPLAYEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTGETPLUGPLAYEVENT_ENTER
 PPP_CB_EXTERN(on_NtGetPlugPlayEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTGETWRITEWATCH_ENTER
+#define PPP_CB_EXTERN_ON_NTGETWRITEWATCH_ENTER
 PPP_CB_EXTERN(on_NtGetWriteWatch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTIMPERSONATEANONYMOUSTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTIMPERSONATEANONYMOUSTOKEN_ENTER
 PPP_CB_EXTERN(on_NtImpersonateAnonymousToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTIMPERSONATECLIENTOFPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTIMPERSONATECLIENTOFPORT_ENTER
 PPP_CB_EXTERN(on_NtImpersonateClientOfPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTIMPERSONATETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTIMPERSONATETHREAD_ENTER
 PPP_CB_EXTERN(on_NtImpersonateThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTINITIALIZENLSFILES_ENTER
+#define PPP_CB_EXTERN_ON_NTINITIALIZENLSFILES_ENTER
 PPP_CB_EXTERN(on_NtInitializeNlsFiles_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTINITIALIZEREGISTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTINITIALIZEREGISTRY_ENTER
 PPP_CB_EXTERN(on_NtInitializeRegistry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTINITIATEPOWERACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTINITIATEPOWERACTION_ENTER
 PPP_CB_EXTERN(on_NtInitiatePowerAction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTISPROCESSINJOB_ENTER
+#define PPP_CB_EXTERN_ON_NTISPROCESSINJOB_ENTER
 PPP_CB_EXTERN(on_NtIsProcessInJob_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTISSYSTEMRESUMEAUTOMATIC_ENTER
+#define PPP_CB_EXTERN_ON_NTISSYSTEMRESUMEAUTOMATIC_ENTER
 PPP_CB_EXTERN(on_NtIsSystemResumeAutomatic_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTISUILANGUAGECOMITTED_ENTER
+#define PPP_CB_EXTERN_ON_NTISUILANGUAGECOMITTED_ENTER
 PPP_CB_EXTERN(on_NtIsUILanguageComitted_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLISTENPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTLISTENPORT_ENTER
 PPP_CB_EXTERN(on_NtListenPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADDRIVER_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADDRIVER_ENTER
 PPP_CB_EXTERN(on_NtLoadDriver_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADKEY_ENTER
 PPP_CB_EXTERN(on_NtLoadKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADKEY2_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADKEY2_ENTER
 PPP_CB_EXTERN(on_NtLoadKey2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOADKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTLOADKEYEX_ENTER
 PPP_CB_EXTERN(on_NtLoadKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKFILE_ENTER
 PPP_CB_EXTERN(on_NtLockFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKPRODUCTACTIVATIONKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKPRODUCTACTIVATIONKEYS_ENTER
 PPP_CB_EXTERN(on_NtLockProductActivationKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKREGISTRYKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKREGISTRYKEY_ENTER
 PPP_CB_EXTERN(on_NtLockRegistryKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTLOCKVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTLOCKVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtLockVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAKEPERMANENTOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTMAKEPERMANENTOBJECT_ENTER
 PPP_CB_EXTERN(on_NtMakePermanentObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAKETEMPORARYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTMAKETEMPORARYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtMakeTemporaryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPCMFMODULE_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPCMFMODULE_ENTER
 PPP_CB_EXTERN(on_NtMapCMFModule_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGES_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGES_ENTER
 PPP_CB_EXTERN(on_NtMapUserPhysicalPages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGESSCATTER_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPUSERPHYSICALPAGESSCATTER_ENTER
 PPP_CB_EXTERN(on_NtMapUserPhysicalPagesScatter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMAPVIEWOFSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTMAPVIEWOFSECTION_ENTER
 PPP_CB_EXTERN(on_NtMapViewOfSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMODIFYBOOTENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTMODIFYBOOTENTRY_ENTER
 PPP_CB_EXTERN(on_NtModifyBootEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTMODIFYDRIVERENTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTMODIFYDRIVERENTRY_ENTER
 PPP_CB_EXTERN(on_NtModifyDriverEntry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGEDIRECTORYFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGEDIRECTORYFILE_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeDirectoryFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGEKEY_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGEMULTIPLEKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGEMULTIPLEKEYS_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeMultipleKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTNOTIFYCHANGESESSION_ENTER
+#define PPP_CB_EXTERN_ON_NTNOTIFYCHANGESESSION_ENTER
 PPP_CB_EXTERN(on_NtNotifyChangeSession_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENDIRECTORYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENDIRECTORYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtOpenDirectoryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtOpenEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENEVENT_ENTER
 PPP_CB_EXTERN(on_NtOpenEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtOpenEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENFILE_ENTER
 PPP_CB_EXTERN(on_NtOpenFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtOpenIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtOpenJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEY_ENTER
 PPP_CB_EXTERN(on_NtOpenKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYEX_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTED_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTED_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyTransacted_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTEDEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENKEYTRANSACTEDEX_ENTER
 PPP_CB_EXTERN(on_NtOpenKeyTransactedEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENMUTANT_ENTER
 PPP_CB_EXTERN(on_NtOpenMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtOpenObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPRIVATENAMESPACE_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPRIVATENAMESPACE_ENTER
 PPP_CB_EXTERN(on_NtOpenPrivateNamespace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPROCESS_ENTER
 PPP_CB_EXTERN(on_NtOpenProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPROCESSTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPROCESSTOKEN_ENTER
 PPP_CB_EXTERN(on_NtOpenProcessToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENPROCESSTOKENEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENPROCESSTOKENEX_ENTER
 PPP_CB_EXTERN(on_NtOpenProcessTokenEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtOpenResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSECTION_ENTER
 PPP_CB_EXTERN(on_NtOpenSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtOpenSemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSESSION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSESSION_ENTER
 PPP_CB_EXTERN(on_NtOpenSession_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENSYMBOLICLINKOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENSYMBOLICLINKOBJECT_ENTER
 PPP_CB_EXTERN(on_NtOpenSymbolicLinkObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTHREAD_ENTER
 PPP_CB_EXTERN(on_NtOpenThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTHREADTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTHREADTOKEN_ENTER
 PPP_CB_EXTERN(on_NtOpenThreadToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTHREADTOKENEX_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTHREADTOKENEX_ENTER
 PPP_CB_EXTERN(on_NtOpenThreadTokenEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTIMER_ENTER
 PPP_CB_EXTERN(on_NtOpenTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtOpenTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTOPENTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTOPENTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtOpenTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPLUGPLAYCONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTPLUGPLAYCONTROL_ENTER
 PPP_CB_EXTERN(on_NtPlugPlayControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPOWERINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTPOWERINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtPowerInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPARECOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPARECOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtPrepareComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPAREENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPAREENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtPrepareEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPREPARECOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPREPARECOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtPrePrepareComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPREPREPAREENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTPREPREPAREENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtPrePrepareEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPRIVILEGECHECK_ENTER
+#define PPP_CB_EXTERN_ON_NTPRIVILEGECHECK_ENTER
 PPP_CB_EXTERN(on_NtPrivilegeCheck_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPRIVILEGEDSERVICEAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTPRIVILEGEDSERVICEAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtPrivilegedServiceAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPRIVILEGEOBJECTAUDITALARM_ENTER
+#define PPP_CB_EXTERN_ON_NTPRIVILEGEOBJECTAUDITALARM_ENTER
 PPP_CB_EXTERN(on_NtPrivilegeObjectAuditAlarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPROPAGATIONCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTPROPAGATIONCOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtPropagationComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPROPAGATIONFAILED_ENTER
+#define PPP_CB_EXTERN_ON_NTPROPAGATIONFAILED_ENTER
 PPP_CB_EXTERN(on_NtPropagationFailed_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPROTECTVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTPROTECTVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtProtectVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTPULSEEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTPULSEEVENT_ENTER
 PPP_CB_EXTERN(on_NtPulseEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYATTRIBUTESFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYATTRIBUTESFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryAttributesFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYBOOTENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYBOOTENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtQueryBootEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYBOOTOPTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYBOOTOPTIONS_ENTER
 PPP_CB_EXTERN(on_NtQueryBootOptions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDEBUGFILTERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDEBUGFILTERSTATE_ENTER
 PPP_CB_EXTERN(on_NtQueryDebugFilterState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDEFAULTLOCALE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDEFAULTLOCALE_ENTER
 PPP_CB_EXTERN(on_NtQueryDefaultLocale_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDEFAULTUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDEFAULTUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtQueryDefaultUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDIRECTORYFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDIRECTORYFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryDirectoryFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDIRECTORYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDIRECTORYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQueryDirectoryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYDRIVERENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYDRIVERENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtQueryDriverEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYEAFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYEAFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryEaFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYEVENT_ENTER
 PPP_CB_EXTERN(on_NtQueryEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYFULLATTRIBUTESFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYFULLATTRIBUTESFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryFullAttributesFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONATOM_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONATOM_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationAtom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPORT_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONPROCESS_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTHREAD_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTOKEN_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINFORMATIONWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINFORMATIONWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtQueryInformationWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINSTALLUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINSTALLUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtQueryInstallUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYINTERVALPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYINTERVALPROFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryIntervalProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtQueryIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYKEY_ENTER
 PPP_CB_EXTERN(on_NtQueryKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYLICENSEVALUE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYLICENSEVALUE_ENTER
 PPP_CB_EXTERN(on_NtQueryLicenseValue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYMULTIPLEVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYMULTIPLEVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtQueryMultipleValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYMUTANT_ENTER
 PPP_CB_EXTERN(on_NtQueryMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQueryObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYS_ENTER
 PPP_CB_EXTERN(on_NtQueryOpenSubKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYSEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYOPENSUBKEYSEX_ENTER
 PPP_CB_EXTERN(on_NtQueryOpenSubKeysEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYPERFORMANCECOUNTER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYPERFORMANCECOUNTER_ENTER
 PPP_CB_EXTERN(on_NtQueryPerformanceCounter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYPORTINFORMATIONPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYPORTINFORMATIONPROCESS_ENTER
 PPP_CB_EXTERN(on_NtQueryPortInformationProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYQUOTAINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYQUOTAINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryQuotaInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSECTION_ENTER
 PPP_CB_EXTERN(on_NtQuerySection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSECURITYATTRIBUTESTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSECURITYATTRIBUTESTOKEN_ENTER
 PPP_CB_EXTERN(on_NtQuerySecurityAttributesToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSECURITYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSECURITYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQuerySecurityObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtQuerySemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYMBOLICLINKOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYMBOLICLINKOBJECT_ENTER
 PPP_CB_EXTERN(on_NtQuerySymbolicLinkObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUE_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemEnvironmentValue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMENVIRONMENTVALUEEX_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemEnvironmentValueEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATIONEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMINFORMATIONEX_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemInformationEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYSYSTEMTIME_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYSYSTEMTIME_ENTER
 PPP_CB_EXTERN(on_NtQuerySystemTime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYTIMER_ENTER
 PPP_CB_EXTERN(on_NtQueryTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYTIMERRESOLUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYTIMERRESOLUTION_ENTER
 PPP_CB_EXTERN(on_NtQueryTimerResolution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtQueryValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtQueryVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUERYVOLUMEINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTQUERYVOLUMEINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtQueryVolumeInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUEUEAPCTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTQUEUEAPCTHREAD_ENTER
 PPP_CB_EXTERN(on_NtQueueApcThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTQUEUEAPCTHREADEX_ENTER
+#define PPP_CB_EXTERN_ON_NTQUEUEAPCTHREADEX_ENTER
 PPP_CB_EXTERN(on_NtQueueApcThreadEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRAISEEXCEPTION_ENTER
+#define PPP_CB_EXTERN_ON_NTRAISEEXCEPTION_ENTER
 PPP_CB_EXTERN(on_NtRaiseException_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRAISEHARDERROR_ENTER
+#define PPP_CB_EXTERN_ON_NTRAISEHARDERROR_ENTER
 PPP_CB_EXTERN(on_NtRaiseHardError_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTREADFILE_ENTER
 PPP_CB_EXTERN(on_NtReadFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADFILESCATTER_ENTER
+#define PPP_CB_EXTERN_ON_NTREADFILESCATTER_ENTER
 PPP_CB_EXTERN(on_NtReadFileScatter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADONLYENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTREADONLYENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtReadOnlyEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADREQUESTDATA_ENTER
+#define PPP_CB_EXTERN_ON_NTREADREQUESTDATA_ENTER
 PPP_CB_EXTERN(on_NtReadRequestData_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREADVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTREADVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtReadVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRECOVERENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTRECOVERENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtRecoverEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRECOVERRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTRECOVERRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRecoverResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRECOVERTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTRECOVERTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRecoverTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREGISTERPROTOCOLADDRESSINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTREGISTERPROTOCOLADDRESSINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtRegisterProtocolAddressInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREGISTERTHREADTERMINATEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREGISTERTHREADTERMINATEPORT_ENTER
 PPP_CB_EXTERN(on_NtRegisterThreadTerminatePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASEKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASEKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtReleaseKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASEMUTANT_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASEMUTANT_ENTER
 PPP_CB_EXTERN(on_NtReleaseMutant_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASESEMAPHORE_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASESEMAPHORE_ENTER
 PPP_CB_EXTERN(on_NtReleaseSemaphore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRELEASEWORKERFACTORYWORKER_ENTER
+#define PPP_CB_EXTERN_ON_NTRELEASEWORKERFACTORYWORKER_ENTER
 PPP_CB_EXTERN(on_NtReleaseWorkerFactoryWorker_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtRemoveIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETIONEX_ENTER
+#define PPP_CB_EXTERN_ON_NTREMOVEIOCOMPLETIONEX_ENTER
 PPP_CB_EXTERN(on_NtRemoveIoCompletionEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREMOVEPROCESSDEBUG_ENTER
+#define PPP_CB_EXTERN_ON_NTREMOVEPROCESSDEBUG_ENTER
 PPP_CB_EXTERN(on_NtRemoveProcessDebug_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRENAMEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTRENAMEKEY_ENTER
 PPP_CB_EXTERN(on_NtRenameKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRENAMETRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTRENAMETRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRenameTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLACEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLACEKEY_ENTER
 PPP_CB_EXTERN(on_NtReplaceKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLACEPARTITIONUNIT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLACEPARTITIONUNIT_ENTER
 PPP_CB_EXTERN(on_NtReplacePartitionUnit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYPORT_ENTER
 PPP_CB_EXTERN(on_NtReplyPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORT_ENTER
 PPP_CB_EXTERN(on_NtReplyWaitReceivePort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORTEX_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYWAITRECEIVEPORTEX_ENTER
 PPP_CB_EXTERN(on_NtReplyWaitReceivePortEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREPLYWAITREPLYPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREPLYWAITREPLYPORT_ENTER
 PPP_CB_EXTERN(on_NtReplyWaitReplyPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREQUESTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREQUESTPORT_ENTER
 PPP_CB_EXTERN(on_NtRequestPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTREQUESTWAITREPLYPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTREQUESTWAITREPLYPORT_ENTER
 PPP_CB_EXTERN(on_NtRequestWaitReplyPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESETEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTRESETEVENT_ENTER
 PPP_CB_EXTERN(on_NtResetEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESETWRITEWATCH_ENTER
+#define PPP_CB_EXTERN_ON_NTRESETWRITEWATCH_ENTER
 PPP_CB_EXTERN(on_NtResetWriteWatch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESTOREKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTRESTOREKEY_ENTER
 PPP_CB_EXTERN(on_NtRestoreKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESUMEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTRESUMEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtResumeProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTRESUMETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTRESUMETHREAD_ENTER
 PPP_CB_EXTERN(on_NtResumeThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLBACKCOMPLETE_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLBACKCOMPLETE_ENTER
 PPP_CB_EXTERN(on_NtRollbackComplete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLBACKENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLBACKENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtRollbackEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLBACKTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLBACKTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtRollbackTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTROLLFORWARDTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTROLLFORWARDTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtRollforwardTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSAVEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTSAVEKEY_ENTER
 PPP_CB_EXTERN(on_NtSaveKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSAVEKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTSAVEKEYEX_ENTER
 PPP_CB_EXTERN(on_NtSaveKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSAVEMERGEDKEYS_ENTER
+#define PPP_CB_EXTERN_ON_NTSAVEMERGEDKEYS_ENTER
 PPP_CB_EXTERN(on_NtSaveMergedKeys_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSECURECONNECTPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTSECURECONNECTPORT_ENTER
 PPP_CB_EXTERN(on_NtSecureConnectPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSERIALIZEBOOT_ENTER
+#define PPP_CB_EXTERN_ON_NTSERIALIZEBOOT_ENTER
 PPP_CB_EXTERN(on_NtSerializeBoot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETBOOTENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETBOOTENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtSetBootEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETBOOTOPTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTSETBOOTOPTIONS_ENTER
 PPP_CB_EXTERN(on_NtSetBootOptions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETCONTEXTTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTSETCONTEXTTHREAD_ENTER
 PPP_CB_EXTERN(on_NtSetContextThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEBUGFILTERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEBUGFILTERSTATE_ENTER
 PPP_CB_EXTERN(on_NtSetDebugFilterState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEFAULTHARDERRORPORT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEFAULTHARDERRORPORT_ENTER
 PPP_CB_EXTERN(on_NtSetDefaultHardErrorPort_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEFAULTLOCALE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEFAULTLOCALE_ENTER
 PPP_CB_EXTERN(on_NtSetDefaultLocale_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDEFAULTUILANGUAGE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDEFAULTUILANGUAGE_ENTER
 PPP_CB_EXTERN(on_NtSetDefaultUILanguage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETDRIVERENTRYORDER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETDRIVERENTRYORDER_ENTER
 PPP_CB_EXTERN(on_NtSetDriverEntryOrder_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETEAFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETEAFILE_ENTER
 PPP_CB_EXTERN(on_NtSetEaFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETEVENT_ENTER
 PPP_CB_EXTERN(on_NtSetEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETEVENTBOOSTPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETEVENTBOOSTPRIORITY_ENTER
 PPP_CB_EXTERN(on_NtSetEventBoostPriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETHIGHEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETHIGHEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetHighEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETHIGHWAITLOWEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETHIGHWAITLOWEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetHighWaitLowEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONDEBUGOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONDEBUGOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationDebugObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONENLISTMENT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONENLISTMENT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationEnlistment_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtSetInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONKEY_ENTER
 PPP_CB_EXTERN(on_NtSetInformationKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetInformationObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONPROCESS_ENTER
 PPP_CB_EXTERN(on_NtSetInformationProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONRESOURCEMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONRESOURCEMANAGER_ENTER
 PPP_CB_EXTERN(on_NtSetInformationResourceManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTHREAD_ENTER
 PPP_CB_EXTERN(on_NtSetInformationThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTOKEN_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTOKEN_ENTER
 PPP_CB_EXTERN(on_NtSetInformationToken_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTION_ENTER
 PPP_CB_EXTERN(on_NtSetInformationTransaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTIONMANAGER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONTRANSACTIONMANAGER_ENTER
 PPP_CB_EXTERN(on_NtSetInformationTransactionManager_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINFORMATIONWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINFORMATIONWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtSetInformationWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETINTERVALPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETINTERVALPROFILE_ENTER
 PPP_CB_EXTERN(on_NtSetIntervalProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETIOCOMPLETION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETIOCOMPLETION_ENTER
 PPP_CB_EXTERN(on_NtSetIoCompletion_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETIOCOMPLETIONEX_ENTER
+#define PPP_CB_EXTERN_ON_NTSETIOCOMPLETIONEX_ENTER
 PPP_CB_EXTERN(on_NtSetIoCompletionEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETLDTENTRIES_ENTER
+#define PPP_CB_EXTERN_ON_NTSETLDTENTRIES_ENTER
 PPP_CB_EXTERN(on_NtSetLdtEntries_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETLOWEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETLOWEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetLowEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETLOWWAITHIGHEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTSETLOWWAITHIGHEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtSetLowWaitHighEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETQUOTAINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETQUOTAINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtSetQuotaInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSECURITYOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSECURITYOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSetSecurityObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUE_ENTER
 PPP_CB_EXTERN(on_NtSetSystemEnvironmentValue_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUEEX_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMENVIRONMENTVALUEEX_ENTER
 PPP_CB_EXTERN(on_NtSetSystemEnvironmentValueEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMINFORMATION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMINFORMATION_ENTER
 PPP_CB_EXTERN(on_NtSetSystemInformation_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMPOWERSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMPOWERSTATE_ENTER
 PPP_CB_EXTERN(on_NtSetSystemPowerState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETSYSTEMTIME_ENTER
+#define PPP_CB_EXTERN_ON_NTSETSYSTEMTIME_ENTER
 PPP_CB_EXTERN(on_NtSetSystemTime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTHREADEXECUTIONSTATE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTHREADEXECUTIONSTATE_ENTER
 PPP_CB_EXTERN(on_NtSetThreadExecutionState_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTIMER_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTIMER_ENTER
 PPP_CB_EXTERN(on_NtSetTimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTIMEREX_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTIMEREX_ENTER
 PPP_CB_EXTERN(on_NtSetTimerEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETTIMERRESOLUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTSETTIMERRESOLUTION_ENTER
 PPP_CB_EXTERN(on_NtSetTimerResolution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETUUIDSEED_ENTER
+#define PPP_CB_EXTERN_ON_NTSETUUIDSEED_ENTER
 PPP_CB_EXTERN(on_NtSetUuidSeed_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETVALUEKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTSETVALUEKEY_ENTER
 PPP_CB_EXTERN(on_NtSetValueKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSETVOLUMEINFORMATIONFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSETVOLUMEINFORMATIONFILE_ENTER
 PPP_CB_EXTERN(on_NtSetVolumeInformationFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSHUTDOWNSYSTEM_ENTER
+#define PPP_CB_EXTERN_ON_NTSHUTDOWNSYSTEM_ENTER
 PPP_CB_EXTERN(on_NtShutdownSystem_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSHUTDOWNWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTSHUTDOWNWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtShutdownWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSIGNALANDWAITFORSINGLEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSIGNALANDWAITFORSINGLEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtSignalAndWaitForSingleObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSINGLEPHASEREJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTSINGLEPHASEREJECT_ENTER
 PPP_CB_EXTERN(on_NtSinglePhaseReject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSTARTPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSTARTPROFILE_ENTER
 PPP_CB_EXTERN(on_NtStartProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSTOPPROFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTSTOPPROFILE_ENTER
 PPP_CB_EXTERN(on_NtStopProfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSUSPENDPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTSUSPENDPROCESS_ENTER
 PPP_CB_EXTERN(on_NtSuspendProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSUSPENDTHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTSUSPENDTHREAD_ENTER
 PPP_CB_EXTERN(on_NtSuspendThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTSYSTEMDEBUGCONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTSYSTEMDEBUGCONTROL_ENTER
 PPP_CB_EXTERN(on_NtSystemDebugControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTERMINATEJOBOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTTERMINATEJOBOBJECT_ENTER
 PPP_CB_EXTERN(on_NtTerminateJobObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTERMINATEPROCESS_ENTER
+#define PPP_CB_EXTERN_ON_NTTERMINATEPROCESS_ENTER
 PPP_CB_EXTERN(on_NtTerminateProcess_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTERMINATETHREAD_ENTER
+#define PPP_CB_EXTERN_ON_NTTERMINATETHREAD_ENTER
 PPP_CB_EXTERN(on_NtTerminateThread_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTESTALERT_ENTER
+#define PPP_CB_EXTERN_ON_NTTESTALERT_ENTER
 PPP_CB_EXTERN(on_NtTestAlert_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTHAWREGISTRY_ENTER
+#define PPP_CB_EXTERN_ON_NTTHAWREGISTRY_ENTER
 PPP_CB_EXTERN(on_NtThawRegistry_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTHAWTRANSACTIONS_ENTER
+#define PPP_CB_EXTERN_ON_NTTHAWTRANSACTIONS_ENTER
 PPP_CB_EXTERN(on_NtThawTransactions_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTRACECONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTTRACECONTROL_ENTER
 PPP_CB_EXTERN(on_NtTraceControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTRACEEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTTRACEEVENT_ENTER
 PPP_CB_EXTERN(on_NtTraceEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTTRANSLATEFILEPATH_ENTER
+#define PPP_CB_EXTERN_ON_NTTRANSLATEFILEPATH_ENTER
 PPP_CB_EXTERN(on_NtTranslateFilePath_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUMSTHREADYIELD_ENTER
+#define PPP_CB_EXTERN_ON_NTUMSTHREADYIELD_ENTER
 PPP_CB_EXTERN(on_NtUmsThreadYield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADDRIVER_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADDRIVER_ENTER
 PPP_CB_EXTERN(on_NtUnloadDriver_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADKEY_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADKEY_ENTER
 PPP_CB_EXTERN(on_NtUnloadKey_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADKEY2_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADKEY2_ENTER
 PPP_CB_EXTERN(on_NtUnloadKey2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOADKEYEX_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOADKEYEX_ENTER
 PPP_CB_EXTERN(on_NtUnloadKeyEx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOCKFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOCKFILE_ENTER
 PPP_CB_EXTERN(on_NtUnlockFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNLOCKVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTUNLOCKVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtUnlockVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTUNMAPVIEWOFSECTION_ENTER
+#define PPP_CB_EXTERN_ON_NTUNMAPVIEWOFSECTION_ENTER
 PPP_CB_EXTERN(on_NtUnmapViewOfSection_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTVDMCONTROL_ENTER
+#define PPP_CB_EXTERN_ON_NTVDMCONTROL_ENTER
 PPP_CB_EXTERN(on_NtVdmControl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORDEBUGEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORDEBUGEVENT_ENTER
 PPP_CB_EXTERN(on_NtWaitForDebugEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORKEYEDEVENT_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORKEYEDEVENT_ENTER
 PPP_CB_EXTERN(on_NtWaitForKeyedEvent_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS_ENTER
 PPP_CB_EXTERN(on_NtWaitForMultipleObjects_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS32_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORMULTIPLEOBJECTS32_ENTER
 PPP_CB_EXTERN(on_NtWaitForMultipleObjects32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORSINGLEOBJECT_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORSINGLEOBJECT_ENTER
 PPP_CB_EXTERN(on_NtWaitForSingleObject_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITFORWORKVIAWORKERFACTORY_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITFORWORKVIAWORKERFACTORY_ENTER
 PPP_CB_EXTERN(on_NtWaitForWorkViaWorkerFactory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITHIGHEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITHIGHEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtWaitHighEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWAITLOWEVENTPAIR_ENTER
+#define PPP_CB_EXTERN_ON_NTWAITLOWEVENTPAIR_ENTER
 PPP_CB_EXTERN(on_NtWaitLowEventPair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWORKERFACTORYWORKERREADY_ENTER
+#define PPP_CB_EXTERN_ON_NTWORKERFACTORYWORKERREADY_ENTER
 PPP_CB_EXTERN(on_NtWorkerFactoryWorkerReady_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEFILE_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEFILE_ENTER
 PPP_CB_EXTERN(on_NtWriteFile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEFILEGATHER_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEFILEGATHER_ENTER
 PPP_CB_EXTERN(on_NtWriteFileGather_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEREQUESTDATA_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEREQUESTDATA_ENTER
 PPP_CB_EXTERN(on_NtWriteRequestData_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTWRITEVIRTUALMEMORY_ENTER
+#define PPP_CB_EXTERN_ON_NTWRITEVIRTUALMEMORY_ENTER
 PPP_CB_EXTERN(on_NtWriteVirtualMemory_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_NTYIELDEXECUTION_ENTER
+#define PPP_CB_EXTERN_ON_NTYIELDEXECUTION_ENTER
 PPP_CB_EXTERN(on_NtYieldExecution_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
 PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
 PPP_CB_EXTERN(on_sys_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
 PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
 PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
 PPP_CB_EXTERN(on_sys_adjtimex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
 PPP_CB_EXTERN(on_sys_alarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ARCH_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ARCH_PRCTL_ENTER
 PPP_CB_EXTERN(on_sys_arch_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
 PPP_CB_EXTERN(on_sys_bdflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
 PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
 PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
 PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
 PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
 PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
 PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
 PPP_CB_EXTERN(on_sys_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
 PPP_CB_EXTERN(on_sys_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN16_ENTER
 PPP_CB_EXTERN(on_sys_chown16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
 PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
 PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
 PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
 PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
 PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
 PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
 PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
 PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
 PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
 PPP_CB_EXTERN(on_sys_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
 PPP_CB_EXTERN(on_sys_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
 PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
 PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
 PPP_CB_EXTERN(on_sys_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
 PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_epoll_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
 PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
 PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
 PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
 PPP_CB_EXTERN(on_sys_epoll_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
 PPP_CB_EXTERN(on_sys_eventfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
 PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
 PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
 PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
 PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
 PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
 PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_ENTER
 PPP_CB_EXTERN(on_sys_fadvise64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
 PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
 PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
 PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
 PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
 PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
 PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
 PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
 PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN16_ENTER
 PPP_CB_EXTERN(on_sys_fchown16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
 PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
 PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
 PPP_CB_EXTERN(on_sys_fcntl64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
 PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
 PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
 PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
 PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FORK_ENTER
 PPP_CB_EXTERN(on_sys_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
 PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
 PPP_CB_EXTERN(on_sys_fstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
 PPP_CB_EXTERN(on_sys_fstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
 PPP_CB_EXTERN(on_sys_fstatat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
 PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
 PPP_CB_EXTERN(on_sys_fstatfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
 PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
 PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
 PPP_CB_EXTERN(on_sys_ftruncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
 PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
 PPP_CB_EXTERN(on_sys_futimesat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
 PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
 PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_THREAD_AREA_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_THREAD_AREA_ENTER
 PPP_CB_EXTERN(on_sys_get_thread_area_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
 PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
 PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
 PPP_CB_EXTERN(on_sys_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
 PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
 PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID16_ENTER
 PPP_CB_EXTERN(on_sys_getegid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
 PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID16_ENTER
 PPP_CB_EXTERN(on_sys_geteuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
 PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID16_ENTER
 PPP_CB_EXTERN(on_sys_getgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
 PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS16_ENTER
 PPP_CB_EXTERN(on_sys_getgroups16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
 PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
 PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
 PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
 PPP_CB_EXTERN(on_sys_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
 PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
 PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
 PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
 PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
 PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID16_ENTER
 PPP_CB_EXTERN(on_sys_getresgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
 PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID16_ENTER
 PPP_CB_EXTERN(on_sys_getresuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
 PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
 PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
 PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
 PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
 PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
 PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
 PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
 PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID16_ENTER
 PPP_CB_EXTERN(on_sys_getuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
 PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
 PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
 PPP_CB_EXTERN(on_sys_inotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
 PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
 PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
 PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
 PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
 PPP_CB_EXTERN(on_sys_io_getevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
 PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
 PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
 PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
 PPP_CB_EXTERN(on_sys_ioperm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
 PPP_CB_EXTERN(on_sys_iopl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
 PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
 PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IPC_ENTER
 PPP_CB_EXTERN(on_sys_ipc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
 PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
 PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
 PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
 PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
 PPP_CB_EXTERN(on_sys_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN16_ENTER
 PPP_CB_EXTERN(on_sys_lchown16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINK_ENTER
 PPP_CB_EXTERN(on_sys_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
 PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
 PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
 PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
 PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
 PPP_CB_EXTERN(on_sys_llseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
 PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
 PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
 PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT_ENTER
 PPP_CB_EXTERN(on_sys_lstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
 PPP_CB_EXTERN(on_sys_lstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
 PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
 PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
 PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
 PPP_CB_EXTERN(on_sys_migrate_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
 PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
 PPP_CB_EXTERN(on_sys_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
 PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
 PPP_CB_EXTERN(on_sys_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
 PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
 PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
 PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
 PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MMAP_PGOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MMAP_PGOFF_ENTER
 PPP_CB_EXTERN(on_sys_mmap_pgoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MODIFY_LDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MODIFY_LDT_ENTER
 PPP_CB_EXTERN(on_sys_modify_ldt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
 PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
 PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
 PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
 PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
 PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
 PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
 PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
 PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
 PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
 PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
 PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
 PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
 PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
 PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
 PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
 PPP_CB_EXTERN(on_sys_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
 PPP_CB_EXTERN(on_sys_newfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
 PPP_CB_EXTERN(on_sys_newlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
 PPP_CB_EXTERN(on_sys_newstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
 PPP_CB_EXTERN(on_sys_newuname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NICE_ENTER
 PPP_CB_EXTERN(on_sys_nice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_GETRLIMIT_ENTER
 PPP_CB_EXTERN(on_sys_old_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_MMAP_ENTER
 PPP_CB_EXTERN(on_sys_old_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_READDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_READDIR_ENTER
 PPP_CB_EXTERN(on_sys_old_readdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_SELECT_ENTER
 PPP_CB_EXTERN(on_sys_old_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLDUMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLDUMOUNT_ENTER
 PPP_CB_EXTERN(on_sys_oldumount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLDUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLDUNAME_ENTER
 PPP_CB_EXTERN(on_sys_olduname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
 PPP_CB_EXTERN(on_sys_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
 PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
 PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
 PPP_CB_EXTERN(on_sys_pause_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
 PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
 PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
 PPP_CB_EXTERN(on_sys_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
 PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
 PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
 PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
 PPP_CB_EXTERN(on_sys_pkey_free_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
 PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_POLL_ENTER
 PPP_CB_EXTERN(on_sys_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
 PPP_CB_EXTERN(on_sys_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
 PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
 PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
 PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
 PPP_CB_EXTERN(on_sys_preadv2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
 PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
 PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
 PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
 PPP_CB_EXTERN(on_sys_pselect6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
 PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
 PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
 PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
 PPP_CB_EXTERN(on_sys_pwritev2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
 PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
 PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
 PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
 PPP_CB_EXTERN(on_sys_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
 PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
 PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
 PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
 PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
 PPP_CB_EXTERN(on_sys_recvmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
 PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
 PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
 PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
 PPP_CB_EXTERN(on_sys_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
 PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
 PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
 PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
 PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
 PPP_CB_EXTERN(on_sys_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
 PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
 PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
 PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
 PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
 PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
 PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
 PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
 PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
 PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
 PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
 PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
 PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
 PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
 PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
 PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
 PPP_CB_EXTERN(on_sys_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
 PPP_CB_EXTERN(on_sys_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
 PPP_CB_EXTERN(on_sys_sendfile64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
 PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
 PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
 PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
 PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
 PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_THREAD_AREA_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_THREAD_AREA_ENTER
 PPP_CB_EXTERN(on_sys_set_thread_area_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
 PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
 PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
 PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID16_ENTER
 PPP_CB_EXTERN(on_sys_setfsgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
 PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID16_ENTER
 PPP_CB_EXTERN(on_sys_setfsuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
 PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID16_ENTER
 PPP_CB_EXTERN(on_sys_setgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
 PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS16_ENTER
 PPP_CB_EXTERN(on_sys_setgroups16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
 PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
 PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
 PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
 PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
 PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
 PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID16_ENTER
 PPP_CB_EXTERN(on_sys_setregid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
 PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID16_ENTER
 PPP_CB_EXTERN(on_sys_setresgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
 PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID16_ENTER
 PPP_CB_EXTERN(on_sys_setresuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
 PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID16_ENTER
 PPP_CB_EXTERN(on_sys_setreuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
 PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
 PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
 PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
 PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
 PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID16_ENTER
 PPP_CB_EXTERN(on_sys_setuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
 PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SGETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SGETMASK_ENTER
 PPP_CB_EXTERN(on_sys_sgetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
 PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
 PPP_CB_EXTERN(on_sys_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
 PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNAL_ENTER
 PPP_CB_EXTERN(on_sys_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
 PPP_CB_EXTERN(on_sys_signalfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
 PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
 PPP_CB_EXTERN(on_sys_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
 PPP_CB_EXTERN(on_sys_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
 PPP_CB_EXTERN(on_sys_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
 PPP_CB_EXTERN(on_sys_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
 PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
 PPP_CB_EXTERN(on_sys_socketcall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
 PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
 PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SSETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SSETMASK_ENTER
 PPP_CB_EXTERN(on_sys_ssetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT_ENTER
 PPP_CB_EXTERN(on_sys_stat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
 PPP_CB_EXTERN(on_sys_stat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
 PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
 PPP_CB_EXTERN(on_sys_statfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
 PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STIME_ENTER
 PPP_CB_EXTERN(on_sys_stime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
 PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
 PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
 PPP_CB_EXTERN(on_sys_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
 PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
 PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
 PPP_CB_EXTERN(on_sys_sync_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
 PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
 PPP_CB_EXTERN(on_sys_sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
 PPP_CB_EXTERN(on_sys_sysfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
 PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
 PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
 PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
 PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIME_ENTER
 PPP_CB_EXTERN(on_sys_time_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_timer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
 PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
 PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
 PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
 PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
 PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
 PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
 PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
 PPP_CB_EXTERN(on_sys_truncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
 PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
 PPP_CB_EXTERN(on_sys_umount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
 PPP_CB_EXTERN(on_sys_uname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
 PPP_CB_EXTERN(on_sys_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
 PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
 PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
 PPP_CB_EXTERN(on_sys_uselib_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
 PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
 PPP_CB_EXTERN(on_sys_ustat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
 PPP_CB_EXTERN(on_sys_utime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
 PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
 PPP_CB_EXTERN(on_sys_utimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VFORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VFORK_ENTER
 PPP_CB_EXTERN(on_sys_vfork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
 PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VM86_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VM86_ENTER
 PPP_CB_EXTERN(on_sys_vm86_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VM86OLD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VM86OLD_ENTER
 PPP_CB_EXTERN(on_sys_vm86old_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
 PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
 PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
 PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITPID_ENTER
 PPP_CB_EXTERN(on_sys_waitpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
 PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
 PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
+#endif
+#if defined(TARGET_ARM) && defined(TARGET_AARCH64)
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+PPP_CB_EXTERN(on_sys_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+PPP_CB_EXTERN(on_sys_adjtimex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE3_ENTER
+PPP_CB_EXTERN(on_sys_clone3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+PPP_CB_EXTERN(on_sys_faccessat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_ENTER
+PPP_CB_EXTERN(on_sys_fadvise64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+PPP_CB_EXTERN(on_sys_fstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+PPP_CB_EXTERN(on_sys_io_getevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_FILE_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_FILE_LOAD_ENTER
+PPP_CB_EXTERN(on_sys_kexec_file_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_migrate_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+PPP_CB_EXTERN(on_sys_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+PPP_CB_EXTERN(on_sys_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+PPP_CB_EXTERN(on_sys_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+PPP_CB_EXTERN(on_sys_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+PPP_CB_EXTERN(on_sys_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstatat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NFSSERVCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NFSSERVCTL_ENTER
+PPP_CB_EXTERN(on_sys_nfsservctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+PPP_CB_EXTERN(on_sys_openat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+PPP_CB_EXTERN(on_sys_pkey_free_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+PPP_CB_EXTERN(on_sys_preadv2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+PPP_CB_EXTERN(on_sys_pwritev2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
+PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
+PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+PPP_CB_EXTERN(on_sys_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+PPP_CB_EXTERN(on_sys_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+PPP_CB_EXTERN(on_sys_semop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+PPP_CB_EXTERN(on_sys_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+PPP_CB_EXTERN(on_sys_shmat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+PPP_CB_EXTERN(on_sys_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+PPP_CB_EXTERN(on_sys_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+PPP_CB_EXTERN(on_sys_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_sync_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT2_ENTER
+PPP_CB_EXTERN(on_sys_umount2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+PPP_CB_EXTERN(on_sys_uname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
+#endif
+#if defined(TARGET_ARM)
+#ifndef PPP_CB_EXTERN_ON_ARM_BREAKPOINT_ENTER
+#define PPP_CB_EXTERN_ON_ARM_BREAKPOINT_ENTER
+PPP_CB_EXTERN(on_ARM_breakpoint_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ARM_CACHEFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_ARM_CACHEFLUSH_ENTER
+PPP_CB_EXTERN(on_ARM_cacheflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ARM_SET_TLS_ENTER
+#define PPP_CB_EXTERN_ON_ARM_SET_TLS_ENTER
+PPP_CB_EXTERN(on_ARM_set_tls_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ARM_USER26_MODE_ENTER
+#define PPP_CB_EXTERN_ON_ARM_USER26_MODE_ENTER
+PPP_CB_EXTERN(on_ARM_user26_mode_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_ARM_USR32_MODE_ENTER
+#define PPP_CB_EXTERN_ON_ARM_USR32_MODE_ENTER
+PPP_CB_EXTERN(on_ARM_usr32_mode_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_DO_MMAP2_ENTER
+#define PPP_CB_EXTERN_ON_DO_MMAP2_ENTER
+PPP_CB_EXTERN(on_do_mmap2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+PPP_CB_EXTERN(on_sys_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+PPP_CB_EXTERN(on_sys_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+PPP_CB_EXTERN(on_sys_adjtimex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+PPP_CB_EXTERN(on_sys_alarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ARM_FADVISE64_64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ARM_FADVISE64_64_ENTER
+PPP_CB_EXTERN(on_sys_arm_fadvise64_64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+PPP_CB_EXTERN(on_sys_bdflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+PPP_CB_EXTERN(on_sys_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+PPP_CB_EXTERN(on_sys_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN16_ENTER
+PPP_CB_EXTERN(on_sys_chown16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+PPP_CB_EXTERN(on_sys_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+PPP_CB_EXTERN(on_sys_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+PPP_CB_EXTERN(on_sys_eventfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN16_ENTER
+PPP_CB_EXTERN(on_sys_fchown16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+PPP_CB_EXTERN(on_sys_fcntl64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+PPP_CB_EXTERN(on_sys_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+PPP_CB_EXTERN(on_sys_fstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+PPP_CB_EXTERN(on_sys_fstatat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
+PPP_CB_EXTERN(on_sys_futimesat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+PPP_CB_EXTERN(on_sys_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID16_ENTER
+PPP_CB_EXTERN(on_sys_getegid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID16_ENTER
+PPP_CB_EXTERN(on_sys_geteuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID16_ENTER
+PPP_CB_EXTERN(on_sys_getgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS16_ENTER
+PPP_CB_EXTERN(on_sys_getgroups16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+PPP_CB_EXTERN(on_sys_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID16_ENTER
+PPP_CB_EXTERN(on_sys_getresgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID16_ENTER
+PPP_CB_EXTERN(on_sys_getresuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID16_ENTER
+PPP_CB_EXTERN(on_sys_getuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+PPP_CB_EXTERN(on_sys_io_getevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+PPP_CB_EXTERN(on_sys_ipc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN16_ENTER
+PPP_CB_EXTERN(on_sys_lchown16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+PPP_CB_EXTERN(on_sys_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+PPP_CB_EXTERN(on_sys_llseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+PPP_CB_EXTERN(on_sys_lstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+PPP_CB_EXTERN(on_sys_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+PPP_CB_EXTERN(on_sys_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+PPP_CB_EXTERN(on_sys_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+PPP_CB_EXTERN(on_sys_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+PPP_CB_EXTERN(on_sys_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+PPP_CB_EXTERN(on_sys_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+PPP_CB_EXTERN(on_sys_newuname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+PPP_CB_EXTERN(on_sys_nice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+PPP_CB_EXTERN(on_sys_pause_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PCICONFIG_IOBASE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PCICONFIG_IOBASE_ENTER
+PPP_CB_EXTERN(on_sys_pciconfig_iobase_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PCICONFIG_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PCICONFIG_READ_ENTER
+PPP_CB_EXTERN(on_sys_pciconfig_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PCICONFIG_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PCICONFIG_WRITE_ENTER
+PPP_CB_EXTERN(on_sys_pciconfig_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+PPP_CB_EXTERN(on_sys_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+PPP_CB_EXTERN(on_sys_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
+PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+PPP_CB_EXTERN(on_sys_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
+PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECV_ENTER
+PPP_CB_EXTERN(on_sys_recv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+PPP_CB_EXTERN(on_sys_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+PPP_CB_EXTERN(on_sys_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+PPP_CB_EXTERN(on_sys_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+PPP_CB_EXTERN(on_sys_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+PPP_CB_EXTERN(on_sys_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+PPP_CB_EXTERN(on_sys_semop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEND_ENTER
+PPP_CB_EXTERN(on_sys_send_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+PPP_CB_EXTERN(on_sys_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+PPP_CB_EXTERN(on_sys_sendfile64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID16_ENTER
+PPP_CB_EXTERN(on_sys_setfsgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID16_ENTER
+PPP_CB_EXTERN(on_sys_setfsuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID16_ENTER
+PPP_CB_EXTERN(on_sys_setgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS16_ENTER
+PPP_CB_EXTERN(on_sys_setgroups16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID16_ENTER
+PPP_CB_EXTERN(on_sys_setregid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID16_ENTER
+PPP_CB_EXTERN(on_sys_setresgid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID16_ENTER
+PPP_CB_EXTERN(on_sys_setresuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID16_ENTER
+PPP_CB_EXTERN(on_sys_setreuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID16_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID16_ENTER
+PPP_CB_EXTERN(on_sys_setuid16_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+PPP_CB_EXTERN(on_sys_shmat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+PPP_CB_EXTERN(on_sys_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+PPP_CB_EXTERN(on_sys_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+PPP_CB_EXTERN(on_sys_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+PPP_CB_EXTERN(on_sys_signalfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+PPP_CB_EXTERN(on_sys_socketcall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+PPP_CB_EXTERN(on_sys_stat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+PPP_CB_EXTERN(on_sys_statfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STIME_ENTER
+PPP_CB_EXTERN(on_sys_stime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+PPP_CB_EXTERN(on_sys_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE2_ENTER
+PPP_CB_EXTERN(on_sys_sync_file_range2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+PPP_CB_EXTERN(on_sys_sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+PPP_CB_EXTERN(on_sys_sysfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIME_ENTER
+PPP_CB_EXTERN(on_sys_time_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+PPP_CB_EXTERN(on_sys_truncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_umount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+PPP_CB_EXTERN(on_sys_uselib_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+PPP_CB_EXTERN(on_sys_ustat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
+PPP_CB_EXTERN(on_sys_utime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
+PPP_CB_EXTERN(on_sys_utimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VFORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VFORK_ENTER
+PPP_CB_EXTERN(on_sys_vfork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
+#endif
+#if defined(TARGET_MIPS) && defined(TARGET_MIPS64)
+#ifndef PPP_CB_EXTERN_ON_CREATE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_CREATE_MODULE_ENTER
+PPP_CB_EXTERN(on_create_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GET_KERNEL_SYMS_ENTER
+#define PPP_CB_EXTERN_ON_GET_KERNEL_SYMS_ENTER
+PPP_CB_EXTERN(on_get_kernel_syms_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MMAP2_ENTER
+#define PPP_CB_EXTERN_ON_MMAP2_ENTER
+PPP_CB_EXTERN(on_mmap2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MODIFY_LDT_ENTER
+#define PPP_CB_EXTERN_ON_MODIFY_LDT_ENTER
+PPP_CB_EXTERN(on_modify_ldt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SET_THREAD_AREA_ENTER
+#define PPP_CB_EXTERN_ON_SET_THREAD_AREA_ENTER
+PPP_CB_EXTERN(on_set_thread_area_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+PPP_CB_EXTERN(on_sys_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+PPP_CB_EXTERN(on_sys_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_ENTER
+PPP_CB_EXTERN(on_sys_adjtimex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_adjtimex_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+PPP_CB_EXTERN(on_sys_alarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+PPP_CB_EXTERN(on_sys_bdflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CACHEFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CACHEFLUSH_ENTER
+PPP_CB_EXTERN(on_sys_cacheflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+PPP_CB_EXTERN(on_sys_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+PPP_CB_EXTERN(on_sys_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE3_ENTER
+PPP_CB_EXTERN(on_sys_clone3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+PPP_CB_EXTERN(on_sys_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+PPP_CB_EXTERN(on_sys_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+PPP_CB_EXTERN(on_sys_eventfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+PPP_CB_EXTERN(on_sys_faccessat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+PPP_CB_EXTERN(on_sys_fcntl64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+PPP_CB_EXTERN(on_sys_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSCONFIG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSCONFIG_ENTER
+PPP_CB_EXTERN(on_sys_fsconfig_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_fsmount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSOPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSOPEN_ENTER
+PPP_CB_EXTERN(on_sys_fsopen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSPICK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSPICK_ENTER
+PPP_CB_EXTERN(on_sys_fspick_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+PPP_CB_EXTERN(on_sys_fstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+PPP_CB_EXTERN(on_sys_fstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+PPP_CB_EXTERN(on_sys_fstatat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_futex_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_ENTER
+PPP_CB_EXTERN(on_sys_futimesat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_futimesat_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+PPP_CB_EXTERN(on_sys_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+PPP_CB_EXTERN(on_sys_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IDLE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IDLE_ENTER
+PPP_CB_EXTERN(on_sys_idle_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_ENTER
+PPP_CB_EXTERN(on_sys_io_getevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_io_getevents_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_ENTER
+PPP_CB_EXTERN(on_sys_io_pgetevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_io_pgetevents_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_ENTER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_ENTER_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_enter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_REGISTER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_REGISTER_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_register_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
+PPP_CB_EXTERN(on_sys_ioperm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
+PPP_CB_EXTERN(on_sys_iopl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+PPP_CB_EXTERN(on_sys_ipc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+PPP_CB_EXTERN(on_sys_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+PPP_CB_EXTERN(on_sys_llseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT_ENTER
+PPP_CB_EXTERN(on_sys_lstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+PPP_CB_EXTERN(on_sys_lstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_migrate_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+PPP_CB_EXTERN(on_sys_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+PPP_CB_EXTERN(on_sys_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+PPP_CB_EXTERN(on_sys_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_move_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+PPP_CB_EXTERN(on_sys_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+PPP_CB_EXTERN(on_sys_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+PPP_CB_EXTERN(on_sys_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+PPP_CB_EXTERN(on_sys_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_nanosleep_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstatat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+PPP_CB_EXTERN(on_sys_newuname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NFSSERVCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NFSSERVCTL_ENTER
+PPP_CB_EXTERN(on_sys_nfsservctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NI_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NI_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_ni_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+PPP_CB_EXTERN(on_sys_nice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_MMAP_ENTER
+PPP_CB_EXTERN(on_sys_old_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_MSGCTL_ENTER
+PPP_CB_EXTERN(on_sys_old_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_READDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_READDIR_ENTER
+PPP_CB_EXTERN(on_sys_old_readdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_SEMCTL_ENTER
+PPP_CB_EXTERN(on_sys_old_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_SHMCTL_ENTER
+PPP_CB_EXTERN(on_sys_old_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLDUMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLDUMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_oldumount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLDUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLDUNAME_ENTER
+PPP_CB_EXTERN(on_sys_olduname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_TREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_TREE_ENTER
+PPP_CB_EXTERN(on_sys_open_tree_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+PPP_CB_EXTERN(on_sys_openat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+PPP_CB_EXTERN(on_sys_pause_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+PPP_CB_EXTERN(on_sys_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+PPP_CB_EXTERN(on_sys_pkey_free_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+PPP_CB_EXTERN(on_sys_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+PPP_CB_EXTERN(on_sys_preadv2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+PPP_CB_EXTERN(on_sys_pwritev2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUERY_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUERY_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_query_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
+PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+PPP_CB_EXTERN(on_sys_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
+PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECV_ENTER
+PPP_CB_EXTERN(on_sys_recv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_recvmmsg_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+PPP_CB_EXTERN(on_sys_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+PPP_CB_EXTERN(on_sys_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RSEQ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RSEQ_ENTER
+PPP_CB_EXTERN(on_sys_rseq_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigtimedwait_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+PPP_CB_EXTERN(on_sys_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+PPP_CB_EXTERN(on_sys_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+PPP_CB_EXTERN(on_sys_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+PPP_CB_EXTERN(on_sys_semop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEND_ENTER
+PPP_CB_EXTERN(on_sys_send_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+PPP_CB_EXTERN(on_sys_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+PPP_CB_EXTERN(on_sys_sendfile64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SGETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SGETMASK_ENTER
+PPP_CB_EXTERN(on_sys_sgetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+PPP_CB_EXTERN(on_sys_shmat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+PPP_CB_EXTERN(on_sys_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+PPP_CB_EXTERN(on_sys_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+PPP_CB_EXTERN(on_sys_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNAL_ENTER
+PPP_CB_EXTERN(on_sys_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+PPP_CB_EXTERN(on_sys_signalfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+PPP_CB_EXTERN(on_sys_socketcall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SSETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SSETMASK_ENTER
+PPP_CB_EXTERN(on_sys_ssetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT_ENTER
+PPP_CB_EXTERN(on_sys_stat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+PPP_CB_EXTERN(on_sys_stat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+PPP_CB_EXTERN(on_sys_statfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STIME32_ENTER
+PPP_CB_EXTERN(on_sys_stime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+PPP_CB_EXTERN(on_sys_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_sync_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+PPP_CB_EXTERN(on_sys_sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+PPP_CB_EXTERN(on_sys_sysfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+PPP_CB_EXTERN(on_sys_truncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_umount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+PPP_CB_EXTERN(on_sys_uname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+PPP_CB_EXTERN(on_sys_uselib_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+PPP_CB_EXTERN(on_sys_ustat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME_ENTER
+PPP_CB_EXTERN(on_sys_utime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME32_ENTER
+PPP_CB_EXTERN(on_sys_utime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_ENTER
+PPP_CB_EXTERN(on_sys_utimes_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_utimes_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITPID_ENTER
+PPP_CB_EXTERN(on_sys_waitpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
+#endif
+#if 0
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+PPP_CB_EXTERN(on_sys_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+PPP_CB_EXTERN(on_sys_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_adjtimex_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+PPP_CB_EXTERN(on_sys_alarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+PPP_CB_EXTERN(on_sys_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+PPP_CB_EXTERN(on_sys_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE3_ENTER
+PPP_CB_EXTERN(on_sys_clone3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+PPP_CB_EXTERN(on_sys_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+PPP_CB_EXTERN(on_sys_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+PPP_CB_EXTERN(on_sys_eventfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+PPP_CB_EXTERN(on_sys_faccessat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+PPP_CB_EXTERN(on_sys_fcntl64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+PPP_CB_EXTERN(on_sys_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSCONFIG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSCONFIG_ENTER
+PPP_CB_EXTERN(on_sys_fsconfig_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_fsmount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSOPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSOPEN_ENTER
+PPP_CB_EXTERN(on_sys_fsopen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSPICK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSPICK_ENTER
+PPP_CB_EXTERN(on_sys_fspick_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_futex_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_futimesat_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+PPP_CB_EXTERN(on_sys_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+PPP_CB_EXTERN(on_sys_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_io_getevents_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_ENTER
+PPP_CB_EXTERN(on_sys_io_pgetevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_io_pgetevents_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_ENTER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_ENTER_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_enter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_REGISTER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_REGISTER_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_register_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+PPP_CB_EXTERN(on_sys_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_migrate_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+PPP_CB_EXTERN(on_sys_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+PPP_CB_EXTERN(on_sys_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_move_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+PPP_CB_EXTERN(on_sys_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+PPP_CB_EXTERN(on_sys_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+PPP_CB_EXTERN(on_sys_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_nanosleep_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTATAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstatat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+PPP_CB_EXTERN(on_sys_newuname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NI_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NI_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_ni_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_MMAP_ENTER
+PPP_CB_EXTERN(on_sys_old_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_MSGCTL_ENTER
+PPP_CB_EXTERN(on_sys_old_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_SHMCTL_ENTER
+PPP_CB_EXTERN(on_sys_old_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_TREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_TREE_ENTER
+PPP_CB_EXTERN(on_sys_open_tree_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+PPP_CB_EXTERN(on_sys_openat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+PPP_CB_EXTERN(on_sys_pause_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+PPP_CB_EXTERN(on_sys_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+PPP_CB_EXTERN(on_sys_pkey_free_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+PPP_CB_EXTERN(on_sys_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+PPP_CB_EXTERN(on_sys_preadv2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+PPP_CB_EXTERN(on_sys_pwritev2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
+PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+PPP_CB_EXTERN(on_sys_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
+PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+PPP_CB_EXTERN(on_sys_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+PPP_CB_EXTERN(on_sys_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RSEQ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RSEQ_ENTER
+PPP_CB_EXTERN(on_sys_rseq_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+PPP_CB_EXTERN(on_sys_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+PPP_CB_EXTERN(on_sys_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+PPP_CB_EXTERN(on_sys_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMOP_ENTER
+PPP_CB_EXTERN(on_sys_semop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+PPP_CB_EXTERN(on_sys_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+PPP_CB_EXTERN(on_sys_sendfile64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+PPP_CB_EXTERN(on_sys_shmat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+PPP_CB_EXTERN(on_sys_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+PPP_CB_EXTERN(on_sys_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+PPP_CB_EXTERN(on_sys_signalfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+PPP_CB_EXTERN(on_sys_statfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+PPP_CB_EXTERN(on_sys_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_sync_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+PPP_CB_EXTERN(on_sys_sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+PPP_CB_EXTERN(on_sys_sysfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_umount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+PPP_CB_EXTERN(on_sys_ustat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME32_ENTER
+PPP_CB_EXTERN(on_sys_utime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_utimes_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
+#endif
+#if defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+#ifndef PPP_CB_EXTERN_ON_CREATE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_CREATE_MODULE_ENTER
+PPP_CB_EXTERN(on_create_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_GET_KERNEL_SYMS_ENTER
+#define PPP_CB_EXTERN_ON_GET_KERNEL_SYMS_ENTER
+PPP_CB_EXTERN(on_get_kernel_syms_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MMAP2_ENTER
+#define PPP_CB_EXTERN_ON_MMAP2_ENTER
+PPP_CB_EXTERN(on_mmap2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_MODIFY_LDT_ENTER
+#define PPP_CB_EXTERN_ON_MODIFY_LDT_ENTER
+PPP_CB_EXTERN(on_modify_ldt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SET_THREAD_AREA_ENTER
+#define PPP_CB_EXTERN_ON_SET_THREAD_AREA_ENTER
+PPP_CB_EXTERN(on_set_thread_area_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT_ENTER
+PPP_CB_EXTERN(on_sys_accept_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCEPT4_ENTER
+PPP_CB_EXTERN(on_sys_accept4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCESS_ENTER
+PPP_CB_EXTERN(on_sys_access_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ACCT_ENTER
+PPP_CB_EXTERN(on_sys_acct_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADD_KEY_ENTER
+PPP_CB_EXTERN(on_sys_add_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ADJTIMEX_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ADJTIMEX_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_adjtimex_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_ALARM_ENTER
+PPP_CB_EXTERN(on_sys_alarm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BDFLUSH_ENTER
+PPP_CB_EXTERN(on_sys_bdflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BIND_ENTER
+PPP_CB_EXTERN(on_sys_bind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BPF_ENTER
+PPP_CB_EXTERN(on_sys_bpf_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_BRK_ENTER
+PPP_CB_EXTERN(on_sys_brk_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CACHEFLUSH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CACHEFLUSH_ENTER
+PPP_CB_EXTERN(on_sys_cacheflush_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPGET_ENTER
+PPP_CB_EXTERN(on_sys_capget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CAPSET_ENTER
+PPP_CB_EXTERN(on_sys_capset_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHDIR_ENTER
+PPP_CB_EXTERN(on_sys_chdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHMOD_ENTER
+PPP_CB_EXTERN(on_sys_chmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHOWN_ENTER
+PPP_CB_EXTERN(on_sys_chown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CHROOT_ENTER
+PPP_CB_EXTERN(on_sys_chroot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_ADJTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_adjtime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETRES_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_getres_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_NANOSLEEP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_nanosleep_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOCK_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_clock_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLONE_ENTER
+PPP_CB_EXTERN(on_sys_clone_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CLOSE_ENTER
+PPP_CB_EXTERN(on_sys_close_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CONNECT_ENTER
+PPP_CB_EXTERN(on_sys_connect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_COPY_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_copy_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_CREAT_ENTER
+PPP_CB_EXTERN(on_sys_creat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DELETE_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_delete_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP_ENTER
+PPP_CB_EXTERN(on_sys_dup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP2_ENTER
+PPP_CB_EXTERN(on_sys_dup2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+#define PPP_CB_EXTERN_ON_SYS_DUP3_ENTER
+PPP_CB_EXTERN(on_sys_dup3_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CREATE1_ENTER
+PPP_CB_EXTERN(on_sys_epoll_create1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_CTL_ENTER
+PPP_CB_EXTERN(on_sys_epoll_ctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_PWAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_pwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EPOLL_WAIT_ENTER
+PPP_CB_EXTERN(on_sys_epoll_wait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD_ENTER
+PPP_CB_EXTERN(on_sys_eventfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EVENTFD2_ENTER
+PPP_CB_EXTERN(on_sys_eventfd2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVE_ENTER
+PPP_CB_EXTERN(on_sys_execve_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXECVEAT_ENTER
+PPP_CB_EXTERN(on_sys_execveat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_ENTER
+PPP_CB_EXTERN(on_sys_exit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_EXIT_GROUP_ENTER
+PPP_CB_EXTERN(on_sys_exit_group_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT_ENTER
+PPP_CB_EXTERN(on_sys_faccessat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FACCESSAT2_ENTER
+PPP_CB_EXTERN(on_sys_faccessat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FADVISE64_64_ENTER
+PPP_CB_EXTERN(on_sys_fadvise64_64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FALLOCATE_ENTER
+PPP_CB_EXTERN(on_sys_fallocate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FANOTIFY_MARK_ENTER
+PPP_CB_EXTERN(on_sys_fanotify_mark_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHDIR_ENTER
+PPP_CB_EXTERN(on_sys_fchdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMOD_ENTER
+PPP_CB_EXTERN(on_sys_fchmod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHMODAT_ENTER
+PPP_CB_EXTERN(on_sys_fchmodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_fchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCHOWNAT_ENTER
+PPP_CB_EXTERN(on_sys_fchownat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL_ENTER
+PPP_CB_EXTERN(on_sys_fcntl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FCNTL64_ENTER
+PPP_CB_EXTERN(on_sys_fcntl64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FDATASYNC_ENTER
+PPP_CB_EXTERN(on_sys_fdatasync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FINIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_finit_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_flistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FLOCK_ENTER
+PPP_CB_EXTERN(on_sys_flock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FORK_ENTER
+PPP_CB_EXTERN(on_sys_fork_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSCONFIG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSCONFIG_ENTER
+PPP_CB_EXTERN(on_sys_fsconfig_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_fsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_fsmount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSOPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSOPEN_ENTER
+PPP_CB_EXTERN(on_sys_fsopen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSPICK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSPICK_ENTER
+PPP_CB_EXTERN(on_sys_fspick_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT_ENTER
+PPP_CB_EXTERN(on_sys_fstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTAT64_ENTER
+PPP_CB_EXTERN(on_sys_fstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATAT64_ENTER
+PPP_CB_EXTERN(on_sys_fstatat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSTATFS64_ENTER
+PPP_CB_EXTERN(on_sys_fstatfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FSYNC_ENTER
+PPP_CB_EXTERN(on_sys_fsync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FTRUNCATE64_ENTER
+PPP_CB_EXTERN(on_sys_ftruncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_ENTER
+PPP_CB_EXTERN(on_sys_futex_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTEX_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTEX_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_futex_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_FUTIMESAT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_FUTIMESAT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_futimesat_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_get_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_get_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCPU_ENTER
+PPP_CB_EXTERN(on_sys_getcpu_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETCWD_ENTER
+PPP_CB_EXTERN(on_sys_getcwd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS_ENTER
+PPP_CB_EXTERN(on_sys_getdents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETDENTS64_ENTER
+PPP_CB_EXTERN(on_sys_getdents64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEGID_ENTER
+PPP_CB_EXTERN(on_sys_getegid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETEUID_ENTER
+PPP_CB_EXTERN(on_sys_geteuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGID_ENTER
+PPP_CB_EXTERN(on_sys_getgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_getgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_getitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPEERNAME_ENTER
+PPP_CB_EXTERN(on_sys_getpeername_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGID_ENTER
+PPP_CB_EXTERN(on_sys_getpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPGRP_ENTER
+PPP_CB_EXTERN(on_sys_getpgrp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPID_ENTER
+PPP_CB_EXTERN(on_sys_getpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPPID_ENTER
+PPP_CB_EXTERN(on_sys_getppid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_getpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRANDOM_ENTER
+PPP_CB_EXTERN(on_sys_getrandom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_getresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_getresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_getrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETRUSAGE_ENTER
+PPP_CB_EXTERN(on_sys_getrusage_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSID_ENTER
+PPP_CB_EXTERN(on_sys_getsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKNAME_ENTER
+PPP_CB_EXTERN(on_sys_getsockname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_getsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTID_ENTER
+PPP_CB_EXTERN(on_sys_gettid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_gettimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETUID_ENTER
+PPP_CB_EXTERN(on_sys_getuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_GETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_getxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IDLE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IDLE_ENTER
+PPP_CB_EXTERN(on_sys_idle_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INIT_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_init_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_ADD_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_add_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_INIT1_ENTER
+PPP_CB_EXTERN(on_sys_inotify_init1_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+#define PPP_CB_EXTERN_ON_SYS_INOTIFY_RM_WATCH_ENTER
+PPP_CB_EXTERN(on_sys_inotify_rm_watch_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_CANCEL_ENTER
+PPP_CB_EXTERN(on_sys_io_cancel_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_DESTROY_ENTER
+PPP_CB_EXTERN(on_sys_io_destroy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_GETEVENTS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_io_getevents_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_ENTER
+PPP_CB_EXTERN(on_sys_io_pgetevents_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_PGETEVENTS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_io_pgetevents_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_SUBMIT_ENTER
+PPP_CB_EXTERN(on_sys_io_submit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_ENTER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_ENTER_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_enter_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_REGISTER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_REGISTER_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_register_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IO_URING_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IO_URING_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_io_uring_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOCTL_ENTER
+PPP_CB_EXTERN(on_sys_ioctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPERM_ENTER
+PPP_CB_EXTERN(on_sys_ioperm_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPL_ENTER
+PPP_CB_EXTERN(on_sys_iopl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_GET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_get_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IOPRIO_SET_ENTER
+PPP_CB_EXTERN(on_sys_ioprio_set_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_IPC_ENTER
+PPP_CB_EXTERN(on_sys_ipc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KCMP_ENTER
+PPP_CB_EXTERN(on_sys_kcmp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEXEC_LOAD_ENTER
+PPP_CB_EXTERN(on_sys_kexec_load_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KEYCTL_ENTER
+PPP_CB_EXTERN(on_sys_keyctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_KILL_ENTER
+PPP_CB_EXTERN(on_sys_kill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LCHOWN_ENTER
+PPP_CB_EXTERN(on_sys_lchown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LGETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lgetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINK_ENTER
+PPP_CB_EXTERN(on_sys_link_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LINKAT_ENTER
+PPP_CB_EXTERN(on_sys_linkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTEN_ENTER
+PPP_CB_EXTERN(on_sys_listen_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_listxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLISTXATTR_ENTER
+PPP_CB_EXTERN(on_sys_llistxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LLSEEK_ENTER
+PPP_CB_EXTERN(on_sys_llseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LOOKUP_DCOOKIE_ENTER
+PPP_CB_EXTERN(on_sys_lookup_dcookie_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LREMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lremovexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSEEK_ENTER
+PPP_CB_EXTERN(on_sys_lseek_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_lsetxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT_ENTER
+PPP_CB_EXTERN(on_sys_lstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_LSTAT64_ENTER
+PPP_CB_EXTERN(on_sys_lstat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MADVISE_ENTER
+PPP_CB_EXTERN(on_sys_madvise_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MBIND_ENTER
+PPP_CB_EXTERN(on_sys_mbind_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMBARRIER_ENTER
+PPP_CB_EXTERN(on_sys_membarrier_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MEMFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_memfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MIGRATE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_migrate_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MINCORE_ENTER
+PPP_CB_EXTERN(on_sys_mincore_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIR_ENTER
+PPP_CB_EXTERN(on_sys_mkdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKDIRAT_ENTER
+PPP_CB_EXTERN(on_sys_mkdirat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNOD_ENTER
+PPP_CB_EXTERN(on_sys_mknod_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MKNODAT_ENTER
+PPP_CB_EXTERN(on_sys_mknodat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK_ENTER
+PPP_CB_EXTERN(on_sys_mlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCK2_ENTER
+PPP_CB_EXTERN(on_sys_mlock2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_mlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MMAP_ENTER
+PPP_CB_EXTERN(on_sys_mmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_MOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_MOUNT_ENTER
+PPP_CB_EXTERN(on_sys_move_mount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MOVE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_move_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_GETSETATTR_ENTER
+PPP_CB_EXTERN(on_sys_mq_getsetattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_NOTIFY_ENTER
+PPP_CB_EXTERN(on_sys_mq_notify_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_mq_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDRECEIVE_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedreceive_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_TIMEDSEND_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_mq_timedsend_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MQ_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_mq_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MREMAP_ENTER
+PPP_CB_EXTERN(on_sys_mremap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGCTL_ENTER
+PPP_CB_EXTERN(on_sys_msgctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGGET_ENTER
+PPP_CB_EXTERN(on_sys_msgget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGRCV_ENTER
+PPP_CB_EXTERN(on_sys_msgrcv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSGSND_ENTER
+PPP_CB_EXTERN(on_sys_msgsnd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MSYNC_ENTER
+PPP_CB_EXTERN(on_sys_msync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCK_ENTER
+PPP_CB_EXTERN(on_sys_munlock_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNLOCKALL_ENTER
+PPP_CB_EXTERN(on_sys_munlockall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_MUNMAP_ENTER
+PPP_CB_EXTERN(on_sys_munmap_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NAME_TO_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_name_to_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NANOSLEEP_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NANOSLEEP_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_nanosleep_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWFSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newfstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWLSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newlstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWSTAT_ENTER
+PPP_CB_EXTERN(on_sys_newstat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NEWUNAME_ENTER
+PPP_CB_EXTERN(on_sys_newuname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NFSSERVCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NFSSERVCTL_ENTER
+PPP_CB_EXTERN(on_sys_nfsservctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NI_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NI_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_ni_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_NICE_ENTER
+PPP_CB_EXTERN(on_sys_nice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLD_READDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLD_READDIR_ENTER
+PPP_CB_EXTERN(on_sys_old_readdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLDUMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLDUMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_oldumount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OLDUNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OLDUNAME_ENTER
+PPP_CB_EXTERN(on_sys_olduname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_BY_HANDLE_AT_ENTER
+PPP_CB_EXTERN(on_sys_open_by_handle_at_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPEN_TREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPEN_TREE_ENTER
+PPP_CB_EXTERN(on_sys_open_tree_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT_ENTER
+PPP_CB_EXTERN(on_sys_openat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_OPENAT2_ENTER
+PPP_CB_EXTERN(on_sys_openat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PAUSE_ENTER
+PPP_CB_EXTERN(on_sys_pause_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERF_EVENT_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_perf_event_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PERSONALITY_ENTER
+PPP_CB_EXTERN(on_sys_personality_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_GETFD_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_getfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_OPEN_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_open_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIDFD_SEND_SIGNAL_ENTER
+PPP_CB_EXTERN(on_sys_pidfd_send_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE_ENTER
+PPP_CB_EXTERN(on_sys_pipe_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIPE2_ENTER
+PPP_CB_EXTERN(on_sys_pipe2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PIVOT_ROOT_ENTER
+PPP_CB_EXTERN(on_sys_pivot_root_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_ALLOC_ENTER
+PPP_CB_EXTERN(on_sys_pkey_alloc_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_FREE_ENTER
+PPP_CB_EXTERN(on_sys_pkey_free_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PKEY_MPROTECT_ENTER
+PPP_CB_EXTERN(on_sys_pkey_mprotect_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_POLL_ENTER
+PPP_CB_EXTERN(on_sys_poll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PPOLL_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PPOLL_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_ppoll_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRCTL_ENTER
+PPP_CB_EXTERN(on_sys_prctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREAD64_ENTER
+PPP_CB_EXTERN(on_sys_pread64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV_ENTER
+PPP_CB_EXTERN(on_sys_preadv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PREADV2_ENTER
+PPP_CB_EXTERN(on_sys_preadv2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PRLIMIT64_ENTER
+PPP_CB_EXTERN(on_sys_prlimit64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_READV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PROCESS_VM_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_process_vm_writev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PSELECT6_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PSELECT6_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_pselect6_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PTRACE_ENTER
+PPP_CB_EXTERN(on_sys_ptrace_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITE64_ENTER
+PPP_CB_EXTERN(on_sys_pwrite64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV_ENTER
+PPP_CB_EXTERN(on_sys_pwritev_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_PWRITEV2_ENTER
+PPP_CB_EXTERN(on_sys_pwritev2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUERY_MODULE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUERY_MODULE_ENTER
+PPP_CB_EXTERN(on_sys_query_module_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_QUOTACTL_ENTER
+PPP_CB_EXTERN(on_sys_quotactl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READ_ENTER
+PPP_CB_EXTERN(on_sys_read_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READAHEAD_ENTER
+PPP_CB_EXTERN(on_sys_readahead_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINK_ENTER
+PPP_CB_EXTERN(on_sys_readlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_readlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_READV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_READV_ENTER
+PPP_CB_EXTERN(on_sys_readv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REBOOT_ENTER
+PPP_CB_EXTERN(on_sys_reboot_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECV_ENTER
+PPP_CB_EXTERN(on_sys_recv_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVFROM_ENTER
+PPP_CB_EXTERN(on_sys_recvfrom_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMMSG_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMMSG_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_recvmmsg_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RECVMSG_ENTER
+PPP_CB_EXTERN(on_sys_recvmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMAP_FILE_PAGES_ENTER
+PPP_CB_EXTERN(on_sys_remap_file_pages_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REMOVEXATTR_ENTER
+PPP_CB_EXTERN(on_sys_removexattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAME_ENTER
+PPP_CB_EXTERN(on_sys_rename_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT_ENTER
+PPP_CB_EXTERN(on_sys_renameat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RENAMEAT2_ENTER
+PPP_CB_EXTERN(on_sys_renameat2_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_REQUEST_KEY_ENTER
+PPP_CB_EXTERN(on_sys_request_key_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RESTART_SYSCALL_ENTER
+PPP_CB_EXTERN(on_sys_restart_syscall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RMDIR_ENTER
+PPP_CB_EXTERN(on_sys_rmdir_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RSEQ_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RSEQ_ENTER
+PPP_CB_EXTERN(on_sys_rseq_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigtimedwait_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_SIGTIMEDWAIT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_rt_sigtimedwait_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_RT_TGSIGQUEUEINFO_ENTER
+PPP_CB_EXTERN(on_sys_rt_tgsigqueueinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MAX_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_max_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GET_PRIORITY_MIN_ENTER
+PPP_CB_EXTERN(on_sys_sched_get_priority_min_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_getaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_getattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_getparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_GETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_getscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_RR_GET_INTERVAL_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_sched_rr_get_interval_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETAFFINITY_ENTER
+PPP_CB_EXTERN(on_sys_sched_setaffinity_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETATTR_ENTER
+PPP_CB_EXTERN(on_sys_sched_setattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETPARAM_ENTER
+PPP_CB_EXTERN(on_sys_sched_setparam_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_SETSCHEDULER_ENTER
+PPP_CB_EXTERN(on_sys_sched_setscheduler_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SCHED_YIELD_ENTER
+PPP_CB_EXTERN(on_sys_sched_yield_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SECCOMP_ENTER
+PPP_CB_EXTERN(on_sys_seccomp_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SELECT_ENTER
+PPP_CB_EXTERN(on_sys_select_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMCTL_ENTER
+PPP_CB_EXTERN(on_sys_semctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMGET_ENTER
+PPP_CB_EXTERN(on_sys_semget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEMTIMEDOP_ENTER
+PPP_CB_EXTERN(on_sys_semtimedop_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SEND_ENTER
+PPP_CB_EXTERN(on_sys_send_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE_ENTER
+PPP_CB_EXTERN(on_sys_sendfile_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDFILE64_ENTER
+PPP_CB_EXTERN(on_sys_sendfile64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDMSG_ENTER
+PPP_CB_EXTERN(on_sys_sendmsg_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SENDTO_ENTER
+PPP_CB_EXTERN(on_sys_sendto_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_MEMPOLICY_ENTER
+PPP_CB_EXTERN(on_sys_set_mempolicy_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_ROBUST_LIST_ENTER
+PPP_CB_EXTERN(on_sys_set_robust_list_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SET_TID_ADDRESS_ENTER
+PPP_CB_EXTERN(on_sys_set_tid_address_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETDOMAINNAME_ENTER
+PPP_CB_EXTERN(on_sys_setdomainname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSGID_ENTER
+PPP_CB_EXTERN(on_sys_setfsgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETFSUID_ENTER
+PPP_CB_EXTERN(on_sys_setfsuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGID_ENTER
+PPP_CB_EXTERN(on_sys_setgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETGROUPS_ENTER
+PPP_CB_EXTERN(on_sys_setgroups_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETHOSTNAME_ENTER
+PPP_CB_EXTERN(on_sys_sethostname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETITIMER_ENTER
+PPP_CB_EXTERN(on_sys_setitimer_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETNS_ENTER
+PPP_CB_EXTERN(on_sys_setns_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPGID_ENTER
+PPP_CB_EXTERN(on_sys_setpgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETPRIORITY_ENTER
+PPP_CB_EXTERN(on_sys_setpriority_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREGID_ENTER
+PPP_CB_EXTERN(on_sys_setregid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESGID_ENTER
+PPP_CB_EXTERN(on_sys_setresgid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRESUID_ENTER
+PPP_CB_EXTERN(on_sys_setresuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETREUID_ENTER
+PPP_CB_EXTERN(on_sys_setreuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETRLIMIT_ENTER
+PPP_CB_EXTERN(on_sys_setrlimit_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSID_ENTER
+PPP_CB_EXTERN(on_sys_setsid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETSOCKOPT_ENTER
+PPP_CB_EXTERN(on_sys_setsockopt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETTIMEOFDAY_ENTER
+PPP_CB_EXTERN(on_sys_settimeofday_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUID_ENTER
+PPP_CB_EXTERN(on_sys_setuid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETUP_ENTER
+PPP_CB_EXTERN(on_sys_setup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SETXATTR_ENTER
+PPP_CB_EXTERN(on_sys_setxattr_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SGETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SGETMASK_ENTER
+PPP_CB_EXTERN(on_sys_sgetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMAT_ENTER
+PPP_CB_EXTERN(on_sys_shmat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMCTL_ENTER
+PPP_CB_EXTERN(on_sys_shmctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMDT_ENTER
+PPP_CB_EXTERN(on_sys_shmdt_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHMGET_ENTER
+PPP_CB_EXTERN(on_sys_shmget_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SHUTDOWN_ENTER
+PPP_CB_EXTERN(on_sys_shutdown_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGACTION_ENTER
+PPP_CB_EXTERN(on_sys_sigaction_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGALTSTACK_ENTER
+PPP_CB_EXTERN(on_sys_sigaltstack_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNAL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNAL_ENTER
+PPP_CB_EXTERN(on_sys_signal_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD_ENTER
+PPP_CB_EXTERN(on_sys_signalfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGNALFD4_ENTER
+PPP_CB_EXTERN(on_sys_signalfd4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPENDING_ENTER
+PPP_CB_EXTERN(on_sys_sigpending_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGPROCMASK_ENTER
+PPP_CB_EXTERN(on_sys_sigprocmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGRETURN_ENTER
+PPP_CB_EXTERN(on_sys_sigreturn_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SIGSUSPEND_ENTER
+PPP_CB_EXTERN(on_sys_sigsuspend_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKET_ENTER
+PPP_CB_EXTERN(on_sys_socket_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETCALL_ENTER
+PPP_CB_EXTERN(on_sys_socketcall_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SOCKETPAIR_ENTER
+PPP_CB_EXTERN(on_sys_socketpair_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SPLICE_ENTER
+PPP_CB_EXTERN(on_sys_splice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SSETMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SSETMASK_ENTER
+PPP_CB_EXTERN(on_sys_ssetmask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT_ENTER
+PPP_CB_EXTERN(on_sys_stat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STAT64_ENTER
+PPP_CB_EXTERN(on_sys_stat64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS_ENTER
+PPP_CB_EXTERN(on_sys_statfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATFS64_ENTER
+PPP_CB_EXTERN(on_sys_statfs64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STATX_ENTER
+PPP_CB_EXTERN(on_sys_statx_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_STIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_STIME32_ENTER
+PPP_CB_EXTERN(on_sys_stime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPOFF_ENTER
+PPP_CB_EXTERN(on_sys_swapoff_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SWAPON_ENTER
+PPP_CB_EXTERN(on_sys_swapon_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINK_ENTER
+PPP_CB_EXTERN(on_sys_symlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYMLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_symlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_ENTER
+PPP_CB_EXTERN(on_sys_sync_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNC_FILE_RANGE_ENTER
+PPP_CB_EXTERN(on_sys_sync_file_range_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYNCFS_ENTER
+PPP_CB_EXTERN(on_sys_syncfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSCTL_ENTER
+PPP_CB_EXTERN(on_sys_sysctl_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSFS_ENTER
+PPP_CB_EXTERN(on_sys_sysfs_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSINFO_ENTER
+PPP_CB_EXTERN(on_sys_sysinfo_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+#define PPP_CB_EXTERN_ON_SYS_SYSLOG_ENTER
+PPP_CB_EXTERN(on_sys_syslog_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TEE_ENTER
+PPP_CB_EXTERN(on_sys_tee_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TGKILL_ENTER
+PPP_CB_EXTERN(on_sys_tgkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timer_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_DELETE_ENTER
+PPP_CB_EXTERN(on_sys_timer_delete_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETOVERRUN_ENTER
+PPP_CB_EXTERN(on_sys_timer_getoverrun_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timer_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMER_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timer_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_CREATE_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_create_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_GETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_gettime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMERFD_SETTIME32_ENTER
+PPP_CB_EXTERN(on_sys_timerfd_settime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TIMES_ENTER
+PPP_CB_EXTERN(on_sys_times_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TKILL_ENTER
+PPP_CB_EXTERN(on_sys_tkill_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE_ENTER
+PPP_CB_EXTERN(on_sys_truncate_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+#define PPP_CB_EXTERN_ON_SYS_TRUNCATE64_ENTER
+PPP_CB_EXTERN(on_sys_truncate64_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMASK_ENTER
+PPP_CB_EXTERN(on_sys_umask_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UMOUNT_ENTER
+PPP_CB_EXTERN(on_sys_umount_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNAME_ENTER
+PPP_CB_EXTERN(on_sys_uname_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINK_ENTER
+PPP_CB_EXTERN(on_sys_unlink_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNLINKAT_ENTER
+PPP_CB_EXTERN(on_sys_unlinkat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UNSHARE_ENTER
+PPP_CB_EXTERN(on_sys_unshare_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USELIB_ENTER
+PPP_CB_EXTERN(on_sys_uselib_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USERFAULTFD_ENTER
+PPP_CB_EXTERN(on_sys_userfaultfd_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_USTAT_ENTER
+PPP_CB_EXTERN(on_sys_ustat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIME32_ENTER
+PPP_CB_EXTERN(on_sys_utime32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMENSAT_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMENSAT_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_utimensat_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_UTIMES_TIME32_ENTER
+#define PPP_CB_EXTERN_ON_SYS_UTIMES_TIME32_ENTER
+PPP_CB_EXTERN(on_sys_utimes_time32_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VHANGUP_ENTER
+PPP_CB_EXTERN(on_sys_vhangup_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_VMSPLICE_ENTER
+PPP_CB_EXTERN(on_sys_vmsplice_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAIT4_ENTER
+PPP_CB_EXTERN(on_sys_wait4_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITID_ENTER
+PPP_CB_EXTERN(on_sys_waitid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WAITPID_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WAITPID_ENTER
+PPP_CB_EXTERN(on_sys_waitpid_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITE_ENTER
+PPP_CB_EXTERN(on_sys_write_enter)
+#endif
+#ifndef PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+#define PPP_CB_EXTERN_ON_SYS_WRITEV_ENTER
+PPP_CB_EXTERN(on_sys_writev_enter)
+#endif
 #endif
 
 PPP_CB_EXTERN(on_unknown_sys_enter)
