@@ -871,37 +871,42 @@ int64_t get_return_s64_generic(CPUState *cpu, syscall_ctx *ctx, uint32_t argnum)
 
 void sysinfo_load(int profile){
     const gchar *arch = "unknown";
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     arch = "x86";
-#elif defined(TARGET_X86_64)
-if (profile == PROFILE_WINDOWS_7_X64 || profile == PROFILE_LINUX_X64
-    || profile == PROFILE_FREEBSD_X64){
-    arch = "x64";
-} else if (profile == PROFILE_LINUX_X86 || profile == PROFILE_WINDOWS_2000_X86
-    || profile == PROFILE_WINDOWS_XPSP2_X86 || profile == PROFILE_WINDOWS_XPSP3_X86
-    || profile == PROFILE_WINDOWS_7_X86) {
-    arch = "x86";
-}
-#elif defined(TARGET_ARM) &&!defined(TARGET_AARCH64)
+
+// x86_64 logic
+#if defined(TARGET_X86_64)
+    if (profile == PROFILE_WINDOWS_7_X64 || profile == PROFILE_LINUX_X64
+        || profile == PROFILE_FREEBSD_X64){
+        arch = "x64";
+    } else if (profile == PROFILE_LINUX_X86 || profile == PROFILE_WINDOWS_2000_X86
+        || profile == PROFILE_WINDOWS_XPSP2_X86 || profile == PROFILE_WINDOWS_XPSP3_X86
+        || profile == PROFILE_WINDOWS_7_X86) {
+        arch = "x86";
+    }
+#endif
+
+#elif defined(TARGET_ARM)
     arch = "arm";
-#elif defined(TARGET_ARM) &&defined(TARGET_AARCH64)
-if (profile == PROFILE_LINUX_AARCH64) {
-    arch = "arm64";
-} else if (profile == PROFILE_LINUX_ARM){
-    arch = "arm";
-}
-#elif defined(TARGET_MIPS) && defined(TARGET_MIPS64)
-if (profile == PROFILE_LINUX_MIPS64) {
-    arch = "mips64";
-}else if (profile == PROFILE_LINUX_MIPS32){
-    arch = "mips";
-}else if (profile == PROFILE_LINUX_MIPS64N32){
-    arch = "mips64n32";
-}else{
-    assert("invalid profile");
-}
+
+// aarch64 logic
+#if defined(TARGET_AARCH64)
+    if (profile == PROFILE_LINUX_AARCH64) {
+        arch = "arm64";
+    }
+#endif
+
 #elif defined(TARGET_MIPS)
     arch = "mips";
+
+// mips64 logic
+#if defined(TARGET_MIPS64)
+    if (profile == PROFILE_LINUX_MIPS64) {
+        arch = "mips64";
+    }else if (profile == PROFILE_LINUX_MIPS64N32){
+        arch = "mips64n32";
+    }
+#endif
 #else
     // will fail on dlopen because dso file won't exist
     arch = "unknown";
