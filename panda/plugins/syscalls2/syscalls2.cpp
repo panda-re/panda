@@ -894,7 +894,7 @@ if (profile == PROFILE_LINUX_AARCH64) {
 if (profile == PROFILE_LINUX_MIPS64) {
     arch = "mips64";
 }else if (profile == PROFILE_LINUX_MIPS32){
-    arch = "mips32";
+    arch = "mips";
 }else if (profile == PROFILE_LINUX_MIPS64N32){
     arch = "mips64n32";
 }else{
