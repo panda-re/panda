@@ -40,12 +40,16 @@ void unregister_hypercall(uint32_t magic){
 uint32_t get_magic(CPUState *cpu){
     uint32_t magic;
     CPUArchState * env = (CPUArchState *)cpu->env_ptr;
-#if defined(TARGET_AARCH64)
-    //XR
-    magic = env->xregs[8];
-#elif defined(TARGET_ARM)
+
+#if defined(TARGET_ARM)
     // r7
     magic = env->regs[7];
+#if defined(TARGET_AARCH64)
+    if (env->aarch64 != 0){
+        // XR
+        magic = env->xregs[8];
+    }
+#endif
 #elif defined(TARGET_MIPS)
     // V0
     magic = env->active_tc.gpr[2];
