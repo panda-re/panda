@@ -1,6 +1,7 @@
 ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
 ARG LIBOSI_VERSION="v0.1.7"
+ARG CAPSTONE_VERSION="6.0.0-Alpha5"
 
 ### BASE IMAGE
 FROM $BASE_IMAGE as base
@@ -24,6 +25,7 @@ FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
 ARG LIBOSI_VERSION
+ARG CAPSTONE_VERSION
 
 RUN [ -e /tmp/build_dep.txt ] && \
     apt-get -qq update && \
@@ -34,16 +36,19 @@ RUN [ -e /tmp/build_dep.txt ] && \
     python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
-# Then install capstone from source
+# Then install capstone debian package
 RUN cd /tmp && \
-    git clone https://github.com/capstone-engine/capstone/ -b v5 && \
-    cd capstone/ && ./make.sh && make install && cd /tmp && \
-    rm -rf /tmp/capstone && ldconfig
+    curl -LJO https://github.com/AndrewQuijano/capstone/releases/download/${CAPSTONE_VERSION}/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb && \
+    apt-get install /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb && \
+    rm -rf /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # install libosi
-RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
+RUN cd /tmp && \ 
+    curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && \
+    dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && \
+    rm -rf /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -125,7 +130,7 @@ COPY --from=base /tmp/build_dep.txt /tmp
 
 # Copy panda + libcapstone.so* + libosi libraries
 COPY --from=cleanup /usr/local /usr/local
-COPY --from=cleanup /usr/lib/libcapstone* /usr/lib/
+COPY --from=cleanup /usr/lib/x86_64-linux-gnu/libcapstone.so* /usr/lib/
 COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
