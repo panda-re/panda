@@ -385,6 +385,25 @@ class Aarch64Arch(PandaArch):
         self.reg_retval = {"default":    "X0",
                            "syscall":    "X0",
                            "linux_kernel":    "X0"}
+        self.arm32 = ArmArch(panda)
+        
+        def arm32_dec(f, name):
+            def wrap(*args, **kwargs):
+                # first check that we have an arg
+                if len(args) > 0:
+                    # double check that it's a cpustate
+                    cpu = args[0]
+                    if "_cffi_backend" in str(type(cpu)):
+                        # check if we're in arm32 mode
+                        if cpu.env_ptr.aarch64 == 0:
+                            func = getattr(self.arm32, name)
+                            return func(*args, **kwargs)
+                return f(*args, **kwargs)
+            return wrap
+
+        for attr in dir(self):
+            if callable(getattr(self, attr)) and not attr.startswith('_'):
+                setattr(self, attr, arm32_dec(getattr(self, attr), attr))
 
     def get_pc(self, cpu):
         '''
