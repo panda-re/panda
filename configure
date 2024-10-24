@@ -269,8 +269,8 @@ stack_protector=""
 git_submodules=""
 protobuf="yes"
 llvm="no"
-llvmdir="/usr/lib/llvm-11" # Default to try if unspecified
-llvmver="11"
+llvmdir="/usr/lib/llvm-14" # Default to try if unspecified
+llvmver="14"
 
 # Don't accept a target_list environment variable.
 unset target_list
