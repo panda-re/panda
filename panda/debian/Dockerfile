@@ -1,7 +1,9 @@
+ARG PACKAGE_VERSION=""
+
 # First run the main Dockerfile to build the base image and name it panda. Then we run here
 # to generate a debian package
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 # Install necessary tools for packaging
 RUN apt-get -qq update && \
@@ -13,13 +15,27 @@ COPY --from=panda /tmp/base_dep.txt /tmp
 COPY --from=panda /tmp/build_dep.txt /tmp
 
 # Set up /package-root with files from panda we'll package
-COPY --from=panda /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
-COPY --from=panda /usr/local/etc/panda /package-root/usr/local/etc/panda
-COPY --from=panda /usr/local/lib/panda /package-root/usr/local/lib/panda
-COPY --from=panda /usr/local/share/panda /package-root/usr/local/share/panda
+COPY --from=panda /usr/local/bin/panda* /usr/bin/libpanda* /usr/bin/qemu-img /package-root/usr/bin/
+COPY --from=panda /usr/local/etc/panda /package-root/etc/
+COPY --from=panda /usr/local/lib/panda /package-root/usr/lib/
+COPY --from=panda /usr/local/share/panda /package-root/usr/share/
+
+# Copy documentation over, we should have a better Changelog if we go for official release?
+COPY ./LICENSE /package-root/usr/share/doc/panda
+COPY ./README.md /package-root/usr/share/doc/panda
 
 # Create DEBIAN directory and control file
 COPY control /package-root/DEBIAN/control
+
+# Generate MD5 checksums for all files and save to DEBIAN/md5sums
+RUN cd /package-root && \
+    find . -type f ! -path './DEBIAN/*' -exec md5sum {} + | sed 's| \./| |' > /package-root/DEBIAN/md5sums
+
+# Update control file with the correct version, and place installed size
+ARG PACKAGE_VERSION
+RUN INSTALLED_SIZE=$(du -sk /package-root | cut -f1) && \
+    sed -i "s/^Installed-Size:.*/Installed-Size: ${INSTALLED_SIZE}/" /package-root/DEBIAN/control
+RUN sed -i "s/^Version:.*/Version: ${PACKAGE_VERSION}/" /package-root/DEBIAN/control
 
 # Update control file with dependencies
 # Build time. We only select dependencies that are not commented out or blank

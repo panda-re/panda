@@ -46,7 +46,7 @@ jobs:
 
       - name: Build package
         working-directory: panda/debian
-        run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }}
+        run: ./setup.sh Ubuntu ${{ matrix.ubuntu_version }} ${{ needs.create_release.outputs.v-version }}
 
       - name: Upload wheel and debian packages to release
         uses: softprops/action-gh-release@v2
