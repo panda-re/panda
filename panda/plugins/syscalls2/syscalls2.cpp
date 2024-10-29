@@ -1383,7 +1383,6 @@ bool init_plugin(void *self) {
 
     // load system call info
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
-        printf("load_info\n");
         load_info = true;
     }
 
