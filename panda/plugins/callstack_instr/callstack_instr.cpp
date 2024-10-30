@@ -27,8 +27,10 @@ PANDAENDCOMMENT */
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
+#include <utility>
 
 #include <capstone/capstone.h>
 #if defined(TARGET_I386)
@@ -79,6 +81,9 @@ bool old_capstone=false; // Should we use fallback instruction group detection l
 
 // callstack_instr arguments
 static bool verbose = false;
+static bool include_binary_info = false;
+static std::string no_osi_msg = "OSI is not enabled";
+static std::vector<char> no_osi_msg_vector(no_osi_msg.begin(), no_osi_msg.end());
 
 enum instr_type {
   INSTR_UNKNOWN = 0,
@@ -124,6 +129,8 @@ std::map<stackid, std::vector<target_ulong>> function_stacks;
 std::map<target_ulong, instr_type> call_cache;
 // stackid -> address of Stopped block
 std::map<stackid, target_ulong> stoppedInfo;
+// stackid -> (stack entry pc -> binary)
+std::map<stackid, std::map<target_ulong, std::vector<char>>> binary_info_stacks;
 
 int last_ret_size = 0;
 
@@ -375,9 +382,12 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
   if (need_to_check) {
     std::vector<stack_entry> &v = callstacks[cur_stackid];
     std::vector<target_ulong> &w = function_stacks[cur_stackid];
+
     if (v.empty()) {
         return;
     }
+
+    std::map<target_ulong, std::vector<char>> &binary_info_stack = binary_info_stacks[cur_stackid];
 
     // Search up to 10 down
     for (int i = v.size() - 1; i > ((int)(v.size() - 10)) && i >= 0; i--) {
@@ -386,6 +396,11 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
         // v.erase(v.begin()+i, v.end());
 
         PPP_RUN_CB(on_ret, cpu, w[i]);
+
+        for (std::vector<stack_entry>::iterator it = v.begin() + i; it != v.end(); ++it) {
+            binary_info_stack.erase(it->pc);
+        }
+
         v.erase(v.begin() + i, v.end());
         w.erase(w.begin() + i, w.end());
 
@@ -393,6 +408,45 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
       }
     }
   }
+}
+
+std::vector<char> getLib(CPUState* cpu, target_ulong pc) {
+
+    target_ulong end_addr;
+
+    std::shared_ptr<OsiProc> proc(get_current_process(cpu), free_osiproc);
+
+    std::shared_ptr<GArray> mappings(get_mappings(cpu, proc.get()),
+                                    [](GArray *a) {
+                                        if (a != nullptr) {
+                                            g_array_free(a, true);
+                                        }
+                                    });
+
+    if(nullptr != mappings) {
+       for(uint32_t i = 0; i < mappings->len; i++) {
+           OsiModule *osimodule = &g_array_index(mappings.get(), OsiModule, i);
+           end_addr = osimodule->base + (osimodule->size - 1);
+
+           if (pc >= osimodule->base && pc < end_addr) {
+               if (nullptr != osimodule->file) {
+                   std::size_t len = strlen(osimodule->file);
+                   std::vector<char> lib_str_buf(len + 1);
+                   std::snprintf(lib_str_buf.data(), lib_str_buf.size(), "%s", osimodule->file);
+                   return lib_str_buf;
+               } else if (nullptr != osimodule->name) {
+                   std::size_t len = strlen(osimodule->name);
+                   std::vector<char> lib_str_buf(len + 1);
+                   std::snprintf(lib_str_buf.data(), lib_str_buf.size(), "%s", osimodule->name);
+                   return lib_str_buf;
+               } else {
+                   return std::vector<char>(1, '\0');
+               }
+           }
+       }
+    }
+
+    return std::vector<char>(1, '\0');
 }
 
 void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
@@ -410,6 +464,8 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
         if (tb_type == INSTR_CALL) {
             stack_entry se = {tb->pc + tb->size, tb_type};
             callstacks[curStackid].push_back(se);
+            binary_info_stacks[curStackid][se.pc] =
+                    include_binary_info ? getLib(cpu, se.pc) : no_osi_msg_vector;
 
             // Also track the function that gets called
             // This retrieves the pc in an architecture-neutral way
@@ -438,7 +494,6 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
     }
 }
 
-
 static uint32_t get_callers_priv(target_ulong callers[], uint32_t n,
         CPUState* cpu, stackid stackid) {
     std::vector<stack_entry> &v = callstacks[stackid];
@@ -455,6 +510,18 @@ uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
     return get_callers_priv(callers, n, cpu, get_stackid(cpu));
 }
 
+uint32_t get_binaries(char **libs, uint32_t n, CPUState *cpu) {
+    stackid stack_id = get_stackid(cpu);
+    std::vector<stack_entry> &call_stack = callstacks[stack_id];
+    std::map<target_ulong, std::vector<char>> &binary_info_stack = binary_info_stacks[stack_id];
+
+    n = std::min((uint32_t) call_stack.size(), n);
+    for (uint32_t i = 0; i < n; ++i) {
+        libs[i] = binary_info_stack[call_stack[call_stack.size() - 1 - i].pc].data();
+    }
+
+    return n;
+}
 
 #define CALLSTACK_MAX_SIZE 16
 /**
@@ -474,7 +541,6 @@ Panda__CallStack *pandalog_callstack_create() {
     return cs;
 }
 
-
 /**
  * @brief Frees a pandalog entry containing callstack information.
  */
@@ -482,7 +548,6 @@ void pandalog_callstack_free(Panda__CallStack *cs) {
     free(cs->addr);
     free(cs);
 }
-
 
 /**
  * @brief Fills preallocated buffer \p functions with up to \p n function addresses.
@@ -557,7 +622,6 @@ bool setup_osi() {
     return false;
 #endif
 }
-
 
 bool init_plugin(void *self) {
 
@@ -677,6 +741,8 @@ bool init_plugin(void *self) {
     } else {
         printf("callstack_instr:  using heuristic stack_type\n");
     }
+
+    include_binary_info = setup_ok && (nullptr != panda_get_plugin_by_name("osi"));
 
     return setup_ok;
 }

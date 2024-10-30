@@ -59,6 +59,12 @@ uint32_t get_callers(target_ulong *callers, uint32_t n, CPUState *env);
 // Return value is the number of callers actually retrieved
 uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *env);
 
+// Get up to n binaries from the given stack in use at this moment
+// Binaries are returned in libs[], most recent first
+// Return value is the number of binaries actually retrieved
+// Must have OSI enabled for this api to work.
+uint32_t get_binaries(char **libs, uint32_t n, CPUState *cpu);
+
 // Get the current program point: (Caller, PC, stack ID)
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
