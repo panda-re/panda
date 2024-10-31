@@ -40,7 +40,7 @@ The dependencies section:
 
 ```toml
 [dependencies]
-panda-re = { version = "0.47", default-features = false }
+panda-re = { version = "0.48", default-features = false }
 ```
 
 To add a new dependency, add a new line in the form `name = "version"`.
