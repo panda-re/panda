@@ -9,7 +9,7 @@ import shutil
 
 import os
 
-arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']
+arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64', 'mips64el']
 
 # Check for PANDA binaries in /usr/local/bin/ or in our build directory
 # panda_binaries = ['/usr/local/bin/panda-system-{arch}' for arch in arches]

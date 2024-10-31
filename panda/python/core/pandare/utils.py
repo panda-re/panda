@@ -229,7 +229,7 @@ def find_build_dir(arch_name=None, find_executable=False):
     If arch_name is none, we'll search for any supported architecture and return the first
     one we find.
     '''
-    arches = ['i386', 'x86_64', 'arm', 'aarch64', 'ppc', 'mips', 'mipsel', 'mips64']
+    arches = ['i386', 'x86_64', 'arm', 'aarch64', 'ppc', 'mips', 'mipsel', 'mips64', 'mips64el']
 
     if arch_name is None:
         e = None

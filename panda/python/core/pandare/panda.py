@@ -148,7 +148,7 @@ class Panda():
             self.arch = Aarch64Arch(self)
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
-        elif self.arch_name in ["mips64"]:
+        elif self.arch_name in ["mips64", "mips64el"]:
             self.arch = Mips64Arch(self)
         else:
             raise ValueError(f"Unsupported architecture {self.arch_name}")
@@ -187,7 +187,7 @@ class Panda():
         self.panda_args.append(biospath)
 
         if self.qcow:
-            if self.arch_name == 'mips64':
+            if self.arch_name in ['mips64', 'mips64el']:
                 # XXX: mips64 needs virtio interface for the qcow
                 self.panda_args.extend(["-drive", f"file={self.qcow},if=virtio"])
             else:
