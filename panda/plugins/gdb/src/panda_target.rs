@@ -33,8 +33,11 @@ use gdbstub_arch::arm::{reg::ArmCoreRegs, Armv4t};
 //#[cfg(feature = "ppc")]
 //use gdbstub_arch::ppc::{PowerPcAltivec32 as PowerPc, reg::{PowerPcCommonRegs as PowerPcCoreRegs}};
 
-#[cfg(any(feature = "mips", feature = "mipsel", feature = "mips64"))]
+#[cfg(any(feature = "mips", feature = "mipsel"))]
 use gdbstub_arch::mips::{reg::MipsCoreRegs, Mips};
+
+#[cfg(any(feature = "mips64", feature = "mips64el"))]
+use gdbstub_arch::mips::{reg::MipsCoreRegs, Mips64};
 
 #[cfg(not(any(feature = "aarch64", feature = "ppc")))]
 impl Target for PandaTarget {
@@ -50,8 +53,11 @@ impl Target for PandaTarget {
     #[cfg(feature = "ppc")]
     type Arch = PowerPc;
 
-    #[cfg(any(feature = "mips", feature = "mipsel", feature = "mips64"))]
+    #[cfg(any(feature = "mips", feature = "mipsel",))]
     type Arch = Mips;
+
+    #[cfg(any(feature = "mips64", feature = "mips64el"))]
+    type Arch = Mips64;
 
     type Error = ();
 
