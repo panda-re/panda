@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-panda-re = { version = "0.47.0", default-features = false }
+panda-re = { version = "0.48.0", default-features = false }
 gdbstub = "0.5"
 lazy_static = "1.4.0"
 gdbstub_arch = "0.1.0"
