@@ -37,7 +37,7 @@ from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows_internal import Qcows
 from .qemu_logging import QEMU_Log_Manager
-from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch
+from .arch import ArmArch, Aarch64Arch, MipsArch, Mips64Arch, X86Arch, X86_64Arch, PowerPCArch
 from .cosi import Cosi
 from dataclasses import dataclass
 
@@ -150,6 +150,8 @@ class Panda():
             self.arch = MipsArch(self)
         elif self.arch_name in ["mips64", "mips64el"]:
             self.arch = Mips64Arch(self)
+        elif self.arch_name in ["ppc"]: 
+            self.arch = PowerPCArch(self)
         else:
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()

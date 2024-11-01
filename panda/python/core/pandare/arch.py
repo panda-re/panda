@@ -369,7 +369,7 @@ class Aarch64Arch(PandaArch):
         regnames = ["X0",  "X1",  "X2",  "X3",  "X4",  "X5", "X6", "X7",
                     "XR",  "X9",  "X10", "X11", "X12", "X13", "X14",
                     "X15", "IP0", "IP1", "PR", "X19", "X20", "X21",
-                    "X22", "X23", "X24", "X25", "X26", "X27", "X27",
+                    "X22", "X23", "X24", "X25", "X26", "X27",
                     "X28", "FP", "LR", "SP"]
 
         self.reg_sp = regnames.index("SP")
@@ -601,6 +601,7 @@ class MipsArch(PandaArch):
 
         return super().set_retval(cpu, val, convention)
 
+
 class Mips64Arch(MipsArch):
     '''
     Register names and accessors for MIPS64. Inherits from MipsArch for everything
@@ -629,67 +630,71 @@ class Mips64Arch(MipsArch):
         # note names must be stored uppercase for get/set reg to work case-insensitively
         self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
 
-class X86Arch(PandaArch):
+class PowerPCArch(PandaArch): 
     '''
-    Register names and accessors for x86
+    Register names and accessors for ppc
     '''
-
-    def __init__(self, panda):
+    def __init__(self, panda): 
         super().__init__(panda)
-        regnames = ['EAX', 'ECX', 'EDX', 'EBX', 'ESP', 'EBP', 'ESI', 'EDI']
-        # XXX Note order is A C D B, because that's how qemu does it . See target/i386/cpu.h
-
-        # Note we don't set self.call_conventions because stack-based arg get/set is
-        # not yet supported
-        self.reg_retval = {"default":    "EAX",
-                           "syscall":    "EAX",
-                           "linux_kernel":    "EAX"}
-
-        self.call_conventions = {"cdecl": [f"stack_{x}" for x in range(20)], # 20: arbitrary but big
-                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
-                                 "linux_kernel": ["EAX", "EDX", "ECX", "stack_3", "stack_4", "stack_5", "stack_6"]}
-        self.call_conventions['default'] = self.call_conventions['cdecl']
-
-        self.reg_sp = regnames.index('ESP')
-        self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
-
+        regnames = ["r0", "sp", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", 
+                    "r12", "r13", "r14", "r15", "r16", "r17", "r18", "r19", "r20", "r21", "r22", 
+                    "r23", "r24", "r25", "r26", "r27", "r28", "r29", "r30", "r31"]
+        self.reg_sp = regnames.index('sp')
+        self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
+        self.registers_crf = ["CR0", "CR1", "CR2", "CR3", "CR4", "CR5", "CR6", "CR7"]
 
     def get_pc(self, cpu):
         '''
-        Overloaded function to return the x86 current program counter
+        Overloaded function to return the ppc current program counter
         '''
-        return cpu.env_ptr.eip
+        return cpu.env_ptr.nip
 
     def set_pc(self, cpu, val):
         '''
-        Overloaded function to set the x86 program counter
+        Overloaded function to set the ppc program counter
         '''
-        cpu.env_ptr.eip = val
+        cpu.env_ptr.nip = val
 
     def _get_reg_val(self, cpu, reg):
         '''
-        Return an x86 register
+        Return a ppc register
         '''
-        return cpu.env_ptr.regs[reg]
+        return cpu.env_ptr.gpr[reg]
 
     def _set_reg_val(self, cpu, reg, val):
         '''
-        Set an x86 register
+        Set an x86_64 register
         '''
-        cpu.env_ptr.regs[reg] = val
+        cpu.env_ptr.gpr[reg] = val
 
-    def get_return_value(self, cpu):
-        '''
-        .. Deprecated:: use get_retval
-        '''
-        return self.get_retval(cpu)
+    def get_reg(self, cpu, reg):
 
-    def get_return_address(self,cpu):
-        '''
-        looks up where ret will go
-        '''
-        esp = self.get_reg(cpu,"ESP")
-        return self.panda.virtual_memory_read(cpu,esp,4,fmt='int')
+        reg = reg.upper()
+        env = cpu.env_ptr
+        if reg == "LR":
+            return env.lr
+        elif reg == "CTR": 
+            return env.ctr
+        elif reg in self.registers_crf: 
+            return env.crf[self.registers_crf.index(reg)]
+        else:
+            return super().get_reg(cpu, reg)
+
+
+    def set_reg(self, cpu, reg, val):
+        reg = reg.upper()
+        env = cpu.env_ptr
+
+        if reg == "LR": 
+            env.lr = val
+        elif reg == "CTR":
+            env.ctr = val
+        elif reg in self.registers_crf: 
+            env.crf[self.registers_crf.index(reg)] = val
+        else:
+            super().set_reg(cpu, reg, val)
+
+
 
 class X86_64Arch(PandaArch):
     '''
@@ -722,6 +727,7 @@ class X86_64Arch(PandaArch):
         self.reg_names_short = ['AX', 'CX', 'DX', 'BX', 'SP', 'BP', 'SI', 'DI']
         self.reg_names_byte = ['AL', 'CL', 'DL', 'BL', 'AH', 'CH', 'DH', 'BH']
         self.seg_names = ['ES', 'CS', 'SS', 'DS', 'FS', 'GS']
+        self.reg_names_mmr = ['LDT', 'TR', 'GDT', 'IDT']
 
     def _get_segment_register(self, env, seg_name):
         seg_idx = self.seg_names.index(seg_name)
@@ -765,6 +771,20 @@ class X86_64Arch(PandaArch):
         '''
         cpu.env_ptr.eip = val
 
+    def _get_mmr_val(self, cpu, reg): 
+        reg = reg.lower()
+        sc = getattr(cpu.env_ptr, reg) 
+        return (sc.selector, sc.base, sc.limit, sc.flags)
+
+    def _set_mmr_val(self, cpu, reg, val): 
+        reg = reg.lower()
+        selector, base, limit, flags = val 
+        sc = getattr(cpu.env_ptr, reg)
+        sc.selector = selector
+        sc.base = base
+        sc.limit = limit
+        sc.flags = flags
+
     def _get_reg_val(self, cpu, reg):
         '''
         Return an x86_64 register
@@ -802,8 +822,12 @@ class X86_64Arch(PandaArch):
 
         reg = reg.upper()
         env = cpu.env_ptr
+        if reg in self.reg_names_mmr: 
+            return self._get_mmr_val(cpu, reg)
         if reg in self.seg_names:
             return self._get_segment_register(env, reg)
+        elif reg in ['EFLAGS', 'RFLAGS']: 
+            return env.eflags
         elif reg in ['RIP', 'PC', 'EIP']:
             pc = self.get_pc(cpu) # changes reg to 'IP' and re-calls this
             if reg == 'EIP':
@@ -856,13 +880,17 @@ class X86_64Arch(PandaArch):
         reg = reg.upper()
         env = cpu.env_ptr
 
-        if reg in ['ES', 'CS', 'SS', 'DS', 'FS', 'GS']:
+        if reg in self.reg_names_mmr: 
+            return self._set_mmr_val(cpu, reg, val)
+        elif reg in self.seg_names:
             self._set_segment_register(env, reg, val)
+        elif reg in ['EFLAGS', 'RFLAGS']: 
+            env.eflags = val
         elif reg in ['RIP', 'PC']:
             return self.set_pc(cpu, val) # changes reg to 'IP' and re-calls this
         elif reg.startswith('XMM'):
-            #env.xmm_regs[int(reg[3:])] = val
-            raise NotImplementedError("XMM registers unsupported")
+            env.xmm_regs[int(reg[3:])] = val
+            #raise NotImplementedError("XMM registers unsupported")
         elif reg.startswith('MM'):
             raise NotImplementedError("MM registers unsupported")
         elif reg.startswith('YMM'):
@@ -890,3 +918,28 @@ class X86_64Arch(PandaArch):
             self._set_general_purpose_register(env, reg, val, mask)
         else:
             super().set_reg(cpu, reg, val)
+
+
+class X86Arch(X86_64Arch):
+    '''
+    Register names and accessors for x86
+    '''
+
+    def __init__(self, panda):
+        super().__init__(panda)
+        regnames = ['EAX', 'ECX', 'EDX', 'EBX', 'ESP', 'EBP', 'ESI', 'EDI']
+        # XXX Note order is A C D B, because that's how qemu does it . See target/i386/cpu.h
+
+        # Note we don't set self.call_conventions because stack-based arg get/set is
+        # not yet supported
+        self.reg_retval = {"default":    "EAX",
+                           "syscall":    "EAX",
+                           "linux_kernel":    "EAX"}
+
+        self.call_conventions = {"cdecl": [f"stack_{x}" for x in range(20)], # 20: arbitrary but big
+                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
+                                 "linux_kernel": ["EAX", "EDX", "ECX", "stack_3", "stack_4", "stack_5", "stack_6"]}
+        self.call_conventions['default'] = self.call_conventions['cdecl']
+
+        self.reg_sp = regnames.index('ESP')
+        self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }

@@ -438,8 +438,9 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
     cpuu->env.active_tc.PC = entry;
 
 #elif defined(TARGET_PPC)
+    cpuu->env.nip = entry;
     //Not implemented yet
-    fprintf(stderr, "Not yet implemented- can't start execution at 0x%x\n", entry);
+    //fprintf(stderr, "Not yet implemented- can't start execution at 0x%x\n", entry);
 #endif
 
 }
