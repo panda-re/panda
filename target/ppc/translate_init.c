@@ -9814,6 +9814,7 @@ static void ppc_cpu_realizefn(DeviceState *dev, Error **errp)
         error_propagate(errp, local_err);
         return;
     }
+    cpu_reset(cs);
 
 #if !defined(CONFIG_USER_ONLY)
     cpu->cpu_dt_id = (cs->cpu_index / smp_threads) * max_smt
@@ -10247,7 +10248,19 @@ const char *ppc_cpu_lookup_alias(const char *alias)
 
 PowerPCCPU *cpu_ppc_init(const char *cpu_model)
 {
-    return POWERPC_CPU(cpu_generic_init(TYPE_POWERPC_CPU, cpu_model));
+    ObjectClass *cpu_oc; 
+    Object *cpuobj;
+
+    cpu_oc = cpu_class_by_name(TYPE_POWERPC_CPU, cpu_model);
+    if (cpu_oc == NULL) {
+        error_report("Unable to find CPU definition: %s", cpu_model);
+        exit(1); 
+    }
+    cpuobj = object_new(object_class_get_name(cpu_oc));
+    object_property_set_bool(cpuobj, true, "realized", &error_fatal);  
+    return POWERPC_CPU(cpuobj); 
+
+//return POWERPC_CPU(cpu_generic_init(TYPE_POWERPC_CPU, cpu_model));
 }
 
 /* Sort by PVR, ordering special case "host" last. */
