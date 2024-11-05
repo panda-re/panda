@@ -62,7 +62,7 @@ class PandaArch():
             endianness = "big"
         elif self.panda.arch_name == "mips64el":
             bits = 64
-            endianness = "big"
+            endianness = "little"
 
         assert (bits is not None), f"Missing num_bits logic for {self.panda.arch_name}"
         assert (endianness is not None), f"Missing endianness logic for {self.panda.arch_name}"
