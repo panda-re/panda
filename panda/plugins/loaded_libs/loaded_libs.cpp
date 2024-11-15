@@ -134,26 +134,24 @@ bool init_plugin(void *self) {
     panda_require("syscalls2");
 
     #ifdef TARGET_X86_64
-    PPP_REG_CB("syscalls2", on_sys_mmap_return, mmap_return);
+        PPP_REG_CB("syscalls2", on_sys_mmap_return, mmap_return);
+        panda_cb pcb;
+        pcb.before_block_exec = before_block;
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+        panda_arg_list *args;
+        args = panda_get_args("loaded_libs");
+        program_name = panda_parse_string_opt(args, "program_name", NULL, "program name to collect libraries for");
+        return true;
     #else
-    /* #error "No on_sys_mmap_return for target" */
+        /* #error "No on_sys_mmap_return for target" */
+        printf("loaded_libs plugin is not available for this architecture");
+        return false;
     #endif
-
-    panda_cb pcb;
-    pcb.before_block_exec = before_block;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-
-    panda_arg_list *args;
-    args = panda_get_args("loaded_libs");
-    program_name = panda_parse_string_opt(args, "program_name", NULL, "program name to collect libraries for");
-
-    return true;
 }
 
 void uninit_plugin(void *self) {
-
     cout << "get_libs_count = " << get_libs_count << "\n";
     cout << "get_libs_failed_count = " << get_libs_failed_count << "\n";
     cout << "frac = " << ((float) get_libs_failed_count) / get_libs_count << "\n";
-
 }
