@@ -43,17 +43,17 @@ if [[ ! -f "../dependencies/ubuntu_${version}_base.txt" ]]; then
 fi
 
 # Build the installer to generate the wheel file
-DOCKER_BUILDKIT=1 docker build --target installer -t panda --build-arg BASE_IMAGE="ubuntu:${version}" ../..
+DOCKER_BUILDKIT=1 docker build --target installer -t panda_installer --build-arg BASE_IMAGE="ubuntu:${version}" ../..
 
 # Copy wheel file out of container to host
 # this also preserves wheel name, which is important as pip install WILL fail if you arbitarily change the generated wheel file name
-docker run --rm -v $(pwd):/out panda bash -c "cp /panda/panda/python/core/dist/*.whl /out"
+docker run --rm -v $(pwd):/out panda_installer bash -c "cp /panda/panda/python/core/dist/*.whl /out"
 
 # Finish building main panda container for the target ubuntu version
-DOCKER_BUILDKIT=1 docker build --target panda -t panda --build-arg BASE_IMAGE="ubuntu:${version}" ../..
+DOCKER_BUILDKIT=1 docker build --target panda --cache-from=panda_installer -t panda --build-arg BASE_IMAGE="ubuntu:${version}" ../..
 
 # Now build the packager container from that
-docker build -t packager .
+DOCKER_BUILDKIT=1 docker build --cache-from=panda -t packager .
 
 # Copy deb file out of container to host
 docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
