@@ -51,6 +51,10 @@ The "ignore_helpers" option can be used to omit taint reports that are generated
 
 Output in CSV format can also be done in "summary" or default mode.  The "summary" output lists the same information as seen in the PANDA log summary output.  The default mode lists for each tainted branch the guest address of the tainted branch instruction, the instruction count, and a space-separated list of labels.  Note that the liveness option cannot be used with CSV output.  It is also not possible to produce PANDA log and CSV output at the same time.
 
+If the plugin parameter `include_process_fields` is set to True the CSV output
+will also include entries for the current process name and process id.  This
+requires OSI.
+
 Arguments
 ---------
 
@@ -59,11 +63,12 @@ Arguments
 - `liveness`:  boolean, optional:  report live labels to the PANDA log
 - `ignore_helpers`:  boolean, optional:  do not report taint from within helper functions
 - `summary`: boolean, optional:  only save the ASID and PC of the tainted branches
+- `include_process_fields`, optional:  add process name and process id to CSV output, requires OSI
 
 Dependencies
 ------------
 
-`tainted_branch` uses `taint2` to track taint, and `callstack_instr` to provide callstack information whenever tainted branches are encountered.
+`tainted_branch` uses `taint2` to track taint, and `callstack_instr` to provide callstack information whenever tainted branches are encountered.  If `include_process_fields` is set to True, `osi` is required.
 
 APIs and Callbacks
 ------------------

@@ -37,6 +37,8 @@ extern "C" {
 // this includes on_branch2_t
 #include "taint2/taint2.h"
 
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -58,6 +60,7 @@ void uninit_plugin(void *);
 bool summary = false;
 bool liveness = false;
 bool ignore_helpers = false;
+bool include_proc_fields = false;
 
 #include <map>
 #include <set>
@@ -189,6 +192,16 @@ void tbranch_on_branch_to_csv(Addr a, uint64_t size, bool from_helper,
                         cur_instr);
                 // print each taint label that is on this byte
                 taint2_labelset_addr_iter(a, taint_branch_csv_aux, NULL);
+                if(include_proc_fields) {
+                    OsiProc *proc = get_current_process(cpu);
+                    if(proc) {
+                        fprintf(csv_file, ",%s," TARGET_PID_FMT,
+                            proc->name ? proc->name : "?", proc->pid);
+                        free_osiproc(proc);
+                    } else {
+                        fprintf(csv_file, ",?,?");
+                    }
+                }
                 fprintf(csv_file, "\n");
             }
         }
@@ -208,6 +221,22 @@ bool init_plugin(void *self) {
             "name of CSV file, if CSV output desired");
     ignore_helpers = panda_parse_bool_opt(args, "ignore_helpers",
     		"ignore reports from helper functions");
+    include_proc_fields = panda_parse_bool_opt(args, "include_process_fields",
+            "add process name and id to csv output (requires osi and "
+            "non-summary mode)");
+
+    if(include_proc_fields) {
+        if(!csv_filename) {
+            LOG_ERROR("csvfile is required when include_process_fields is "
+                "enabled\n");
+            return false;
+        }
+        if(summary) {
+            LOG_ERROR("summary must be false when include_process_fields is "
+                "enabled\n");
+            return false;
+        }
+    }
 
     if((!summary) && pandalog) {
         panda_require("callstack_instr");
@@ -232,11 +261,6 @@ bool init_plugin(void *self) {
     else {
         printf ("tainted_branch full mode\n");
     }
-    /*
-    panda_cb pcb;
-    pcb.after_block_exec = tbranch_after_block_exec;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    */
 
     if (NULL == csv_filename) {
         PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
@@ -250,8 +274,14 @@ bool init_plugin(void *self) {
         }
         if (!summary) {
             csv_file = fopen(csv_filename, "w");
-            fprintf(csv_file, "PC,Instruction,Labels\n");
+            fprintf(csv_file, "PC,Instruction,Labels%s\n",
+                include_proc_fields ? ",Process Name,Process ID" : "");
         }
+    }
+
+    if(include_proc_fields) {
+        panda_require("osi");
+        if(!init_osi_api()) return false;
     }
 
     return true;
