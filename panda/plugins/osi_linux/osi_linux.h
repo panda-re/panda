@@ -476,7 +476,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 #endif
         OG_printf("Pcomp length %d\n", pcomp_length);
         if (pcomp_length == (uint32_t)-1) { // Not sure why this happens, but it does
-            printf("Warning: OSI_linux Unhandled pcomp value, ignoring\n");
+            OG_printf("Warning: OSI_linux Unhandled pcomp value, ignoring\n");
             break;
         }
 
