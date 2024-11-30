@@ -19,6 +19,8 @@ extern "C" {
 #include "panda/rr/rr_log.h"
 #include "panda/plog.h"
 
+#include "taint2/taint2_hypercalls.h"
+
 #include "pri/pri_types.h"
 #include "pri/pri_ext.h"
 #include "pri/pri.h"
@@ -31,7 +33,6 @@ extern "C" {
 
 // taint
 #include "taint2/taint2_ext.h"
-#include "taint2/taint2_hypercalls.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -308,15 +309,11 @@ bool i386_hypercall_callback(CPUState *cpu){
                                 info.filename,
                                 info.line_number,pc);
                         pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
+                        //pri_all_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
+                        //lava_attack_point(phs);
                     }
+                    ret = true;
                 }
-                /*
-                else if (phs.action == 12) {
-                     // it's an attack point sighting
-                    lava_attack_point(phs);
-                }
-                */
-                ret = true;
             }
             else {
                 printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
@@ -360,7 +357,6 @@ bool init_plugin(void *self) {
     hypercall_taint = panda_parse_bool_opt(args, "hypercall", "Register tainting on a panda hypercall callback");
     linechange_taint = panda_parse_bool_opt(args, "linechange", "Register tainting on every line change in the source code (default)");
     chaff_bugs = panda_parse_bool_opt(args, "chaff", "Record untainted extents for chaff bugs.");
-    debug = panda_parse_bool_opt(args, "debug", "enable debug output");
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint)
         linechange_taint = true;
