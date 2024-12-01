@@ -46,7 +46,6 @@ extern "C" {
 #endif
 bool guest_hypercall_callback(CPUState *cpu);
 bool guest_hypercall_warning_callback(CPUState *cpu);
-void lava_attack_point(PandaHypercallStruct phs);
 #ifdef __cplusplus
 }
 #endif
