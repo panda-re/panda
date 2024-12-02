@@ -452,7 +452,12 @@ bool init_plugin(void *self) {
     panda_cb pcb;
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
-    printf("[pri_taint] This plugin is activated!\n")
+    printf("[pri_taint] This plugin is activated!\n");
+
+    // If taint isn't already enabled, turn it on.
+    if (!taint2_enabled()) {
+        taint2_enable_taint();
+    }
     return true;
 #else
     printf("[pri_taint] This plugin is only supported on x86\n");
