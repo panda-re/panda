@@ -456,6 +456,7 @@ bool init_plugin(void *self) {
 
     // If taint isn't already enabled, turn it on.
     if (!taint2_enabled()) {
+        printf("[pri_taint] enabling taint now!\n");
         taint2_enable_taint();
     }
     return true;
