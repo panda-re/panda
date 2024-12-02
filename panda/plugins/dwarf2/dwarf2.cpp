@@ -1945,18 +1945,32 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
         printf("get_mappings failed\n");
         return false;
     }
-    printf("[ensure_main_exec_initialized] looking at libraries\n");
+    printf("[ensure_main_exec_initialized] looking at libraries for %s\n", proc_to_monitor);
 
     for (unsigned i = 0; i < libs->len; i++) {
         char fname[260] = {};
         OsiModule *m = &g_array_index(libs, OsiModule, i);
-        if (!m->file) continue;
-        if (!m->name) continue;
+        if (debug) {
+            printf("Iteration %d within the for loop of libraries in main_exec_initialized\n", i);
+        }
+        if (!m->file) {
+            if (debug) {
+                printf("Invalid file from OsiModule\n");
+            }
+            continue;
+        }
+        if (!m->name) {
+            if (debug) {
+                printf("Invalid name from OsiModule\n");
+            }
+            continue;
+        }
         std::string lib = std::string(m->file);
 
         if (0 != strncmp(m->name, proc_to_monitor, strlen(m->name))) {
             if (debug) {
                 printf("[ensure_main_exec_initialized] looking at file %s, skip this\n", m->file);
+                printf("[ensure_main_exec_initialized] looking at name %s, skip this\n", m->name);
             }
             continue;
         }

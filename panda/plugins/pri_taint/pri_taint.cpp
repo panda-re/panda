@@ -100,15 +100,34 @@ void print_membytes(CPUState *env, target_ulong a, target_ulong len) {
 #define LAVA_TAINT_QUERY_MAX_LEN (target_ulong)64ULL
 #if defined(TARGET_I386)
 void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, const char *astnodename) {
+    if (debug) {
+        printf("Attempt to lava_taint_query\n");
+    }
+
     // can't do a taint query if it is not a valid register (loc) or if
     // the buf_len is greater than the register size (assume size of guest pointer)
     if (loc_t == LocReg && (buf >= CPU_NB_REGS || buf_len >= sizeof(target_ulong) ||
-                buf_len == (target_ulong)-1))
+                buf_len == (target_ulong)-1)) {
+        if (debug) {
+            printf("The register is not balid OR buf_len > register size\n");
+        }
         return;
-    if (loc_t == LocErr || loc_t == LocConst)
+    }
+    if (loc_t == LocErr || loc_t == LocConst) {
+        if (debug) {
+            printf("The Location is either error OR constant");
+        }
         return;
-    if (!pandalog || !taint2_enabled() || taint2_num_labels_applied() == 0)
+    }
+    if (!pandalog || !taint2_enabled() || taint2_num_labels_applied() == 0) {
+        if (debug) {
+            printf("No Panda log, Taint2 not enabled, or No taint2 num labeled applied\n");
+        }
         return;
+    }
+    if (debug) {
+        printf("OK, Seems like I can Lava Taint! LFG!\n");
+    }
 
     CPUState *cpu = first_cpu;
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -116,7 +135,12 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     extern ram_addr_t ram_size;
     target_ulong phys = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
 
-    if (phys == -1 || phys > ram_size) return;
+    if (phys == -1 || phys > ram_size) {
+        if (debug) {
+            printf("Incorrect physical address -1 or beyond RAM size\n");
+        }
+        return;
+    }
 
     if (debug) {
         //printf("Querying \"%s\": " TARGET_FMT_lu " bytes @ 0x" TARGET_FMT_lx " phys 0x" TARGET_FMT_plx ", strnlen=%d", astnodename, buf_len, buf, phys, is_strnlen);
@@ -150,11 +174,22 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     uint32_t num_tainted = 0;
     for (uint32_t i = 0; i < len; i++) {
         Addr a = loc_t == LocMem ? make_maddr(phys + i) : make_greg(buf, i);
-        if (taint2_query(a)) num_tainted++;
+        if (taint2_query(a)) {
+            num_tainted++;
+        }
     }
 
     // If nothing's tainted and we aren't doing chaff bugs, return.
-    if (num_tainted == 0) return;
+    if (num_tainted == 0) {
+        if (debug) {
+            printf("Nothing is tainted!\n");
+        }
+        return;
+    }
+
+    if (debug) {
+        printf("Starting to write the Panda Log now in pri_taint\n");
+    }
 
     // 1. write the pandalog entry that tells us something was tainted on this extent
     Panda__TaintQueryPri tqh = PANDA__TAINT_QUERY_PRI__INIT;
@@ -206,7 +241,9 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
 
     pandalog_callstack_free(tqh.call_stack);
     free(tqh.src_info);
-    for (Panda__TaintQuery *ptq : tq) pandalog_taint_query_free(ptq);
+    for (Panda__TaintQuery *ptq : tq) {
+        pandalog_taint_query_free(ptq);
+    }
 }
 #endif
 struct args {
