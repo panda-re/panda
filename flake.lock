@@ -3,11 +3,11 @@
     "libosi-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1693574302,
-        "narHash": "sha256-rHbfp1llyVEvHw+sz+rCmx9DrR/e1nnJYRidhPM3jZY=",
+        "lastModified": 1747316194,
+        "narHash": "sha256-W0UivJRKsOAvUz7sNnb4ieF+SCviCCgNEcS6e9fIHhA=",
         "owner": "panda-re",
         "repo": "libosi",
-        "rev": "c68bafdb7e2a4d83128ae6ba0f5f70e28318eda0",
+        "rev": "70855ec07c8185ef89f7bebfc25d616ad81ca3ab",
         "type": "github"
       },
       "original": {
@@ -16,13 +16,28 @@
         "type": "github"
       }
     },
+    "nix-filter": {
+      "locked": {
+        "lastModified": 1757882181,
+        "narHash": "sha256-+cCxYIh2UNalTz364p+QYmWHs0P+6wDhiWR4jDIKQIU=",
+        "owner": "numtide",
+        "repo": "nix-filter",
+        "rev": "59c44d1909c72441144b93cf0f054be7fe764de5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "nix-filter",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1699725108,
-        "narHash": "sha256-NTiPW4jRC+9puakU4Vi8WpFEirhp92kTOSThuZke+FA=",
+        "lastModified": 1760965567,
+        "narHash": "sha256-0JDOal5P7xzzAibvD0yTE3ptyvoVOAL0rcELmDdtSKg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "911ad1e67f458b6bcf0278fa85e33bb9924fed7e",
+        "rev": "cb82756ecc37fa623f8cf3e88854f9bf7f64af93",
         "type": "github"
       },
       "original": {
@@ -30,10 +45,28 @@
         "type": "indirect"
       }
     },
+    "nixpkgs-wireshark": {
+      "locked": {
+        "lastModified": 1654613154,
+        "narHash": "sha256-Kqpik8NNIzErNoeiQc6FS9F7RMVuG9ykZzVkL+Z7nXg=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e93823409f9e6b8e878edf060b430a14353a28f9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e93823409f9e6b8e878edf060b430a14353a28f9",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "libosi-src": "libosi-src",
-        "nixpkgs": "nixpkgs"
+        "nix-filter": "nix-filter",
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-wireshark": "nixpkgs-wireshark"
       }
     }
   },
