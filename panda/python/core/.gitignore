@@ -8,3 +8,4 @@ data
 a
 __pycache__
 *.egg-info
+.eggs/
