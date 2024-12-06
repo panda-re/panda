@@ -1,0 +1,19 @@
+name: Review Approval
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  approve-workflow:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check if review is approved
+      if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
+      run: echo "Review approved"
+
+    - name: Require new approval for new pushes
+      if: github.event_name == 'pull_request_target'
+      run: echo "New push detected, approval required"

@@ -5,7 +5,9 @@ name: Parallel Tests
 on:
   # Allow to repo owner to manually run this workflow for external PRs once code is vetted
   workflow_dispatch:
-
+  pull_request_review:
+    types: [submitted]
+  
   # Run automatically for internal PRs and pushes
   pull_request:
     branches:
@@ -20,6 +22,7 @@ on:
 jobs:
 
   test_installer: # test install_ubuntu.sh
+    if: github.event.review.state == 'approved'
     runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
     container:
       image: ubuntu:20.04
@@ -44,9 +47,8 @@ jobs:
     - name: Run install_ubuntu.sh
       run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
 
-
   build_container:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'panda-re/panda' && github.event.review.state == 'approved'
     runs-on: panda-arc
     steps:
       - name: Install git
@@ -73,7 +75,7 @@ jobs:
         run: docker run --rm "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   tests:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository == 'panda-re/panda' && github.event.review.state == 'approved'
     runs-on: panda-arc
     needs: [build_container]
 
@@ -140,9 +142,9 @@ jobs:
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
+    if: always()
     needs: [tests]
     runs-on: panda-arc
-    if: always()
 
     steps:
       # Note we leave the last 72hrs because caching is nice (first few panda image layers won't change often)
@@ -156,7 +158,7 @@ jobs:
 
   build_and_check_fork: # Forked repos can't use panda-arc test suite - just checkout and run make check
     if: github.repository != 'panda-re/panda'
-    runs-on: panda-arc
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v4 # Clones code into to /home/runner/work/panda
