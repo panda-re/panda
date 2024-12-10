@@ -4,6 +4,7 @@ ARG UBUNTU_MAJOR_VERSION="20"
 ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
 ARG LIBOSI_VERSION="v0.1.7"
+ARG CAPSTONE_VERSION="5.0.5"
 
 ### BASE IMAGE
 FROM ${REGISTRY}/$BASE_IMAGE AS base
@@ -26,6 +27,7 @@ FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
 ARG LIBOSI_VERSION
+ARG CAPSTONE_VERSION
 
 RUN apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
@@ -35,11 +37,11 @@ RUN apt-get -qq update && \
     python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
-# Then install capstone from source
+# Then install capstone debian package
 RUN cd /tmp && \
-    git clone https://github.com/capstone-engine/capstone/ -b v5 && \
-    cd capstone/ && ./make.sh && make install && cd /tmp && \
-    rm -rf /tmp/capstone && ldconfig
+    curl -LJO https://github.com/capstone-engine/capstone/releases/download/${CAPSTONE_VERSION}/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb && \
+    dpkg -i /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb && \
+    rm -rf /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
@@ -69,8 +71,7 @@ RUN git -C /panda submodule update --init dtc && \
         --prefix=/usr/local \
         --disable-numa \
         --enable-llvm && \
-    rm -rf /panda/.git
-    
+    rm -rf /panda/.git    
 
 RUN PRETEND_VERSION=$(cat /tmp/savedversion) make -C /panda/build -j "$(nproc)"
 
@@ -96,17 +97,14 @@ RUN  make -C /panda/build install && \
         /usr/local/lib/panda/*/snake_hook \
         /usr/local/lib/panda/*/rust_skeleton
 
-# Install pypanda
+# Build wheel and install pypanda
 RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
+    PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel . && \
     PRETEND_VERSION=$(cat /tmp/savedversion) pip install .
 RUN python3 -m pip install --upgrade pip "setuptools<65.6.0" && \
     python3 -m pip install "pycparser<2.22" && \
     python3 -m pip install --force-reinstall --no-binary :all: cffi
-# Build a whl too
-RUN cd /panda/panda/python/core && \
-    python3 create_panda_datatypes.py --install && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel .
 
 # BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
@@ -137,7 +135,7 @@ COPY --from=base /tmp/build_dep.txt /tmp
 
 # Copy panda + libcapstone.so* + libosi libraries
 COPY --from=cleanup /usr/local /usr/local
-COPY --from=cleanup /usr/lib/libcapstone* /usr/lib/
+COPY --from=cleanup /usr/lib/x86_64-linux-gnu/libcapstone.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
@@ -145,7 +143,6 @@ COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
 ENV LD_LIBRARY_PATH=/usr/local/lib/python3.8/dist-packages/pandare/data/x86_64-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/i386-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/arm-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/ppc-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mips-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mipsel-softmmu/panda/plugins/
 #PANDA_PATH is used by rust plugins
 ENV PANDA_PATH=/usr/local/lib/python3.8/dist-packages/pandare/data
-
 
 # Ensure runtime dependencies are installed for our libpanda objects and panda plugins
 RUN ldconfig && \

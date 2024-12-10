@@ -27,6 +27,7 @@ git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install 
 # some globals
 LIBOSI_VERSION="0.1.7"
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
+CAPSTONE_VERSION="5.0.5"
 PANDA_GIT="https://github.com/panda-re/panda.git"
 
 # system information
@@ -109,11 +110,19 @@ fi
 # Install libcapstone v5 release if it's not present
 if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
   echo "Installing libcapstone v5"
-  pushd /tmp && \
-  git clone https://github.com/capstone-engine/capstone/ -b v5 && \
-  cd capstone/ && MAKE_JOBS=$(nproc) ./make.sh && $SUDO make install && cd /tmp && \
-  rm -rf /tmp/capstone
-  $SUDO ldconfig
+  pushd /tmp
+  curl -LJO https://github.com/capstone-engine/capstone/releases/download/${CAPSTONE_VERSION}/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb
+  if ! $SUDO dpkg -i /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb; then
+    echo "dpkg failed, attempting to fix missing dependencies with apt-get install -f"
+    $SUDO apt-get install -f -y
+    # Try installing again after fixing dependencies
+    if ! $SUDO dpkg -i /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb; then
+      echo "ERROR: Failed to install libcapstone after fixing dependencies."
+      popd
+      exit 1
+    fi
+  fi
+  rm -rf /tmp/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb
   popd
 fi
 
