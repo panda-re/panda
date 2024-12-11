@@ -115,6 +115,7 @@ jobs:
             type=registry,ref=${{ env.PANDA_TARGET }}/pandare/panda:cache_last_published,mode=max
           build-args: |
             REGISTRY=${{ env.PANDA_CACHE }}
+            INSTALL_PREFIX=/usr
       # - name: Minimal test of built container # Just test to see if one of our binaries is built
       #   run: docker run --rm "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 

@@ -102,6 +102,7 @@ jobs:
           target: panda
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
+            INSTALL_PREFIX=/usr
       - name: Build pandadev:latest
         uses: docker/build-push-action@v7
         with:
@@ -119,8 +120,7 @@ jobs:
           target: developer
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
-
-
+            INSTALL_PREFIX=/usr
 
   build_release_assets:
     if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
@@ -186,6 +186,7 @@ jobs:
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
             BASE_IMAGE=ubuntu:${{ matrix.ubuntu_version }}
+            INSTALL_PREFIX=/usr
             PACKAGE_VERSION=${{ env.RELEASE_VERSION }}
 
       - name: Build package

@@ -73,6 +73,7 @@ DOCKER_BUILDKIT=1 docker build \
     --build-arg BASE_IMAGE="ubuntu:${version}" \
     --build-arg TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu" \
     --build-arg PACKAGE_VERSION="${tag_version}" \
+    --build-arg INSTALL_PREFIX="/usr" \
     ../..
 
 # Copy deb file out of container to host

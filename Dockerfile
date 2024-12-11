@@ -4,6 +4,7 @@ ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
 ARG CAPSTONE_VERSION="5.0.5"
 ARG PACKAGE_VERSION="3.1.0"
+ARG INSTALL_PREFIX="/usr/local"
 
 ### BASE IMAGE
 FROM ${REGISTRY}/$BASE_IMAGE AS base
@@ -58,6 +59,7 @@ RUN cd /tmp && \
 ### BUILD IMAGE - STAGE 2
 FROM base AS builder
 ARG TARGET_LIST
+ARG INSTALL_PREFIX
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -73,12 +75,12 @@ COPY .git /panda/
 
 # Note we diable NUMA for docker builds because it causes make check to fail in docker
 RUN git -C /panda submodule update --init dtc && \
-    git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
+    git -C /panda rev-parse HEAD > ${INSTALL_PREFIX}/panda_commit_hash && \
     mkdir  /panda/build && cd /panda/build && \
     python3 -m setuptools_scm -r .. --strip-dev 2>/dev/null >/tmp/savedversion && \
     /panda/configure \
         --target-list="${TARGET_LIST}" \
-        --prefix=/usr/local \
+        --prefix=${INSTALL_PREFIX} \
         --disable-numa \
         --extra-cflags=-Wno-error \
         --extra-cxxflags=-Wno-error \
@@ -102,12 +104,13 @@ WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4
 FROM builder AS installer
+ARG INSTALL_PREFIX
 RUN  make -C /panda/build install && \
-    rm -rf /usr/local/lib/panda/*/cosi \
-        /usr/local/lib/panda/*/cosi_strace \
-        /usr/local/lib/panda/*/gdb \
-        /usr/local/lib/panda/*/snake_hook \
-        /usr/local/lib/panda/*/rust_skeleton
+    rm -rf ${INSTALL_PREFIX}/lib/panda/*/cosi \
+        ${INSTALL_PREFIX}/lib/panda/*/cosi_strace \
+        ${INSTALL_PREFIX}/lib/panda/*/gdb \
+        ${INSTALL_PREFIX}/lib/panda/*/snake_hook \
+        ${INSTALL_PREFIX}/lib/panda/*/rust_skeleton
 
 # Build wheel and install pypanda
 RUN cd /panda/panda/python/core && \
@@ -127,46 +130,49 @@ RUN bash -c "ls $(pip show pandare | grep Location: | awk '{print $2}')/pandare/
 # this layer is used to strip shared objects and change python data to be
 # symlinks to the installed panda data directory
 FROM installer AS cleanup
-RUN find /usr/local/lib/panda -name "*.so" -exec strip {} \;
+ARG INSTALL_PREFIX
+RUN find ${INSTALL_PREFIX}/lib/panda -name "*.so" -exec strip {} \;
 RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
-    rm -rf $PKG/pc-bios && ln -s /usr/local/share/panda $PKG/pc-bios; \
+    rm -rf $PKG/pc-bios && ln -s ${INSTALL_PREFIX}/share/panda $PKG/pc-bios; \
     for arch in `find $PKG -name "*-softmmu" -type d -exec basename {} \;` ; do \
         ARCHP=$PKG/$arch; \
         SARCH=`echo $arch | cut -d'-' -f 1`; \
         rm $ARCHP/libpanda-$SARCH.so $ARCHP/llvm-helpers-$SARCH.bc; \
-        ln -s /usr/local/share/panda/llvm-helpers-$SARCH.bc $ARCHP/llvm-helpers-$SARCH.bc1; \
-        ln -s /usr/local/bin/libpanda-$SARCH.so $ARCHP/libpanda-$SARCH.so; \ 
+        ln -s ${INSTALL_PREFIX}/share/panda/llvm-helpers-$SARCH.bc $ARCHP/llvm-helpers-$SARCH.bc1; \
+        ln -s ${INSTALL_PREFIX}/bin/libpanda-$SARCH.so $ARCHP/libpanda-$SARCH.so; \ 
         rm -rf $ARCHP/panda/plugins; \
-        ln -s /usr/local/lib/panda/$SARCH/ $ARCHP/panda/plugins; \
+        ln -s ${INSTALL_PREFIX}/lib/panda/$SARCH/ $ARCHP/panda/plugins; \
     done
 
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base AS p
+ARG INSTALL_PREFIX
 
 # Include dependency lists for packager
 COPY --from=base /tmp/base_dep.txt /tmp
 COPY --from=base /tmp/build_dep.txt /tmp
 
 # Copy panda + libcapstone.so* + libosi libraries
-COPY --from=cleanup /usr/local /usr/local
+COPY --from=cleanup ${INSTALL_PREFIX} ${INSTALL_PREFIX}
 COPY --from=cleanup /usr/lib/x86_64-linux-gnu/libcapstone.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=cleanup /usr/lib/x86_64-linux-gnu/libosi.so /usr/lib/x86_64-linux-gnu/libiohal.so /usr/lib/x86_64-linux-gnu/liboffset.so /usr/lib/x86_64-linux-gnu/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-ENV LD_LIBRARY_PATH=/usr/local/lib/python3.8/dist-packages/pandare/data/x86_64-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/i386-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/arm-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/ppc-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mips-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mipsel-softmmu/panda/plugins/
+ENV LD_LIBRARY_PATH=${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data/x86_64-softmmu/panda/plugins/:${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data/i386-softmmu/panda/plugins/:${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data/arm-softmmu/panda/plugins/:${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data/ppc-softmmu/panda/plugins/:${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data/mips-softmmu/panda/plugins/:${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data/mipsel-softmmu/panda/plugins/
 #PANDA_PATH is used by rust plugins
-ENV PANDA_PATH=/usr/local/lib/python3.8/dist-packages/pandare/data
+ENV PANDA_PATH=${INSTALL_PREFIX}/lib/python3.8/dist-packages/pandare/data
 
 # Ensure runtime dependencies are installed for our libpanda objects and panda plugins
 RUN ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
-    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
-    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
+    if (ldd ${INSTALL_PREFIX}/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
+    if (ldd ${INSTALL_PREFIX}/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
 
 
 FROM base AS packager
 ARG PACKAGE_VERSION
+ARG INSTALL_PREFIX
 
 # Install necessary tools for packaging
 RUN apt-get -qq update && \
@@ -178,11 +184,14 @@ COPY --from=base /tmp/base_dep.txt /tmp
 COPY --from=base /tmp/build_dep.txt /tmp
 
 # Set up /package-root with files from panda we'll package
-COPY --from=p /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
-COPY --from=p /usr/local/include/ /package-root/usr/include/
-COPY --from=p /usr/local/etc/panda /package-root/usr/local/etc/panda
-COPY --from=p /usr/local/lib/panda /package-root/usr/local/lib/panda
-COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda
+COPY --from=p ${INSTALL_PREFIX}/bin/panda* ${INSTALL_PREFIX}/bin/libpanda* ${INSTALL_PREFIX}/bin/qemu-img /package-root/usr/bin/
+# Be careful, only include headers made by PANDA just in case INSTALL_PREFIX=/usr
+COPY --from=p ${INSTALL_PREFIX}/include/fake_libc_include /package-root/usr/include/fake_libc_include
+COPY --from=p ${INSTALL_PREFIX}/include/panda /package-root/usr/include/panda
+# This directory only holds the kernelinfo.conf file, but we copy the whole directory to be safe
+COPY --from=p ${INSTALL_PREFIX}/etc/panda /package-root/etc/panda
+COPY --from=p ${INSTALL_PREFIX}/lib/panda /package-root/usr/lib/panda
+COPY --from=p ${INSTALL_PREFIX}/share/panda /package-root/usr/share/panda
 
 # Create DEBIAN directory and control file
 COPY ./panda/debian/control /package-root/DEBIAN/control

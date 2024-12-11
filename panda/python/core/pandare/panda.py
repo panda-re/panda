@@ -270,6 +270,9 @@ class Panda():
             if build_dir == "/usr/local/bin/":
                 # Installed - use /usr/local/lib/panda/plugins
                 self.plugin_path = f"/usr/local/lib/panda/{self.arch_name}"
+            elif build_dir == "/usr/bin/":
+                # Installed - use /usr/lib/panda/plugins
+                self.plugin_path = f"/usr/lib/panda/{self.arch_name}"
             elif isdir(rel_dir):
                 self.plugin_path = rel_dir
             else:
