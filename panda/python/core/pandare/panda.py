@@ -1057,7 +1057,7 @@ class Panda():
         else:
             raise ValueError("Unsupported number of bits")
 
-    def from_unsigned_guest(self, x):
+    def from_unsigned_guest(self, x, bits=None):
         '''
         Convert an unsigned int32/unsigned int64 from the guest
         (depending on guest bit-size) to a (signed) python int
@@ -1068,8 +1068,10 @@ class Panda():
         Returns:
             int: Python integer representing x as a signed value
         '''
-        if x >= 2**(self.bits-1): # If highest bit is set, it's negative
-            return (x - 2**self.bits)
+        if bits is None:
+            bits = self.bits
+        if x >= 2**(bits-1): # If highest bit is set, it's negative
+            return (x - 2**bits)
         else: # Else it's positive
             return x
 

@@ -250,7 +250,11 @@ class PandaArch():
         rv = self.get_reg(cpu, reg)
 
         if convention == 'syscall':
-            rv = self.panda.from_unsigned_guest(rv)
+            bits = None
+            if self.panda.arch_name == "aarch64":
+                if cpu.env_ptr.aarch64 == 0:
+                    bits = 32
+            rv = self.panda.from_unsigned_guest(rv, bits=bits)
         return rv
 
 
