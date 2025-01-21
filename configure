@@ -5412,9 +5412,9 @@ if test "$llvm" != "no"; then
 
   llvm_components=""
   llvm_cxxflags=$($llvm_config $llvm_components --cxxflags 2> /dev/null)
-  llvm_ldflags=$($llvm_config $llvm_components --ldflags 2> /dev/null)
+  # Add ltinfo for fixing LLVM linking error [Maybe i just messed up with LLVM compiling]
+  llvm_ldflags="$($llvm_config $llvm_components --ldflags 2> /dev/null) -ltinfo"
   llvm_libs=$($llvm_config $llvm_components --libs 2> /dev/null)
-
   if compile_prog_clangxx "$llvm_cxxflags -Wno-unused-variable" "$llvm_libs $llvm_ldflags" ; then
     : LLVM found
   elif test "$llvm" = "yes"; then

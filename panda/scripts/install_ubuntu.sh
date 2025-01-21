@@ -64,7 +64,9 @@ else
   exit 1
 fi
 
-progress "Installing PANDA dependencies..." 
+progress "Installing PANDA dependencies..."
+# Ignore errors
+set +e 
 # Read file in dependencies directory and install those. If no dependency file present, error
 $SUDO apt-get update
 
@@ -90,6 +92,17 @@ else
   exit 1
 fi
 
+set -e
+
+if [ "$version" -eq 24 ]; then
+  if [ -f "$HOME/llvm/llvm_install/bin/clang" ]; then
+    progress "LLVM is already built in $HOME/llvm/llvm_install."
+  else
+    progress "Building LLVM..."
+    ./panda/scripts/build_llvm.sh
+  fi
+fi
+
 progress "Installing Rust..."
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 
@@ -107,7 +120,7 @@ if [ "$version" -eq 18 ]; then
 fi
 
 # Install libcapstone v5 release if it's not present
-if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
+if ! ldconfig -p | grep -q libcapstone.so.5; then
   echo "Installing libcapstone v5"
   pushd /tmp && \
   git clone https://github.com/capstone-engine/capstone/ -b v5 && \
@@ -117,19 +130,26 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
   popd
 fi
 
+LIBOSI_URL="https://github.com/panda-re/libosi/releases/download/v${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb"
+
 # if the windows introspection library is not installed, clone and install
-if [[ !$(dpkg -l | grep -q libosi) ]]; then
-  pushd /tmp
-  curl -LJO https://github.com/panda-re/libosi/releases/download/v${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
-  $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
-  rm -rf /tmp/libosi_${UBUNTU_VERSION}.deb
-  popd
+if ! dpkg -l | grep -q libosi; then
+  if curl --output /dev/null --silent --head --fail "${LIBOSI_URL}"; then
+    pushd /tmp 
+    curl -LO "${LIBOSI_URL}"
+    $SUDO dpkg -i "libosi_${UBUNTU_VERSION}.deb"
+    rm -rf "libosi_${UBUNTU_VERSION}.deb"
+    popd
+  else
+    echo "Realse libosi not found. Building from source..."
+    ./panda/scripts/build_libosi.sh
+  fi
 fi
 
 # PyPANDA needs CFFI from pip (the version in apt is too old)
 # Install system-wide since PyPANDA install will also be system-wide
-$SUDO python3 -m pip install pip
-$SUDO python3 -m pip install "cffi>1.14.3"
+$SUDO python3 -m pip install --break-system-packages pip
+$SUDO python3 -m pip install --break-system-packages "cffi>1.14.3"
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
@@ -147,7 +167,7 @@ pushd build
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."
 
 cd ../panda/python/core
-$SUDO python3 -m pip install -r requirements.txt
+$SUDO python3 -m pip install --break-system-packages -r requirements.txt
 $SUDO python3 setup.py install
 python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
 progress "Pypanda successfully installed"
