@@ -18,7 +18,7 @@ static inline void fixupendian_impl(void* px, size_t size) {
 #define fixupendian64(x)       {x=bswap64((uint64_t)x);}
 // of flipbadendian will flip a dword
 #if TARGET_LONG_BITS == 64
-#define flipbadendian(x)       bswap64((target_ptr_t)x)
+#define flipbadendian(x)     (sizeof(x) == 4) ? bswap32((target_ptr_t)x) : bswap64((target_ptr_t)x)
 #else
 #define flipbadendian(x)       bswap32((target_ptr_t)x)
 #endif
