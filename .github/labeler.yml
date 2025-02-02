@@ -1,0 +1,36 @@
+PANDA-Build:
+  - Dockerfile
+  - ./panda/build.sh
+  - ./panda/build-llvm.sh
+  - ./panda/Makefile.panda
+  - ./panda/Makefile.panda.target
+  - Makefile
+  - Makefile.objs
+  - Makefile.target
+  - configure
+
+Documentation:
+  - '**/*.md'
+
+Github-files:
+  - .github/**
+
+PyPanda:
+  - ./panda/python/**/*.py
+
+Debian:
+  - ./panda/debian/**
+
+Plugins:
+  - ./panda/plugins/**
+
+LLVM:
+  - ./panda/llvm/**
+  - ./panda/include/panda/tcg-llvm.h
+
+PANDA-Core:
+  - ./panda/src/**
+
+PANDA-Tests:
+  - ./panda/tests/**
+  - ./panda/plugins/taint2/tests/**
