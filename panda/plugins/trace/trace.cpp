@@ -283,7 +283,7 @@ bool init_plugin(void *self) {
         assert(init_osi_api());
     }
 
-    mem_buffer = (char*) malloc(MEM_BUF_SIZE);
+    mem_buffer = (char*) calloc(1, MEM_BUF_SIZE);
     if (mem_buffer == NULL) {
         perror("malloc");
         return false;
