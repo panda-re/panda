@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import shutil
+import argparse
 if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
 
@@ -14,15 +15,16 @@ if sys.version_info[0] < 3:
 # those include files.  See panda/include/panda/README.pypanda for
 # so proscriptions wrt those headers we use here. They need to be kept
 # fairly clean if we are to be able to make sense of them with this script
-# which isn't terriby clever.
+# which isn't terribly clever.
 
-# Also copy all of the generated plog_pb2.py's into pandare/plog_pb/
+# Also copy all the generated plog_pb2.py's into pandare/plog_pb/
 # XXX: WIP if we do this this file should be renamed
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 build_root = os.path.join(root_dir, "build")
 lib_dir = os.path.join("pandare", "data")
 
-for arch in ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']:
+arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64', 'mips64el']
+for arch in arches:
     softmmu = arch+"-softmmu"
     plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
     if os.path.isfile(plog):
@@ -187,17 +189,12 @@ def include_this(pdth, fn):
             pdth.write(line)
     pn += 1
 
-def compile(arch, bits, pypanda_headers, install, static_inc):
-    #from ..ffi_importer import ffi
+def compile(arch, bits, pypanda_headers, include_dir):
     from cffi import FFI
     ffi = FFI()
 
     ffi.set_source(f"panda_{arch}_{bits}", None)
-    if install:
-        import os
-        include_dir = os.path.abspath(os.path.join(*[os.path.dirname(__file__),  "pandare", "include"]))
-    else:
-        include_dir = static_inc
+
 
     def define_clean_header(ffi, fname):
         '''Convenience function to pull in headers from file in C'''
@@ -325,7 +322,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.compile(verbose=True,debug=True,tmpdir='./pandare/autogen')
 
 
-def main(install=False,recompile=True):
+def main(recompile=True):
     '''
     Copy and reformat panda header files into the autogen directory
 
@@ -337,8 +334,6 @@ def main(install=False,recompile=True):
     # examine all plugin dirs looking for pypanda-aware headers and pull
     # out pypanda bits to go in INCLUDE_DIR files
     plugin_dirs = os.listdir(PLUGINS_DIR)
-
-    INCLUDE_DIR_PYP_INSTALL = 'os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "pandare", "data", "pypanda", "include"]))'  # ... /python3.6/site-packages/panda/data/pypanda/include/
 
     # We want the various cpu_loop_... functions
     create_pypanda_header("%s/exec/exec-all.h" % INCLUDE_DIR_CORE)
@@ -631,7 +626,7 @@ def get_cbs(ffi):
 
         for arch in arches:
             print("Compiling headers for:", arch)
-            compile(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP)
+            compile(arch[0], arch[1], pypanda_headers, INCLUDE_DIR_PYP)
 
         #ps = (
         #    Process(target=compile, args=(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP))
@@ -641,5 +636,68 @@ def get_cbs(ffi):
         #[p.join() for p in ps]
 
 
+# Check for PANDA binaries in /usr/local/bin/ or in our build directory
+# panda_binaries = ['/usr/local/bin/panda-system-{arch}' for arch in arches]
+# Do we actually care at this point?
+def copy_objs():
+    '''
+    Run to copy objects into a (local and temporary) python module before installing to the system.
+    Shouldn't be run if you're just installing in develop mode
+    '''
+    print("Copying objects into pandare/data/pypanda/include")
+    if os.path.isdir(lib_dir):
+        shutil.rmtree(lib_dir)
+    os.mkdir(lib_dir)
+
+    # Copy pypanda's include directory (different than core panda's) into a datadir
+    pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "pandare", "include"])
+    if not os.path.isdir(pypanda_inc):
+        raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
+    pypanda_inc_dest = os.path.join(*["pandare", "data", "pypanda", "include"])
+    if os.path.isdir(pypanda_inc_dest):
+        shutil.rmtree(pypanda_inc_dest)
+    shutil.copytree(pypanda_inc, pypanda_inc_dest)
+
+    # For each arch, copy llvm-helpers
+    # XXX Should these be in standard panda deb?
+    # What actually uses these? Taint? Disabling for now
+    '''
+    # Check if we have llvm-support
+    with open(os.path.join(*[build_root, 'config-host.mak']), 'r') as cfg:
+        llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
+
+    for arch in arches:
+        libname = "libpanda-"+arch+".so"
+        softmmu = arch+"-softmmu"
+        path      = os.path.join(*[build_root, softmmu, libname])
+        llvm1     = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
+        llvm2     = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
+
+        if os.path.isfile(path) is False:
+            print(("Missing file {} - did you run build.sh from panda/build directory?\n"
+                   "Skipping building pypanda for {}").format(path, arch))
+            continue
+
+        os.mkdir(os.path.join(lib_dir, softmmu))
+        if llvm_enabled:
+            shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
+            shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
+    '''
+
+
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='A python script to populate panda/autogen folder '
+                                          'and prep for PyPanda wheel installation')
+    parser.add_argument('--install', '-i', dest='install', action='store_true',
+                        help='If set, this means update pandare folder for installation')
+    parser.add_argument('--recompile', '-r', dest='recompile', action='store_true',
+                        help='If set, recompile the headers with cffi')
+    args = parser.parse_args()
+    """
+    Install as a local module (not to system) by
+        1) Creating datatype files for local-use
+        2) Running regular setup tools logic
+    """
     main()
+    if args.install:
+        copy_objs()

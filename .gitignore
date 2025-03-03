@@ -147,6 +147,7 @@ trace-ust-all.h
 trace-ust-all.c
 
 .vscode/
+.idea/
 
 # Pypanda Examples
 pwc_log

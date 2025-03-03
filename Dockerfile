@@ -56,6 +56,7 @@ RUN git -C /panda submodule update --init dtc && \
     git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
     mkdir  /panda/build && cd /panda/build && \
     python3 -m pip install setuptools_scm && \
+    python3 -m pip install build && \
     python3 -m setuptools_scm -r .. --strip-dev 2>/dev/null >/tmp/savedversion && \
     /panda/configure \
         --target-list="${TARGET_LIST}" \
@@ -70,7 +71,8 @@ RUN PRETEND_VERSION=$(cat /tmp/savedversion) make -C /panda/build -j "$(nproc)"
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer
 RUN cd /panda/panda/python/core && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) python3 setup.py develop && \
+    python3 create_panda_datatypes.py && \
+    PRETEND_VERSION=$(cat /tmp/savedversion) pip install -e . && \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     cd /panda && \
@@ -90,11 +92,13 @@ RUN  make -C /panda/build install && \
 
 # Install pypanda
 RUN cd /panda/panda/python/core && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) python3 setup.py install
+    python3 create_panda_datatypes.py --install && \
+    PRETEND_VERSION=$(cat /tmp/savedversion) pip install .
 RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
 # Build a whl too
 RUN cd /panda/panda/python/core && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) python3 setup.py bdist_wheel
+    python3 create_panda_datatypes.py --install && \
+    PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel .
 
 # BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/

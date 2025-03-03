@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = [
+    "pandare",
+    "pandare.*"
+]
+
+[tool.setuptools.package-data]
+pandare = [
+    "data/*-softmmu/llvm-helpers*.bc*",  # LLVM Helpers
+    "data/pypanda/include/*.h",  # Includes files
+    "qcows.json"  # Generic Images
+]
+
+# This is how to setup cmd replacement, we can figure this out later
+# [tool.setuptools.cmdclass]
+# install = "setup.custom_install"
+# develop = "setup.custom_develop"
+
+[project]
+name = "pandare"
+dynamic = ["version"]
+description = "Python Interface to PANDA"
+readme = "README.md"
+authors = [
+    { name = "Luke Craig", email = "luke.craig@mit.edu" },
+    { name = "Andrew Fasano" },
+    { name = "Tim Leek" }
+]
+requires-python = ">=3.6"
+dependencies = [
+    "cffi>=1.14.3",
+    "protobuf>=4.25.1",
+    "colorama"
+]
+
+[tool.setuptools_scm]
+root = "../../.."
+fallback_version = "0.0.0.1"
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
