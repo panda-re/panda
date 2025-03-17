@@ -7,7 +7,7 @@ on:
       - stable
 
 env:
-  PANDA_CONTAINER_UBUNTU_VERSION: '20.04'
+  PANDA_CONTAINER_UBUNTU_VERSION: '22.04'
 
 jobs:
   create_release:

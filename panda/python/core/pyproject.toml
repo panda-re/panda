@@ -34,7 +34,8 @@ requires-python = ">=3.6"
 dependencies = [
     "cffi>=1.14.3",
     "protobuf>=4.25.1",
-    "colorama"
+    "colorama",
+    "capstone==5.0.3"
 ]
 
 [tool.setuptools_scm]

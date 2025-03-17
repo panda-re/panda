@@ -23,9 +23,15 @@ fi
 # Note package names should be consistent across Ubuntu versions.
 lsb_release --help &>/dev/null || $SUDO apt-get update -qq && $SUDO apt-get -qq install -y --no-install-recommends lsb-release
 git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install -y --no-install-recommends git
+$SUDO apt-get install -y --no-install-recommends curl jq
 
 # some globals
-LIBOSI_VERSION="0.1.7"
+# TODO: Why is curl -s failing in panda-arc? For now, I'll put a fallback version
+LIBOSI_VERSION=$(curl -s https://api.github.com/repos/panda-re/libosi/releases/latest | jq -r .tag_name)
+if [ -z "$LIBOSI_VERSION" ]; then
+  # TODO: Update this, once this PR is in, https://github.com/panda-re/libosi/pull/17
+  LIBOSI_VERSION="v0.1.9"
+fi
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 PANDA_GIT="https://github.com/panda-re/panda.git"
 
@@ -76,7 +82,6 @@ if [ $version -eq 18 ]; then
   $SUDO apt-get update
 fi
 
-
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
 # This will give us "./panda/dependencies/ubuntu:20.04" where ubuntu:20.04_build.txt or 20.04_base.txt exists
@@ -120,16 +125,11 @@ fi
 # if the windows introspection library is not installed, clone and install
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
   pushd /tmp
-  curl -LJO https://github.com/panda-re/libosi/releases/download/v${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
+  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb
   $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
   rm -rf /tmp/libosi_${UBUNTU_VERSION}.deb
   popd
 fi
-
-# PyPANDA needs CFFI from pip (the version in apt is too old)
-# Install system-wide since PyPANDA install will also be system-wide
-$SUDO python3 -m pip install pip
-$SUDO python3 -m pip install "cffi>1.14.3"
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
@@ -138,6 +138,10 @@ if [ -d "build" ]; then
   progress "Removing build directory."
   rm -rf "build"
 fi
+
+# PyPANDA needs CFFI from pip (the version in apt is too old)
+# Install system-wide since PyPANDA install will also be system-wide
+$SUDO pip install -r ./panda/python/core/requirements.txt
 
 progress "Building PANDA..."
 mkdir build
