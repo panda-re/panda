@@ -94,7 +94,9 @@ RUN  make -C /panda/build install && \
 RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
     PRETEND_VERSION=$(cat /tmp/savedversion) pip install .
-RUN python3 -m pip install --ignore-install pycparser && python3 -m pip install --force-reinstall --no-binary :all: cffi
+RUN python3 -m pip install --upgrade pip "setuptools<65.6.0" && \
+    python3 -m pip install "pycparser<2.22" && \
+    python3 -m pip install --force-reinstall --no-binary :all: cffi
 # Build a whl too
 RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
