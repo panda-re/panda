@@ -65,6 +65,9 @@ uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *env);
 // Must have OSI enabled for this api to work.
 uint32_t get_binaries(char **libs, uint32_t n, CPUState *cpu);
 
+// Must be called by plugins which intend to call get_binaries.
+void callstack_enable_binary_tracking(void);
+
 // Get the current program point: (Caller, PC, stack ID)
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
@@ -102,10 +105,13 @@ Example
 
 int some_plugin_fn(CPUState *env) {
     target_ulong callers[16];
+    char *binaries[16];
     int n;
     n = get_callers(callers, 16, env);
+    get_binaries(binaries, 16, env);
     for (int i = 0; i < n; i++)
-        printf("Callstack entry: " TARGET_FMT_lx "\n", callers[i]);
+        printf("Callstack entry: " TARGET_FMT_lx " %s\n", callers[i],
+            binaries[i]);
     return 0;
 }
 
@@ -114,5 +120,6 @@ int some_plugin_fn(CPUState *env) {
 bool init_plugin(void *self) {
     panda_require("callstack_instr");
     if (!init_callstack_instr_api()) return false;
+    callstack_enable_binary_tracking();
 }
 ```

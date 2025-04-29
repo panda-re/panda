@@ -30,7 +30,6 @@ PANDAENDCOMMENT */
 #include <memory>
 #include <set>
 #include <vector>
-#include <utility>
 
 #include <capstone/capstone.h>
 #if defined(TARGET_I386)
@@ -82,8 +81,6 @@ bool old_capstone=false; // Should we use fallback instruction group detection l
 // callstack_instr arguments
 static bool verbose = false;
 static bool include_binary_info = false;
-static std::string no_osi_msg = "OSI is not enabled";
-static std::vector<char> no_osi_msg_vector(no_osi_msg.begin(), no_osi_msg.end());
 
 enum instr_type {
   INSTR_UNKNOWN = 0,
@@ -382,12 +379,15 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
   if (need_to_check) {
     std::vector<stack_entry> &v = callstacks[cur_stackid];
     std::vector<target_ulong> &w = function_stacks[cur_stackid];
-
     if (v.empty()) {
         return;
     }
 
-    std::map<target_ulong, std::vector<char>> &binary_info_stack = binary_info_stacks[cur_stackid];
+    std::map<target_ulong, std::vector<char>> *binary_info_stack = nullptr;
+
+    if(include_binary_info) {
+      binary_info_stack = &binary_info_stacks[cur_stackid];
+    }
 
     // Search up to 10 down
     for (int i = v.size() - 1; i > ((int)(v.size() - 10)) && i >= 0; i--) {
@@ -397,8 +397,10 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 
         PPP_RUN_CB(on_ret, cpu, w[i]);
 
-        for (std::vector<stack_entry>::iterator it = v.begin() + i; it != v.end(); ++it) {
-            binary_info_stack.erase(it->pc);
+        if(include_binary_info) {
+          for (std::vector<stack_entry>::iterator it = v.begin() + i; it != v.end(); ++it) {
+            binary_info_stack->erase(it->pc);
+          }
         }
 
         v.erase(v.begin() + i, v.end());
@@ -412,38 +414,22 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 
 std::vector<char> getLib(CPUState* cpu, target_ulong pc) {
 
-    target_ulong end_addr;
-
     std::shared_ptr<OsiProc> proc(get_current_process(cpu), free_osiproc);
 
-    std::shared_ptr<GArray> mappings(get_mappings(cpu, proc.get()),
-                                    [](GArray *a) {
-                                        if (a != nullptr) {
-                                            g_array_free(a, true);
-                                        }
-                                    });
+    OsiModule *module = get_mapping_by_addr(cpu, proc.get(), pc);
 
-    if(nullptr != mappings) {
-       for(uint32_t i = 0; i < mappings->len; i++) {
-           OsiModule *osimodule = &g_array_index(mappings.get(), OsiModule, i);
-           end_addr = osimodule->base + (osimodule->size - 1);
-
-           if (pc >= osimodule->base && pc < end_addr) {
-               if (nullptr != osimodule->file) {
-                   std::size_t len = strlen(osimodule->file);
-                   std::vector<char> lib_str_buf(len + 1);
-                   std::snprintf(lib_str_buf.data(), lib_str_buf.size(), "%s", osimodule->file);
-                   return lib_str_buf;
-               } else if (nullptr != osimodule->name) {
-                   std::size_t len = strlen(osimodule->name);
-                   std::vector<char> lib_str_buf(len + 1);
-                   std::snprintf(lib_str_buf.data(), lib_str_buf.size(), "%s", osimodule->name);
-                   return lib_str_buf;
-               } else {
-                   return std::vector<char>(1, '\0');
-               }
-           }
-       }
+    if(nullptr != module) {
+        const char *lib = "";
+        if (nullptr != module->file) {
+            lib = module->file;
+        } else if (nullptr != module->name) {
+           lib = module->name;
+        }
+        std::size_t len = strlen(lib);
+        std::vector<char> lib_str_buf(len + 1);
+        std::snprintf(lib_str_buf.data(), lib_str_buf.size(), "%s", lib);
+        free_osimodule(module);
+        return lib_str_buf;
     }
 
     return std::vector<char>(1, '\0');
@@ -464,8 +450,9 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
         if (tb_type == INSTR_CALL) {
             stack_entry se = {tb->pc + tb->size, tb_type};
             callstacks[curStackid].push_back(se);
-            binary_info_stacks[curStackid][se.pc] =
-                    include_binary_info ? getLib(cpu, se.pc) : no_osi_msg_vector;
+            if(include_binary_info) {
+                binary_info_stacks[curStackid][se.pc] = getLib(cpu, se.pc);
+            }
 
             // Also track the function that gets called
             // This retrieves the pc in an architecture-neutral way
@@ -494,6 +481,7 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
     }
 }
 
+
 static uint32_t get_callers_priv(target_ulong callers[], uint32_t n,
         CPUState* cpu, stackid stackid) {
     std::vector<stack_entry> &v = callstacks[stackid];
@@ -511,13 +499,26 @@ uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
 }
 
 uint32_t get_binaries(char **libs, uint32_t n, CPUState *cpu) {
-    stackid stack_id = get_stackid(cpu);
-    std::vector<stack_entry> &call_stack = callstacks[stack_id];
-    std::map<target_ulong, std::vector<char>> &binary_info_stack = binary_info_stacks[stack_id];
+    static bool warning_shown = false;
+    for(uint32_t i=0; i<n; libs[i++] = nullptr);
+    if(include_binary_info) {
+        stackid stack_id = get_stackid(cpu);
+        std::vector<stack_entry> &call_stack = callstacks[stack_id];
+        std::map<target_ulong, std::vector<char>> &binary_info_stack = binary_info_stacks[stack_id];
 
-    n = std::min((uint32_t) call_stack.size(), n);
-    for (uint32_t i = 0; i < n; ++i) {
-        libs[i] = binary_info_stack[call_stack[call_stack.size() - 1 - i].pc].data();
+        n = std::min((uint32_t) call_stack.size(), n);
+        for (uint32_t i = 0; i < n; ++i) {
+            libs[i] = binary_info_stack[call_stack[call_stack.size() - 1 - i].pc].data();
+        }
+    } else {
+        if(!warning_shown) {
+            fprintf(stderr, "WARNING: callstack_instr: get_binaries called "
+                "but binary tracking not enabled. %s\n",
+                (nullptr == panda_get_plugin_by_name("osi") ?
+                "OSI plugin not loaded." : ""));
+            warning_shown = true;
+        }
+        n = 0;
     }
 
     return n;
@@ -541,6 +542,7 @@ Panda__CallStack *pandalog_callstack_create() {
     return cs;
 }
 
+
 /**
  * @brief Frees a pandalog entry containing callstack information.
  */
@@ -548,6 +550,7 @@ void pandalog_callstack_free(Panda__CallStack *cs) {
     free(cs->addr);
     free(cs);
 }
+
 
 /**
  * @brief Fills preallocated buffer \p functions with up to \p n function addresses.
@@ -622,6 +625,7 @@ bool setup_osi() {
     return false;
 #endif
 }
+
 
 bool init_plugin(void *self) {
 
@@ -742,9 +746,11 @@ bool init_plugin(void *self) {
         printf("callstack_instr:  using heuristic stack_type\n");
     }
 
-    include_binary_info = setup_ok && (nullptr != panda_get_plugin_by_name("osi"));
-
     return setup_ok;
+}
+
+void callstack_enable_binary_tracking() {
+    include_binary_info = (nullptr != panda_get_plugin_by_name("osi"));
 }
 
 void uninit_plugin(void *self) {
