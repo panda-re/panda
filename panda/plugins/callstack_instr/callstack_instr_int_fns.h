@@ -22,6 +22,9 @@ uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *cpu);
 // Binaries are returned in libs[], most recent first
 uint32_t get_binaries(char **libs, uint32_t n, CPUState *cpu);
 
+// Called by plugins that intend to call get_binaries.
+void callstack_enable_binary_tracking(void);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // NB: prog_point is c++, so beware
