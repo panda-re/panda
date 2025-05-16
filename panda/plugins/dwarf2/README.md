@@ -5,7 +5,7 @@ Summary
 -------
 
 The `dwarf2` plugin is to be a replacement of `pri_dwarf` plugin. The workflow is to run 
-`dwarfdump -dil ${TARGET_PROG} | PYTHONPATH="panda/scripts/" python -c "import sys;import dwarfdump;dwarfdump.parse_dwarfdump(sys.stdin.read(), '${TARGET_PROG}')"`.
+`dwarfdump -dil ${TARGET_PROG} | python -c "import sys;from pandare.extras import dwarfdump;dwarfdump.parse_dwarfdump(sys.stdin.read(), '${TARGET_PROG}')"`.
 This is going to generate 4 json DWARF symbol files including: Line Info, Global Variables, Function Info, and Type Info. Place these json files under debug path for this plugin to read.
 
 Arguments

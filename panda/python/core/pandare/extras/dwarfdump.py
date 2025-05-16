@@ -64,7 +64,6 @@ class TypeDB(object):
             jout[cu] = {}
             for off in self.data[cu]:
                 jout[cu][off] = self.data[cu][off].jsondump()
-        #return json.dumps(jout)
         return jout
 
 class LineDB(object):
@@ -121,7 +120,6 @@ class LineDB(object):
             jout[srcfn] = []
             for lr in self.data[key]:
                 jout[srcfn].append(lr.jsondump())
-        #return json.dumps(jout)
         return jout
 
 class GlobVarDB(object):
@@ -137,7 +135,6 @@ class GlobVarDB(object):
         jout = {}
         for cu in self.data:
             jout[cu] = [f.jsondump() for f in self.data[cu]]
-        #return json.dumps(jout)
         return jout
 
 class FunctionDB(object):
@@ -153,7 +150,6 @@ class FunctionDB(object):
         jout = {}
         for cu in self.data:
             jout[cu] = [f.jsondump() for f in self.data[cu]]
-        #return json.dumps(jout)
         return jout
 
 
@@ -533,9 +529,12 @@ def parse_dwarfdump(indat, prefix=""):
                 func_info.insert(cu_off, f)
 
             elif tname == "DW_TAG_structure_type":
-                if 'DW_AT_byte_size' not in res:
-                    continue
-                sz = int(res['DW_AT_byte_size'], 16)
+                if 'DW_AT_byte_size' in res:
+                    sz = int(res['DW_AT_byte_size'], 16)
+                else:
+                    # It's a forward declaration. Set size to 0.
+                    # 'None' is generally better as it indicates 'unknown size yet'.
+                    sz = 0
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
                 t = StructType(name, cu_off, sz)
 
@@ -689,7 +688,7 @@ def dump_json(j, info):
                 return obj.jsondump()
             else:
                 return json.JSONEncoder.default(self, obj)
-    json.dump(info.jsondump(), j, cls=DwarfJsonEncoder)
+    json.dump(info.jsondump(), j, cls=DwarfJsonEncoder, indent=4)
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as fd:
