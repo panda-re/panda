@@ -25,9 +25,14 @@
 #if defined(TARGET_I386)
 #define NUM_REGS CPU_NB_REGS
 #define REGS(env) ((env)->regs)
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 #define NUM_REGS 16
-#define REGS(env) ((env)->aarch64 ? (env)->xregs : (env)->regs)
+#define CPU_NB_REGS 16
+#define REGS(env) ((env)->regs)
+#elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+#define NUM_REGS 31
+#define CPU_NB_REGS 31
+#define REGS(env) ((env)->xregs)
 #elif defined(TARGET_PPC)
 #define NUM_REGS 32
 #define REGS(env) ((env)->gpr)

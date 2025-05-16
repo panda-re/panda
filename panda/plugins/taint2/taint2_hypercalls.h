@@ -25,6 +25,7 @@ typedef unsigned int lavaint;
 #endif
 static_assert(sizeof(lavaint) == 4, "lavaint size must be 4!");
 
+#define LAVA_MAGIC 0xabcd
 #pragma pack(push,1)
 typedef struct panda_hypercall_struct {
     lavaint magic;
