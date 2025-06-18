@@ -46,6 +46,11 @@ Regardless of mode used, the output CSV file contains metadata at the top of
 the header consisting of the PANDA build date and the execution time.  Note
 that the header is written out each time coverage collection is enabled.
 
+N.B.  Loading the coverage plugin, even if it is disabled, impacts taint
+collection and propagation.  It is not advisable to load the coverage plugin
+while taint is being collected as the results may be different than what would
+be produced if the coverage plugin were not loaded.
+
 This plugin can be used with the included `coverage.py` script in IDAPython.
 `coverage.py` colorizes the dissasembly in IDA Pro using the CSV file produced
 by this plugin. It also provides options to add comments to the blocks noting
