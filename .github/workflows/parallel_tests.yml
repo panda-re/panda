@@ -93,16 +93,18 @@ jobs:
     # Given a container with PANDA installed at /panda, run the taint tests
     - name: Update
       run: sudo apt-get -qq update -y
-    - name: Install ssl
-      run: sudo apt-get -qq install -y wget
+    - name: Install wget and PyPanda to download QCows
+      run: |
+        sudo apt-get -qq install -y wget python3-pip
+        pip3 install pandare
+        python3 -c "from pandare.qcows_internal import Qcows;Qcows.get_qcow('i386')"
+        python3 -c "from pandare.qcows_internal import Qcows;Qcows.get_qcow('x86_64')"
+    
     - name: Run Taint Tests
       if: matrix.test_type == 'taint'
       run: >-
-        wget -q -O wheezy_panda2.qcow2 https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow;
-        wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2;
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
-        --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
+        --mount type=bind,source=$HOME/.panda,target=$HOME/.panda
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
@@ -118,9 +120,8 @@ jobs:
     - name: Run PyPanda Tests
       if: matrix.test_type == 'pypanda'
       run: >-
-        wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow;
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
+        --mount type=bind,source=$HOME/.panda,target=$HOME/.panda
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
         "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
