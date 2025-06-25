@@ -50,10 +50,10 @@ def parse_message_block(buf):
 def get_proto_text(filename):
     buf = ""
     for line in open(filename):
-        foo = re.search("^(\s*)\/\/", line)
+        foo = re.search(r"^(\s*)\/\/", line)
         if foo:
             continue
-        bar = re.search("^(\s*)$", line)
+        bar = re.search(r"^(\s*)$", line)
         if bar:
             continue
         buf += line
