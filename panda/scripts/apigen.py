@@ -8,7 +8,7 @@ import pycparser
 import subprocess
 
 KNOWN_TYPES = ['bool', 'int', 'double', 'float', 'char', 'short', 'long', 'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t']
-PROTOTYPE_RE = re.compile('^([^(]+)\((.*)\)\s*\;')
+PROTOTYPE_RE = re.compile(r'^([^(]+)\((.*)\)\s*\;')
 
 # input is name of interface file.
 # output is list of args for that fn.
