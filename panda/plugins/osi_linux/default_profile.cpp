@@ -11,53 +11,57 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     target_ptr_t current_task_addr;
     target_ptr_t ts;
 
-#ifdef TARGET_ARM
+#ifdef TARGET_AARCH64
+    extern target_ptr_t spel0;
     //aarch64
-    if (((CPUARMState*) cpu->env_ptr)->aarch64) {
-        //for kernel versions >= 4.10.0
-        if(PROFILE_KVER_GE(ki, 4, 10, 0)) {
-            current_task_addr = ki.task.init_addr;
-
-        //for kernel versions between 3.7.0 and 4.9.257
-        } else if(PROFILE_KVER_LT(ki, 4, 10, 0) && PROFILE_KVER_GE(ki, 3, 7, 0)) {
-            target_ptr_t kernel_sp = panda_current_ksp(cpu); //((CPUARMState*) cpu->env_ptr)->sp_el[1];
-            target_ptr_t task_thread_info = kernel_sp & ~(0x4000-1);
-            current_task_addr = task_thread_info+0x10;
-
-
-            //because some kernel versions use both per_cpu variables AND access the task_struct 
-            //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
-            err = struct_get(cpu, &ts, current_task_addr, 0);
-            assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
-            fixupendian2(ts);
-            return ts;
-        } else {
-            assert(false && "cannot use kernel version older than 3.7");
-        }
-
-    //arm32
-    } else {
-        target_ptr_t kernel_sp = panda_current_ksp(cpu);
-
-        // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
-        // We need to expose that as a part of the OSI config - See issue #651
-        target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
-
-        //for kernel versions >= 5.18.0
-        if (PROFILE_KVER_GE(ki, 5, 18, 0)) {
-            return task_thread_info;
-        }
-
-        current_task_addr=task_thread_info+0xC;
-
+    if (PROFILE_KVER_GE(ki, 4, 10, 0)){
+        // https://elixir.bootlin.com/linux/v4.10/source/arch/arm64/include/asm/current.h#L25
+        return spel0;
+    } else if (PROFILE_KVER_GE(ki, 4, 6, 0)) {
+        // untested
+        // https://elixir.bootlin.com/linux/v4.6/source/arch/arm64/include/asm/thread_info.h#L79
+        target_ptr_t task_thread_info = spel0;
+        current_task_addr = task_thread_info+0x10;
+        err = struct_get(cpu, &ts, current_task_addr, 0);
+        return ts;
+    } else if(PROFILE_KVER_GE(ki, 3, 7, 0)) {
+        // https://elixir.bootlin.com/linux/v3.7/source/arch/arm64/include/asm/thread_info.h#L79
+        target_ptr_t kernel_sp = panda_current_ksp(cpu); //((CPUARMState*) cpu->env_ptr)->sp_el[1];
+        target_ptr_t task_thread_info = kernel_sp & ~(0x4000-1);
+        current_task_addr = task_thread_info+0x10;
         //because some kernel versions use both per_cpu variables AND access the task_struct 
         //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
         err = struct_get(cpu, &ts, current_task_addr, 0);
         assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
         fixupendian2(ts);
         return ts;
-
+    } else {
+        // solid chance the above implemntation just works for older kernels
+        // see: https://elixir.bootlin.com/linux/v2.6.39.4/source/arch/arm/include/asm/thread_info.h#L92
+        assert(false && "cannot use kernel version older than 3.7");
     }
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    //arm32
+    target_ptr_t kernel_sp = panda_current_ksp(cpu);
+
+    // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
+    // We need to expose that as a part of the OSI config - See issue #651
+    target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
+
+    //for kernel versions >= 5.18.0
+    if (PROFILE_KVER_GE(ki, 5, 18, 0)) {
+        return task_thread_info;
+    }
+
+    current_task_addr=task_thread_info+0xC;
+
+    //because some kernel versions use both per_cpu variables AND access the task_struct 
+    //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
+    err = struct_get(cpu, &ts, current_task_addr, 0);
+    assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+    fixupendian2(ts);
+    return ts;
+
 #elif defined(TARGET_MIPS)
     // __current_thread_info is stored in KERNEL r28
     // userspace clobbers it but kernel restores (somewhow?)
