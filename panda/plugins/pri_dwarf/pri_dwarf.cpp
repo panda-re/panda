@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <dlfcn.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -103,6 +104,24 @@ Dwarf_Addr prev_line_pc = 0;
 std::string prev_file_name = "";
 std::string prev_funct_name = std::string("");
 bool inExecutableSource = false;
+
+// need to explicitly load certain functions from libdwarf.so to avoid picking
+// up functions of the same name in libdw.so (which main PANDA depends upon
+// in Ubuntu 24)
+void *dlhandle = NULL;
+int (* dwarf_attr_fn)(Dwarf_Die, Dwarf_Half, Dwarf_Attribute*, Dwarf_Error*);
+int (* dwarf_bytesize_fn)(Dwarf_Die, Dwarf_Unsigned*, Dwarf_Error*);
+int (* dwarf_child_fn)(Dwarf_Die, Dwarf_Die*, Dwarf_Error*);
+int (* dwarf_diename_fn)(Dwarf_Die, char**, Dwarf_Error*);
+int (* dwarf_formaddr_fn)(Dwarf_Attribute, Dwarf_Addr*, Dwarf_Error*);
+int (* dwarf_formudata_fn)(Dwarf_Attribute, Dwarf_Unsigned *, Dwarf_Error*);
+int (* dwarf_hasattr_fn)(Dwarf_Die, Dwarf_Half, Dwarf_Bool*, Dwarf_Error*);
+int (* dwarf_lineaddr_fn)(Dwarf_Line, Dwarf_Addr*, Dwarf_Error*);
+int (* dwarf_lineno_fn)(Dwarf_Line, Dwarf_Unsigned*, Dwarf_Error*);
+int (* dwarf_linesrc_fn)(Dwarf_Line, char**, Dwarf_Error*);
+int (* dwarf_tag_fn)(Dwarf_Die, Dwarf_Half*, Dwarf_Error*);
+int (* dwarf_whatattr_fn)(Dwarf_Attribute, Dwarf_Half*, Dwarf_Error*);
+int (* dwarf_whatform_fn)(Dwarf_Attribute, Dwarf_Half*, Dwarf_Error*);
 
 //////// consider putting this in pri
 // current process
@@ -276,7 +295,6 @@ uint32_t prev_pc_count = 0;
 
 void die(const char* fmt, ...) {
     va_list args;
-
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     vfprintf(stdout, fmt, args);
@@ -287,7 +305,7 @@ static int
 get_form_values(Dwarf_Attribute attrib,
     Dwarf_Half * theform, Dwarf_Half * directform) {
     Dwarf_Error err = 0;
-    int res = dwarf_whatform(attrib, theform, &err);
+    int res = dwarf_whatform_fn(attrib, theform, &err);
     dwarf_whatform_direct(attrib, directform, &err);
     return res;
 }
@@ -301,9 +319,9 @@ dwarf_get_attr_unsigned(Dwarf_Die the_die, Dwarf_Half attr_code,
 {
     Dwarf_Attribute attr;
     int rc;
-    rc = dwarf_attr(the_die, attr_code, &attr, err);
+    rc = dwarf_attr_fn(the_die, attr_code, &attr, err);
     if (rc == DW_DLV_OK) {
-        rc = dwarf_formudata(attr, sd, err);
+        rc = dwarf_formudata_fn(attr, sd, err);
         if (rc == DW_DLV_ERROR || rc == DW_DLV_NO_ENTRY){
              assert (1==0);
         }
@@ -552,12 +570,12 @@ void enumerate_die_attrs(Dwarf_Die the_die)
     }
     for (i = 0; i < attrcount; ++i) {
         Dwarf_Half attrcode;
-        if (dwarf_whatattr(attrs[i], &attrcode, &err) != DW_DLV_OK)
+        if (dwarf_whatattr_fn(attrs[i], &attrcode, &err) != DW_DLV_OK)
         {
             printf("    Error in dwarf_whatattr\n");
             return;
         }
-        if (dwarf_attr(the_die, attrcode, &attr, &err) == DW_DLV_OK)
+        if (dwarf_attr_fn(the_die, attrcode, &attr, &err) == DW_DLV_OK)
             printf("    Attr number 0x%x, Attr value 0x%lx\n", attrcode, (unsigned long) attr);
     }
 
@@ -570,16 +588,16 @@ Dwarf_Unsigned get_struct_member_offset(Dwarf_Die the_die) {
     Dwarf_Locdesc **locdesclist = NULL;
     Dwarf_Signed loccnt = 0;
 
-    if (dwarf_hasattr(the_die, DW_AT_data_member_location, &hasLocation, &err) != DW_DLV_OK)
+    if (dwarf_hasattr_fn(the_die, DW_AT_data_member_location, &hasLocation, &err) != DW_DLV_OK)
         die("Error in dwarf attr, for determining existences of location attr\n");
     else if (hasLocation){
-        if (dwarf_attr(the_die, DW_AT_data_member_location, &locationAttr, &err) != DW_DLV_OK)
+        if (dwarf_attr_fn(the_die, DW_AT_data_member_location, &locationAttr, &err) != DW_DLV_OK)
             die("Error obtaining location attr\n");
         // dwarf_formexprloc(attr, expr_len, block_ptr, &err);
         else if (dwarf_loclist_n(locationAttr, &locdesclist, &loccnt, &err) != DW_DLV_OK){
-            dwarf_whatform(locationAttr, &attrform, &err);
+            dwarf_whatform_fn(locationAttr, &attrform, &err);
             //die("DEBUG Whatform %x\n", attrform);
-            if (dwarf_whatform(locationAttr, &attrform, &err) == DW_DLV_OK
+            if (dwarf_whatform_fn(locationAttr, &attrform, &err) == DW_DLV_OK
                && (attrform == DW_FORM_data1 
                    || attrform == DW_FORM_data2
                    || attrform == DW_FORM_data4
@@ -587,11 +605,11 @@ Dwarf_Unsigned get_struct_member_offset(Dwarf_Die the_die) {
             {
                 //die("DEBUG attr form %d\n", attrform);
                 Dwarf_Unsigned result = 0;
-                dwarf_formudata(locationAttr, &result, 0);
+                dwarf_formudata_fn(locationAttr, &result, 0);
                 return result;
             }
             char *die_name = 0;
-            if (dwarf_diename(the_die, &die_name, &err) != DW_DLV_OK){
+            if (dwarf_diename_fn(the_die, &die_name, &err) != DW_DLV_OK){
                 die("Not able to get location list for var without a name.  Probably optimized out\n");
             }
             else{
@@ -628,7 +646,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
            tag == DW_TAG_volatile_type ||
            tag == DW_TAG_const_type)
     {
-        rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
+        rc = dwarf_attr_fn(cur_die, DW_AT_type, &type_attr, &err);
         if (rc == DW_DLV_ERROR){
             // error getting type
             //die("Error getting type attr for var %s\n", die_name;
@@ -649,7 +667,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
             dwarf_global_formref(type_attr, &offset, &err);
             dwarf_offdie_b(dbg, offset, 1, &type_die, &err);
             // end swann code
-            dwarf_tag(type_die, &tag, &err);
+            dwarf_tag_fn(type_die, &tag, &err);
             cur_die = type_die;
             switch (tag)
             {
@@ -659,7 +677,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                     // hit base_type, do taint based on size of base type
                     {
                         Dwarf_Unsigned base_typesize;
-                        rc = dwarf_bytesize(type_die, &base_typesize, &err);
+                        rc = dwarf_bytesize_fn(type_die, &base_typesize, &err);
                         if (rc == DW_DLV_OK){
                             return base_typesize;
                         } else {
@@ -675,11 +693,11 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                         Dwarf_Unsigned elem_typesize;
                         Dwarf_Unsigned array_typesize;
                         Dwarf_Die array_child;
-                        if (dwarf_child(type_die,
+                        if (dwarf_child_fn(type_die,
                                     &array_child, &err) != DW_DLV_OK){
                              break;
                         }
-                        dwarf_tag(array_child, &array_child_tag, &err);
+                        dwarf_tag_fn(array_child, &array_child_tag, &err);
                         assert(array_child_tag == DW_TAG_subrange_type);
                         // fix this
                         elem_typesize = die_get_type_size(dbg, type_die);
@@ -724,7 +742,7 @@ std::string getNameFromDie(Dwarf_Debug *dbg, Dwarf_Die the_die){
     char *die_name = 0;
     std::string ret_string;
 
-    rc = dwarf_diename(the_die, &die_name, &err);
+    rc = dwarf_diename_fn(the_die, &die_name, &err);
     if (rc == DW_DLV_ERROR) {
         die("Error in dwarf_diename\n");
     }
@@ -756,7 +774,7 @@ void dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t, Dwar
 
     // We need to get the die name in order to build ast nodenames
     char *die_name = 0;
-    rc = dwarf_diename(the_die, &die_name, &err);
+    rc = dwarf_diename_fn(the_die, &die_name, &err);
     if (rc != DW_DLV_OK) {
         die("Error: no var name. Cannot make astnodename\n");
         return;
@@ -791,7 +809,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
            tag == DW_TAG_const_type    ||
            tag == DW_TAG_restrict_type)
     {
-        rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
+        rc = dwarf_attr_fn(cur_die, DW_AT_type, &type_attr, &err);
         if (rc == DW_DLV_ERROR){
             // error getting type
             die("Error getting type attr for var %s\n", cur_astnodename.c_str());
@@ -810,17 +828,17 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
             dwarf_global_formref(type_attr, &offset, &err);
             dwarf_offdie_b(dbg, offset, 1, &type_die, &err);
             // end swann code
-            dwarf_tag(type_die, &tag, &err);
+            dwarf_tag_fn(type_die, &tag, &err);
             cur_die = type_die;
             switch (tag)
             {
                 case DW_TAG_structure_type:
                     //printf("  [+] structure_type: enumerating . . .\n");
                     {
-                        rc = dwarf_diename(type_die, &die_name, &err);
+                        rc = dwarf_diename_fn(type_die, &die_name, &err);
                         //printf("Querying: (%s) %s\n", rc != DW_DLV_OK ? "?" : die_name, cur_astnodename.c_str());
                         Dwarf_Unsigned struct_size;
-                        rc = dwarf_bytesize(type_die, &struct_size, &err);
+                        rc = dwarf_bytesize_fn(type_die, &struct_size, &err);
                         if (rc == DW_DLV_OK){
                             cb(cur_base_addr, loc_t, struct_size, cur_astnodename.c_str());
                         }
@@ -830,7 +848,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             cur_astnodename = "(*" + cur_astnodename + ")";
 
                         Dwarf_Die struct_child;
-                        if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
+                        if (dwarf_child_fn(type_die, &struct_child, &err) != DW_DLV_OK)
                         {
                             //printf("  Couldn't parse struct for var: %s\n",cur_astnodename.c_str() );
                             return;
@@ -842,16 +860,16 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                         {
                             do {
                             Dwarf_Bool hasLocation;
-                            if (dwarf_hasattr(struct_child, DW_AT_bit_size, &hasLocation, &err) != DW_DLV_OK)
+                            if (dwarf_hasattr_fn(struct_child, DW_AT_bit_size, &hasLocation, &err) != DW_DLV_OK)
                                 die("Error determining bitsize attr\n");
                             else if (hasLocation)
                                 break;
-                            if (dwarf_hasattr(struct_child, DW_AT_bit_offset, &hasLocation, &err) != DW_DLV_OK)
+                            if (dwarf_hasattr_fn(struct_child, DW_AT_bit_offset, &hasLocation, &err) != DW_DLV_OK)
                                 die("Error determining bitoffset attr\n");
                             else if (hasLocation)
                                 break;
 
-                            rc = dwarf_diename(struct_child, &field_name, &err);
+                            rc = dwarf_diename_fn(struct_child, &field_name, &err);
                             struct_offset = get_struct_member_offset(struct_child);
                             if (rc != DW_DLV_OK){
                                 break;
@@ -862,7 +880,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                                            struct_child, temp_name, cb, recursion_level - 1);
                             } while (0);
 
-                            rc = dwarf_siblingof(dbg, struct_child, &struct_child, &err);
+                            rc = dwarf_siblingof_b(dbg, struct_child, 1, &struct_child, &err);
                             if (rc == DW_DLV_ERROR) {
                                 die("Struct: Error getting sibling of DIE\n");
                                 break;
@@ -877,9 +895,9 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                     // hit base_type, do taint based on size of base type
                     {
                         Dwarf_Unsigned base_typesize;
-                        rc = dwarf_bytesize(type_die, &base_typesize, &err);
+                        rc = dwarf_bytesize_fn(type_die, &base_typesize, &err);
                         if (rc == DW_DLV_OK){
-                            rc = dwarf_diename(type_die, &die_name, &err);
+                            rc = dwarf_diename_fn(type_die, &die_name, &err);
                             //printf("Querying: (%s) %s\n", die_name, cur_astnodename.c_str());
                             cb(cur_base_addr, loc_t, base_typesize < 4 ? 4 : base_typesize,
                                     cur_astnodename.c_str());
@@ -921,14 +939,14 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             abort();
                         }
                         Dwarf_Die tmp_die;
-                        rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
+                        rc = dwarf_attr_fn(cur_die, DW_AT_type, &type_attr, &err);
                         dwarf_global_formref(type_attr, &offset, &err);
                         dwarf_offdie_b(dbg, offset, 1, &tmp_die, &err);
-                        dwarf_tag(tmp_die, &tag, &err);
+                        dwarf_tag_fn(tmp_die, &tag, &err);
                         if (tag == DW_TAG_structure_type) {
                             cur_astnodename = "*(" + cur_astnodename + ")";
                         }
-                        rc = dwarf_diename(tmp_die, &die_name, &err);
+                        rc = dwarf_diename_fn(tmp_die, &die_name, &err);
                         // either query element as a null terminated char *
                         // or a one element array of the type of whatever
                         // we are pointing to
@@ -963,11 +981,11 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                         }
                         assert(loc_t == LocMem);
 
-                        if (dwarf_child(type_die,
+                        if (dwarf_child_fn(type_die,
                                     &array_child, &err) != DW_DLV_OK){
                              break;
                         }
-                        dwarf_tag(array_child, &array_child_tag, &err);
+                        dwarf_tag_fn(array_child, &array_child_tag, &err);
                         assert(array_child_tag == DW_TAG_subrange_type);
                         // fix this
                         elem_typesize = die_get_type_size(dbg, type_die);
@@ -1028,7 +1046,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
     Dwarf_Debug dbg = var_ty->dbg;
     Dwarf_Die the_die = var_ty->var_die;
 
-    rc = dwarf_diename(the_die, &die_name, &err);
+    rc = dwarf_diename_fn(the_die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR) {
         die("Error in dwarf_diename\n");
@@ -1051,7 +1069,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
            tag == DW_TAG_const_type    ||
            tag == DW_TAG_restrict_type)
     {
-        rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
+        rc = dwarf_attr_fn(cur_die, DW_AT_type, &type_attr, &err);
         if (rc == DW_DLV_ERROR){
             // error getting type
             die("Error getting type name for var %s\n", die_name);
@@ -1075,17 +1093,17 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
             dwarf_offdie_b(dbg, offset, 1, &type_die, &err);
             // end swann code
 
-            dwarf_tag(type_die, &tag, &err);
+            dwarf_tag_fn(type_die, &tag, &err);
             cur_die = type_die;
             switch (tag)
             {
                 case DW_TAG_structure_type:
                     //printf("  [+] structure_type: enumerating . . .\n");
-                    rc = dwarf_diename(type_die, &die_name, &err);
+                    rc = dwarf_diename_fn(type_die, &die_name, &err);
                     if (rc != DW_DLV_OK) type_name += "? ";
                     else type_name += die_name;
                     Dwarf_Die struct_child;
-                    if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
+                    if (dwarf_child_fn(type_die, &struct_child, &err) != DW_DLV_OK)
                     {
                         //printf("  Couldn't parse struct for var: %s\n",argname.c_str() );
                         return strdup(type_name.c_str());
@@ -1093,7 +1111,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
                     char *field_name;
                     while (1) // enumerate struct arguments
                     {
-                        rc = dwarf_siblingof(dbg, struct_child, &struct_child, &err);
+                        rc = dwarf_siblingof_b(dbg, struct_child, 1, &struct_child, &err);
                         if (rc == DW_DLV_ERROR) {
                             die("Struct: Error getting sibling of DIE\n");
                             break;
@@ -1102,7 +1120,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
                             break;
                         }
 
-                        rc = dwarf_diename(struct_child, &field_name, &err);
+                        rc = dwarf_diename_fn(struct_child, &field_name, &err);
                         if (rc != DW_DLV_OK)
                             field_name = (char *)std::string("?").c_str();
                         //printf("    [+] %s\n", field_name);
@@ -1112,7 +1130,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
                     break;
                 case DW_TAG_base_type:
                     // hit base_type, do something
-                    rc = dwarf_diename(type_die, &die_name, &err);
+                    rc = dwarf_diename_fn(type_die, &die_name, &err);
                     if (rc != DW_DLV_OK) type_name += "?";
                     else type_name += die_name;
                     break;
@@ -1165,16 +1183,16 @@ int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Half attr, Dwarf_
     int i, j;
 
 
-    if (dwarf_hasattr(the_die, attr, &hasLocation, &err) != DW_DLV_OK)
+    if (dwarf_hasattr_fn(the_die, attr, &hasLocation, &err) != DW_DLV_OK)
         die("Error in dwarf attr, for determining existences of location attr\n");
     else if (hasLocation){
-        if (dwarf_attr(the_die, attr, &locationAttr, &err) != DW_DLV_OK)
+        if (dwarf_attr_fn(the_die, attr, &locationAttr, &err) != DW_DLV_OK)
             die("Error obtaining location attr\n");
         // dwarf_formexprloc(attr, expr_len, block_ptr, &err);
         // this is slow, figure out a faster way to get the location information
         else if (dwarf_loclist_n(locationAttr, &locdesclist, loccnt, &err) != DW_DLV_OK){
             char *die_name = 0;
-            if (dwarf_diename(the_die, &die_name, &err) != DW_DLV_OK){
+            if (dwarf_diename_fn(the_die, &die_name, &err) != DW_DLV_OK){
                 die("Not able to get location list for var without a name.  Probably optimized out\n");
             }
             else{
@@ -1244,14 +1262,14 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     Dwarf_Locdesc **locdesclist;
     Dwarf_Signed loccnt;
 
-    int rc = dwarf_diename(the_die, &die_name, &err);
+    int rc = dwarf_diename_fn(the_die, &die_name, &err);
     if (rc == DW_DLV_ERROR){
         die("Error in dwarf_diename\n");
         return;
     } else if (rc == DW_DLV_NO_ENTRY)
         return;
 
-    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK) {
+    if (dwarf_tag_fn(the_die, &tag, &err) != DW_DLV_OK) {
         die("Error in dwarf_tag\n");
         return;
     }
@@ -1268,16 +1286,16 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     bool found_fp_info = false;
     for (i = 0; i < attrcount; ++i) {
         Dwarf_Half attrcode;
-        if (dwarf_whatattr(attrs[i], &attrcode, &err) != DW_DLV_OK)
+        if (dwarf_whatattr_fn(attrs[i], &attrcode, &err) != DW_DLV_OK)
             die("Error in dwarf_whatattr\n");
-        if (dwarf_whatform(attrs[i], &attrform, &err) != DW_DLV_OK)
+        if (dwarf_whatform_fn(attrs[i], &attrform, &err) != DW_DLV_OK)
             die("Error in dwarf_whatform\n");
 
         /* We only take some of the attributes for display here.
         ** More can be picked with appropriate tag constants.
         */
         if (attrcode == DW_AT_low_pc) {
-            dwarf_formaddr(attrs[i], &lowpc, 0);
+            dwarf_formaddr_fn(attrs[i], &lowpc, 0);
             // address is line of function + 1
             // in order to skip past function prologue
 
@@ -1290,10 +1308,10 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
             Dwarf_Half offset_size = 0;
             int wres = 0;
 
-            dwarf_formaddr(attrs[i], &highpc, &err);
+            dwarf_formaddr_fn(attrs[i], &highpc, &err);
             if (attrform == DW_FORM_data4)
             {
-                dwarf_formudata(attrs[i], &highpc, 0);
+                dwarf_formudata_fn(attrs[i], &highpc, 0);
                 highpc += lowpc;
             } else {
                 get_form_values(attrs[i],&theform,&directform);
@@ -1303,7 +1321,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                     break;
                 }
                 fc = dwarf_get_form_class(version,attrcode,offset_size,theform);
-                if (DW_DLV_OK != dwarf_formaddr(attrs[i], &highpc, &err)) {
+                if (DW_DLV_OK != dwarf_formaddr_fn(attrs[i], &highpc, &err)) {
                     printf("Was not able to process function [%s].  Error in getting highpc\n", die_name);
                 }
                 if (fc == DW_FORM_CLASS_CONSTANT) {
@@ -1402,13 +1420,13 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     std::vector<std::string> params;
     std::string argname;
     std::vector<VarInfo> var_list;
-    if (dwarf_child(the_die, &arg_child, &err) != DW_DLV_OK) {
+    if (dwarf_child_fn(the_die, &arg_child, &err) != DW_DLV_OK) {
         return;
     }
     DwarfVarType *dvt;
     /* Now go over all children DIEs */
     while (arg_child != NULL) {
-        if (dwarf_tag(arg_child, &tag, &err) != DW_DLV_OK) {
+        if (dwarf_tag_fn(arg_child, &tag, &err) != DW_DLV_OK) {
             die("Error in dwarf_tag\n");
             break;
         }
@@ -1439,7 +1457,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 /* Check the Lexical block DIE for children */
                 {
                     Dwarf_Die tmp_die;
-                    rc = dwarf_child(arg_child, &tmp_die, &err);
+                    rc = dwarf_child_fn(arg_child, &tmp_die, &err);
                     if (rc == DW_DLV_NO_ENTRY) {
                         // no children, so skip to end of loop
                         // and get the sibling die
@@ -1477,7 +1495,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 //printf("UNKNOWN tag in function dwarf analysis\n");
                 break;
         }
-        rc = dwarf_siblingof(*dbg, arg_child, &arg_child, &err);
+        rc = dwarf_siblingof_b(*dbg, arg_child, 1, &arg_child, &err);
 
         if (rc == DW_DLV_ERROR) {
             die("Error getting sibling of DIE\n");
@@ -1498,6 +1516,7 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
     Dwarf_Half version_stamp, address_size;
     Dwarf_Error err;
     Dwarf_Die no_die = 0, cu_die;
+
     /* Find compilation unit header */
     while (dwarf_next_cu_header(
                 *dbg,
@@ -1508,7 +1527,7 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
                 &next_cu_header,
                 &err) != DW_DLV_NO_ENTRY) {
         /* Expect the CU to have a single sibling - a DIE */
-        if (dwarf_siblingof(*dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
+        if (dwarf_siblingof_b(*dbg, no_die, 1, &cu_die, &err) == DW_DLV_ERROR) {
             die("Error getting sibling of CU\n");
             continue;
         }
@@ -1517,21 +1536,22 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
 
         Dwarf_Addr cu_base_address;
         Dwarf_Attribute cu_loc_attr;
-        if (dwarf_attr(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
+        if (dwarf_attr_fn(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
             //printf("CU did not have  low pc.  Setting to 0 . . .\n");
             cu_base_address=0;
         }
         else{
-            dwarf_formaddr(cu_loc_attr, &cu_base_address, 0);
+            dwarf_formaddr_fn(cu_loc_attr, &cu_base_address, 0);
             //printf("CU did have low pc 0x%llx\n", cu_base_address);
         }
+
         int i;
         if (DW_DLV_OK == dwarf_srclines(cu_die, &dwarf_lines, &line_count, &err)){
             char *filenm_tmp;
             char *filenm_cu;
             if (line_count > 0){
                 // TODO: fix these filenames
-                dwarf_linesrc(dwarf_lines[0], &filenm_cu, &err);
+                dwarf_linesrc_fn(dwarf_lines[0], &filenm_cu, &err);
                 //filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
                 //strcpy(filenm_cu, filenm_tmp);
 
@@ -1540,15 +1560,15 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
                     filenm_tmp = NULL;
                     Dwarf_Addr upper_bound_addr=0, lower_bound_addr = 0;
                     Dwarf_Unsigned line_num, line_off;
-                    dwarf_lineaddr(dwarf_lines[i-1], &lower_bound_addr, &err);
-                    dwarf_lineaddr(dwarf_lines[i], &upper_bound_addr, &err);
+                    dwarf_lineaddr_fn(dwarf_lines[i-1], &lower_bound_addr, &err);
+                    dwarf_lineaddr_fn(dwarf_lines[i], &upper_bound_addr, &err);
 
                     // only continue processing the line if lower is less than
                     // upper
                     if (lower_bound_addr < upper_bound_addr) {
-                        dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
+                        dwarf_lineno_fn(dwarf_lines[i-1], &line_num, &err);
                         dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
-                        dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
+                        dwarf_linesrc_fn(dwarf_lines[i-1], &filenm_tmp, &err);
                         //if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
                         if (!filenm_tmp || *filenm_tmp == '\0') {
                             filenm_line = (char *) "(unknown filename)";
@@ -1618,7 +1638,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
                 &next_cu_header,
                 &err) != DW_DLV_NO_ENTRY) {
         /* Expect the CU to have a single sibling - a DIE */
-        if (dwarf_siblingof(*dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
+        if (dwarf_siblingof_b(*dbg, no_die, 1, &cu_die, &err) == DW_DLV_ERROR) {
             die("Error getting sibling of CU\n");
             continue;
         }
@@ -1627,17 +1647,17 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
 
         Dwarf_Addr cu_base_address;
         Dwarf_Attribute cu_loc_attr;
-        if (dwarf_attr(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
+        if (dwarf_attr_fn(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
             //printf("CU did not have  low pc.  Setting to 0 . . .\n");
             cu_base_address=0;
         }
         else{
-            dwarf_formaddr(cu_loc_attr, &cu_base_address, 0);
+            dwarf_formaddr_fn(cu_loc_attr, &cu_base_address, 0);
             //printf("CU did have low pc 0x%llx\n", cu_base_address);
         }
         int rc;
         /* Expect the CU DIE to have children */
-        if ((rc = dwarf_child(cu_die, &child_die, &err)) != DW_DLV_OK) {
+        if ((rc = dwarf_child_fn(cu_die, &child_die, &err)) != DW_DLV_OK) {
             if (rc == DW_DLV_ERROR)
                 die("Error getting child of CU DIE\n");
             continue;
@@ -1648,7 +1668,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
         while (1) {
             std::string argname;
             Dwarf_Half tag;
-            if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
+            if (dwarf_tag_fn(child_die, &tag, &err) != DW_DLV_OK)
                 die("Error in dwarf_tag\n");
 
             if (tag == DW_TAG_subprogram){
@@ -1670,7 +1690,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
                 }
             }
 
-            rc = dwarf_siblingof(*dbg, child_die, &child_die, &err);
+            rc = dwarf_siblingof_b(*dbg, child_die, 1, &child_die, &err);
 
             if (rc == DW_DLV_ERROR) {
                 die("Error getting sibling of DIE\n");
@@ -2508,6 +2528,62 @@ bool init_plugin(void *self) {
     PPP_REG_CB("pri", on_all_livevar_iter, dwarf_all_livevar_iter);
     PPP_REG_CB("pri", on_funct_livevar_iter, dwarf_funct_livevar_iter);
     PPP_REG_CB("pri", on_global_livevar_iter, dwarf_global_livevar_iter);
+
+    // explicitly load symbols from libdwarf
+    void *sym;
+    dlhandle = dlopen("libdwarf.so", RTLD_NOW|RTLD_DEEPBIND);
+    if (!dlhandle) {
+        printf("The libdwarf shared object cannot be loaded (%s)\n", dlerror());
+        return false;
+    }
+    else {
+        sym = dlsym(dlhandle, "dwarf_attr");
+        dwarf_attr_fn = (int(*)(Dwarf_Die, Dwarf_Half, Dwarf_Attribute*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_bytesize");
+        dwarf_bytesize_fn = (int(*)(Dwarf_Die, Dwarf_Unsigned*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_child");
+        dwarf_child_fn = (int(*)(Dwarf_Die, Dwarf_Die*, Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_diename");
+        dwarf_diename_fn = (int(*)(Dwarf_Die, char**, Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_formaddr");
+        dwarf_formaddr_fn = (int(*)(Dwarf_Attribute, Dwarf_Addr*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_formudata");
+        dwarf_formudata_fn = (int(*)(Dwarf_Attribute, Dwarf_Unsigned*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_hasattr");
+        dwarf_hasattr_fn = (int(*)(Dwarf_Die, Dwarf_Half, Dwarf_Bool*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_lineaddr");
+        dwarf_lineaddr_fn = (int(*)(Dwarf_Line, Dwarf_Addr*, Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_lineno");
+        dwarf_lineno_fn = (int(*)(Dwarf_Line, Dwarf_Unsigned*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_linesrc");
+        dwarf_linesrc_fn = (int(*)(Dwarf_Line, char**, Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_tag");
+        dwarf_tag_fn = (int(*)(Dwarf_Die, Dwarf_Half*, Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_whatattr");
+        dwarf_whatattr_fn = (int(*)(Dwarf_Attribute, Dwarf_Half*,
+                Dwarf_Error*))sym;
+
+        sym = dlsym(dlhandle, "dwarf_whatform");
+        dwarf_whatform_fn = (int(*)(Dwarf_Attribute, Dwarf_Half*,
+                Dwarf_Error*))sym;
+    }
     return true;
 #else
     printf("Dwarf plugin not supported on this architecture\n");
@@ -2522,6 +2598,9 @@ void uninit_plugin(void *self) {
     for (auto l : active_libs) {
         std::cout << l << "\n";
         outfile << l << "\n";
+    }
+    if (NULL != dlhandle) {
+        dlclose(dlhandle);
     }
 #endif
 }
