@@ -133,7 +133,7 @@ def create_pypanda_header(filename, no_record=False):
     rest = []
     (plugin_dir,fn) = os.path.split(filename)
     for line in subcontents.split("\n"):
-        foo = re.search('\#include "(.*)"$', line)
+        foo = re.search(r'\#include "(.*)"$', line)
         if foo:
             nested_inc = foo.groups()[0]
             print("Found nested include of %s" % nested_inc)
@@ -142,7 +142,7 @@ def create_pypanda_header(filename, no_record=False):
             rest.append(line)
     new_contents = "\n".join(rest)
     new_contents = new_contents.replace(" QEMU_NORETURN ", " ")
-    foo = re.search("([^\/]+)\.h$", filename)
+    foo = re.search(r"([^\/]+)\.h$", filename)
     assert (not (foo is None))
     pypanda_h = os.path.join(INCLUDE_DIR_PYP, foo.groups()[0])+".h"
     print("Creating pypanda header [%s] for [%s]" % (pypanda_h, filename))
@@ -156,8 +156,8 @@ def read_but_exclude_garbage(filename):
     with open(filename) as thefile:
         for line in thefile:
             keep = True
-            if re.search("^\s*\#", line): # Has preprocessor directive
-                if not re.search("^\s*\#define [^_]", line): # Not a defines
+            if re.search(r"^\s*\#", line): # Has preprocessor directive
+                if not re.search(r"^\s*\#define [^_]", line): # Not a defines
                     keep = False
             if keep:
                 nongarbage.append(line)
@@ -420,7 +420,7 @@ class PandaState(Enum):
         cb_list = {}
         with open (os.path.join(INCLUDE_DIR_PAN, "callbacks/cb-defs.h")) as fp:
             for line in fp:
-                foo = re.search("^(\s+)PANDA_CB_([^,]+)\,", line)
+                foo = re.search(r"^(\s+)PANDA_CB_([^,]+)\,", line)
                 if foo:
                     cbname = foo.groups()[1]
                     cbname_l = cbname.lower()
@@ -458,7 +458,7 @@ class PandaState(Enum):
 
                 # Accumulate comment strings - at the end of each, we'll
                 # hit a function signature (match=True below) and empty buffer
-                if re.search("\w*\/\* Callback ID:", line):
+                if re.search(r"\w*\/\* Callback ID:", line):
                     cb_comment = line.split("/* Callback ID: ")[1].strip()
                 elif len(cb_comment):
                     cb_comment += "\n" + line.replace("*/","").strip()
@@ -468,7 +468,7 @@ class PandaState(Enum):
                 # rv=int and params="CPUState* env, target_ulong pc"
                 # partypes = [CPUState*, target_ulong]
                 for i in range(cbn):
-                    match = re.search("^\s+(.*)\s+\(\*%s\)\((.*)\);" % cb_list[i], line)
+                    match = re.search(r"^\s+(.*)\s+\(\*%s\)\((.*)\);" % cb_list[i], line)
                     if match:
                         rvtype = match.groups()[0]
                         params = match.groups()[1]

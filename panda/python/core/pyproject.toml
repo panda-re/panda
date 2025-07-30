@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "wheel", "setuptools-scm>=8"]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -42,3 +42,4 @@ root = "../../.."
 fallback_version = "0.0.0.1"
 version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
+
