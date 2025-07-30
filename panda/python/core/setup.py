@@ -73,6 +73,19 @@ def parse_requirements(filename):
 
 from setuptools.command.install import install as install_orig
 from setuptools.command.develop import develop as develop_orig
+from setuptools.command.editable_wheel import editable_wheel as editable_wheel_orig
+
+class custom_editable_wheel(editable_wheel_orig):
+    '''
+    The develop option doesn't run any more with the later setuptools installed
+    on Ubuntu 24.  But, this does, so:
+        1) Create datatype files for local use
+        2) Run the regular setup tools logic
+    '''
+    def run(self):
+        from create_panda_datatypes import main as create_datatypes
+        create_datatypes(install=False)
+        super().run()
 
 
 class custom_develop(develop_orig):
@@ -151,6 +164,7 @@ setup(name='pandare',
       ]},
       install_requires=parse_requirements("requirements.txt"),
       python_requires='>=3.6',
-      cmdclass={'install': custom_install, 'develop': custom_develop},
+      cmdclass={'install': custom_install, 'develop': custom_develop,
+      'editable_wheel': custom_editable_wheel},
       **version_options
       )
