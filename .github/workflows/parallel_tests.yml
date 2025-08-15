@@ -18,59 +18,94 @@ on:
   #  code into it, and then rebuilding
 
 jobs:
+  lint:
+    runs-on: panda-arc
+    steps:
+    - uses: actions/checkout@v4
+      if: github.event_name == 'pull_request'
+    - name: Set up Python
+      if: github.event_name == 'pull_request'
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      if: github.event_name == 'pull_request'
+      run: pip install flake8 lintly markupsafe==2.0.1
+    - name: Lint with flake8
+      if: github.event_name == 'pull_request'
+      run: |
+        set -o pipefail
+        (flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics | lintly) 2>lintly.err || {
+          if grep -q 'diff exceeded the maximum number of lines' lintly.err; then
+            echo "Bypassing lint failure due to large diff."
+            exit 0
+          else
+            cat lintly.err
+            exit 1
+          fi
+        }
+      env:
+        LINTLY_API_KEY: ${{ secrets.GITHUB_TOKEN }}
+
 
   test_installer: # test install_ubuntu.sh
     runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
     container:
-      image: ubuntu:20.04
+      image: ubuntu:22.04
     steps:
     - name: Update
       run: apt-get -qq update -y
-    - name: Install ssl
-      run: apt-get -qq install -y libssl-dev
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.9
-    - name: Install Python dev headers
-      run: apt-get -qq install -y libpython3.9-dev
-    - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
-    - name: Lint PyPANDA with flake8
-      run: |
-       pip install --upgrade pip
-       pip install flake8
-       flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics
-       # python -m flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run install_ubuntu.sh
       run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
-
 
   build_container:
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
     steps:
-      - name: Install git
-        run: sudo apt-get -qq update -y && sudo apt-get -qq install git -y
-      - uses: actions/checkout@v4 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: 'Login to Github Container Registry'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build and push
-        uses: docker/build-push-action@v5
         with:
-          context: ${{ github.workspace }}
-          tags: ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}
-          target: developer
+          driver-opts: |
+            image=moby/buildkit:master
+            network=host
+          buildkitd-config-inline: |
+            [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
+              insecure = true
+              http = true
+
+      - name: Trust Harbor's self-signed certificate
+        run: |
+          echo "Fetching certificate from registry"
+          openssl s_client -showcerts -connect ${{ secrets.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
+          sudo update-ca-certificates
+
+      - name: Log in to Rehosting Arc Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.PANDA_ARC_REGISTRY }}
+          username: ${{ secrets.PANDA_ARC_REGISTRY_USER }}
+          password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
+
+      - name: Build panda:latest
+        uses: docker/build-push-action@v6.18.0
+        with:
           push: true
+          load: true
+          context: ${{ github.workspace }}
+          target: developer
+          tags: |
+            ${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}
+          cache-from: |
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+          cache-to: |
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+          build-args: |
+            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
       - name: Minimal test of built container # Just test to see if one of our binaries is built
-        run: docker run --rm "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
+        run: docker run --rm "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   tests:
     if: github.repository  == 'panda-re/panda'
@@ -103,7 +138,7 @@ jobs:
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
         --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
-        --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
+        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
         echo 'Running Record:';
@@ -122,11 +157,11 @@ jobs:
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
+        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
         "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
 
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
+        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
         "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
         if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
@@ -135,26 +170,10 @@ jobs:
       run: >-
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "ghcr.io/${{ github.repository_owner }}/panda_local:${{ github.sha }}" bash -c
+        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
         "cd /panda/build && make check"
 
-  cleanup:
-    # Cleanup after prior jobs finish - even if they fail
-    needs: [tests]
-    runs-on: panda-arc
-    if: always()
-
-    steps:
-      # Note we leave the last 72hrs because caching is nice (first few panda image layers won't change often)
-      # docker system prune -> Remove all unused containers, networks, images (both dangling and unreferenced)
-      # docker builder prune -> Remove build cache
-    - name: Cleanup images
-      run: |
-        docker system prune -af --filter "until=72h"
-        docker image prune --all -f --filter "until=72h"
-        docker builder prune -af --filter "until=72h"
-
-  build_and_check_fork: # Forked repos can't use panda-arc test suite - just checkout and run make check
+   build_and_check_fork: # Forked repos can't use panda-arc test suite - just checkout and run make check
     if: github.repository != 'panda-re/panda'
     runs-on: panda-arc
 
