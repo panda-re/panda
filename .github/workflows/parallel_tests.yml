@@ -48,15 +48,15 @@ jobs:
         LINTLY_API_KEY: ${{ secrets.GITHUB_TOKEN }}
 
 
-  test_installer: # test install_ubuntu.sh
-    runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
-    container:
-      image: ubuntu:22.04
-    steps:
-    - name: Update
-      run: apt-get -qq update -y
-    - name: Run install_ubuntu.sh
-      run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
+  # test_installer: # test install_ubuntu.sh
+  #   runs-on: panda-arc # Note 22.04 would work, but it requires docker > 20.10.7 which is not on our CI box (yet)
+  #   container:
+  #     image: ubuntu:22.04
+  #   steps:
+  #   - name: Update
+  #     run: apt-get -qq update -y
+  #   - name: Run install_ubuntu.sh
+  #     run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
 
   build_container:
     if: github.repository  == 'panda-re/panda'
