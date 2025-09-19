@@ -165,7 +165,7 @@ Example: [tests/record_then_replay.py](https://github.com/panda-re/panda/tree/ma
 
 # Additional Information
 ## Here be dragons
-* You can't have multiple instances of panda running at the same time. Once you've created a panda object for a given architecture, you can never create another. Hoewver, you can modify the machine after it's created to run a new analysis as long as you don't change the machine type.
+* You can't have multiple instances of panda running at the same time. Once you've created a panda object for a given architecture, you can never create another. However, you can modify the machine after it's created to run a new analysis as long as you don't change the machine type.
 * PyPANDA is slower than traditional PANDA. Well-engineered plugins typically have a runtime overhead of ~10% compared to regular PANDA plugins (for up to 10M instructions). To improve performance try disabling callbacks when possible and only enabling them when they are needed.
 
 ## Extending PyPANDA

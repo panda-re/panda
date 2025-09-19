@@ -1686,9 +1686,19 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             case Intrinsic::dbg_value:
             case Intrinsic::lifetime_start:
             case Intrinsic::lifetime_end:
+            case Intrinsic::load_relative:
             case Intrinsic::returnaddress:
                 // This needs to be eliminated before we can generate code!
                 //assert(false && "Have to eliminate debug statements!");
+                return;
+            case Intrinsic::abs:
+            case Intrinsic::fmuladd:
+            case Intrinsic::fshl:
+            case Intrinsic::fshr:
+            case Intrinsic::smax:
+            case Intrinsic::smin:
+                // TODO:  could probably implement taint propagation for these
+                // if had more time to find test cases and enhance framework
                 return;
             case Intrinsic::not_intrinsic:
                 break;
