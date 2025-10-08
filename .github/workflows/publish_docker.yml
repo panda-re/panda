@@ -158,7 +158,7 @@ jobs:
             packager
           cache-from: |
             type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/pandas:packagecache,mode=max
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           cache-to: |
             type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           build-args: |
@@ -169,6 +169,13 @@ jobs:
         run: |
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${version}.deb
+
+      - name: No duplicate whl files
+        if: ${{ matrix.ubuntu_version != env.PANDA_CONTAINER_UBUNTU_VERSION }}
+        working-directory: panda/debian
+        run: |
+          rm -f pandare*.whl
+
       - name: Upload wheel and debian packages to release
         uses: softprops/action-gh-release@v2
         env:
