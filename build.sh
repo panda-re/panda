@@ -3,7 +3,7 @@
 # example: ./build.sh i386-softmmu,arm-softmmu
 #          ./build.sh --python i386-softmmu,arm-softmmu
 #          ./build.sh small # small = i386-softmmu
-#          LLVM_CONFIG_BINARY=llvm-config-11-64 ./build.sh small # set custom llvm-config path
+#          LLVM_CONFIG_BINARY=llvm-config-14-64 ./build.sh small # set custom llvm-config path
 
 # Note the --python flag installs using `pip -e` which leaves files in a local
 # directory (panda/python/core) instead of installing to your system.
@@ -19,7 +19,7 @@ msg() {
 
 # Default targets to build. Change with argument. small = i386-softmmu
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
-LLVM_CONFIG_BINARY="${LLVM_CONFIG_BINARY:-llvm-config-11}"
+LLVM_CONFIG_BINARY="${LLVM_CONFIG_BINARY:-llvm-config-14}"
 
 pypanda=""
 # Check if first argument is --python
@@ -87,7 +87,7 @@ fi
 ### Set LLVM_CONFIG to be used with the configure script.
 # No LLVM binary: Disable LLVM
 if ! command -v $LLVM_CONFIG_BINARY &> /dev/null; then
-    echo "LLVM 11 not installed. LLVM SUPPORT IS DISABLED."
+    echo "LLVM 14 not installed. LLVM SUPPORT IS DISABLED."
     LLVM_CONFIG=""
 fi
 # OSX: Disable LLVM
@@ -96,7 +96,7 @@ if [ $(getconf LONG_BIT) = 32 ]; then
     LLVM_CONFIG=""
 fi
 
-## Use system LLVM-11
+## Use system LLVM-14
 if $LLVM_CONFIG_BINARY --version >/dev/null 2>/dev/null; then
     msg "Found LLVM on $($LLVM_CONFIG_BINARY --prefix) -- LLVM SUPPORT IS ENABLED"
     LLVM_CONFIG="--enable-llvm --with-llvm=$($LLVM_CONFIG_BINARY --prefix)"
