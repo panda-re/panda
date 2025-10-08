@@ -27,18 +27,17 @@ jobs:
   lint:
     runs-on: panda-arc
     steps:
-    - uses: actions/checkout@v4
-      if: github.event_name == 'pull_request'
-    - name: Set up Python
-      if: github.event_name == 'pull_request'
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v5
       with:
-        python-version: "3.10"
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.10.12"
     - name: Install dependencies
-      if: github.event_name == 'pull_request'
       run: pip install flake8 lintly markupsafe==2.0.1
     - name: Lint with flake8
-      if: github.event_name == 'pull_request'
+      if: github.event.pull_request.head.repo.full_name == github.repository
       run: |
         set -o pipefail
         (flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/ --count --select=E9,F63,F7,F82 --show-source --statistics | lintly) 2>lintly.err || {
@@ -52,6 +51,10 @@ jobs:
         }
       env:
         LINTLY_API_KEY: ${{ secrets.GITHUB_TOKEN }}
+    - name: External lint
+      if: github.event.pull_request.head.repo.full_name != github.repository
+      run: |
+        flake8 $GITHUB_WORKSPACE/panda/python/core/pandare/
 
 
   # test_installer: # test install_ubuntu.sh
