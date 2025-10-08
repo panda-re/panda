@@ -8,15 +8,15 @@ callwitharg
 checkpoint
 collect_code
 correlatetaps
-cosi
-cosi_strace
+# cosi
+# cosi_strace
 coverage
 dynamic_symbols
 edge_coverage
 filereadmon
 findcall
 forcedexec
-gdb
+# gdb
 hooks
 hooks2
 hw_proc_id
@@ -47,7 +47,7 @@ replaymovie
 rust_skeleton
 scissors
 signal
-snake_hook
+# snake_hook
 stringsearch
 syscalls2
 syscalls_logger
