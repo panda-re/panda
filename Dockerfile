@@ -172,7 +172,7 @@ COPY --from=p /usr/local/lib/panda /package-root/usr/local/lib/panda
 COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda
 
 # Create DEBIAN directory and control file
-COPY control /package-root/DEBIAN/control
+COPY ./panda/debian/control /package-root/DEBIAN/control
 
 # Update control file with dependencies
 # Build time. We only select dependencies that are not commented out or blank
