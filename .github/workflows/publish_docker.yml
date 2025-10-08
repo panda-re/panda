@@ -81,6 +81,8 @@ jobs:
           cache-to: |
             type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           target: panda
+          build-args: |
+            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
       - name: Build pandadev:latest
         uses: docker/build-push-action@v5
         with:
@@ -96,6 +98,8 @@ jobs:
           cache-to: |
             type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           target: developer
+          build-args: |
+            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
 
 
 
@@ -147,6 +151,7 @@ jobs:
         uses: docker/build-push-action@v6.18.0
         with:
           push: false
+          load: true
           target: whlpackager
           context: ${{ github.workspace }}
           tags: |
