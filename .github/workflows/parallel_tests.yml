@@ -120,7 +120,6 @@ jobs:
         run: docker run --rm "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   tests:
-    if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
     needs: [build_container]
 
@@ -184,19 +183,3 @@ jobs:
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
         "cd /panda/build && make check"
-
-  build_and_check_fork: # Forked repos can't use panda-arc test suite - just checkout and run make check
-    if: github.repository != 'panda-re/panda'
-    runs-on: panda-arc
-
-    steps:
-    - uses: actions/checkout@v4 # Clones code into to /home/runner/work/panda
-
-    - name: Build docker container from project root
-      run: cd $GITHUB_WORKSPACE && docker build -t panda_local .
-
-    - name: Minimal test of built container # Just test to see if one of our binaries is installed
-      run: docker run --rm panda_local /bin/bash -c 'exit $(panda-system-arm -help | grep -q "usage. panda-system-arm")'
-
-    - name: Minimal test of built container # Run make check to check all architectures (in serial)
-      run: docker run --rm panda_local /bin/bash -c 'cd /panda/build && make check'
