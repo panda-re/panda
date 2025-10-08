@@ -163,6 +163,10 @@ RUN fakeroot dpkg-deb --build /package-root /pandare.deb
 # The user can now extract the .deb file from the container with something like
 #docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
 
+FROM packager AS whlpackager
+
+COPY --from=installer /panda/panda/python/core/dist/*.whl /out/
+
 
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base AS panda
