@@ -1,4 +1,10 @@
 name: Parallel Tests
+env:
+  PANDA_ARC_REGISTRY: ${{ secrets.PANDA_ARC_REGISTRY || 'harbor.harbor.svc.cluster.local' }}
+  PANDA_ARC_REGISTRY_USER: ${{ secrets.PANDA_ARC_REGISTRY_USER || 'external' }}
+  PANDA_CACHE: ${{ secrets.PANDA_ARC_REGISTRY && format('{0}/proxy', secrets.PANDA_ARC_REGISTRY) || 'docker.io' }}
+  PANDA_TARGET: ${{ secrets.PANDA_ARC_REGISTRY || 'harbor.harbor.svc.cluster.local/external' }}
+  EXTERNAL_REGISTRY_PASS: 'PctyVGasz15Pn9M0yA9yMNwOawFaXnk3Tl4N'
 # For PRs to dev or pushes that modify the root Dockerfile, build from scratch
 # then run CI tests using that container in parallel
 # For forked repos that can't use our panda-arc test suite, just build and run make check
@@ -72,22 +78,22 @@ jobs:
             image=moby/buildkit:master
             network=host
           buildkitd-config-inline: |
-            [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
+            [registry."${{ env.PANDA_ARC_REGISTRY }}"]
               insecure = true
               http = true
 
       - name: Trust Harbor's self-signed certificate
         run: |
           echo "Fetching certificate from registry"
-          openssl s_client -showcerts -connect ${{ secrets.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
+          openssl s_client -showcerts -connect ${{ env.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
           sudo update-ca-certificates
 
-      - name: Log in to Rehosting Arc Registry
+      - name: Log in to Panda Arc Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.PANDA_ARC_REGISTRY }}
-          username: ${{ secrets.PANDA_ARC_REGISTRY_USER }}
-          password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
+          registry: ${{ env.PANDA_ARC_REGISTRY }}
+          username: ${{ env.PANDA_ARC_REGISTRY_USER }}
+          password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD || env.EXTERNAL_REGISTRY_PASS }}
 
       - name: Build panda:latest
         uses: docker/build-push-action@v6.18.0
@@ -97,15 +103,18 @@ jobs:
           context: ${{ github.workspace }}
           target: developer
           tags: |
-            ${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}
+            ${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}
           cache-from: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+            type=registry,ref=${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:cache,mode=max
+            type=registry,ref=${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:cache-PR-${{github.event.number}},mode=max
           cache-to: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+            type=registry,ref=${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:cache,mode=max
+            type=registry,ref=${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:cache-PR-${{github.event.number}},mode=max
+            type=registry,ref=${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:cache_last_published,mode=max
           build-args: |
-            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
+            REGISTRY=${{ env.PANDA_CACHE }}
       - name: Minimal test of built container # Just test to see if one of our binaries is built
-        run: docker run --rm "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
+        run: docker run --rm "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   tests:
     if: github.repository  == 'panda-re/panda'
@@ -138,7 +147,7 @@ jobs:
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
         --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
-        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
+        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
         "cd /tmp; git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
         echo 'Running Record:';
@@ -157,11 +166,11 @@ jobs:
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
+        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
         "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
 
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
+        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
         "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
         if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
@@ -170,7 +179,7 @@ jobs:
       run: >-
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:${{ github.sha }}" bash -c
+        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
         "cd /panda/build && make check"
 
   build_and_check_fork: # Forked repos can't use panda-arc test suite - just checkout and run make check
