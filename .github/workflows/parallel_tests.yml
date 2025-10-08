@@ -136,50 +136,78 @@ jobs:
             test_script: "all"
         
     steps:
-    # Given a container with PANDA installed at /panda, run the taint tests
-    - name: Update
-      run: sudo apt-get -qq update -y
-    - name: Install ssl
-      run: sudo apt-get -qq install -y wget
-    - name: Run Taint Tests
-      if: matrix.test_type == 'taint'
-      run: >-
-        wget -q -O wheezy_panda2.qcow2 https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow;
-        wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2;
-        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
-        --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
-        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
-        "cd /tmp; git clone https://github.com/panda-re/panda_test;
-        cd ./panda_test/tests/taint2;
-        echo 'Running Record:';
-        python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
-        echo 'Running Replay:';
-        python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode replay;
-        sed -i '/^\s*$/d' taint2_log;
-        if cat taint2_log; then echo 'Taint unit test log found!'; else echo 'Taint unit test log NOT found!' && exit 1; fi;
-        echo -e '\nFailures:';
-        if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:master
+            network=host
+          buildkitd-config-inline: |
+            [registry."${{ env.PANDA_ARC_REGISTRY }}"]
+              insecure = true
+              http = true
 
-    - name: Run PyPanda Tests
-      if: matrix.test_type == 'pypanda'
-      run: >-
-        wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow;
-        docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
-        --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
-        -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
-        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
+      - name: Trust Harbor's self-signed certificate
+        run: |
+          echo "Fetching certificate from registry"
+          openssl s_client -showcerts -connect ${{ env.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
+          sudo update-ca-certificates
 
-        docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
-        "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
-        if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
-
-    - name: Run make Tests
-      if: matrix.test_type == 'make_check'
-      run: >-
-        docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
-        -e PANDA_TEST=yes --cap-add SYS_NICE
-        --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
-        "cd /panda/build && make check"
+      - name: Log in to Panda Arc Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.PANDA_ARC_REGISTRY }}
+          username: ${{ env.PANDA_ARC_REGISTRY_USER }}
+          password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD || env.EXTERNAL_REGISTRY_PASS }}
+ 
+      # Given a container with PANDA installed at /panda, run the taint tests
+      - name: Update
+        run: sudo apt-get -qq update -y
+      - name: Install ssl
+        run: sudo apt-get -qq install -y wget
+      - name: Run Taint Tests
+        if: matrix.test_type == 'taint'
+        run: >-
+          wget -q -O wheezy_panda2.qcow2 https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow;
+          wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2;
+          docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+          --mount type=bind,source=$(pwd)/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
+          --mount type=bind,source=$(pwd)/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
+          --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
+          "cd /tmp; git clone https://github.com/panda-re/panda_test;
+          cd ./panda_test/tests/taint2;
+          echo 'Running Record:';
+          python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
+          echo 'Running Replay:';
+          python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode replay;
+          sed -i '/^\s*$/d' taint2_log;
+          if cat taint2_log; then echo 'Taint unit test log found!'; else echo 'Taint unit test log NOT found!' && exit 1; fi;
+          echo -e '\nFailures:';
+          if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
+        
+      - name: Run PyPanda Tests
+        if: matrix.test_type == 'pypanda'
+        run: >-
+          wget -q https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow;
+          docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
+          --mount type=bind,source=$(pwd)/ubuntu_1604_x86.qcow,target=/root/.panda/ubuntu_1604_x86.qcow
+          -e PANDA_TEST=yes --cap-add SYS_NICE
+          --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
+          "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && chmod +x ./run_all_tests.sh && ./run_all_tests.sh";
+        
+          docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+          --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
+          "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
+          if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
+        
+      - name: Run make Tests
+        if: matrix.test_type == 'make_check'
+        run: >-
+          docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
+          -e PANDA_TEST=yes --cap-add SYS_NICE
+          --rm -t "${{ env.PANDA_ARC_REGISTRY }}/pandare/panda:${{ github.sha }}" bash -c
+          "cd /panda/build && make check"
+        
