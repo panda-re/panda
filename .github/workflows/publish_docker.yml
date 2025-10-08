@@ -24,6 +24,80 @@ jobs:
         with:
           release_branch: dev
           use_api: true
+  
+  build_docker:
+    needs: create_release
+    runs-on: panda-arc
+    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    steps:
+      - name: 'Login to Docker Registry'
+        uses: docker/login-action@v3
+        with:
+          username: pandare
+          password: ${{secrets.pandare_dockerhub}} 
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:master
+            network=host
+          buildkitd-config-inline: |
+            [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
+              insecure = true
+              http = true
+      
+
+      - name: Trust Harbor's self-signed certificate
+        run: |
+          echo "Fetching certificate from registry"
+          openssl s_client -showcerts -connect ${{ secrets.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
+          sudo update-ca-certificates
+
+      - name: Log in to Rehosting Arc Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.PANDA_ARC_REGISTRY }}
+          username: ${{ secrets.PANDA_ARC_REGISTRY_USER }}
+          password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
+      
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Build panda:latest
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: ${{ github.workspace }}
+          tags: |
+            pandare/panda:${{ github.sha }}
+            pandare/panda:${{ needs.create_release.outputs.v-version }}
+            pandare/panda:latest
+          cache-from: |
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
+          cache-to: |
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
+          target: panda
+      - name: Build pandadev:latest
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: ${{ github.workspace }}
+          tags: |
+            pandare/pandadev:${{ github.sha }}
+            pandare/pandadev:${{ needs.create_release.outputs.v-version }}
+            pandare/pandadev:latest
+          cache-from: |
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
+          cache-to: |
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
+          target: developer
+
+
 
   build_release_assets:
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
@@ -55,12 +129,6 @@ jobs:
               insecure = true
               http = true
       
-      - name: 'Login to Docker Registry'
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: docker/login-action@v3
-        with:
-          username: pandare
-          password: ${{secrets.pandare_dockerhub}} 
 
       - name: Trust Harbor's self-signed certificate
         run: |
@@ -75,48 +143,27 @@ jobs:
           username: ${{ secrets.PANDA_ARC_REGISTRY_USER }}
           password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
 
-      - name: Build panda:latest
-        uses: docker/build-push-action@v6.18.0
-        with:
-          push: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-          load: true
-          context: ${{ github.workspace }}
-          tags: |
-            pandare/panda:${{ github.sha }}
-            pandare/panda:${{ needs.create_release.outputs.v-version }}
-            pandare/panda:latest
-            panda
-          cache-from: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
-          cache-to: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
-          build-args: |
-            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
-      
       - name: Build panda packager
         uses: docker/build-push-action@v6.18.0
         with:
-          push: true
-          load: true
-          target: packager
+          push: false
+          target: whlpackager
           context: ${{ github.workspace }}
           tags: |
             packager
           cache-from: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda-ng-plugins:cache,mode=max
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda-ng-plugins:packagecache,mode=max
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/pandas:packagecache,mode=max
           cache-to: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda-ng-plugins:packagecache,mode=max
+            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
 
       - name: Build package
         working-directory: debian
         run: |
-          docker run --rm -v $(pwd):/out panda bash -c "cp /panda/panda/python/core/dist/*.whl /out"
-          docker run --rm -v $(pwd):/out packager bash -c "cp /pandare.deb /out"
+          docker run --rm -v $(pwd):/out packager bash -c "cp /panda/panda/python/core/dist/*.whl /pandare.deb /out"
           mv pandare.deb pandare_${version}.deb
-
       - name: Upload wheel and debian packages to release
         uses: softprops/action-gh-release@v2
         env:
@@ -128,76 +175,12 @@ jobs:
             panda/debian/pandare*.deb
 
       - name: Store the PyPanda distribution packages
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         uses: actions/upload-artifact@v4
         with:
           name: pypanda
           path: panda/debian/pandare*.whl
           if-no-files-found: error
       
-      #- name: 'Login to GHCR Registry'
-      #  if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-      #  uses: docker/login-action@v3
-      #  with:
-      #    registry: ghcr.io
-      #    username: ${{ github.repository_owner }}
-      #    password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build panda:latest
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          context: ${{ github.workspace }}
-          tags: |
-            pandare/panda:${{ github.sha }}
-            pandare/panda:${{ needs.create_release.outputs.v-version }}
-            pandare/panda:latest
-        #    ghcr.io/pandare/panda:${{ github.sha }}
-        #    ghcr.io/pandare/panda:${{ needs.create_release.outputs.v-version }}
-        #    ghcr.io/pandare/panda:latest
-          target: panda
-      - name: Build pandadev:latest
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          context: ${{ github.workspace }}
-          tags: |
-            pandare/pandadev:${{ github.sha }}
-            pandare/pandadev:${{ needs.create_release.outputs.v-version }}
-            pandare/pandadev:latest
-         #   ghcr.io/pandare/pandadev:${{ github.sha }}
-         #   ghcr.io/pandare/pandadev:${{ needs.create_release.outputs.v-version }}
-         #   ghcr.io/pandare/pandadev:latest
-          target: developer
-      - name: Checkout docs and reset
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
-             git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
-      - name: Update PYPANDA docs in container
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3==0.10.0; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
-        # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
-        # we want to copy auto_pydoc/dev/pandare to auto_pydoc/pandare/ and /auto_pydoc/stable/pandare to /auto_pydoc/pandare/stable
-        #
-        # This is a bit complicated, sorry. We want to keep pandare/{CNAME,.git/} and nothing else
-        # then we copy in the new files (and merge doc-search.html and index.js with dev/pandare/
-      - name: Push PYPANDA docs to GitHub Pages if docs changed
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
-             mv pandare/CNAME dev &&
-             rm -rf pandare/* &&
-             mv dev/pandare/* pandare &&
-             rmdir dev/pandare &&
-             mv dev/* pandare/ &&
-             cd pandare &&
-             git config --global user.email "panda-ci@panda-re.mit.edu" &&
-             git config --global user.name "PANDA Bot" &&
-             git add . &&
-             git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
-             git push || true
-
   publish-to-pypi:
     name: Publish Python 🐍 distribution 📦 to PyPI
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
@@ -222,50 +205,3 @@ jobs:
       with:
         verbose: true
         
-  build_stable:
-    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/stable'
-    runs-on: panda-arc
-    steps:
-    - name: Checkout PANDA at current commit
-      uses: actions/checkout@v4
-
-    - name: 'Login to Docker Registry'
-      uses: docker/login-action@v3
-      with:
-        username: pandare
-        password: ${{secrets.pandare_dockerhub}}
-
-    - name: Build Bionic container
-      # Push both dev and regular container
-      uses: docker/build-push-action@v5
-      with:
-        push: true
-        context: ${{ github.workspace }}
-        tags: |
-          pandare/panda_stable:${{ github.sha }}
-          pandare/panda_stable:latest
-        target: panda
-
-    - name: Checkout docs and reset
-      run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
-           git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
-
-    - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/pandare:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3==0.10.0; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
-      # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
-      # we want to copy /auto_pydoc/dev/pandare to /auto_doc and /auto_pydoc/stable/pandare to /auto_pydoc/stable
-      #
-      # This is a bit complicated, sorry. We create a directory stable and combine doc-search.html and index.js in there.
-    - name: Push PYPANDA docs to GitHub Pages if docs changed
-      #run: cd "${GITHUB_WORKSPACE}/auto_pydoc/pandare" && mv ./stable ./stable2; mv ./stable2/pandare stable; rm -rf ./stable2;
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
-           rm -rf pandare/stable &&
-           mv stable/pandare/* pandare/stable &&
-           rmdir stable/pandare &&
-           mv stable/* pandare/stable &&
-           cd pandare &&
-           git config --global user.email "panda-ci@panda-re.mit.edu" &&
-           git config --global user.name "PANDA Bot" &&
-           git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch stable" &&
-           git push || true
