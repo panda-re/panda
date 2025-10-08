@@ -191,7 +191,7 @@ RUN fakeroot dpkg-deb --build /package-root /pandare.deb
 
 FROM packager AS whlpackager
 
-COPY --from=installer /panda/panda/python/core/dist/*.whl /out/
+COPY --from=installer /panda/panda/python/core/dist/*.whl /
 
 
 # last stage should be panda, but for the packager it needs to be earlier
