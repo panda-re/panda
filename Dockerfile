@@ -128,6 +128,32 @@ RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
         ln -s /usr/local/lib/panda/$SARCH/ $ARCHP/panda/plugins; \
     done
 
+### Copy files for panda+pypanda from installer  - Stage 5
+FROM base AS p
+
+# Include dependency lists for packager
+COPY --from=base /tmp/base_dep.txt /tmp
+COPY --from=base /tmp/build_dep.txt /tmp
+
+# Copy panda + libcapstone.so* + libosi libraries
+COPY --from=cleanup /usr/local /usr/local
+COPY --from=cleanup /usr/lib/libcapstone* /usr/lib/
+COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
+
+# Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
+#ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
+ENV LD_LIBRARY_PATH=/usr/local/lib/python3.8/dist-packages/pandare/data/x86_64-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/i386-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/arm-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/ppc-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mips-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mipsel-softmmu/panda/plugins/
+#PANDA_PATH is used by rust plugins
+ENV PANDA_PATH=/usr/local/lib/python3.8/dist-packages/pandare/data
+
+
+# Ensure runtime dependencies are installed for our libpanda objects and panda plugins
+RUN ldconfig && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
+    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
+    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
+
+
 FROM base AS packager
 
 # Install necessary tools for packaging
@@ -136,14 +162,14 @@ RUN apt-get -qq update && \
         fakeroot dpkg-dev
 
 # Get dependencies list from base image
-COPY --from=panda /tmp/base_dep.txt /tmp
-COPY --from=panda /tmp/build_dep.txt /tmp
+COPY --from=base /tmp/base_dep.txt /tmp
+COPY --from=base /tmp/build_dep.txt /tmp
 
 # Set up /package-root with files from panda we'll package
-COPY --from=panda /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
-COPY --from=panda /usr/local/etc/panda /package-root/usr/local/etc/panda
-COPY --from=panda /usr/local/lib/panda /package-root/usr/local/lib/panda
-COPY --from=panda /usr/local/share/panda /package-root/usr/local/share/panda
+COPY --from=p /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
+COPY --from=p /usr/local/etc/panda /package-root/usr/local/etc/panda
+COPY --from=p /usr/local/lib/panda /package-root/usr/local/lib/panda
+COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda
 
 # Create DEBIAN directory and control file
 COPY control /package-root/DEBIAN/control
@@ -168,27 +194,5 @@ FROM packager AS whlpackager
 COPY --from=installer /panda/panda/python/core/dist/*.whl /out/
 
 
-### Copy files for panda+pypanda from installer  - Stage 5
-FROM base AS panda
-
-# Include dependency lists for packager
-COPY --from=base /tmp/base_dep.txt /tmp
-COPY --from=base /tmp/build_dep.txt /tmp
-
-# Copy panda + libcapstone.so* + libosi libraries
-COPY --from=cleanup /usr/local /usr/local
-COPY --from=cleanup /usr/lib/libcapstone* /usr/lib/
-COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
-
-# Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
-#ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-ENV LD_LIBRARY_PATH /usr/local/lib/python3.8/dist-packages/pandare/data/x86_64-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/i386-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/arm-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/ppc-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mips-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mipsel-softmmu/panda/plugins/
-#PANDA_PATH is used by rust plugins
-ENV PANDA_PATH /usr/local/lib/python3.8/dist-packages/pandare/data
-
-
-# Ensure runtime dependencies are installed for our libpanda objects and panda plugins
-RUN ldconfig && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
-    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
-    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
+# last stage should be panda, but for the packager it needs to be earlier
+FROM p AS panda
