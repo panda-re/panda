@@ -168,23 +168,34 @@ jobs:
         working-directory: panda/debian
         run: |
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
-          mv pandare.deb pandare_${version}.deb
+          mv pandare.deb pandare_${{ matrix.ubuntu_version }}.deb
 
-      - name: No duplicate whl files
-        if: ${{ matrix.ubuntu_version != env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        working-directory: panda/debian
-        run: |
-          rm -f pandare*.whl
-
-      - name: Upload wheel and debian packages to release
+      - name: Upload debian package to release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ needs.create_release.outputs.v-version }}
+          draft: false
+          generate_release_notes: true
+          prerelease: false
+          name: PANDA ${{ needs.create_release.outputs.v-version }} @ ${{ github.ref }}
+          files: |
+            panda/debian/pandare*.deb
+
+      - name: Upload wheel package to release
+        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.create_release.outputs.v-version }}
+          draft: false
+          generate_release_notes: true
+          prerelease: false
+          name: PANDA ${{ needs.create_release.outputs.v-version }} @ ${{ github.ref }}
           files: |
             panda/debian/pandare*.whl
-            panda/debian/pandare*.deb
 
       - name: Store the PyPanda distribution packages
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
@@ -217,4 +228,3 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         verbose: true
-        
