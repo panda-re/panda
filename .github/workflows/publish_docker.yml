@@ -165,9 +165,8 @@ jobs:
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
 
       - name: Build package
-        working-directory: debian
         run: |
-          docker run --rm -v $(pwd):/out packager bash -c "cp /panda/panda/python/core/dist/*.whl /pandare.deb /out"
+          docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${version}.deb
       - name: Upload wheel and debian packages to release
         uses: softprops/action-gh-release@v2
