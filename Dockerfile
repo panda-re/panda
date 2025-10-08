@@ -90,7 +90,7 @@ WORKDIR /panda/
 #### Install PANDA + pypanda from builder - Stage 4
 FROM builder AS installer
 RUN  make -C /panda/build install && \
-    rm -r /usr/local/lib/panda/*/cosi \
+    rm -rf /usr/local/lib/panda/*/cosi \
         /usr/local/lib/panda/*/cosi_strace \
         /usr/local/lib/panda/*/gdb \
         /usr/local/lib/panda/*/snake_hook \
