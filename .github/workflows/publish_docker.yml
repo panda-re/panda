@@ -165,6 +165,7 @@ jobs:
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
 
       - name: Build package
+        working-directory: panda/debian
         run: |
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${version}.deb
