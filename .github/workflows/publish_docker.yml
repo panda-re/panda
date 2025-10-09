@@ -169,46 +169,27 @@ jobs:
         run: |
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${{ matrix.ubuntu_version }}.deb
-
-      - name: Upload debian package to release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload deb packages as artifacts
+        if: ${{ matrix.ubuntu_version != env.PANDA_CONTAINER_UBUNTU_VERSION }}
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ needs.create_release.outputs.v-version }}
-          draft: false
-          generate_release_notes: true
-          prerelease: false
-          name: PANDA ${{ needs.create_release.outputs.v-version }} @ ${{ github.ref }}
-          files: |
-            panda/debian/pandare*.deb
+          name: pandare_${{ matrix.ubuntu_version }}
+          path: panda/debian/pandare*.deb
+          if-no-files-found: error
 
-      - name: Upload wheel package to release
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ needs.create_release.outputs.v-version }}
-          draft: false
-          generate_release_notes: true
-          prerelease: false
-          name: PANDA ${{ needs.create_release.outputs.v-version }} @ ${{ github.ref }}
-          files: |
-            panda/debian/pandare*.whl
-
-      - name: Store the PyPanda distribution packages
-        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
+      - name: Upload whl package as artifact
+        if: ${{ matrix.ubuntu_version != env.PANDA_CONTAINER_UBUNTU_VERSION }}
         uses: actions/upload-artifact@v4
         with:
           name: pypanda
           path: panda/debian/pandare*.whl
           if-no-files-found: error
       
-  publish-to-pypi:
-    name: Publish Python 🐍 distribution 📦 to PyPI
+  publish-to-pypi-and-release:
+    name: Publish Python 🐍 distribution 📦 to PyPI and Make Release
     if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs:
+    - create_release
     - build_release_assets
     runs-on: ubuntu-latest
     environment:
@@ -218,13 +199,25 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
-    - name: Download all the dists
+    - name: Download all the artifacts
       uses: actions/download-artifact@v4
       with:
-        name: pypanda
         path: dist/
         
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         verbose: true
+      
+    - name: Upload wheel package to release
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.create_release.outputs.v-version }}
+        draft: false
+        generate_release_notes: true
+        prerelease: false
+        name: ${{ needs.create_release.outputs.v-version }} @ ${{ github.ref }}
+        files: |
+          dist/*
