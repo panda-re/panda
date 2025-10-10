@@ -4,6 +4,7 @@ ARG UBUNTU_MAJOR_VERSION="22"
 ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
 ARG CAPSTONE_VERSION="5.0.5"
+ARG PACKAGE_VERSION="3.1.0"
 
 ### BASE IMAGE
 FROM ${REGISTRY}/$BASE_IMAGE AS base
@@ -174,6 +175,19 @@ COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda
 
 # Create DEBIAN directory and control file
 COPY ./panda/debian/control /package-root/DEBIAN/control
+
+# Add triggers script to run ldconfig after installation
+COPY ./panda/debian/triggers /package-root/DEBIAN/triggers
+
+# Generate MD5 checksums for all files and save to DEBIAN/md5sums
+RUN cd /package-root && \
+    find . -type f ! -path './DEBIAN/*' -exec md5sum {} + | sed 's| \./| |' > /package-root/DEBIAN/md5sums
+
+# Update control file with the correct version, and place installed size
+ARG PACKAGE_VERSION
+RUN INSTALLED_SIZE=$(du -sk /package-root | cut -f1) && \
+    sed -i "s/^Installed-Size:.*/Installed-Size: ${INSTALLED_SIZE}/" /package-root/DEBIAN/control
+RUN sed -i "s/^Version:.*/Version: ${PACKAGE_VERSION}/" /package-root/DEBIAN/control
 
 # Update control file with dependencies
 # Build time. We only select dependencies that are not commented out or blank

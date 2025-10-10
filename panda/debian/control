@@ -1,9 +1,14 @@
 Package: pandare
-Version: 3.1.0
-Architecture: all
+Source: pandare
+Version: <version-placeholder>
+Architecture: amd64
 BUILD_DEPENDS_LIST
 DEPENDS_LIST
-Maintainer: Andrew Fasano <fasano@mit.edu>
+Maintainer: Luke Craig <luke.craig@mit.edu>
+Installed-Size: <size-in-kb>
+Section: devel
+Priority: optional
+Homepage: https://github.com/panda-re/panda
 Description: dynamic analysis platform
  Platform for Architecture Neutral Dynamic Analysis (PANDA) is a processor
  emulator designed to support analyses of guest code. PANDA supports record-

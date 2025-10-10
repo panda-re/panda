@@ -690,14 +690,14 @@ if __name__ == '__main__':
                                           'and prep for PyPanda wheel installation')
     parser.add_argument('--install', '-i', dest='install', action='store_true',
                         help='If set, this means update pandare folder for installation')
-    parser.add_argument('--recompile', '-r', dest='recompile', action='store_true',
-                        help='If set, recompile the headers with cffi')
+    parser.add_argument('--no-compile', dest='compile', action='store_false',
+                        help='Do not compile the headers with cffi')
     args = parser.parse_args()
     """
     Install as a local module (not to system) by
         1) Creating datatype files for local-use
         2) Running regular setup tools logic
     """
-    main()
+    main(args.compile)
     if args.install:
         copy_objs()

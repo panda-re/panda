@@ -19,7 +19,7 @@ jobs:
       - name: Install git
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
       - name: Get next version
-        uses: reecetech/version-increment@2023.10.2
+        uses: reecetech/version-increment@2024.10.1
         id: version
         with:
           release_branch: dev
@@ -28,7 +28,7 @@ jobs:
   build_docker:
     needs: get_version
     runs-on: panda-arc
-    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     steps:
       - name: 'Login to Docker Registry'
         uses: docker/login-action@v3
@@ -104,7 +104,7 @@ jobs:
 
 
   build_release_assets:
-    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs: get_version
     runs-on: panda-arc
     strategy:
@@ -187,7 +187,7 @@ jobs:
       
   publish-to-pypi-and-release:
     name: Publish Python 🐍 distribution 📦 to PyPI and Make Release
-    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs:
     - get_version
     - build_release_assets
