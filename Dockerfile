@@ -1,9 +1,8 @@
 #syntax=docker/dockerfile:1.17-labs
 ARG REGISTRY="docker.io"
-ARG UBUNTU_MAJOR_VERSION="20"
-ARG BASE_IMAGE="ubuntu:20.04"
+ARG UBUNTU_MAJOR_VERSION="22"
+ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
-ARG LIBOSI_VERSION="v0.1.7"
 ARG CAPSTONE_VERSION="5.0.5"
 
 ### BASE IMAGE
@@ -17,8 +16,8 @@ COPY ./panda/dependencies/${BASE_IMAGE/:/_}_base.txt /tmp/base_dep.txt
 
 # Base image just needs runtime dependencies
 RUN apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl $(cat /tmp/base_dep.txt | grep -o '^[^#]*') && \
-    apt-get clean
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl jq $(cat /tmp/base_dep.txt | grep -o '^[^#]*') && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./panda/dependencies/${BASE_IMAGE/:/_}_build.txt /tmp/build_dep.txt
 
@@ -26,7 +25,6 @@ COPY ./panda/dependencies/${BASE_IMAGE/:/_}_build.txt /tmp/build_dep.txt
 FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
-ARG LIBOSI_VERSION
 ARG CAPSTONE_VERSION
 
 RUN apt-get -qq update && \
@@ -46,12 +44,18 @@ RUN cd /tmp && \
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # install libosi
-RUN cd /tmp && curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb && dpkg -i /tmp/libosi_$(echo "$BASE_IMAGE" | awk -F':' '{print $2}').deb
+RUN cd /tmp && \
+    BASE_IMAGE_VERSION=$(echo "$BASE_IMAGE" | awk -F':' '{print $2}') && \
+    LIBOSI_VERSION=$(curl -s https://api.github.com/repos/panda-re/libosi/releases/latest | jq -r .tag_name); \
+    curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${BASE_IMAGE_VERSION}.deb && \
+    dpkg -i /tmp/libosi_${BASE_IMAGE_VERSION}.deb && \
+    rm -rf /tmp/libosi_${BASE_IMAGE_VERSION}.deb
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need
-COPY --exclude=panda/debian --exclude=panda/dependencies \
+COPY --exclude=panda/debian \
+    --exclude=panda/dependencies \
     --exclude=Dockerfile \
     --exclude=.github \
     --exclude=.gitignore \
@@ -136,7 +140,7 @@ COPY --from=base /tmp/build_dep.txt /tmp
 # Copy panda + libcapstone.so* + libosi libraries
 COPY --from=cleanup /usr/local /usr/local
 COPY --from=cleanup /usr/lib/x86_64-linux-gnu/libcapstone.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=cleanup /lib/libosi.so /lib/libiohal.so /lib/liboffset.so /lib/
+COPY --from=cleanup /usr/lib/x86_64-linux-gnu/libosi.so /usr/lib/x86_64-linux-gnu/libiohal.so /usr/lib/x86_64-linux-gnu/liboffset.so /usr/lib/x86_64-linux-gnu/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"

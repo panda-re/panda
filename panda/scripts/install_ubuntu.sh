@@ -25,7 +25,6 @@ lsb_release --help &>/dev/null || $SUDO apt-get update -qq && $SUDO apt-get -qq 
 git --help &>/dev/null || $SUDO apt-get -qq update && $SUDO apt-get -qq install -y --no-install-recommends git
 
 # some globals
-LIBOSI_VERSION="0.1.7"
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 CAPSTONE_VERSION="5.0.5"
 PANDA_GIT="https://github.com/panda-re/panda.git"
@@ -85,7 +84,7 @@ dep_base=$(find ./panda/dependencies/ubuntu_${version}.* -print -quit | sed  -e 
 
 if [ -e ${dep_base}_build.txt ] || [ -e ${dep_base}_base.txt ]; then
   echo "Found dependency file(s) at ${dep_base}*.txt"
-  DEBIAN_FRONTEND=noninteractive $SUDO apt-get -y install --no-install-recommends $(cat ${dep_base}*.txt | grep -o '^[^#]*')  
+  DEBIAN_FRONTEND=noninteractive $SUDO apt-get -y install --no-install-recommends jq $(cat ${dep_base}*.txt | grep -o '^[^#]*')  
 else
   echo "Unsupported Ubuntu version: $version. Create a list of build dependencies in ${dep_base}_{base,build}.txt and try again."
   exit 1
@@ -127,9 +126,10 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
 fi
 
 # if the windows introspection library is not installed, clone and install
-if [[ !$(dpkg -l | grep -q libosi) ]]; then
+if ! dpkg -l | grep -q libosi; then
   pushd /tmp
-  curl -LJO https://github.com/panda-re/libosi/releases/download/v${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb 
+  LIBOSI_VERSION=$(curl -s https://api.github.com/repos/panda-re/libosi/releases/latest | jq -r .tag_name)
+  curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${UBUNTU_VERSION}.deb
   $SUDO dpkg -i /tmp/libosi_${UBUNTU_VERSION}.deb
   rm -rf /tmp/libosi_${UBUNTU_VERSION}.deb
   popd
