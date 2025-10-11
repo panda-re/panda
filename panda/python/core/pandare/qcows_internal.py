@@ -174,10 +174,10 @@ class Qcows():
 
         if _is_tty:
             print(f"Downloading required file: {url}")
-            cmd = ["wget", '--show-progress', '--quiet', url, "-O", output_path+".tmp"]
+            cmd = ["wget", '--show-progress', '--quiet', "--tries=5", "--wait=10", url, "-O", output_path + ".tmp"]
         else:
             print(f"Please wait for download of required file: {url}", file=stderr)
-            cmd = ["wget", "--quiet", url, "-O", output_path+".tmp"]
+            cmd = ["wget", "--quiet", "--tries=5", "--wait=10", url, "-O", output_path + ".tmp"]
 
         try:
             with Popen(cmd, stdout=PIPE, bufsize=1, universal_newlines=True) as p:
