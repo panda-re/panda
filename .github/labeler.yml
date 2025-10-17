@@ -1,0 +1,248 @@
+Build:
+  - Dockerfile
+  - ./panda/build.sh
+  - ./panda/build-llvm.sh
+  - ./panda/Makefile.panda
+  - ./panda/Makefile.panda.target
+  - Makefile
+  - Makefile.objs
+  - Makefile.target
+  - configure
+
+Documentation:
+  - '**/*.md'
+
+Github-files:
+  - .github/**
+
+PyPanda:
+  - ./panda/python/**/*.py
+  - ./panda/python/**/*.h
+
+Debian:
+  - ./panda/debian/**
+
+LLVM:
+  - ./panda/llvm/**
+  - ./panda/include/panda/tcg-llvm.h
+
+PANDA-Core:
+  - ./panda/src/**
+
+PANDA-Tests:
+  - ./panda/testing/**
+  - ./panda/plugins/taint2/tests/**
+
+# All PANDA plug-in tags, used to call specific plug-in tests
+asid_instr_count:
+  - ./panda/plugins/asid_instr_count/**
+
+asidstory:
+  - ./panda/plugins/asidstory/**
+
+callfunc:
+  - ./panda/plugins/callfunc/**
+
+callstack_instr:
+  - ./panda/plugins/callstack_instr/**
+
+callwitharg:
+  - ./panda/plugins/callwitharg/**
+
+checkpoint:
+  - ./panda/plugins/checkpoint/**
+
+collect_code:
+  - ./panda/plugins/collect_code/**
+
+correlatetaps:
+  - ./panda/plugins/correlatetaps/**
+
+cosi:
+  - ./panda/plugins/cosi/**
+  - ./panda/python/core/extras/cosi.py
+
+cosi_strace:
+  - ./panda/plugins/cosi_strace/**
+
+coverage:
+  - ./panda/plugins/coverage/**
+
+dwarf2:
+  - ./panda/plugins/dwarf2/**
+  - ./panda/python/core/extras/dwarfdump.py
+
+dynamic_symbols:
+  - ./panda/plugins/dynamic_symbols/**
+
+edge_coverage:
+  - ./panda/plugins/edge_coverage/**
+
+file_taint:
+  - ./panda/plugins/file_taint/**
+
+filereadmon:
+  - ./panda/plugins/filereadmon/**
+
+findcall:
+  - ./panda/plugins/findcall/**
+
+forcedexec:
+  - ./panda/plugins/forcedexec/**
+
+func_stats:
+  - ./panda/plugins/func_stats/**
+
+gdb:
+  - ./panda/plugins/gdb/**
+
+hooks:
+  - ./panda/plugins/hooks/**
+
+hooks2:
+  - ./panda/plugins/hooks2/**
+
+hw_proc_id:
+  - ./panda/plugins/hw_proc_id/**
+
+hypercaller:
+  - ./panda/plugins/hypercaller/**
+
+ida_taint2:
+  - ./panda/plugins/ida_taint2/**
+
+keyfind:
+  - ./panda/plugins/keyfind/**
+
+libfi:
+  - ./panda/plugins/libfi/**
+
+lighthouse_coverage:
+  - ./panda/plugins/lighthouse_coverage/**
+
+loaded:
+  - ./panda/plugins/loaded/**
+
+loaded_libs:
+  - ./panda/plugins/loaded_libs/**
+
+mem_hooks:
+  - ./panda/plugins/mem_hooks/**
+
+memorymap:
+  - ./panda/plugins/memorymap/**
+
+memsavep:
+  - ./panda/plugins/memsavep/**
+
+mmio_trace:
+  - ./panda/plugins/mmio_trace/**
+
+net:
+  - ./panda/plugins/net/**
+
+network:
+  - ./panda/plugins/network/**
+
+osi:
+  - ./panda/plugins/osi/**
+
+osi_linux:
+  - ./panda/plugins/osi_linux/**
+
+osi_test:
+  - ./panda/plugins/osi_test/**
+
+pc_search:
+  - ./panda/plugins/pc_search/**
+
+pri_dwarf:
+  - ./panda/plugins/pri_dwarf/**
+
+pri_simple:
+  - ./panda/plugins/pri_simple/**
+
+pri_taint:
+  - ./panda/plugins/pri_taint/**
+
+pri_trace:
+  - ./panda/plugins/pri_trace/**
+
+proc_start_linux:
+  - ./panda/plugins/proc_start_linux/**
+
+proc_trace:
+  - ./panda/plugins/proc_trace/**
+
+query_file_writes:
+  - ./panda/plugins/query_file_writes/**
+
+recctrl:
+  - ./panda/plugins/recctrl/**
+
+replaymovie:
+  - ./panda/plugins/replaymovie/**
+
+scissors:
+  - ./panda/plugins/scissors/**
+
+serial_taint:
+  - ./panda/plugins/serial_taint/**
+
+signal:
+  - ./panda/plugins/signal/**
+
+snake_hook:
+  - ./panda/plugins/snake_hook/**
+
+speedtest:
+  - ./panda/plugins/speedtest/**
+
+stringsearch:
+  - ./panda/plugins/stringsearch/**
+
+syscalls_logger:
+  - ./panda/plugins/syscalls_logger/**
+
+syscalls2:
+  - ./panda/plugins/syscalls2/**
+
+taint2:
+  - ./panda/plugins/taint2/**
+  - ./panda/python/core/taint/**
+
+tainted_branch:
+  - ./panda/plugins/tainted_branch/**
+
+tainted_instr:
+  - ./panda/plugins/tainted_instr/**
+
+tainted_mmio:
+  - ./panda/plugins/tainted_mmio/**
+
+tainted_net:
+  - ./panda/plugins/tainted_net/**
+
+tapindex:
+  - ./panda/plugins/tapindex/**
+
+targetcmp:
+  - ./panda/plugins/targetcmp/**
+
+textprinter:
+  - ./panda/plugins/textprinter/**
+
+trace:
+  - ./panda/plugins/trace/**
+
+track_intexc:
+  - ./panda/plugins/track_intexc/**
+
+tstringsearch:
+  - ./panda/plugins/tstringsearch/**
+
+unigrams:
+  - ./panda/plugins/unigrams/**
+
+wintrospection:
+  - ./panda/plugins/wintrospection/**
