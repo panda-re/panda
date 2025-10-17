@@ -63,7 +63,7 @@ Arguments
 - `liveness`:  boolean, optional:  report live labels to the PANDA log
 - `ignore_helpers`:  boolean, optional:  do not report taint from within helper functions
 - `summary`: boolean, optional:  only save the ASID and PC of the tainted branches
-- `include_process_fields`, optional:  add process name and process id to CSV output, requires OSI
+- `include_process_fields`: boolean, optional:  add process name and process id to CSV output, requires OSI
 
 Dependencies
 ------------
