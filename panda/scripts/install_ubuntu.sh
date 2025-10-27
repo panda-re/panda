@@ -69,14 +69,6 @@ progress "Installing PANDA dependencies..."
 # Read file in dependencies directory and install those. If no dependency file present, error
 $SUDO apt-get update
 
-# Ubuntu 18 does not have llvm11/clang11 in apt
-if [ $version -eq 18 ]; then
-  echo "Installing PPA for llvm/clang-11 on Ubuntu 18"
-  $SUDO apt-get -y install software-properties-common
-  $SUDO add-apt-repository -y ppa:savoury1/llvm-defaults-11
-  $SUDO apt-get update
-fi
-
 
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
@@ -96,16 +88,6 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Expose cargo to the running shell/env
 . $HOME/.cargo/env
-
-# Because libz3-dev for Ubuntu 18 is really old, we download and install z3 github release v-4.8.7
-if [ "$version" -eq 18 ]; then
-  echo "Installing z3 on Ubuntu 18"
-  wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.7/z3-4.8.7-x64-ubuntu-16.04.zip -O z3-4.8.7-x64-ubuntu-16.04.zip
-  unzip z3-4.8.7-x64-ubuntu-16.04.zip
-  $SUDO cp -r z3-4.8.7-x64-ubuntu-16.04/* /usr/local/
-  rm -rf z3-4.8.7-x64-ubuntu-16.04
-  rm z3-4.8.7-x64-ubuntu-16.04.zip
-fi
 
 # Install libcapstone v5 release if it's not present
 if [[ !$(ldconfig -p | grep -q libcapstone.so.5) ]]; then
@@ -135,11 +117,6 @@ if [[ !$(dpkg -l | grep -q libosi) ]]; then
   popd
 fi
 
-# PyPANDA needs CFFI from pip (the version in apt is too old)
-# Install system-wide since PyPANDA install will also be system-wide
-$SUDO python3 -m pip install pip
-$SUDO python3 -m pip install "cffi>1.14.3"
-
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
 
@@ -157,7 +134,15 @@ progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-sy
 
 cd ../panda/python/core
 python3 create_panda_datatypes.py --install
-$SUDO python3 -m pip install .
+
+# Ubuntu 24 gets most upset if you try to install PyPANDA to the system
+# might as well do Ubuntu 22 in a virtual environment too, to be consistent
+cd ../../../../
+virtualenv pypanda_env
+. ./pypanda_env/bin/activate
+cd panda/panda/python/core
+pip install -e .
 python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
 progress "Pypanda successfully installed"
+deactivate
 popd

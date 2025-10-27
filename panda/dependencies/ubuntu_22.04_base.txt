@@ -3,7 +3,7 @@
 git
 libdwarf1
 libjsoncpp-dev
-libllvm11
+libllvm14
 libprotobuf-c-dev
 libvte-2.91-0
 libwireshark-dev
@@ -22,6 +22,8 @@ genisoimage
 libffi-dev
 python3-protobuf
 python3-colorama
+python3-cffi
+python3-virtualenv
 
 # Not sure what this one is needed for
 liblzo2-2

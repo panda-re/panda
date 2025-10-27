@@ -1,12 +1,12 @@
 # Panda dependencies
 # Note that libcapstone >= v4.1 is also required, but that's not available in apt
 git
-libdwarf1
+libdwarf-dev
 libjsoncpp-dev
-libllvm11
+libllvm14t64
 libprotobuf-c-dev
 libvte-2.91-0
-libwireshark-dev
+wireshark-dev
 libwiretap-dev
 libxen-dev
 libz3-dev
@@ -22,6 +22,8 @@ genisoimage
 libffi-dev
 python3-protobuf
 python3-colorama
+python3-cffi
+python3-virtualenv
 
 # Not sure what this one is needed for
 liblzo2-2
@@ -32,41 +34,40 @@ libc6
 libcap-ng0
 libcap2
 libgbm1
-libglib2.0-0
-libgnutls30
-libnettle7
+libglib2.0-0t64
+libgnutls30t64
+libnettle8t64
 libpixman-1-0
 libvirglrenderer1
 
 # apt-rdepends qemu-block-extra
-libcurl3-gnutls
-libglib2.0-0
+libcurl3t64-gnutls
+libglib2.0-0t64
 libiscsi7
 librados2
 librbd1
 libssh-4
 
 # apt-rdepends qemu-system-arm, seems most of the system-[arch]es have same dependencies
-libaio1
-libasound2
-libbrlapi0.7
+libaio1t64
+libasound2t64
+libbrlapi-dev
 libc6
 libcacard0
 libepoxy0
 libfdt1
 libgbm1
 libgcc-s1
-libglib2.0-0
-libgnutls30
+libglib2.0-0t64
+libgnutls30t64
 libibverbs1
 libjpeg8
 libncursesw6
-libnettle7
 libnuma1
 libpixman-1-0
 libpmem1
-libpng16-16
-librdmacm1
+libpng16-16t64
+librdmacm1t64
 libsasl2-2
 libseccomp2
 libslirp0
@@ -74,12 +75,10 @@ libspice-server1
 libstdc++6
 libtinfo6
 libusb-1.0-0
-libusbredirparser1
+libusbredirparser1t64
 libvirglrenderer1
 zlib1g
 
 #rr2 dependencies
 libarchive-dev
 libssl-dev
-
-libfuse2

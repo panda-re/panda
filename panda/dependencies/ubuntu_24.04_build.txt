@@ -1,20 +1,19 @@
 libc++-dev
 libelf-dev
 libtool-bin
-libwireshark-dev
+wireshark-dev
 libwiretap-dev
-lsb-core
 zip
 
 # panda build deps
 # Note libcapstone-dev is required, but we need v4 + which isn't in apt
 build-essential
 chrpath
-clang-11
+clang-14
 gcc
 libdwarf-dev
 libprotoc-dev
-llvm-11-dev
+llvm-14-dev
 protobuf-c-compiler
 protobuf-compiler
 python3-dev
@@ -24,6 +23,8 @@ zip
 # pypanda dependencies
 python3-setuptools
 python3-wheel
+python3-cffi
+python3-virtualenv
 
 # pypanda test dependencies
 gcc-multilib
@@ -50,7 +51,7 @@ libibumad-dev
 libibverbs-dev
 libiscsi-dev
 libjpeg-dev
-libncursesw5-dev
+libncurses-dev
 libnuma-dev
 libpmem-dev
 libpng-dev

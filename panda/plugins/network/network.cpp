@@ -35,7 +35,7 @@ extern uint64_t rr_get_guest_instr_count(void);
 panda_arg_list *args;
 wtap_dumper *plugin_log;
 
-#if (VERSION_MAJOR>=3 && VERSION_MINOR >= 6)
+#if ((VERSION_MAJOR > 4) || (VERSION_MAJOR==4 && VERSION_MINOR > 2))
 #define TOONEW
 #endif
 
@@ -57,7 +57,11 @@ bool init_plugin(void *self) {
     .snaplen = 65535,
     .shb_hdrs = NULL,
     .idb_inf = NULL,
+    #if (VERSION_MAJOR>=4 && VERSION_MINOR>=1)
     .nrbs_growing = NULL,
+    #else
+    .nrb_hdrs = NULL,
+    #endif
     .dsbs_initial = NULL,
     .dsbs_growing = NULL
     };
@@ -132,12 +136,17 @@ void uninit_plugin(void *self) {
     #else
     wtap_dump_flush(plugin_log);
     #endif
-    #if (VERSION_MAJOR>=4 || (VERSION_MAJOR==3 && VERSION_MINOR>=4))
+    #if (VERSION_MAJOR>=4)
     gchar *write_err_info;
     gboolean needs_reload;
     gboolean ret = wtap_dump_close(plugin_log, &needs_reload, &err, &write_err_info);
     #else
-    gboolean ret = wtap_dump_close(plugin_log, &err);
+       #if (VERSION_MAJOR==3 && VERSION_MINOR>=4)
+       gchar *write_err_info;
+       gboolean ret = wtap_dump_close(plugin_log, &err, &write_err_info);
+       #else
+       gboolean ret = wtap_dump_close(plugin_log, &err);
+       #endif
     #endif
     if (!ret) {
         fprintf(stderr, "Plugin 'network': failed wtap_dump_close() with error %d\n", err);
