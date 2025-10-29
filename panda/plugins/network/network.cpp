@@ -173,14 +173,25 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     rec.rec_header.packet_header.caplen = size;
     rec.rec_header.packet_header.len = size;
     rec.rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
+    #if ((VERSION_MAJOR >= 3) && (VERSION_MINOR >= 5)) || (VERSION_MAJOR >= 4)
     wtap_block_t pkt_block = wtap_block_create(WTAP_BLOCK_PACKET);
     wtap_block_add_string_option(pkt_block, OPT_COMMENT, comment_buf, strlen(comment_buf) + 1);
+    rec.block = pkt_block;
+    rec.block_was_modified = true;
+    #else
+    rec.opt_comment = comment_buf;
+    rec.has_comment_changed = true;
+    #endif
     ret = wtap_dump(
         /*wtap_dumper*/ plugin_log,
         /*wtap_rec*/ &rec,
         /*buf*/ buf,
         /*err*/ &err,
         /*err_info*/ &err_info);
+    #if ((VERSION_MAJOR >= 3) && (VERSION_MINOR >= 5)) || (VERSION_MAJOR >= 4)
+    /* this will also dereference pkt_block */
+    wtap_rec_reset(&rec);
+    #endif
     #else
     struct wtap_pkthdr header;
         #if VERSION_MAJOR >= 2
