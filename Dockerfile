@@ -9,6 +9,7 @@ ARG PACKAGE_VERSION="3.1.0"
 ### BASE IMAGE
 FROM ${REGISTRY}/$BASE_IMAGE AS base
 ARG BASE_IMAGE
+ARG CAPSTONE_VERSION
 
 # Copy dependencies lists into container. We copy them all and then do a mv because
 # we need to transform base_image into a windows compatible filename which we can't
@@ -21,12 +22,6 @@ RUN apt-get -qq update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./panda/dependencies/${BASE_IMAGE/:/_}_build.txt /tmp/build_dep.txt
-
-### BUILD IMAGE - STAGE 2
-FROM base AS builder
-ARG BASE_IMAGE
-ARG TARGET_LIST
-ARG CAPSTONE_VERSION
 
 RUN apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
@@ -52,6 +47,10 @@ RUN cd /tmp && \
     dpkg -i /tmp/libosi_${BASE_IMAGE_VERSION}.deb && \
     rm -rf /tmp/libosi_${BASE_IMAGE_VERSION}.deb
 
+### BUILD IMAGE - STAGE 2
+FROM base AS builder
+ARG TARGET_LIST
+
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need
@@ -76,7 +75,7 @@ RUN git -C /panda submodule update --init dtc && \
         --prefix=/usr/local \
         --disable-numa \
         --enable-llvm && \
-    rm -rf /panda/.git    
+    rm -rf /panda/.git
 
 RUN PRETEND_VERSION=$(cat /tmp/savedversion) make -C /panda/build -j "$(nproc)"
 
@@ -107,9 +106,6 @@ RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
     PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel . && \
     PRETEND_VERSION=$(cat /tmp/savedversion) pip install .
-RUN python3 -m pip install --upgrade pip "setuptools<65.6.0" && \
-    python3 -m pip install "pycparser<2.22" && \
-    python3 -m pip install --force-reinstall --no-binary :all: cffi
 
 # BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/

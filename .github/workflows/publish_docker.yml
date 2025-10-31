@@ -7,7 +7,7 @@ on:
       - stable
 
 env:
-  PANDA_CONTAINER_UBUNTU_VERSION: '20.04'
+  PANDA_CONTAINER_UBUNTU_VERSION: '22.04'
 
 jobs:
   get_version:
@@ -110,7 +110,6 @@ jobs:
     strategy:
       matrix:
         ubuntu_version:
-          - 20.04
           - 22.04
 
     steps:
@@ -132,7 +131,6 @@ jobs:
             [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
               insecure = true
               http = true
-      
 
       - name: Trust Harbor's self-signed certificate
         run: |
@@ -170,7 +168,6 @@ jobs:
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${{ matrix.ubuntu_version }}.deb
       - name: Upload deb packages as artifacts
-        if: ${{ matrix.ubuntu_version != env.PANDA_CONTAINER_UBUNTU_VERSION }}
         uses: actions/upload-artifact@v4
         with:
           name: pandare_${{ matrix.ubuntu_version }}
@@ -178,7 +175,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload whl package as artifact
-        if: ${{ matrix.ubuntu_version != env.PANDA_CONTAINER_UBUNTU_VERSION }}
+        if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
         uses: actions/upload-artifact@v4
         with:
           name: pypanda
