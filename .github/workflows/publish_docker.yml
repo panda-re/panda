@@ -11,7 +11,7 @@ env:
 
 jobs:
   get_version:
-    if: github.repository  == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     runs-on: panda-arc
     outputs:
       v-version: ${{ steps.version.outputs.v-version }}
@@ -111,7 +111,7 @@ jobs:
       matrix:
         ubuntu_version:
           - 22.04
-
+          - 24.04
     steps:
       - name: Install git
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
@@ -137,7 +137,12 @@ jobs:
           echo "Fetching certificate from registry"
           openssl s_client -showcerts -connect ${{ secrets.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
           sudo update-ca-certificates
-
+      # Remove the leading v from the version string and set it as an environment variable
+      - name: Extract PACKAGE_VERSION without 'v'
+        run: |
+          VERSION=${{ needs.get_version.outputs.v-version }}
+          VERSION=${VERSION#v}
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV      
       - name: Log in to Rehosting Arc Registry
         uses: docker/login-action@v3
         with:
@@ -161,6 +166,8 @@ jobs:
             type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
+            BASE_IMAGE=ubuntu:${{ matrix.ubuntu_version }}
+            PACKAGE_VERSION=${{ env.RELEASE_VERSION }}
 
       - name: Build package
         working-directory: panda/debian
@@ -168,7 +175,7 @@ jobs:
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${{ matrix.ubuntu_version }}.deb
       - name: Upload deb packages as artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pandare_${{ matrix.ubuntu_version }}
           path: panda/debian/pandare*.deb
@@ -176,7 +183,7 @@ jobs:
 
       - name: Upload whl package as artifact
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pypanda
           path: panda/debian/pandare*.whl

@@ -1,6 +1,5 @@
 #syntax=docker/dockerfile:1.17-labs
 ARG REGISTRY="docker.io"
-ARG UBUNTU_MAJOR_VERSION="22"
 ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
 ARG CAPSTONE_VERSION="5.0.5"
@@ -26,10 +25,20 @@ COPY ./panda/dependencies/${BASE_IMAGE/:/_}_build.txt /tmp/build_dep.txt
 RUN apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
     apt-get clean && \
-    python3 -m pip install --upgrade --no-cache-dir pip && \
-    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
-    python3 -m pip install --upgrade --no-cache-dir "capstone" && \
-    curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
+    UBUNTU_VERSION=$(lsb_release -rs) && \
+    if dpkg --compare-versions "$UBUNTU_VERSION" ge "23.04"; then \
+        python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" --break-system-packages && \
+        python3 -m pip install --upgrade --no-cache-dir "capstone" --break-system-packages; \
+        python3 -m pip install setuptools_scm --break-system-packages && \
+        python3 -m pip install build --break-system-packages; \
+    else \
+        python3 -m pip install --upgrade --no-cache-dir pip && \
+        python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
+        python3 -m pip install --upgrade --no-cache-dir "capstone"; \
+        python3 -m pip install setuptools_scm && \
+        python3 -m pip install build; \
+    fi
 
 # Then install capstone debian package
 RUN cd /tmp && \
@@ -67,13 +76,13 @@ COPY .git /panda/
 RUN git -C /panda submodule update --init dtc && \
     git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
     mkdir  /panda/build && cd /panda/build && \
-    python3 -m pip install setuptools_scm && \
-    python3 -m pip install build && \
     python3 -m setuptools_scm -r .. --strip-dev 2>/dev/null >/tmp/savedversion && \
     /panda/configure \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
         --disable-numa \
+        --extra-cflags=-Wno-error \
+        --extra-cxxflags=-Wno-error \
         --enable-llvm && \
     rm -rf /panda/.git
 
@@ -105,7 +114,12 @@ RUN  make -C /panda/build install && \
 RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
     PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel . && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) pip install .
+    UBUNTU_VERSION=$(lsb_release -rs) && \
+    if dpkg --compare-versions "$UBUNTU_VERSION" ge "23.04"; then \
+        python3 -m pip install dist/*.whl --break-system-packages; \
+    else \
+        python3 -m pip install dist/*.whl; \
+    fi
 
 # BUG: PANDA sometimes fails to generate all the necessary files for PyPANDA. This is a temporary fix to detect and fail when this occurs
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
@@ -153,6 +167,7 @@ RUN ldconfig && \
 
 
 FROM base AS packager
+ARG PACKAGE_VERSION
 
 # Install necessary tools for packaging
 RUN apt-get -qq update && \
@@ -180,7 +195,6 @@ RUN cd /package-root && \
     find . -type f ! -path './DEBIAN/*' -exec md5sum {} + | sed 's| \./| |' > /package-root/DEBIAN/md5sums
 
 # Update control file with the correct version, and place installed size
-ARG PACKAGE_VERSION
 RUN INSTALLED_SIZE=$(du -sk /package-root | cut -f1) && \
     sed -i "s/^Installed-Size:.*/Installed-Size: ${INSTALLED_SIZE}/" /package-root/DEBIAN/control
 RUN sed -i "s/^Version:.*/Version: ${PACKAGE_VERSION}/" /package-root/DEBIAN/control
