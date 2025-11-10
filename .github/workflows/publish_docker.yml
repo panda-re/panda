@@ -214,7 +214,6 @@ jobs:
       with:
         name: pypanda
         path: dist/
-        
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
@@ -232,4 +231,4 @@ jobs:
         name: ${{ needs.get_version.outputs.v-version }} @ ${{ github.ref }}
         files: |
           dist/*
-          debs/*
+          debs/**/*.deb
