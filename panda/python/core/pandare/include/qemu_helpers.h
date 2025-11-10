@@ -2,5 +2,6 @@
 // unsigned is a lie, but it's the way QEMU treats it
 extern unsigned int qemu_loglevel;
 extern FILE* qemu_logfile;
+extern int panda_complete_rr_snapshot;
 
 MemoryRegion *get_system_memory(void);

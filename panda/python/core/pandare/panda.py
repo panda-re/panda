@@ -365,6 +365,12 @@ class Panda():
         '''
         self.main_loop_wait_fnargs.append((fn, args))
 
+    def set_complete_rr_snapshot(self):
+        '''
+        Set Complete RR Snapshot
+        '''
+        self.libpanda.panda_complete_rr_snapshot = 1
+
     def exit_cpu_loop(self):
         '''
         Stop cpu execution at nearest juncture.
