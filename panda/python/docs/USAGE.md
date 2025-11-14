@@ -137,7 +137,7 @@ panda.run()
 Note that the `panda.queue_blocking` decorator both marks a function as being a blocking function (which allows it to use functions such as `panda.run_serial_cmd`) and queues it up to run after the call to `panda.run()`
 
 ## Recordings
-See [take_recording.py](https://github.com/panda-re/panda/tree/master/panda/python/examples/take_recording.py)
+See [take_recording.py](https://github.com/panda-re/panda/blob/dev/panda/python/examples/take_recording.py)
 
 A replay can be taken with the function `panda.record_cmd('cmd_to_run', recording_name='replay_name')` which will revert the guest to a `root` snapshot, type a command, begin a recording, press enter, wait for the command to finish, and then end the replay.
 Once a replay is created on disk, it can be analyzed by using `panda.run_replay('replay_name')`.
@@ -148,7 +148,7 @@ and `panda.run_monitor_cmd('end_record')` and drive the guest using `panda.run_s
 # Typical Use Patterns
 
 ## Live system
-Example: [asid.py](https://github.com/panda-re/panda/tree/master/panda/python/examples/asid.py).
+Example: [asid.py](https://github.com/panda-re/panda/blob/dev/panda/python/examples/asid.py).
 
 1. Initialize a panda object based off a generic machine or a qcow you have.
 2. Register functions to run at various PANDA callbacks.
@@ -156,7 +156,7 @@ Example: [asid.py](https://github.com/panda-re/panda/tree/master/panda/python/ex
 5. Start the execution with `panda.run()`
 
 ## Record/Replay
-Example: [tests/record_then_replay.py](https://github.com/panda-re/panda/tree/master/panda/python/tests/record_then_replay.py).
+Example: [tests/record_then_replay.py](https://github.com/panda-re/panda/blob/dev/panda/python/tests/record_then_replay.py).
 
 1. Initialize a panda object based off a generic machine or a qcow you have.
 2. Register and queue up a blocking function to drive guest execution while recording or with `panda.record_cmd` then call `panda.end_analysis()`
@@ -170,8 +170,8 @@ Example: [tests/record_then_replay.py](https://github.com/panda-re/panda/tree/ma
 
 ## Extending PyPANDA
 PyPANDA currently supports interactions (e.g., ppp callbacks) with many PANDA plugins such as `taint2` and `osi`. If you wish to extend PyPANDA to support an new plugin, its header file
-must be cleaned up such that it can be parsed by CFFI. See [create_panda_datatypes.py](https://github.com/panda-re/panda/tree/master/panda/python/utils/create_panda_datatypes.py)
+must be cleaned up such that it can be parsed by CFFI. See [create_panda_datatypes.py](https://github.com/panda-re/panda/blob/dev/panda/python/core/create_panda_datatypes.py)
 and the magic `BEGIN_PYPANDA_NEEDS_THIS` strings it searches for.
 
 ## Learn more
-The [PyPANDA paper](https://moyix.net/~moyix/papers/pypanda.pdf) was published at the NDSS Binary Analysis Research Workshop in 2021 and includes details on the project's design goals as well as an evaluation of it's usability and performance.
+The [PyPANDA paper](https://www.ndss-symposium.org/wp-content/uploads/bar2021_23001_paper.pdf) was published at the NDSS Binary Analysis Research Workshop in 2021 and includes details on the project's design goals as well as an evaluation of it's usability and performance.
