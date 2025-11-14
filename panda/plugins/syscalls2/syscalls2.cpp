@@ -1194,7 +1194,11 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
 #endif
     if(res != 0 && res != (target_ulong) -1){
         TCGOp *op = find_guest_insn_by_addr(res);
-        insert_call(&op, syscall_callback, tb, res, profile, static_callno);
+        if (op != NULL){
+            insert_call(&op, syscall_callback, tb, res, profile, static_callno);
+        }else{
+            LOG_WARNING("Could not find guest instruction at syscall address " TARGET_PTR_FMT "\n", res);
+        }
     }
 }
 
