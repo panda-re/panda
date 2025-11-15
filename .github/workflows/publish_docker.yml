@@ -232,3 +232,34 @@ jobs:
         files: |
           dist/*
           debs/**/*.deb
+
+  documentation:
+    if: github.repository == 'panda-re/panda'
+    needs: build_release_assets
+    runs-on: panda-arc
+    steps:
+      - name: Checkout docs and reset
+        run: |
+          rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
+          git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
+
+      - name: Update PYPANDA docs in container
+        run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
+        # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/<branch>/pandare
+        # we want to copy auto_pydoc/dev/pandare to auto_pydoc/pandare/ and /auto_pydoc/<branch>/pandare to /auto_pydoc/pandare/<branc>
+        #
+        # This is a bit complicated, sorry. We want to keep pandare/{CNAME,.git/} and nothing else
+        # then we copy in the new files (and merge doc-search.html and index.js with <branch>/pandare/
+      - name: Push PYPANDA docs to GitHub Pages if docs changed
+        run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
+            mv pandare/CNAME ${{ github.ref_name }} &&
+            rm -rf pandare/* &&
+            mv ${{ github.ref_name }}/pandare/* pandare &&
+            rmdir ${{ github.ref_name }}/pandare &&
+            mv ${{ github.ref_name }}/* pandare/ &&
+            cd pandare &&
+            git config --global user.email "panda-ci@panda-re.mit.edu" &&
+            git config --global user.name "PANDA Bot" &&
+            git add . &&
+            git commit -m "Documentation update for PANDA commit ${{ github.sha }} branch ${{ github.ref_name }}" &&
+            git push || true
