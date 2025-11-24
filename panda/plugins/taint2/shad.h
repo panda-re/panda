@@ -230,7 +230,8 @@ class FastShad : public Shad
   protected:
     bool range_tainted(uint64_t addr, uint64_t size) override
     {
-        for (unsigned i = addr; i < addr + size; i++) {
+        tassert (size < UINT64_MAX-addr);
+        for (uint64_t i = addr; i < addr + size; i++) {
             if (get_td_p(i)->ls)
                 return true;
         }
