@@ -35,6 +35,7 @@ PANDAENDCOMMENT */
 #include <set>
 #include <iostream>
 #include <fstream>
+#include <unordered_set>
 
 #include "panda/plugin.h"
 
@@ -53,11 +54,16 @@ void write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, size_
 uint64_t mem_counter;
 
 std::set<prog_point> tap_points;
+std::unordered_set<target_ulong> tap_pc;
 gzFile read_tap_buffers;
 gzFile write_tap_buffers;
 
 void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                   size_t size, uint8_t *buf, gzFile f) {
+    if (tap_pc.find(pc) == tap_pc.end()) {
+        mem_counter++;
+        return;
+    }
     prog_point p = {};
     get_prog_point(env, &p);
 
@@ -142,6 +148,7 @@ bool init_plugin(void *self) {
         printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx ", %s)\n",
                p.caller, p.pc, sid_string);
         tap_points.insert(p);
+        tap_pc.insert(p.pc);
         g_free(sid_string);
     }
     taps.close();
