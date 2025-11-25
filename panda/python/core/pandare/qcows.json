@@ -179,9 +179,7 @@
         "cdrom": "ide1-cd0",
         "snapshot": "root",
         "url": "https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2",
-        "alternate_urls": [
-            "https://www.dropbox.com/s/4avqfxqemd29i5j/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2?dl=1"
-        ],
+        "alternate_urls": null,
         "extra_files": null,
         "qcow": null,
         "default_mem": "1024",
@@ -197,9 +195,7 @@
         "cdrom": "ide1-cd0",
         "snapshot": "root",
         "url": "https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2",
-        "alternate_urls": [
-            "https://www.dropbox.com/s/4avqfxqemd29i5j/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2?dl=1"
-        ],
+        "alternate_urls": null,
         "extra_files": null,
         "qcow": null,
         "default_mem": "1024",
