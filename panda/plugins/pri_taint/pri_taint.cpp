@@ -32,6 +32,7 @@ extern "C" {
 #include "dwarf2/dwarf2_types.h"
 #include "dwarf2/dwarf2_ext.h"
 
+#include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
 // taint
@@ -50,7 +51,8 @@ const char *global_src_filename = NULL;
 uint64_t global_src_linenum;
 unsigned global_ast_loc_id;
 bool debug = false;
-// uint64_t global_funcaddr;
+uint64_t global_funcaddr;
+std::map<target_ulong, target_ulong> stackoff;
 
 #define dprintf(...) if (debug) { printf(__VA_ARGS__); fflush(stdout); }
 
@@ -109,7 +111,12 @@ struct args {
     const char *src_filename;
     uint64_t src_linenum;
     unsigned ast_loc_id;
-    // uint64_t funcaddr;
+    uint64_t funcaddr;
+};
+
+struct pc_args {
+    target_ulong pc_;
+    target_ulong sp_;
 };
 
 // max length of strnlen or taint query
@@ -315,16 +322,12 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     // restore args
     struct args *args = (struct args *) in_args;
     CPUState *pfun_cpu = args->cpu;
-    //update global state of src_filename and src_linenum to be used in
-    //lava_query in order to create src_info panda log message
+    // update global state of src_filename and src_linenum to be used in
+    // lava_query in order to create src_info panda log message
     global_src_filename = args->src_filename;
     global_src_linenum = args->src_linenum;
     global_ast_loc_id = args->ast_loc_id;
-    // global_funcaddr = args->funcaddr;
-    //target_ulong guest_dword;
-    //std::string ty_string = std::string(var_ty);
-    //size_t num_derefs = std::count(ty_string.begin(), ty_string.end(), '*');
-    //size_t i;
+    global_funcaddr = args->funcaddr;
     switch (loc_t) {
         // 'dwarf2_type_iter' is defined in dwarf2.cpp
         case LocReg:
@@ -367,7 +370,18 @@ Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
     si->has_insertionpoint = 0;
     if (phs.insertion_point) {
         si->has_insertionpoint = 1;
-        si->insertionpoint = phs.insertion_point;
+        // NOTE: Somehow hackish here, use `insertionpoint` to pass stack offset
+        // TODO: Encoding the MSB to signal if it has stored EBP offset?
+        // Find the key in the map
+        auto it = stackoff.find(global_funcaddr);
+        // Check if the iterator is NOT at the end of the map (i.e., key was found)
+        if (it != stackoff.end()) {
+            // Key found: Use the value associated with the key
+            si->insertionpoint = it->second;
+        } else {
+            // Key not found: Use the fallback value
+            si->insertionpoint = phs.insertion_point;
+        }
     }
     si->has_ast_loc_id = 1;
     si->ast_loc_id = phs.src_filename;
@@ -390,7 +404,6 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
-/*
 // Trace logging in the level of source code
 void hypercall_log_trace(unsigned ast_loc_id) {
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
@@ -399,7 +412,6 @@ void hypercall_log_trace(unsigned ast_loc_id) {
     ple.source_trace_id = &stid;
     pandalog_write_entry(&ple);
 }
-*/
 
 // Support all features of label and query program
 void lava_hypercall(CPUState *cpu) {
@@ -446,8 +458,8 @@ void lava_hypercall(CPUState *cpu) {
             #endif
 
             // To be used for chaff bugs?
-            // uint64_t funcaddr = 0;
-            // panda_virtual_memory_read(cpu, phs.info, (uint8_t*)&funcaddr, sizeof(target_ulong));
+            uint64_t funcaddr = 0;
+            panda_virtual_memory_read(cpu, phs.info, (uint8_t*)&funcaddr, sizeof(target_ulong));
             // if the phs action is a pri_query point, see
             // lava/include/pirate_mark_lava.h
             if (phs.action == 13) {
@@ -457,7 +469,7 @@ void lava_hypercall(CPUState *cpu) {
                 SrcInfo info;
                 int rc = pri_get_pc_source_info(cpu, pc, &info);
                 if (!rc) {
-                    struct args args = {cpu, info.filename, info.line_number, phs.src_filename};
+                    struct args args = {cpu, info.filename, info.line_number, phs.src_filename, funcaddr};
                     dprintf("[pri_taint] panda hypercall: [%s], "
                             "ln: %4ld, pc @ 0x" TARGET_FMT_lx "\n",
                             info.filename,
@@ -470,7 +482,7 @@ void lava_hypercall(CPUState *cpu) {
                 else {
                     dprintf("[pri_taint] pri_get_pc_src_info has failed: %d != 0.\n", rc);
                 }
-                // hypercall_log_trace(phs.src_filename);
+                hypercall_log_trace(phs.src_filename);
             }
             else if (phs.action == 12) {
                 lava_attack_point(phs);
@@ -486,6 +498,47 @@ void lava_hypercall(CPUState *cpu) {
     else {
         dprintf("[pri_taint] taint2 is not enabled (hypercall)\n");
     }
+}
+
+void find_var(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args) {
+    struct pc_args *args = (struct pc_args*)in_args;
+    if (strcmp(var_nm, "lava_chaff_var_0") == 0) {
+        switch (loc_t) {
+            case LocMem:
+            {
+                target_ulong framebase = dwarf2_get_cur_fp(first_cpu, args->pc_);
+                stackoff[args->pc_] = framebase - loc;
+                break;
+            }
+            case LocReg:
+            case LocConst:
+            case LocErr:
+                break;
+            default:
+                assert(false);
+        }
+    }
+}
+
+void on_call(CPUState *cpu, target_ulong pc) {
+    CPUArchState *env = (CPUArchState*) cpu->env_ptr;
+    target_ulong retaddr = 0;
+    #if defined(TARGET_I386)
+        target_ulong sp_reg = env->regs[R_ESP];
+    #elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+        target_ulong sp_reg = env->regs[13];
+    #elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+        target_ulong sp_reg = env->xregs[31];
+    #endif
+    // panda_virtual_memory_read(cpu, sp_reg, (uint8_t*) &retaddr, sizeof(target_ulong));
+    // dprintf("[CHAFF] Function Call at %lx - SP %lx : [%lx]\n", pc, sp_reg, retaddr);
+
+    if (stackoff.count(pc) != 0) {
+        return;
+    }
+    // Find address of `int lava_chaff_var_0`
+    struct pc_args args = {pc, sp_reg};
+    pri_funct_livevar_iter(cpu, pc, (liveVarCB) find_var, (void *)&args);
 }
 #endif
 
@@ -516,6 +569,7 @@ bool init_plugin(void *self) {
         void * hypercaller = panda_get_plugin_by_name("hypercaller");
         register_hypercall_t register_hypercall = (register_hypercall_t) dlsym(hypercaller, "register_hypercall");
         register_hypercall(LAVA_MAGIC, lava_hypercall);
+        PPP_REG_CB("callstack_instr", on_call, on_call);
     }
     if (linechange_taint) {
         PPP_REG_CB("pri", on_before_line_change, on_line_change);
