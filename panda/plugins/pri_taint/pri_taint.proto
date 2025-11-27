@@ -34,6 +34,10 @@ message AttackPointPri {
     required SrcInfoPri src_info = 3;
 }
 
+message SourceTraceId {
+    required uint32 ast_loc_id = 1;
+}
+
 
 // results of a taint query on all bytes
 // in some extent. buf is virtual addr. len is num bytes
@@ -54,3 +58,4 @@ optional TaintQueryPri taint_query_pri = 68;
 
 optional AttackPointPri attack_point_pri = 69;
 
+optional SourceTraceId source_trace_id = 90;

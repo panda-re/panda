@@ -45,12 +45,14 @@ void set_loglevel(int new_loglevel);
 }
 bool linechange_taint = true;
 bool hypercall_taint = true;
-// bool chaff_bugs = false;
 const char *global_src_filename = NULL;
 uint64_t global_src_linenum;
 unsigned global_ast_loc_id;
 bool debug = false;
-// uint64_t global_funcaddr;
+uint64_t global_funcaddr;
+// Map storing the relationship between function addresses (program counters) and their stack offsets.
+// Used for Chaff Bugs integration to track stack placement.
+std::map<target_ulong, target_ulong> stackoff;
 
 #define dprintf(...) if (debug) { printf(__VA_ARGS__); fflush(stdout); }
 
@@ -109,7 +111,13 @@ struct args {
     const char *src_filename;
     uint64_t src_linenum;
     unsigned ast_loc_id;
-    // uint64_t funcaddr;
+    uint64_t funcaddr;
+};
+
+struct pc_args {
+    CPUState *cpu;
+    target_ulong pc_;
+    target_ulong sp_;
 };
 
 // max length of strnlen or taint query
@@ -315,16 +323,12 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     // restore args
     struct args *args = (struct args *) in_args;
     CPUState *pfun_cpu = args->cpu;
-    //update global state of src_filename and src_linenum to be used in
-    //lava_query in order to create src_info panda log message
+    // update global state of src_filename and src_linenum to be used in
+    // lava_query in order to create src_info panda log message
     global_src_filename = args->src_filename;
     global_src_linenum = args->src_linenum;
     global_ast_loc_id = args->ast_loc_id;
-    // global_funcaddr = args->funcaddr;
-    //target_ulong guest_dword;
-    //std::string ty_string = std::string(var_ty);
-    //size_t num_derefs = std::count(ty_string.begin(), ty_string.end(), '*');
-    //size_t i;
+    global_funcaddr = args->funcaddr;
     switch (loc_t) {
         // 'dwarf2_type_iter' is defined in dwarf2.cpp
         case LocReg:
@@ -357,7 +361,7 @@ void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name,
 }
 
 // Taken from taint2_hypercalls.cpp, not sure why but at the moment
-// AttackPoints is never populated.
+// AttackPoints is never populated unless I duplicate code here
 Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
     Panda__SrcInfo *si = (Panda__SrcInfo *) malloc(sizeof(Panda__SrcInfo));
     *si = PANDA__SRC_INFO__INIT;
@@ -367,7 +371,17 @@ Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
     si->has_insertionpoint = 0;
     if (phs.insertion_point) {
         si->has_insertionpoint = 1;
-        si->insertionpoint = phs.insertion_point;
+        // NOTE: Somehow hackish here, use `insertionpoint` to pass stack offset
+        // Find the key in the map
+        auto it = stackoff.find(global_funcaddr);
+        // Check if the iterator is NOT at the end of the map (i.e., key was found)
+        if (it != stackoff.end()) {
+            // Key found: Use the value associated with the key
+            si->insertionpoint = it->second;
+        } else {
+            // Key not found: Use the fallback value
+            si->insertionpoint = phs.insertion_point;
+        }
     }
     si->has_ast_loc_id = 1;
     si->ast_loc_id = phs.src_filename;
@@ -390,7 +404,6 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
-/*
 // Trace logging in the level of source code
 void hypercall_log_trace(unsigned ast_loc_id) {
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
@@ -399,7 +412,6 @@ void hypercall_log_trace(unsigned ast_loc_id) {
     ple.source_trace_id = &stid;
     pandalog_write_entry(&ple);
 }
-*/
 
 // Support all features of label and query program
 void lava_hypercall(CPUState *cpu) {
@@ -446,8 +458,8 @@ void lava_hypercall(CPUState *cpu) {
             #endif
 
             // To be used for chaff bugs?
-            // uint64_t funcaddr = 0;
-            // panda_virtual_memory_read(cpu, phs.info, (uint8_t*)&funcaddr, sizeof(target_ulong));
+            uint64_t funcaddr = 0;
+            panda_virtual_memory_read(cpu, phs.info, (uint8_t*)&funcaddr, sizeof(target_ulong));
             // if the phs action is a pri_query point, see
             // lava/include/pirate_mark_lava.h
             if (phs.action == 13) {
@@ -457,7 +469,7 @@ void lava_hypercall(CPUState *cpu) {
                 SrcInfo info;
                 int rc = pri_get_pc_source_info(cpu, pc, &info);
                 if (!rc) {
-                    struct args args = {cpu, info.filename, info.line_number, phs.src_filename};
+                    struct args args = {cpu, info.filename, info.line_number, phs.src_filename, funcaddr};
                     dprintf("[pri_taint] panda hypercall: [%s], "
                             "ln: %4ld, pc @ 0x" TARGET_FMT_lx "\n",
                             info.filename,
@@ -470,7 +482,7 @@ void lava_hypercall(CPUState *cpu) {
                 else {
                     dprintf("[pri_taint] pri_get_pc_src_info has failed: %d != 0.\n", rc);
                 }
-                // hypercall_log_trace(phs.src_filename);
+                hypercall_log_trace(phs.src_filename);
             }
             else if (phs.action == 12) {
                 lava_attack_point(phs);
@@ -486,6 +498,105 @@ void lava_hypercall(CPUState *cpu) {
     else {
         dprintf("[pri_taint] taint2 is not enabled (hypercall)\n");
     }
+}
+
+/**
+ * Callback function used by pri_funct_livevar_iter to locate the variable "lava_chaff_var_0"
+ * and calculate its stack offset for the current function frame.
+ *
+ * Parameters:
+ *   var_ty_void - Pointer to the variable's type information (unused here).
+ *   var_nm      - Name of the variable being inspected.
+ *   loc_t       - Location type of the variable (e.g., memory, register, constant).
+ *   loc         - Location value (e.g., offset from frame base if LocMem).
+ *   in_args     - Pointer to a pc_args struct containing:
+ *                   - pc_: program counter (function address)
+ *                   - sp_: stack pointer (unused here)
+ *
+ * If the variable name matches "lava_chaff_var_0" and its location is in memory,
+ * this function computes the offset of the variable from the frame base and stores
+ * it in the global stackoff map, keyed by the function's program counter.
+ */
+void find_var(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args) {
+    struct pc_args *args = (struct pc_args*)in_args;
+    if (strcmp(var_nm, "lava_chaff_var_0") == 0) {
+        switch (loc_t) {
+            case LocMem:
+            {
+                target_ulong framebase = dwarf2_get_cur_fp(args->cpu, args->pc_);
+                target_ulong retaddr = 0;
+
+                panda_virtual_memory_read(args->cpu, args->sp_, (uint8_t*) &retaddr, sizeof(target_ulong));
+                #if defined(TARGET_I386) && defined(TARGET_X86_64)
+                    dprintf("[pri_taint] Target %s : addr[%lx] Loc %lx - cur framebase %lx (%lx) - ESP %lx retaddr[%lx]\n", var_nm, (uint64_t) args->pc_, (uint64_t) loc, (uint64_t) framebase, (uint64_t) framebase-loc, (uint64_t) args->sp_, (uint64_t) retaddr);
+                #elif defined(TARGET_I386) && !defined(TARGET_X86_64)
+                    dprintf("[pri_taint] Target %s : addr[%x] Loc %x - cur framebase %x (%x) - ESP %x retaddr[%x]\n", var_nm, (uint32_t) args->pc_, (uint32_t) loc, (uint32_t) framebase, (uint32_t) framebase-loc, (uint32_t) args->sp_, (uint32_t) retaddr);
+                #elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+                    dprintf("[pri_taint] Target %s : addr[%x] Loc %x - cur framebase %x (%x) - ESP %x retaddr[%x]\n", var_nm, (uint32_t) args->pc_, (uint32_t) loc, (uint32_t) framebase, (uint32_t) framebase-loc, (uint32_t) args->sp_, (uint32_t) retaddr);
+                #elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+                    dprintf("[pri_taint] Target %s : addr[%lx] Loc %lx - cur framebase %lx (%lx) - ESP %lx retaddr[%lx]\n", var_nm, (uint64_t) args->pc_, (uint64_t) loc, (uint64_t) framebase, (uint64_t) framebase-loc, (uint64_t) args->sp_, (uint64_t) retaddr);
+                #endif
+                stackoff[args->pc_] = framebase - loc;
+                break;
+            }
+            case LocReg:
+            case LocConst:
+            case LocErr:
+                break;
+            default:
+                assert(false);
+        }
+    }
+}
+
+/**
+ * Callback function for tracking stack offsets for Chaff Bugs integration.
+ *
+ * This function is invoked on function calls to determine the stack offset of
+ * the special variable `lava_chaff_var_0` at the given program counter (pc).
+ * It checks if the stack offset for the current pc has already been recorded
+ * in the `stackoff` map. If not, it prepares the necessary arguments and
+ * invokes `pri_funct_livevar_iter`, which iterates over live variables at the
+ * function and calls `find_var` for each. The `find_var` function, when it
+ * encounters `lava_chaff_var_0`, computes and stores its stack offset in the
+ * `stackoff` map.
+ *
+ * Parameters:
+ *   cpu - Pointer to the current CPU state.
+ *   pc  - Program counter at the function call site.
+ *
+ * Architecture-specific logic is used to determine the stack pointer register.
+ * This function is essential for Chaff Bugs integration, enabling the
+ * instrumentation to locate and manipulate the chaff variable on the stack.
+ */
+void on_call(CPUState *cpu, target_ulong pc) {
+    CPUArchState *env = (CPUArchState*) cpu->env_ptr;
+    target_ulong retaddr = 0;
+    #if defined(TARGET_I386)
+        target_ulong sp_reg = env->regs[R_ESP];
+        #if defined(TARGET_X86_64)
+            panda_virtual_memory_read(cpu, sp_reg, (uint8_t*) &retaddr, sizeof(target_ulong));
+            dprintf("[pri_taint] Function Call at %lx - SP %lx : [%lx]\n", (uint64_t) pc, (uint64_t) sp_reg, (uint64_t) retaddr);
+        #else
+            panda_virtual_memory_read(cpu, sp_reg, (uint8_t*) &retaddr, sizeof(target_ulong));
+            dprintf("[pri_taint] Function Call at %x - SP %x : [%x]\n", (uint32_t) pc, (uint32_t) sp_reg, (uint32_t) retaddr);
+        #endif
+    #elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+        target_ulong sp_reg = env->regs[13];
+        panda_virtual_memory_read(cpu, sp_reg, (uint8_t*) &retaddr, sizeof(target_ulong));
+        dprintf("[pri_taint] Function Call at %x - SP %x : [%x]\n", (uint32_t) pc, (uint32_t) sp_reg, (uint32_t) retaddr);
+    #elif defined(TARGET_ARM) && defined(TARGET_AARCH64)
+        target_ulong sp_reg = env->xregs[31];
+        panda_virtual_memory_read(cpu, sp_reg, (uint8_t*) &retaddr, sizeof(target_ulong));
+        dprintf("[pri_taint] Function Call at %lx - SP %lx : [%lx]\n", (uint64_t) pc, (uint64_t) sp_reg, (uint64_t) retaddr);
+    #endif
+
+    if (stackoff.count(pc) != 0) {
+        return;
+    }
+    // Find address of `int lava_chaff_var_0`
+    struct pc_args args = {cpu, pc, sp_reg};
+    pri_funct_livevar_iter(cpu, pc, (liveVarCB) find_var, (void *) &args);
 }
 #endif
 
@@ -516,6 +627,7 @@ bool init_plugin(void *self) {
         void * hypercaller = panda_get_plugin_by_name("hypercaller");
         register_hypercall_t register_hypercall = (register_hypercall_t) dlsym(hypercaller, "register_hypercall");
         register_hypercall(LAVA_MAGIC, lava_hypercall);
+        PPP_REG_CB("callstack_instr", on_call, on_call);
     }
     if (linechange_taint) {
         PPP_REG_CB("pri", on_before_line_change, on_line_change);
