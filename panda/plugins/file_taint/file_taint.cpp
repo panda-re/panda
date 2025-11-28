@@ -30,6 +30,9 @@ PANDAENDCOMMENT */
 
 #include "read_info.h"
 
+// Add this header for wildcard matching
+#include <fnmatch.h>
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -68,15 +71,16 @@ void verbose_printf(const char *fmt, ...)
     va_end(args);
 }
 
-// Returns true if the filename matches the target filename. Currently attempts
-// to find the last instance of the target filename. If the filename is found,
-// it must be at the end of the filename string. This should be platform
-// agnostic in that both paths in Unix-like and Windows should work.
-bool is_match(const std::string &filename)
-{
-    size_t pos = filename.rfind(target_filename);
-    return pos != std::string::npos &&
-           filename.substr(pos).size() == target_filename.size();
+// Uses POSIX wildcard matching (Shell style)
+// target_filename can now be:
+//   "/root/inputs/*"      -> Matches all files in inputs
+//   "/root/inputs/*.so"   -> Matches only .so files
+//   "/root/inputs/book*" -> Matches book.txt, book.bin
+bool is_match(const std::string &filename) {
+    // fnmatch returns 0 on a successful match.
+    // FNM_NOESCAPE treats backslashes as literal characters (useful for paths)
+    // target_filename is the pattern to match, filename is the string, FNM_NOESCAPE ensure proper path handling
+    return fnmatch(target_filename.c_str(), filename.c_str(), FNM_NOESCAPE) == 0;
 }
 
 // A normalized read_enter function. Called by both Linux and Windows
@@ -90,11 +94,15 @@ void read_enter(const std::string &filename, uint64_t file_id,
                        filename.c_str());
         return;
     }
+    else {
+        verbose_printf("file_taint read_enter: filename \"%s\" matched\n",
+                       filename.c_str());
+    }
 
     // If taint isn't already enabled, turn it on. We've seen the file we want
     // to taint.
     if (!taint2_enabled()) {
-        printf("file_taint read_enter: first time match of file \"%s\", "
+        printf("file_taint read_enter: first time match of filename pattern \"%s\", "
                "enabling taint\n",
                target_filename.c_str());
         taint2_enable_taint();
@@ -399,7 +407,7 @@ void linux_read_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     // EAX has the number of bytes read.
     actually_read = env->regs[R_EAX];
-#elif  defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     // R0 has the number of bytes read.
     actually_read = env->regs[0];
@@ -466,7 +474,7 @@ bool init_plugin(void *self)
     // Parse arguments for file_taint
     panda_arg_list *args = panda_get_args("file_taint");
     target_filename =
-        panda_parse_string_req(args, "filename", "name of file to taint");
+        panda_parse_string_req(args, "filename", "filename pattern to taint (supports wildcards like '/input/*.bin')");
     min_byte_pos = panda_parse_uint64_opt(
         args, "start", 0,
         "minimum byte offset within the file to start tainting");
@@ -485,6 +493,11 @@ bool init_plugin(void *self)
         panda_parse_bool_opt(args, "pread_bits_64",
                              "Assume the offset passed to pread is a signed "
                              "64-bit integer (Linux specific)");
+
+    if (target_filename.empty()) {
+        fprintf(stderr, "file_taint Error: The 'filename' argument cannot be empty.\n");
+        return false;
+    }
 
     // Setup dependencies
     panda_require("syscalls2");
@@ -525,21 +538,18 @@ bool init_plugin(void *self)
     case OS_LINUX: {
         panda_require("osi_linux");
         assert(init_osi_linux_api());
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64) || defined(TARGET_ARM) && !defined(TARGET_AARCH64)
         verbose_printf("file_taint: setting up 32-bit Linux file read detection\n");
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter_32);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return_32);
         PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter_32);
         PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return_32);
-#elif defined(TARGET_X86_64)
+#elif defined(TARGET_X86_64) || defined(TARGET_AARCH64)
         verbose_printf("file_taint: setting up 64-bit Linux file read detection\n");
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter_64);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return_64);
         PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter_64);
         PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return_64);
-#elif defined(TARGET_AARCH64)
-
-#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 #else
         fprintf(stderr, "ERROR: Linux is only supported on x86 and ARM (32-bit and 64-bit)\n");
         return false;

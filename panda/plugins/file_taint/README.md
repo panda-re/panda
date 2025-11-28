@@ -15,18 +15,30 @@ To effectively use taint, you will also need some mechanism for *querying* taint
 Arguments
 ---------
 
-* `filename`: string, required. The filename we want to taint. Full paths are supported, but on Windows there are some limitations.
+* `filename`: string, required. The filename pattern to taint.
+  This plugin now uses **Shell-style Wildcards (globbing)** for matching.
+  The matching algorithm compares the **full path** of the file being read against
+  the provided pattern.
 
-   The matching algorithm looks for the last instance of this parameter in the filename of files that are being read. If an instance is found, it must fill out the rest of the string to be considered a match. The following are examples. Say I want to taint "/home/panda/test". Then the following filenames can be searched for to match "/home/panda/test":
+  **Supported Wildcards:**
+    * `*` : Matches everything (any number of characters)
+    * `?` : Matches any single character
+    * `[...]` : Matches any character inside the brackets
 
-    * "test"
-    * "panda/test"
-    * "/home/panda/test"
-    * "nda/test"
-    * ... and more
+  **Examples:**
+  * To taint everything in a directory:
+    * `/home/panda/inputs/*`
+  * To taint only `.bin` files in a directory:
+    * `/home/panda/inputs/*.bin`
+  * To taint a specific file (Exact Match):
+    * `/home/panda/inputs/exploit.bin`
+  * To simulate the old "Suffix Match" behavior (ends with):
+    * `*panda/test`
 
-    For Windows paths, be sure to escape backslashes if you're using bash. Alternatively, you may surround the entire path in single quotes.
-
+  **Windows Note:**
+  1. **Backslashes:** Windows paths use backslashes (`\`). You must use backslashes in your pattern (e.g., `*\dir\file`). Forward slashes will fail.
+  2. **Drive Letters:** Windows Kernel paths do not include drive letters (e.g., PANDA sees `\Device\HarddiskVolume1\test.txt` instead of `C:\test.txt`).
+     * **Recommendation:** Always start your Windows patterns with `*` (e.g., `*\Users\panda\test.txt`) to match the file regardless of the drive letter or volume prefix.
 * `pos`: boolean, defaults to false. Enables use of positional labels. I.e. the file offset where the data were read from is used as their initial taint label.
 * `max_num_labels` ulong, defaults to 1000000. How many labels to apply to input bytes. The default value corresponds to a roughly 1MB chunk of the file.
 * `start`: ulong, the first offset in the file to label.
@@ -56,9 +68,3 @@ A typical run might first try to find out where the file `foo.txt` is first used
         -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt
 ```
 
-Limitations
-----
-
-* In Windows, matching file names that include a drive letter is not supported. The OSI calls used to support file taint in Windows return Kernel object paths which do not include drive letters. This means that the filename is checked against a path without a drive letter. Also, the exact filename that is stored in the kernel object depends on how the file was opened. If the file was opened with a full path, it will have a full path in the file object. Otherwise, the path is relative to the process working directory.
-
-   For example, say I want to taint C:\\Users\\panda\\test.txt. If I provide "C:\\Users\\panda\\test.txt" as the filename, file\_taint will miss the file. However, if I provide "\\Users\\panda\\test.txt", file\_taint will pick up the file read properly.
