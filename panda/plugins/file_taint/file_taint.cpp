@@ -399,10 +399,14 @@ void linux_read_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     // EAX has the number of bytes read.
     actually_read = env->regs[R_EAX];
+#elif  defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    // R0 has the number of bytes read.
+    actually_read = env->regs[0];
 #else
     fprintf(
         stderr,
-        "WARNING: file_taint was not initialized for 32-bit x86 Linux.\n");
+        "WARNING: file_taint was not initialized for 32-bit x86 or ARM Linux\n");
     return;
 #endif
     // check sign bit for 32-bit value, as negative values indicate error but
@@ -423,12 +427,16 @@ void linux_read_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
     ssize_t actually_read = 0;
 #if defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    // EAX has the number of bytes read.  (PANDA uses 32-bit names for 64-bit)
+    // EAX has the number of bytes read. (PANDA uses 32-bit names for 64-bit)
     actually_read = env->regs[R_EAX];
+#elif defined(TARGET_AARCH64)
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    // R0 has the number of bytes read.
+    actually_read = env->xregs[0];
 #else
     fprintf(
         stderr,
-        "WARNING: file_taint was not initialized for 64-bit x86 Linux.\n");
+        "WARNING: file_taint was not initialized for 64-bit x86 or ARM Linux.\n");
     return;
 #endif
     if (actually_read >= 0) {
@@ -515,26 +523,25 @@ bool init_plugin(void *self)
 #endif
     } break;
     case OS_LINUX: {
+        panda_require("osi_linux");
+        assert(init_osi_linux_api());
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
         verbose_printf("file_taint: setting up 32-bit Linux file read detection\n");
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter_32);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return_32);
         PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter_32);
         PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return_32);
-
-        panda_require("osi_linux");
-        assert(init_osi_linux_api());
 #elif defined(TARGET_X86_64)
         verbose_printf("file_taint: setting up 64-bit Linux file read detection\n");
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter_64);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return_64);
         PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter_64);
         PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return_64);
+#elif defined(TARGET_AARCH64)
 
-        panda_require("osi_linux");
-        assert(init_osi_linux_api());
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 #else
-        fprintf(stderr, "ERROR: Linux is only supported on x86 (32-bit)\n");
+        fprintf(stderr, "ERROR: Linux is only supported on x86 and ARM (32-bit and 64-bit)\n");
         return false;
 #endif
     } break;
