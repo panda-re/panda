@@ -561,8 +561,7 @@ bool guest_hypercall_warning_callback(CPUState *cpu) {
             "hypercall processing\n");
         panda_cb pcb;
         pcb.guest_hypercall = guest_hypercall_warning_callback;
-        panda_disable_callback(taint2_plugin, PANDA_CB_GUEST_HYPERCALL,
-            pcb);
+        panda_disable_callback(taint2_plugin, PANDA_CB_GUEST_HYPERCALL, pcb);
     }
 #endif // defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
     return ret;

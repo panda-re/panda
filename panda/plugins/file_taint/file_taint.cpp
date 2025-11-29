@@ -61,8 +61,7 @@ using FilePosition = uint64_t;
 static std::unordered_map<ReadKey, FilePosition> read_positions;
 
 // Helper function that only prints if the verbose flag is set.
-void verbose_printf(const char *fmt, ...)
-{
+void verbose_printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     if (verbose) {
@@ -86,8 +85,7 @@ bool is_match(const std::string &filename) {
 // A normalized read_enter function. Called by both Linux and Windows
 // specific calls.
 void read_enter(const std::string &filename, uint64_t file_id,
-                uint64_t position)
-{
+                uint64_t position) {
     // Check if the filename matched, if not we don't have to do anything.
     if (!is_match(filename)) {
         verbose_printf("file_taint read_enter: filename \"%s\" not matched\n",
@@ -129,14 +127,15 @@ void read_enter(const std::string &filename, uint64_t file_id,
 // A normalized read_return function. Called by both Linux and Windows read return
 // implementations.
 void read_return(uint64_t file_id, uint64_t bytes_read,
-                 target_ulong buffer_addr)
-{
+                 target_ulong buffer_addr) {
     // Construct our read key (a tuple of PID, TID, and file ID (handle or
     // descriptor).
     ReadKey key;
     std::unique_ptr<OsiProc, decltype(free_osiproc)*> proc { get_current_process(first_cpu), free_osiproc };
     std::unique_ptr<OsiThread, decltype(free_osithread)*> thr { get_current_thread(first_cpu), free_osithread };
-    if (!thr)   return;
+    if (!thr) {
+        return;
+    }
     key.process_id = proc ? proc->pid : 0;
     key.thread_id = thr->tid;
     key.file_id = file_id;
@@ -159,12 +158,10 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
 
     // Figure out if the read overlapped our desired range.
     uint64_t range_start = std::max(read_start_pos, min_byte_pos);
-    uint64_t range_end =
-        std::min(read_start_pos + bytes_read - 1, max_byte_pos);
+    uint64_t range_end = std::min(read_start_pos + bytes_read - 1, max_byte_pos);
 
     bool print_apply_message = true;
-    for (uint64_t i = 0; i < bytes_read && tainted_byte_count < max_byte_count;
-         i++) {
+    for (uint64_t i = 0; i < bytes_read && tainted_byte_count < max_byte_count; i++) {
         uint64_t file_pos = read_start_pos + i;
         if (range_start <= file_pos && file_pos <= range_end) {
             if (print_apply_message) {
@@ -175,23 +172,20 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
                 print_apply_message = false;
             }
             hwaddr shadow_addr = panda_virt_to_phys(first_cpu, buffer_addr + i);
-            if (shadow_addr == (hwaddr)(-1))
-            {
+            if (shadow_addr == (hwaddr)(-1)) {
                 printf("file_taint can't label file_pos=%lu buffer_addr=0x%" PRIx64 ": mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", file_pos, buffer_addr + i);
             }
             ram_addr_t RamOffset = RAM_ADDR_INVALID;
-            if (PandaPhysicalAddressToRamOffset(&RamOffset, shadow_addr, false) != MEMTX_OK)
-            {
+            if (PandaPhysicalAddressToRamOffset(&RamOffset, shadow_addr, false) != MEMTX_OK) {
                 printf("file_taint can't label file_pos=%lu buffer_addr=0x%" PRIx64 " shadow_addr=0x%" PRIx64 ": physical map is not RAM.\n", file_pos, buffer_addr + i, shadow_addr);
                 continue;
             }
-            verbose_printf(
-                "file_taint applying label: file_pos=%lu buffer_addr=%lu\n",
-                file_pos, buffer_addr + i);
+            verbose_printf("file_taint applying label: file_pos=%lu buffer_addr=%lu\n", file_pos, buffer_addr + i);
             if (positional) {
                 taint2_label_ram(RamOffset, file_pos);
-                if (use_symbolic_label)
+                if (use_symbolic_label) {
                     taint2_sym_label_ram(RamOffset, file_pos);
+                }
             } else {
                 taint2_label_ram(RamOffset, static_label);
             }
@@ -214,8 +208,7 @@ const NTSTATUS STATUS_PENDING = 0x00000103;
 
 // Common code for Windows read enter.  Extract the filename and offset of the
 // file handle and call the normalized read enter.
-void windows_read_enter(CPUState *cpu, uint64_t FileHandle)
-{
+void windows_read_enter(CPUState *cpu, uint64_t FileHandle) {
     // get_handle_name will assert if the filename is null
     char *filename = get_handle_name(cpu, FileHandle);
     std::string ob_path = filename;
@@ -244,8 +237,7 @@ void windows64_read_enter(CPUState *cpu, target_ulong pc, uint64_t FileHandle,
                           uint64_t Event, uint64_t ApcRoutine,
                           uint64_t ApcContext, uint64_t IoStatusBlock,
                           uint64_t Buffer, uint32_t Length,
-                          uint64_t ByteOffset, uint64_t Key)
-{
+                          uint64_t ByteOffset, uint64_t Key) {
     windows_read_enter(cpu, FileHandle);
 }
 
@@ -256,8 +248,7 @@ void windows64_read_return(CPUState *cpu, target_ulong pc, uint64_t FileHandle,
                            uint64_t Event, uint64_t ApcRoutine,
                            uint64_t ApcContext, uint64_t IoStatusBlock,
                            uint64_t Buffer, uint32_t Length,
-                           uint64_t ByteOffset, uint64_t Key)
-{
+                           uint64_t ByteOffset, uint64_t Key) {
     struct {
         union {
             NTSTATUS status;
@@ -273,13 +264,11 @@ void windows64_read_return(CPUState *cpu, target_ulong pc, uint64_t FileHandle,
     }
 
     if (io_status_block2.status == STATUS_PENDING) {
-        printf(
-            "file_taint read return: detected async read return, ignoring\n");
+        printf("file_taint read return: detected async read return, ignoring\n");
     } else if (io_status_block2.status == STATUS_SUCCESS) {
         read_return(FileHandle, io_status_block2.information, Buffer);
     } else {
-        printf("file_taint windows_read_return: detected read failure, "
-               "ignoring\n");
+        printf("file_taint windows_read_return: detected read failure, ignoring\n");
     }
 }
 
@@ -291,8 +280,7 @@ void windows32_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                           uint32_t Event, uint32_t UserApcRoutine,
                           uint32_t UserApcContext, uint32_t IoStatusBlock,
                           uint32_t Buffer, uint32_t BufferLength,
-                          uint32_t ByteOffset, uint32_t Key)
-{
+                          uint32_t ByteOffset, uint32_t Key) {
     windows_read_enter(cpu, FileHandle);
 }
 
@@ -303,8 +291,7 @@ void windows32_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                            uint32_t Event, uint32_t UserApcRoutine,
                            uint32_t UserApcContext, uint32_t IoStatusBlock,
                            uint32_t Buffer, uint32_t BufferLength,
-                           uint32_t ByteOffset, uint32_t Key)
-{
+                           uint32_t ByteOffset, uint32_t Key) {
     struct {
         union {
             NTSTATUS status;
@@ -320,13 +307,11 @@ void windows32_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
     }
 
     if (io_status_block.status == STATUS_PENDING) {
-        printf(
-            "file_taint read return: detected async read return, ignoring\n");
+        printf("file_taint read return: detected async read return, ignoring\n");
     } else if (io_status_block.status == STATUS_SUCCESS) {
         read_return(FileHandle, io_status_block.information, Buffer);
     } else {
-        printf("file_taint windows_read_return: detected read failure, "
-               "ignoring\n");
+        printf("file_taint windows_read_return: detected read failure, ignoring\n");
     }
 }
 #endif  // end of not TARGET_X86_64
@@ -334,10 +319,11 @@ void windows32_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
 
 // Extract the filename and offset of the file descriptor and call the
 // normalized read enter.
-void linux_read_enter(CPUState *cpu, uint32_t fd)
-{
+void linux_read_enter(CPUState *cpu, uint32_t fd) {
     OsiProc *proc = get_current_process(cpu);
-    if (!proc)  return;
+    if (!proc) {
+        return;
+    }
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     if (filename != NULL) {
@@ -352,22 +338,19 @@ void linux_read_enter(CPUState *cpu, uint32_t fd)
 
 // Handle a 32-bit Linux read enter.  Call the common linux_read_enter.
 void linux_read_enter_32(CPUState *cpu, target_ulong pc, uint32_t fd,
-                         uint32_t buffer, uint32_t count)
-{
+                         uint32_t buffer, uint32_t count) {
     linux_read_enter(cpu, fd);
 }
 
 // Handle a 64-bit Linux read enter.  Call the common linux_read_enter.
 void linux_read_enter_64(CPUState *cpu, target_ulong pc, uint32_t fd,
-                         uint64_t buffer, uint32_t count)
-{
+                         uint64_t buffer, uint32_t count) {
     linux_read_enter(cpu, fd);
 }
 
 // Extract the filename and use the position passed to pread to call the
 // normalized read enter.
-void linux_pread_enter(CPUState *cpu, uint32_t fd, uint64_t pos)
-{
+void linux_pread_enter(CPUState *cpu, uint32_t fd, uint64_t pos) {
     OsiProc *proc = get_current_process(cpu);
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
@@ -385,23 +368,20 @@ void linux_pread_enter(CPUState *cpu, uint32_t fd, uint64_t pos)
 }
 // Handle a 32-bit Linux pread enter.  Calls the common linux_pread_enter.
 void linux_pread_enter_32(CPUState *cpu, target_ulong pc, uint32_t fd,
-                          uint32_t buf, uint32_t count, uint64_t pos)
-{
+                          uint32_t buf, uint32_t count, uint64_t pos) {
     linux_pread_enter(cpu, fd, pos);
 }
 
 // Handle a 64-bit Linux pread enter.  Calls the common linux_pread_enter.
 void linux_pread_enter_64(CPUState *cpu, target_ulong pc, uint32_t fd,
-                          uint64_t buf, uint32_t count, uint64_t pos)
-{
+                          uint64_t buf, uint32_t count, uint64_t pos) {
     linux_pread_enter(cpu, fd, pos);
 }
 
 // Handle a 32-bit Linux read return. Extract the number of bytes read from EAX
 // and call the normalized read return.
 void linux_read_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
-                          uint32_t buffer, uint32_t count)
-{
+                          uint32_t buffer, uint32_t count) {
     ssize_t actually_read = 0;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -430,8 +410,7 @@ void linux_read_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
 // Handle a 64-bit Linux read return. Extract the number of bytes read from RAX
 // and call the normalized read return.
 void linux_read_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
-                          uint64_t buffer, uint32_t count)
-{
+                          uint64_t buffer, uint32_t count) {
     ssize_t actually_read = 0;
 #if defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
@@ -456,21 +435,18 @@ void linux_read_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
 }
 
 void linux_pread_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
-                           uint32_t buf, uint32_t count, uint64_t pos)
-{
+                           uint32_t buf, uint32_t count, uint64_t pos) {
     // Just call the regular linux read return
     linux_read_return_32(cpu, pc, fd, buf, count);
 }
 
 void linux_pread_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
-                           uint64_t buf, uint32_t count, uint64_t pos)
-{
+                           uint64_t buf, uint32_t count, uint64_t pos) {
     // Just call the regular linux read return
     linux_read_return_64(cpu, pc, fd, buf, count);
 }
 
-bool init_plugin(void *self)
-{
+bool init_plugin(void *self) {
     // Parse arguments for file_taint
     panda_arg_list *args = panda_get_args("file_taint");
     target_filename =
@@ -560,10 +536,9 @@ bool init_plugin(void *self)
         return false;
     } break;
     }
-
     return true;
 }
 
 void uninit_plugin(void *self) {
-    // intentionally left blank
+    verbose_printf("file_taint: uninit_plugin called\n");
 }

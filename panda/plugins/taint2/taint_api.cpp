@@ -1,6 +1,7 @@
 #include "taint2.h"
 #include "taint_api.h"
 #include <set>
+#include <stdexcept>
 
 Addr make_haddr(uint64_t a)
 {
@@ -157,6 +158,9 @@ static void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t, void *), void *opaque)
 
 // label this phys addr in memory with this label
 void taint2_label_ram(uint64_t RamOffset, uint32_t l) {
+    if (!taint2_enabled()) {
+        throw std::runtime_error("You need to run taint2_enable_taint() first!\n");
+    }
     Addr a = make_maddr(RamOffset);
     tp_label(a, l);
 }
@@ -234,8 +238,8 @@ void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length, uin
 
 // Apply single label taint to a buffer of memory
 void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
-        uint32_t length, long label){
-    for (unsigned i = 0; i < length; i++){
+        uint32_t length, long label) {
+    for (unsigned i = 0; i < length; i++) {
         hwaddr pa = panda_virt_to_phys(cpu, addr + i);
         if (pa == (hwaddr)(-1)) {
             printf("can't label addr=0x%" PRIx64 ": mmu hasn't mapped virt->phys, "
@@ -243,8 +247,7 @@ void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
             continue;
         }
         ram_addr_t RamOffset = RAM_ADDR_INVALID;
-        if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
-        {
+        if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK) {
             printf("can't label addr=0x%" PRIx64 " paddr=0x" TARGET_FMT_plx ": physical map is not RAM.\n", addr + i, pa);
             continue;
         }
@@ -319,8 +322,9 @@ extern "C" uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz) 
     // fill buffer
     uint32_t *buf = *out;
     uint32_t i = 0;
-    for (uint32_t l: *s) { buf[i++] = l; }
-
+    for (uint32_t l: *s) { 
+        buf[i++] = l;
+    }
     return sz;
 }
 
@@ -532,10 +536,10 @@ TaintLabel taint2_query_result_next(QueryResult *qr, bool *done) {
 	TaintLabel l = *(*(LabelSetIter *) qr->it_curr);
 
 	// Increment iterator
-  (*(LabelSetIter*)qr->it_curr)++;
+    (*(LabelSetIter*)qr->it_curr)++;
 
 	// detect if we've iterated to the end
-  *done = (*(LabelSetIter*)qr->it_curr == *(LabelSetIter*)qr->it_end);
+    *done = (*(LabelSetIter*)qr->it_curr == *(LabelSetIter*)qr->it_end);
 	return l;
 }
 

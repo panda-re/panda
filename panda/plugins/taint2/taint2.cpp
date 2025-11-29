@@ -199,8 +199,7 @@ void replay_hd_transfer_callback(CPUState *cpu, uint32_t type,
 // network data has been transfered - transfer the associated taint too
 void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
                             uint64_t dst_addr, size_t num_bytes) {
-    if (!taintEnabled)
-    {
+    if (!taintEnabled) {
         return;
     }
     
@@ -210,14 +209,12 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
     // if RAM Is not contiguous, the raw RAM addresses need converted
     ram_addr_t src_addr_offset;
     ram_addr_t dst_addr_offset;
-    switch (type)
-    {
+    switch (type) {
     case NET_TRANSFER_RAM_TO_IOB:
         src_shad = &shadow->ram;
         dst_shad = &shadow->io;
         if (PandaPhysicalAddressToRamOffset(&src_addr_offset, src_addr, false)
-                != MEMTX_OK)
-        {
+                != MEMTX_OK) {
             fprintf(stderr,
                     "Cannot convert source address 0x%lx to RAM Offset\n",
                     src_addr);
@@ -229,9 +226,7 @@ void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
         src_shad = &shadow->io;
         dst_shad = &shadow->ram;
         src_addr_offset = src_addr;
-        if (PandaPhysicalAddressToRamOffset(&dst_addr_offset, dst_addr, true)
-                != MEMTX_OK)
-        {
+        if (PandaPhysicalAddressToRamOffset(&dst_addr_offset, dst_addr, true) != MEMTX_OK) {
             fprintf(stderr,
                     "Cannot convert destination address 0x%lx to RAM Offset\n",
                     dst_addr);
@@ -305,7 +300,10 @@ void taint2_new_module_callback(llvm::Module *module,
 }
 
 void taint2_enable_taint(void) {
-    if(taintEnabled) {return;}
+    if(taintEnabled) {
+        printf("Taint already enabled, not enabling again.\n");
+        return;
+    }
     std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
     taintEnabled = true;
     panda_cb pcb;
@@ -335,7 +333,9 @@ void taint2_enable_taint(void) {
     }
     panda_enable_llvm_helpers();
 
-    if (shadow) delete shadow;
+    if (shadow) {
+        delete shadow;
+    }
     shadow = new ShadowState();
 
     // Initialize memlog.
@@ -364,14 +364,14 @@ void taint2_enable_taint(void) {
 
     // Populate module with helper function taint ops
     PTV->setProcessingHelper();
-    for (auto i = mod->begin(); i != mod->end(); i++){
+    for (auto i = mod->begin(); i != mod->end(); i++) {
         if (!i->isDeclaration()) PTFP->runOnFunction(*i);
     }
     PTV->clearProcessingHelper();
 
     std::cerr << PANDA_MSG "Done processing helper functions for taint." << std::endl;
 
-    if(verifyModule(*mod, &llvm::errs())){
+    if(verifyModule(*mod, &llvm::errs())) {
         std::cerr << PANDA_MSG << "Halting: failed to verify module" << std::endl;
         exit(1);
     }
@@ -409,8 +409,7 @@ extern "C" void taint2_enable_sym(void) {
 #if defined(TARGET_I386)
 void i386_after_cpu_exec_enter(CPUState *cpu) {
 
-    if (!haveSavedCC)
-    {
+    if (!haveSavedCC) {
         return;
     }
 
@@ -519,8 +518,7 @@ void panda_virtual_string_read(CPUState *cpu, target_ulong vaddr, char *str) {
  * @brief Wrapper for running the registered `on_taint_change` PPP callbacks.
  * Called by the shadow memory implementation whenever changes occur to it.
  */
-void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
-{
+void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size) {
     Addr addr;
     if (shad == &shadow->llv) {
         addr = make_laddr(shad_addr / MAXREGSIZE, shad_addr % MAXREGSIZE);
@@ -633,8 +631,10 @@ void uninit_plugin(void *self) {
     }
 
     // Check if tcg_llvm_translator has been initialized before destroy
-    if (taint2_enabled()) panda_disable_llvm();
-
+    if (taint2_enabled()) {
+        printf("Disabling taint2\n");
+        panda_disable_llvm();
+    }
     panda_disable_memcb();
     panda_enable_tb_chaining();
 }

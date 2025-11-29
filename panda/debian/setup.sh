@@ -64,12 +64,14 @@ HTTP_PROXY="${HTTP_PROXY:-}"
 HTTPS_PROXY="${HTTPS_PROXY:-}"
 
 # Finish building main panda container for the target ubuntu version
+# For local testing, feel free to reduce the TARGET_LIST to a smaller set of targets for faster compiling.
 DOCKER_BUILDKIT=1 docker build \
     --target whlpackager \
     -t packager \
     --build-arg HTTP_PROXY="${HTTP_PROXY}" \
     --build-arg HTTPS_PROXY="${HTTPS_PROXY}" \
     --build-arg BASE_IMAGE="ubuntu:${version}" \
+    --build-arg TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu" \
     --build-arg PACKAGE_VERSION="${tag_version}" \
     ../..
 
