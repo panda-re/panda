@@ -22,6 +22,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include "panda/lava_hypercall_struct.h"
 #include "taint2_hypercalls.h"
 #include "taint_api.h"
 #include "callstack_instr/callstack_instr.h"
