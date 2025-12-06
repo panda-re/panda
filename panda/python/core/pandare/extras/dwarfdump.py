@@ -23,7 +23,8 @@ def parse_die(ent):
     for e in ent.split('> ')[1:]:
         while e.endswith('>'):
             e = e[:-1]
-        assert (e.startswith('DW_AT_'))
+        if not e.startswith('DW_AT_'):
+            continue
         dat = e.split('<')
         attr = dat[0].strip()
         for v in dat[1:]:
@@ -32,13 +33,13 @@ def parse_die(ent):
                 result[attr] = v
     return result
 
-def parse_section(indat):
+def parse_section(input_data: str) -> dict:
     """
     Parses the raw dwarfdump output into sections, separating .debug_info
     and .debug_line entries.
 
     Args:
-        indat (bytes): The raw byte content of the dwarfdump output.
+        input_data (str): The raw content of the dwarfdump output.
 
     Returns:
         dict: A dictionary with keys '.debug_line' and '.debug_info'.
@@ -47,7 +48,7 @@ def parse_section(indat):
               line table.
     """
     result = {'.debug_line': [], '.debug_info': []}
-    data = indat.decode().strip().split('\n')
+    data = input_data.strip().split('\n')
     for l in data:
         l = l.strip()
         if l.startswith("0x"):
@@ -313,12 +314,12 @@ class VarInfo(object):
         Returns:
             dict: A dictionary containing all variable attributes.
         """
-        return {'name': self.name, \
-                'cu_offset': self.cu_offset, \
-                'scope': self.scope.jsondump(), \
-                'decl_lno': self.decl_lno, \
-                'decl_fn': self.decl_fn, \
-                'loc_op': self.loc_op, \
+        return {'name': self.name,
+                'cu_offset': self.cu_offset,
+                'scope': self.scope.jsondump(),
+                'decl_lno': self.decl_lno,
+                'decl_fn': self.decl_fn,
+                'loc_op': self.loc_op,
                 'type': self.type}
 
 class FuncInfo(object):
@@ -348,12 +349,12 @@ class FuncInfo(object):
         Returns:
             dict: A dictionary containing all function attributes.
         """
-        return {'name': self.name, \
-                'cu_offset': self.cu_offset, \
-                'scope': self.scope.jsondump(), \
-                'framebase': self.framebase, \
-                'fn': self.fn, \
-                'lno': self.lno, \
+        return {'name': self.name,
+                'cu_offset': self.cu_offset,
+                'scope': self.scope.jsondump(),
+                'framebase': self.framebase,
+                'fn': self.fn,
+                'lno': self.lno,
                 'varlist': [v.jsondump() for v in self.varlist]}
 
 class TypeInfo(object):
@@ -689,14 +690,14 @@ class LineRange(object):
                 'func': self.func,
                 }
 
-def parse_dwarfdump(indat, prefix=""):
+def parse_dwarfdump(input_data: str, prefix: str=""):
     """
     The main parsing routine. Reads dwarfdump output, processes both line info
     and debug info sections, and populates the databases of variables, functions,
     and types. Finally, it dumps the databases to JSON files.
 
     Args:
-        indat (bytes): The raw byte content of the dwarfdump output.
+        input_data (str): The content of the dwarfdump output.
         prefix (str, optional): Prefix for the output JSON filenames. Defaults to "".
     """
     reloc_base = 0
@@ -705,13 +706,11 @@ def parse_dwarfdump(indat, prefix=""):
     func_info = FunctionDB()
     type_info = TypeDB()
 
-    data = parse_section(indat)
+    data = parse_section(input_data)
     tag = ".debug_line"
     if tag in data:
-        srcname = ""
         for line in data[tag]:
-            if line == None:
-                srcname = ""
+            if line is None:
                 continue
             line = line.strip()
             if line.startswith("0x"):
@@ -719,7 +718,7 @@ def parse_dwarfdump(indat, prefix=""):
                 lnostr, info = rest.split(']')
                 if "uri:" in info:
                     srcfn = info.split("uri:")[-1].strip()
-                assert (srcfn)
+                assert srcfn, "Source filename not found in line info"
                 addr = int(addrstr.strip(), 16) + reloc_base
                 lno = int(lnostr.strip().split(',')[0])
                 col = int(lnostr.strip().split(',')[1])
@@ -742,14 +741,22 @@ def parse_dwarfdump(indat, prefix=""):
                 continue
 
             die = line.split(' ')[0].strip()
-            assert (die.startswith('<') and die.endswith('>'))
+            # Check for VALID DIE format
+            if not (die.startswith('<') and die.endswith('>')):
+                continue
             lvl, idx, tname = die[1:-1].split('><')
             lvl = int(lvl)
 
             res = parse_die(line)
+
+            # If it's just a declaration, skip it. We want the actual code definition.
+            if 'DW_AT_declaration' in res:
+                if res['DW_AT_declaration'] == 'yes(1)':
+                    continue
+
             if "DW_TAG_compile_unit" in line:
-                assert ('DW_AT_low_pc' in res)
-                assert ('DW_AT_high_pc' in res)
+                assert 'DW_AT_low_pc' in res, "DW_AT_low_pc missing in compile unit"
+                assert 'DW_AT_high_pc' in res, "DW_AT_high_pc missing in compile unit"
                 base_addr = int(res['DW_AT_low_pc'], 16) + reloc_base
                 end_addr = int(res['DW_AT_high_pc'], 16) + reloc_base
                 scope_stack = [Scope(base_addr, end_addr)]
@@ -782,30 +789,30 @@ def parse_dwarfdump(indat, prefix=""):
                 continue
 
             if lvl_stack[-1][1] in ['SugarType', 'DW_TAG_pointer_type']:
-                assert (lvl == lvl_stack[-1][0])
+                assert lvl == lvl_stack[-1][0], "Invalid level for type overlay"
                 lvl_stack.pop()
-                assert (type_overlay)
+                assert type_overlay, "Type overlay missing"
                 type_overlay[2].ref = idx
                 type_info.insert(type_overlay[0], type_overlay[1], type_overlay[2])
                 type_overlay = None
 
             if tname == "DW_TAG_lexical_block":
-                assert ('DW_AT_low_pc' in res)
-                assert ('DW_AT_high_pc' in res)
+                assert 'DW_AT_low_pc' in res, "DW_AT_low_pc missing in lexical block"
+                assert 'DW_AT_high_pc' in res, "DW_AT_high_pc missing in lexical block"
                 base_addr = int(res['DW_AT_low_pc'], 16) + reloc_base
                 end_addr = int(res['DW_AT_high_pc'], 16) + reloc_base
                 scope_stack.append(Scope(base_addr, end_addr))
                 lvl_stack.append((lvl, 'DW_TAG_lexical_block'))
 
             elif tname == "DW_TAG_variable":
-                assert ('DW_AT_name' in res)
+                assert 'DW_AT_name' in res, "DW_AT_name missing in variable"
                 name = res['DW_AT_name']
                 v = VarInfo(name, cu_off)
 
                 v.scope = scope_stack[-1]
-                assert ('DW_AT_decl_line' in res)
+                assert 'DW_AT_decl_line' in res, "DW_AT_decl_line missing in variable"
                 v.decl_lno = int(res['DW_AT_decl_line'], 16)
-                assert ('DW_AT_decl_file' in res)
+                assert 'DW_AT_decl_file' in res, "DW_AT_decl_file missing in variable"
                 v.decl_fn = res['DW_AT_decl_file']
                 v.decl_fn = v.decl_fn[v.decl_fn.find(' ')+1:]
                 if 'DW_AT_location' not in res:
@@ -816,7 +823,7 @@ def parse_dwarfdump(indat, prefix=""):
                         continue
                     v.loc_op.extend('DW_OP_{}'.format(x).split())
                 v.loc_op = reprocess_ops(v.loc_op)
-                assert ('DW_AT_type' in res)
+                assert 'DW_AT_type' in res, "DW_AT_type missing in variable"
                 v.type = int(res['DW_AT_type'], 16)
 
                 if len(func_stack) == 0:
@@ -831,9 +838,9 @@ def parse_dwarfdump(indat, prefix=""):
                 v = VarInfo(name, cu_off)
 
                 v.scope = scope_stack[-1]
-                assert ('DW_AT_decl_line' in res)
+                assert 'DW_AT_decl_line' in res, "DW_AT_decl_line missing in formal parameter"
                 v.decl_lno = int(res['DW_AT_decl_line'], 16)
-                assert ('DW_AT_decl_file' in res)
+                assert 'DW_AT_decl_file' in res, "DW_AT_decl_file missing in formal parameter"
                 v.decl_fn = res['DW_AT_decl_file']
                 v.decl_fn = v.decl_fn[v.decl_fn.find(' ')+1:]
                 if 'DW_AT_location' not in res:
@@ -844,33 +851,25 @@ def parse_dwarfdump(indat, prefix=""):
                         continue
                     v.loc_op.extend('DW_OP_{}'.format(x).split())
                 v.loc_op = reprocess_ops(v.loc_op)
-                assert ('DW_AT_type' in res)
+                assert 'DW_AT_type' in res, "DW_AT_type missing in formal parameter"
                 v.type = int(res['DW_AT_type'], 16)
 
-                assert (len(func_stack) > 0)
+                assert len(func_stack) > 0, "Formal parameter outside function"
                 func_stack[-1].varlist.append(v)
 
             elif tname == "DW_TAG_subprogram":
-                assert ('DW_AT_name' in res)
+                assert 'DW_AT_name' in res, "DW_AT_name missing in subprogram"
                 name = res['DW_AT_name']
 
-                assert ('DW_AT_low_pc' in res)
-                assert ('DW_AT_high_pc' in res)
+                assert 'DW_AT_low_pc' in res, "DW_AT_low_pc missing in subprogram"
+                assert 'DW_AT_high_pc' in res, "DW_AT_high_pc missing in subprogram"
                 base_addr = int(res['DW_AT_low_pc'], 16) + reloc_base
                 end_addr = int(res['DW_AT_high_pc'], 16) + reloc_base
                 scope = Scope(base_addr, end_addr)
                 scope_stack.append(scope)
                 lvl_stack.append((lvl, 'DW_TAG_subprogram'))
 
-                assert ('DW_AT_decl_file' in res)
-                decl_fn = res['DW_AT_decl_file']
-                decl_fn = decl_fn[v.decl_fn.find(' ')+1:]
-                # The check below may fail if v is not defined (first time through loop)
-                # It's better to use the current scope's file info if available, but
-                # given the original code's structure, we'll keep the assignment as is
-                # for minimal functional change, but note potential bug.
-                # TODO: Check if bottom line is correct in broader context.
-                # decl_fn = decl_fn[decl_fn.find(' ')+1:] # Safer version
+                assert 'DW_AT_decl_file' in res, "DW_AT_decl_file missing in subprogram"
                 if 'DW_AT_frame_base' in res:
                     fb_op = [res['DW_AT_frame_base'].split(':')[-1].strip()]
                 else:
@@ -900,7 +899,7 @@ def parse_dwarfdump(indat, prefix=""):
                 lvl_stack.append((lvl, 'DW_TAG_structure_type'))
 
             elif tname == "DW_TAG_member":
-                assert (lvl_stack[-1][1] in ['DW_TAG_structure_type', 'DW_TAG_union_type'])
+                assert lvl_stack[-1][1] in ['DW_TAG_structure_type', 'DW_TAG_union_type'], "DW_TAG_member outside struct/union"
 
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
 
@@ -908,22 +907,22 @@ def parse_dwarfdump(indat, prefix=""):
                 if 'DW_AT_bit_size' in res or 'DW_AT_bit_offset' in res:
                     continue
 
-                assert ('DW_AT_type' in res)
+                assert 'DW_AT_type' in res, "DW_AT_type missing in member"
                 toff = int(res['DW_AT_type'], 16)
 
-                assert ('DW_AT_data_member_location' in res)
+                assert 'DW_AT_data_member_location' in res, "DW_AT_data_member_location missing in member"
                 loc_op = ['DW_OP_{}'.format(x.strip()) for x in \
                         res['DW_AT_data_member_location'].split(':')[-1].strip().split('DW_OP_')[1:]]
                 # Signal attribute form DW_FORM_data1/2/4/8
-                assert (len(loc_op) == 1)
-                assert (loc_op[0].split()[0] == 'DW_OP_plus_uconst')
+                assert len(loc_op) == 1, "Complex location expressions in member not supported"
+                assert loc_op[0].split()[0] == 'DW_OP_plus_uconst', "Only DW_OP_plus_uconst supported in member location"
                 off = int(loc_op[0].split()[1])
 
                 type_stack[-1].children[off] = (name, toff)
 
             elif tname == "DW_TAG_array_type":
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
-                assert ('DW_AT_type' in res)
+                assert 'DW_AT_type' in res, "DW_AT_type missing in array type"
                 elemoff = int(res['DW_AT_type'], 16)
 
                 t = ArrayType(name, cu_off, elemoff)
@@ -935,9 +934,9 @@ def parse_dwarfdump(indat, prefix=""):
 
             elif tname == "DW_TAG_subrange_type":
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
-                assert ('DW_AT_type' in res)
+                assert 'DW_AT_type' in res, "DW_AT_type missing in subrange type"
                 toff = int(res['DW_AT_type'], 16)
-                assert ('DW_AT_count' in res)
+                assert 'DW_AT_count' in res, "DW_AT_count missing in subrange type"
                 cnt = int(res['DW_AT_count'], 16)
                 # cnt = int(res['DW_AT_upper_bound'], 16)
 
@@ -945,8 +944,8 @@ def parse_dwarfdump(indat, prefix=""):
 
                 type_info.insert(cu_off, idx, t)
 
-                assert (lvl_stack[-1][1] == 'DW_TAG_array_type')
-                assert ((lvl_stack[-1][0]+1) == lvl)
+                assert lvl_stack[-1][1] == 'DW_TAG_array_type', "DW_TAG_subrange_type outside array_type"
+                assert (lvl_stack[-1][0]+1) == lvl, "Invalid level for subrange type"
 
                 type_stack[-1].range.append(idx)
 
@@ -958,7 +957,7 @@ def parse_dwarfdump(indat, prefix=""):
 
             elif tname == "DW_TAG_base_type":
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
-                assert ('DW_AT_byte_size' in res)
+                assert 'DW_AT_byte_size' in res, "DW_AT_byte_size missing in base type"
                 sz = int(res['DW_AT_byte_size'], 16)
                 t = BaseType(name, sz)
 
@@ -980,7 +979,7 @@ def parse_dwarfdump(indat, prefix=""):
             elif tname == "DW_TAG_enumeration_type":
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
 
-                assert ('DW_AT_byte_size' in res)
+                assert 'DW_AT_byte_size' in res, "DW_AT_byte_size missing in enumeration type"
                 sz = int(res['DW_AT_byte_size'], 16)
 
                 t = EnumType(name, sz)
@@ -1006,7 +1005,7 @@ def parse_dwarfdump(indat, prefix=""):
 
             elif tname == "DW_TAG_union_type":
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
-                assert ('DW_AT_byte_size' in res)
+                assert 'DW_AT_byte_size' in res, "DW_AT_byte_size missing in union type"
                 sz = int(res['DW_AT_byte_size'], 16)
                 t = UnionType(name, cu_off, sz)
 
@@ -1018,7 +1017,6 @@ def parse_dwarfdump(indat, prefix=""):
             elif tname == "DW_TAG_ptr_to_member_type":
                 name = res['DW_AT_name'] if 'DW_AT_name' in res else "void"
                 t = PointerType(name, cu_off, None)
-
                 type_info.insert(cu_off, idx, t)
 
             elif tname == "DW_TAG_imported_declaration":
@@ -1028,14 +1026,14 @@ def parse_dwarfdump(indat, prefix=""):
             elif tname == "DW_TAG_constant":
                 pass
 
-    with open(prefix+'_lineinfo.json', 'w') as fd:
-        dump_json(fd, line_info)
-    with open(prefix+'_globvar.json', 'w') as fd:
-        dump_json(fd, globvar_info)
-    with open(prefix+'_funcinfo.json', 'w') as fd:
-        dump_json(fd, func_info)
-    with open(prefix+'_typeinfo.json', 'w') as fd:
-        dump_json(fd, type_info)
+    with open(prefix+'_lineinfo.json', 'w') as file:
+        dump_json(file, line_info)
+    with open(prefix+'_globvar.json', 'w') as file:
+        dump_json(file, globvar_info)
+    with open(prefix+'_funcinfo.json', 'w') as file:
+        dump_json(file, func_info)
+    with open(prefix+'_typeinfo.json', 'w') as file:
+        dump_json(file, type_info)
 
 def dump_json(j, info):
     """
@@ -1055,6 +1053,46 @@ def dump_json(j, info):
                 return json.JSONEncoder.default(self, obj)
     json.dump(info.jsondump(), j, cls=DwarfJsonEncoder, indent=4)
 
+
 if __name__ == '__main__':
-    with open(sys.argv[1], 'r') as fd:
-        parse_dwarfdump(fd.read())
+    """
+    Usage (File): python3 dwarfdump.py dump.txt my_prefix
+    Usage (Pipe): dwarfdump -dil bin | python3 dwarfdump.py my_prefix
+    """
+    import os
+
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <dwarfdump_output_file | output_prefix> [output_prefix_if_file_used]")
+        sys.exit(1)
+
+    dwarf_content = None
+    prefix = ""
+
+    # Check if the first argument is an existing file
+    if os.path.isfile(sys.argv[1]):
+        with open(sys.argv[1], 'r', encoding='utf-8') as fd:
+            print(f"[*] Reading dwarfdump output from file: {sys.argv[1]}")
+            dwarf_content = fd.read()
+        # If a file is provided, prefix is usually the second argument
+        prefix = sys.argv[2] if len(sys.argv) > 2 else "output"
+    else:
+        # If not a file, assume it's a prefix, and we are reading from a pipe
+        prefix = sys.argv[1]
+        print(f"[*] Reading dwarfdump data from stdin (pipe mode)...")
+        # Read from buffer to get bytes for the internal pandare .decode() call
+        dwarf_content = sys.stdin.buffer.read().decode()
+
+    if not dwarf_content:
+        print("[-] Error: No DWARF data found.")
+        sys.exit(1)
+
+    try:
+        print(f"[*] Processing DWARF for prefix: {prefix}...")
+        parse_dwarfdump(dwarf_content, prefix)
+        print(f"[+] Success! JSON files generated with prefix '{prefix}'")
+    except AssertionError as e:
+        print("[-] Error: DWARF parsing failed (AssertionError).")
+        print("    Try recompiling your guest binary with -O0 -g -gdwarf-2")
+        print(f"   Full stack trace: {e}")
+    except Exception as e:
+        print(f"[-] An unexpected error occurred: {e}")

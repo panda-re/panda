@@ -82,7 +82,76 @@ bool allow_just_plt = false;
 bool logCallSites = true;
 std::string bin_path;
 
-#if defined(TARGET_I386)
+// For a better understanding, look at the JSON ending in "_func_info.json"
+// You can search for terms such as "DW_OP_reg6", these maps help map the DWARF register
+// to the right register in i386/ARM/X86-64/AARCH64 architectures
+// Take a close look at the following PR for detailed analysis
+// https://github.com/panda-re/panda/pull/1619
+// See here for reference of how register map was obtained.
+// https://github.com/panda-re/panda/blob/dev/panda/python/core/pandare/arch.py
+// Also see  tcg/i386/tcg-target.h:50 and target/i386/cpu.h
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+static const char *const dwarf_regnames[] =
+{
+    "eax", "ecx", "edx", "ebx", "esp", 
+    "ebp", "esi", "edi",
+};
+static std::map<std::string, int> dwarf_regmap = {
+    {"eax", R_EAX}, {"ecx", R_ECX}, {"edx", R_EDX}, {"ebx", R_EBX}, {"esp", R_ESP},
+    {"ebp", R_EBP}, {"esi", R_ESI}, {"edi", R_EDI},
+};
+#define DWARF_REG_COUNT (sizeof(dwarf_regnames) / sizeof(dwarf_regnames[0]))
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+static const char *const dwarf_regnames[] =
+{
+    "r0", "r1", "r2", "r3", "r4", 
+    "r5", "r6", "r7", "r8", "r9", 
+    "r10", "r11", "r12", "r13", "r14", "r15",
+};
+static std::map<std::string, int> dwarf_regmap = {
+    {"r0", 0}, {"r1", 1}, {"r2", 2}, {"r3", 3}, {"r4", 4}, 
+    {"r5", 5}, {"r6", 6}, {"r7", 7}, {"r8", 8}, {"r9", 9}, 
+    {"r10", 10}, {"r11", 11}, {"r12", 12}, {"r13", 13}, {"r14", 14},
+    {"r15", 15},
+};
+#define DWARF_REG_COUNT (sizeof(dwarf_regnames) / sizeof(dwarf_regnames[0]))
+#elif defined(TARGET_X86_64)
+static const char *const dwarf_regnames[] =
+{
+    "rax", "rcx", "rdx", "rbx", "rsp", 
+    "rbp", "rsi", "rdi", "r8", "r9", 
+    "r10", "r11", "r12", "r13", "r14", "r15"
+};
+static std::map<std::string, int> dwarf_regmap = {
+    {"rax", R_EAX}, {"rcx", R_ECX}, {"rdx", R_EDX}, {"rbx", R_EBX}, {"rsp", R_ESP},
+    {"rbp", R_EBP}, {"rsi", R_ESI}, {"rdi", R_EDI}, {"r8", 8}, {"r9", 9}, 
+    {"r10", 10}, {"r11", 11}, {"r12", 12}, {"r13", 13}, {"r14", 14}, {"r15", 15},
+};
+#define DWARF_REG_COUNT (sizeof(dwarf_regnames) / sizeof(dwarf_regnames[0]))
+#elif defined(TARGET_AARCH64)
+static const char *const dwarf_regnames[] =
+{
+    "x0", "x1", "x2", "x3", "x4", 
+    "x5", "x6", "x7", "x8", "x9", 
+    "x10", "x11", "x12", "x13", "x14", 
+    "x15", "x16", "x17", "x18", "x19", 
+    "x20", "x21", "x22", "x23", "x24", 
+    "x25", "x26", "x27", "x28", "x29", 
+    "x30", "x31",
+};
+static std::map<std::string, int> dwarf_regmap = {
+    {"x0", 0}, {"x1", 1}, {"x2", 2}, {"x3", 3}, {"x4", 4}, 
+    {"x5", 5}, {"x6", 6}, {"x7", 7}, {"x8", 8}, {"x9", 9}, 
+    {"x10", 10}, {"x11", 11}, {"x12", 12}, {"x13", 13}, {"x14", 14}, 
+    {"x15", 15}, {"x16", 16}, {"x17", 17}, {"x18", 18}, {"x19", 19}, 
+    {"x20", 20}, {"x21", 21}, {"x22", 22}, {"x23", 23}, {"x24", 24}, 
+    {"x25", 25}, {"x26", 26}, {"x27", 27}, {"x28", 28}, {"x29", 29},
+    {"x30", 30}, {"x31", 31},
+};
+#define DWARF_REG_COUNT (sizeof(dwarf_regnames) / sizeof(dwarf_regnames[0]))
+#endif
+
+#if defined(TARGET_I386) || defined(TARGET_ARM)
 // This stuff stolen from linux-user/elfload.c
 // Would have preferred to just use libelf, but QEMU stupidly
 // ships an incompatible copy of elf.h so the compiler finds
@@ -90,29 +159,41 @@ std::string bin_path;
 // this does not seem to affect libdwarf.
 
 // QEMU's stupid version of elf.h
-#if defined(TARGET_X86_64)
-#define ELF_CLASS ELFCLASS64
-#define ELF_DATA  ELFDATA2LSB
 
-#define Elf_Half Elf64_Half
-#define Elf_Sym  Elf64_Sym
-#define Elf_Addr Elf64_Addr
+#if defined(TARGET_X86_64) || defined(TARGET_AARCH64)
+    // --- 64-BIT ARCHITECTURES (X86-64 and AARCH64) ---
+    #define ELF_CLASS ELFCLASS64
+    #define ELF_DATA  ELFDATA2LSB
 
-#define ELF_R_SYM ELF64_R_SYM
-#define elf_check_arch(x) ( ((x) == EM_X86_64) || ((x) == EM_IA_64) )
-#else
-#define ELF_CLASS ELFCLASS32
-#define ELF_DATA  ELFDATA2LSB
+    #define Elf_Half Elf64_Half
+    #define Elf_Sym  Elf64_Sym
+    #define Elf_Addr Elf64_Addr
 
-#define Elf_Half Elf32_Half
-#define Elf_Sym  Elf32_Sym
-#define Elf_Addr Elf32_Addr
+    #define ELF_R_SYM ELF64_R_SYM
 
-#define ELF_R_SYM ELF32_R_SYM
-#define elf_check_arch(x) ( ((x) == EM_386) || ((x) == EM_486) )
+    // Check for X86-64, IA-64, and AARCH64
+    #define elf_check_arch(x) ( ((x) == EM_X86_64) || ((x) == EM_IA_64) || ((x) == EM_AARCH64) )
+
+#elif (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || (defined(TARGET_I386) && !defined(TARGET_X86_64))
+    // --- 32-BIT ARCHITECTURES (ARM and i386) ---
+    #define ELF_CLASS ELFCLASS32
+    #define ELF_DATA  ELFDATA2LSB
+
+    #define Elf_Half Elf32_Half
+    #define Elf_Sym  Elf32_Sym
+    #define Elf_Addr Elf32_Addr
+
+    #define ELF_R_SYM ELF32_R_SYM
+
+    // Check for ARM, 386, and 486
+    #define elf_check_arch(x) ((x) == EM_ARM || (x) == EM_386 || (x) == EM_486)
 #endif
-#include "elf.h"
 
+// This include uses the redefined types above.
+#include "elf.h"
+#endif
+
+#if defined(TARGET_I386) || defined(TARGET_ARM)
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -242,7 +323,6 @@ typedef struct Lib {
     target_ulong lowpc, highpc;
 
     friend std::ostream &operator<<(std::ostream &os, const Lib &lib) {
-        //os << "0x" << std::hex << lib.lowpc << "-0x" << std::hex << lib.highpc << "[" << lib.libname << "] ";
         os << "0x" << std::hex << lib.lowpc << "-0x" << std::hex << lib.highpc << "," << lib.libname;
         return os;
     }
@@ -451,83 +531,12 @@ std::map<std::string, DW_OPS> DW_OP_HELPER = {
 #undef T
 };
 
-#if !defined(TARGET_X86_64)
-static const char *const dwarf_regnames[] =
-{
-    "eax", "ecx", "edx", "ebx",
-    "esp", "ebp", "esi", "edi",
-    "eip", "eflags", NULL,
-    "st0", "st1", "st2", "st3",
-    "st4", "st5", "st6", "st7",
-    NULL, NULL,
-    "xmm0", "xmm1", "xmm2", "xmm3",
-    "xmm4", "xmm5", "xmm6", "xmm7",
-    "mm0", "mm1", "mm2", "mm3",
-    "mm4", "mm5", "mm6", "mm7",
-    "fcw", "fsw", "mxcsr",
-    "es", "cs", "ss", "ds", "fs", "gs", NULL, NULL,
-    "tr", "ldtr"
-};
-static std::map<std::string, int> dwarf_regmap = {
-    {"eax", R_EAX},
-    {"ecx", R_ECX},
-    {"edx", R_EDX},
-    {"ebx", R_EBX},
-    {"esp", R_ESP},
-    {"ebp", R_EBP},
-    {"esi", R_ESI},
-    {"edi", R_EDI},
-};
-#else
-static const char *const dwarf_regnames[] =
-{
-    "rax", "rdx", "rcx", "rbx",
-    "rsi", "rdi", "rbp", "rsp",
-    "r8",  "r9",  "r10", "r11",
-    "r12", "r13", "r14", "r15",
-    "rip",
-    "xmm0",  "xmm1",  "xmm2",  "xmm3",
-    "xmm4",  "xmm5",  "xmm6",  "xmm7",
-    "xmm8",  "xmm9",  "xmm10", "xmm11",
-    "xmm12", "xmm13", "xmm14", "xmm15",
-    "st0", "st1", "st2", "st3",
-    "st4", "st5", "st6", "st7",
-    "mm0", "mm1", "mm2", "mm3",
-    "mm4", "mm5", "mm6", "mm7",
-    "rflags",
-    "es", "cs", "ss", "ds", "fs", "gs", NULL, NULL,
-    "fs.base", "gs.base", NULL, NULL,
-    "tr", "ldtr",
-    "mxcsr", "fcw", "fsw"
-};
-static std::map<std::string, int> dwarf_regmap = {
-    {"rax", R_EAX},
-    {"rdx", R_EDX},
-    {"rcx", R_ECX},
-    {"rbx", R_EBX},
-    {"rsi", R_ESI},
-    {"rdi", R_EDI},
-    {"rbp", R_EBP},
-    {"rsp", R_ESP},
-    {"r8", 8},
-    {"r9", 9},
-    {"r10", 10},
-    {"r11", 11},
-    {"r12", 12},
-    {"r13", 13},
-    {"r14", 14},
-    {"r15", 15},
-};
-#endif
+
 /* Decode a DW_OP stack program.  Place top of stack in ret_loc.  Push INITIAL
    onto the stack to start.  Return the location type: memory address, register,
    or const value representing value of variable*/
 LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
-        target_ulong frame_ptr, target_ulong *ret_loc)
-{
-    //printf("\n {");
-    //process_dwarf_locs(loc_list, loc_cnt);
-    //printf("} = \n");
+        target_ulong frame_ptr, target_ulong *ret_loc) {
     target_ulong stack[64];	/* ??? Assume this is enough.  */
     int stack_elt, loc_idx;
     target_ulong result;
@@ -536,16 +545,14 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
     stack[0] = 0;
     stack_elt = 1;
     loc_idx = 0;
-    while (loc_idx < ops.size())
-    {
+    while (loc_idx < ops.size()) {
         target_ulong reg;
         target_long offset;
         std::string cur_op = ops[loc_idx].asString();
         DW_OPS op = DW_OP_HELPER[cur_op];
         loc_idx++;
         //printf(" cur_op %x\n", op);
-        switch (op)
-        {
+        switch (op) {
             case DW_OP_lit0:
             case DW_OP_lit1:
             case DW_OP_lit2:
@@ -994,9 +1001,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
                 goto no_push;
 
             default:
-                //process_dwarf_locs(loc_list, loc_cnt);
                 return LocErr; 
-                //assert (1==0);
         }
 
         /* Most things push a result value.  */
@@ -1012,10 +1017,11 @@ no_push:;
         assert (1==0);
     
     *ret_loc = stack[stack_elt];
-    if (inReg)
+    if (inReg) {
         return LocReg;
-    else
+    } else {
         return LocMem;
+    }
     //return stack[stack_elt];
 }
 
@@ -1041,13 +1047,8 @@ struct CompareRangeAndPC
             return ln_info.lowpc < pc;
     }
 };
-/*
-    required string file_callee = 1;
-    required string function_name_callee = 2;
-    required uint64 line_number_callee = 3;
-    required string file_caller = 4;
-    required uint64 line_number_caller = 5;
-*/
+
+// see pri_dwarf/pri_dwarf.proto
 void pri_dwarf_plog(const char *file_callee, const char *fn_callee, uint64_t lno_callee,
         const char *file_caller, uint64_t lno_caller, bool isCall) {
     // don't log hypercalls.
@@ -1074,7 +1075,7 @@ void pri_dwarf_plog(const char *file_callee, const char *fn_callee, uint64_t lno
     if (isCall) {
         ple.dwarf2_call = dwarf;
     }
-    else{
+    else {
         ple.dwarf2_ret = dwarf;
     }
     // write to log file
@@ -1097,8 +1098,7 @@ void die(const char* fmt, ...) {
     va_end(args);
 }
 
-static bool elf_check_ident(struct elfhdr *ehdr)
-{
+static bool elf_check_ident(struct elfhdr *ehdr) {
     return (ehdr->e_ident[EI_MAG0] == ELFMAG0
             && ehdr->e_ident[EI_MAG1] == ELFMAG1
             && ehdr->e_ident[EI_MAG2] == ELFMAG2
@@ -1108,8 +1108,7 @@ static bool elf_check_ident(struct elfhdr *ehdr)
             && ehdr->e_ident[EI_VERSION] == EV_CURRENT);
 }
 
-static bool elf_check_ehdr(struct elfhdr *ehdr)
-{
+static bool elf_check_ehdr(struct elfhdr *ehdr) {
     return (elf_check_arch(ehdr->e_machine)
             && ehdr->e_ehsize == sizeof(struct elfhdr)
             && ehdr->e_phentsize == sizeof(struct elf_phdr)
@@ -1342,7 +1341,7 @@ void dwarf2_type_iter(CPUState *cpu, target_ulong base_addr, LocType loc_t, Dwar
     return;
 }
 void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
-        std::string astnodename, DwarfTypeInfo *ty, dwarfTypeCB cb, int recursion_level){
+        std::string astnodename, DwarfTypeInfo *ty, dwarfTypeCB cb, int recursion_level) {
     if (recursion_level <= 0) {
         return;
     }
@@ -1407,8 +1406,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                 // strnlen = true and then return
                 {
                     dprintf("Querying Pointer Type: (*) %s\n", cur_astnodename.c_str());
-                    cb(cpu, cur_base_addr, loc_t, sizeof(cur_base_addr),
-                            cur_astnodename.c_str());
+                    cb(cpu, cur_base_addr, loc_t, sizeof(cur_base_addr), cur_astnodename.c_str());
                     if (cur_astnodename.find("&") == 0) {
                         cur_astnodename  = cur_astnodename.substr(1);
                     }
@@ -1417,7 +1415,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                     }
                     if (loc_t == LocMem) {
                         rc = panda_virtual_memory_read(cpu, cur_base_addr,
-                                (uint8_t *)&cur_base_addr,
+                                (uint8_t *) &cur_base_addr,
                                 sizeof(cur_base_addr));
                         if (rc == -1) {
                             dprintf("Could not dereference pointer so done tainting\n");
@@ -1425,7 +1423,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                         }
                     }
                     else if (loc_t == LocReg) {
-                        if (cur_base_addr < CPU_NB_REGS) {
+                        if (cur_base_addr < DWARF_REG_COUNT) {
                             cur_base_addr = env->regs[cur_base_addr];
                             // change location type to memory now
                             loc_t = LocMem;
@@ -1469,8 +1467,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                 }
             case ArrayType:
                 {
-                    cb(cpu, cur_base_addr, loc_t, sizeof(cur_base_addr),
-                            cur_astnodename.c_str());
+                    cb(cpu, cur_base_addr, loc_t, sizeof(cur_base_addr), cur_astnodename.c_str());
                     if (cur_astnodename.find("&") == 0)
                         cur_astnodename  = cur_astnodename.substr(1);
                     else
@@ -1984,7 +1981,7 @@ target_ulong dwarf2_get_cur_fp(CPUState *cpu, target_ulong pc) {
         printf("loc_cnt: Could not properly determine fp\n");
         return -1;
     }
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    CPUArchState *env = (CPUArchState*) cpu->env_ptr;
     target_ulong fp_loc;
     LocType loc_type = execute_stack_op(cpu,pc, ops, 0, &fp_loc);
     switch (loc_type) {
@@ -2011,7 +2008,7 @@ bool dwarf_in_target_code(CPUState *cpu, target_ulong pc) {
     return (it != line_range_list.end() && pc >= it->lowpc);
 }
 
-void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
+void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall) {
     target_ulong ra = 0;
 
     int num_received = get_callers(&ra, 1, cpu);
@@ -2050,17 +2047,17 @@ void on_call(CPUState *cpu, target_ulong pc) {
     }
     std::vector<LineRange>::iterator it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     std::size_t remaining_size = std::distance(it, line_range_list.end());
-    dprintf("[on_call] Size of line_range_list: %zu\n", line_range_list.size());
-    dprintf("[on_call] Remaining size from iterator to end: %zu\n", remaining_size);
+    // dprintf("[on_call] Size of line_range_list: %zu\n", line_range_list.size());
+    // dprintf("[on_call] Remaining size from iterator to end: %zu\n", remaining_size);
 
     if (it == line_range_list.end() || pc < it->lowpc) {
         std::map<target_ulong, std::string>::iterator it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()) {
-            dprintf("CALL: Found line info for 0x" TARGET_FMT_lx "\n", pc);
+            // dprintf("CALL: Found line info for 0x" TARGET_FMT_lx "\n", pc);
             pri_runcb_on_fn_start(cpu, pc, NULL, it_dyn->second.c_str());
         }
         else {
-            dprintf("CALL: Could not find line info for 0x" TARGET_FMT_lx "\n", pc);
+            // dprintf("CALL: Could not find line info for 0x" TARGET_FMT_lx "\n", pc);
         }
         return;
     }
@@ -2110,17 +2107,17 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     std::vector<LineRange>::iterator it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc_func, CompareRangeAndPC());    
     // Calculate the size of the remaining range from the iterator to the end
     std::size_t remaining_size = std::distance(it, line_range_list.end());
-    dprintf("[on_ret] Size of line_range_list: %zu\n", line_range_list.size());
-    dprintf("[on_ret] Remaining size from iterator to end: %zu\n", remaining_size);
+    // dprintf("[on_ret] Size of line_range_list: %zu\n", line_range_list.size());
+    // dprintf("[on_ret] Remaining size from iterator to end: %zu\n", remaining_size);
 
     if (it == line_range_list.end() || pc_func < it->lowpc) {
         std::map<target_ulong, std::string>::iterator it_dyn = addr_to_dynl_function.find(pc_func);
         if (it_dyn != addr_to_dynl_function.end()) {
-            dprintf("RET: Found line info for 0x" TARGET_FMT_lx "\n", pc_func);
+            // dprintf("RET: Found line info for 0x" TARGET_FMT_lx "\n", pc_func);
             pri_runcb_on_fn_return(cpu, pc_func, NULL, it_dyn->second.c_str());
         }
         else {
-            dprintf("RET: Could not find line info for 0x" TARGET_FMT_lx "\n", pc_func);
+            // dprintf("RET: Could not find line info for 0x" TARGET_FMT_lx "\n", pc_func);
         }
         return;
     }
@@ -2135,34 +2132,28 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     pri_runcb_on_fn_return(cpu, pc_func, file_name.c_str(), funct_name.c_str());
 }
 
-void __livevar_iter(CPUState *cpu,
-        target_ulong pc,
-        std::vector<VarInfo> vars,
-        liveVarCB f,
-        void *args,
-        target_ulong fp) {
+void __livevar_iter(CPUState *cpu, target_ulong pc,
+        std::vector<VarInfo> vars, liveVarCB f,
+        void *args, target_ulong fp) {
     //printf("size of vars: %ld\n", vars.size());
     for (auto it : vars) {
         std::string var_name = it.var_name;
         DwarfVarType var_type {type_map[it.fname][it.cu][it.var_type], it.dec_line, var_name};
-        //enum LocType { LocReg, LocMem, LocConst, LocErr };
         target_ulong var_loc;
-        //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
-        //printf("\n");
         LocType loc = execute_stack_op(cpu,pc, it.loc_ops, fp, &var_loc);
         if (debug) {
             switch (loc) {
                 case LocReg:
-                    printf(" [livevar_iter] VAR %s in REG " TARGET_FMT_lu "\n", var_name.c_str(), var_loc);
+                    dprintf(" [dwarf2][livevar_iter] VAR %s in REG " TARGET_FMT_lu "\n", var_name.c_str(), var_loc);
                     break;
                 case LocMem:
-                    printf(" [livevar_iter] VAR %s in MEM 0x" TARGET_FMT_lx "\n", var_name.c_str(), var_loc);
+                    dprintf(" [dwarf2][livevar_iter] VAR %s in MEM 0x" TARGET_FMT_lx "\n", var_name.c_str(), var_loc);
                     break;
                 case LocConst:
-                    printf(" [livevar_iter] VAR %s CONST VAL " TARGET_FMT_lx "\n", var_name.c_str(), var_loc);
+                    dprintf(" [dwarf2][livevar_iter] VAR %s CONST VAL " TARGET_FMT_lx "\n", var_name.c_str(), var_loc);
                     break;
                 case LocErr:
-                    printf(" [livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
+                    dprintf(" [dwarf2][livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
                     break;
             }
         }
@@ -2173,12 +2164,9 @@ void __livevar_iter(CPUState *cpu,
 
 // returns 1 if successful find, 0 ow
 // will assign found variable to ret_var
-int livevar_find(CPUState *cpu,
-        target_ulong pc,
+int livevar_find(CPUState *cpu, target_ulong pc,
         std::vector<VarInfo> vars,
-        liveVarPred pred,
-        void *args,
-        VarInfo &ret_var) {
+        liveVarPred pred, void *args, VarInfo &ret_var) {
 
     target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
     if (fp == (target_ulong) -1) {
@@ -2190,7 +2178,7 @@ int livevar_find(CPUState *cpu,
         //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
         //printf("\n");
         LocType loc = execute_stack_op(cpu, pc, it->loc_ops, fp, &var_loc);
-        if (pred((void*)&it->var_type, it->var_name.c_str(), loc, var_loc, args)) {
+        if (pred((void*) &it->var_type, it->var_name.c_str(), loc, var_loc, args)) {
             ret_var.cu = it->cu;
             ret_var.var_type = it->var_type;
             ret_var.var_name = it->var_name;
@@ -2232,7 +2220,6 @@ void dwarf_get_vma_symbol (CPUState *cpu, target_ulong pc, target_ulong vma, cha
     // either get fn_address for local vars by finding
     // function that pc appears in OR use the most recent
     // dwarf_function in callstack
-    //fn_address = cur_function
     fn_address = it->function_addr;
 
     //VarInfo ret_var = VarInfo(NULL, NULL, NULL, 0);
@@ -2241,12 +2228,6 @@ void dwarf_get_vma_symbol (CPUState *cpu, target_ulong pc, target_ulong vma, cha
         *symbol_name = (char *)ret_var.var_name.c_str();
         return;
     }
-    /*
-    if (livevar_find(cpu, pc, global_var_list, compare_address, (void *) &vma, ret_var)){
-        *symbol_name = (char *)ret_var.var_name.c_str();
-        return;
-    }
-    */
     *symbol_name = NULL;
     return;
 }
@@ -2264,8 +2245,8 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
     // this gets populated in 'populate_line_range_list', which is called by 'load_debug_info'
     std::vector<LineRange>::iterator it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     std::size_t remaining_size = std::distance(it, line_range_list.end());
-    dprintf("[dwarf_get_pc_source_info] Size of line_range_list: %zu\n", line_range_list.size());
-    dprintf("[dwarf_get_pc_source_info] Remaining size from iterator to end: %zu\n", remaining_size);
+    // dprintf("[dwarf_get_pc_source_info] Size of line_range_list: %zu\n", line_range_list.size());
+    // dprintf("[dwarf_get_pc_source_info] Remaining size from iterator to end: %zu\n", remaining_size);
 
     if (it == line_range_list.end() || pc < it->lowpc) {
         std::map<target_ulong, std::string>::iterator it_dyn = addr_to_dynl_function.find(pc);
@@ -2297,11 +2278,8 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
     *rc = 0;
     return;
 }
-void dwarf_all_livevar_iter(CPUState *cpu,
-        target_ulong pc,
-        liveVarCB f,
-        void *args) {
-        //void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+
+void dwarf_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
     if (inExecutableSource) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1) {
@@ -2312,17 +2290,13 @@ void dwarf_all_livevar_iter(CPUState *cpu,
         __livevar_iter(cpu, pc, funcvars[cur_function], f, args, fp);
     }
     else {
-        dprintf("[dwarf_all_livevar_iter] is NOT in executable source!\n");
+        // dprintf("[dwarf_all_livevar_iter] is NOT in executable source!\n");
     }
 
     // iterating through global vars does not require a frame pointer
     __livevar_iter(cpu, pc, global_var_list, f, args, 0);
 }
-void dwarf_funct_livevar_iter(CPUState *cpu,
-        target_ulong pc,
-        liveVarCB f,
-        void *args) {
-    
+void dwarf_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
     dprintf("iterating through live vars\n");
     if (inExecutableSource) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
@@ -2334,13 +2308,10 @@ void dwarf_funct_livevar_iter(CPUState *cpu,
         __livevar_iter(cpu, pc, funcvars[cur_function], f, args, fp);
     }
     else {
-        dprintf("[dwarf_funct_livevar_iter] is NOT in executable source!\n");
+        // dprintf("[dwarf_funct_livevar_iter] is NOT in executable source!\n");
     }
 }
-void dwarf_global_livevar_iter(CPUState *cpu,
-        target_ulong pc,
-        liveVarCB f,
-        void *args) {
+void dwarf_global_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
     // iterating through global vars does not require a frame pointer
     __livevar_iter(cpu, pc, global_var_list, f, args, 0);
 }
@@ -2429,11 +2400,11 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
         uint8_t c;
         panda_virtual_memory_rw(cpu, guest_addr+i, &c, 1, 0);
         buf[i] = c;
-        if (c==0) {
+        if (c == 0) {
             break;
         }
     }
-    buf[maxlen-1] = 0;
+    buf[maxlen - 1] = 0;
     return i;
 }
 
@@ -2532,7 +2503,7 @@ void osi_foo(CPUState *cpu, TranslationBlock *tb) {
 #endif
 
 bool init_plugin(void *self) {
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) || defined(TARGET_ARM)
     panda_arg_list *args_gen = panda_get_args("general");
     const char *asid_s = panda_parse_string_opt(args_gen, "asid", NULL, "asid of the process to follow for pri_trace");
     if (asid_s) {
@@ -2580,7 +2551,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("callstack_instr", on_call, on_call);
     PPP_REG_CB("callstack_instr", on_ret, on_ret);
     struct stat s;
-    if (stat(host_debug_path, &s) != 0){
+    if (stat(host_debug_path, &s) != 0) {
         printf("host_debug path does not exist. exiting . . .\n");
         exit(1);
     }
@@ -2635,13 +2606,13 @@ bool init_plugin(void *self) {
     PPP_REG_CB("pri", on_global_livevar_iter, dwarf_global_livevar_iter);
     return true;
 #else
-    printf("Dwarf plugin not supported on this architecture\n");
+    printf("Dwarf2 plugin is only supported on i386 and ARM (32 and 64 bit)\n");
     return false;
 #endif
 }
 
 void uninit_plugin(void *self) {
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) || defined(TARGET_ARM)
     std::sort(active_libs.begin(), active_libs.end());
     std::ofstream outfile(std::string(proc_to_monitor) + ".libs");
     for (const Lib &l : active_libs) {
