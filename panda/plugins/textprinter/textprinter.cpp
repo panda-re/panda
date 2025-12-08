@@ -60,32 +60,32 @@ gzFile write_tap_buffers;
 
 void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                   size_t size, uint8_t *buf, gzFile f) {
+    mem_counter++;
     if (tap_pc.find(pc) == tap_pc.end()) {
-        mem_counter++;
         return;
     }
     prog_point p = {};
     get_prog_point(env, &p);
-
-    if (tap_points.find(p) != tap_points.end()) {
-        target_ulong callers[16] = {0};
-        int nret = get_callers(callers, 16, env);
-        unsigned char *buf_uc = static_cast<unsigned char *>(buf);
-        for (unsigned int i = 0; i < size; i++) {
-            for (int j = nret-1; j > 0; j--) {
-                gzprintf(f, TARGET_FMT_lx " ", callers[j]);
-            }
-            gzprintf(f,
-                     TARGET_FMT_lx " " TARGET_FMT_lx " %d " TARGET_FMT_lx
-                                   " " TARGET_FMT_lx " %s " TARGET_FMT_lx
-                                   " %ld %02x\n",
-                     p.caller, p.pc, p.stackKind, p.sidFirst, p.sidSecond,
-                     p.isKernelMode ? "kernel" : "user", addr + i, mem_counter,
-                     buf_uc[i]);
-        }
+    if (tap_points.find(p) == tap_points.end()) {
+        return;
     }
-    mem_counter++;
-
+    
+    target_ulong callers[16] = {0};
+    int nret = get_callers(callers, 16, env);
+    unsigned char *buf_uc = static_cast<unsigned char *>(buf);
+    for (unsigned int i = 0; i < size; i++) {
+        for (int j = nret-1; j > 0; j--) {
+            gzprintf(f, TARGET_FMT_lx " ", callers[j]);
+        }
+        gzprintf(f,
+                 TARGET_FMT_lx " " TARGET_FMT_lx " %d " TARGET_FMT_lx
+                               " " TARGET_FMT_lx " %s " TARGET_FMT_lx
+                               " %ld %02x\n",
+                 p.caller, p.pc, p.stackKind, p.sidFirst, p.sidSecond,
+                 p.isKernelMode ? "kernel" : "user", addr + i, mem_counter,
+                 buf_uc[i]);
+    }
+    
     return;
 }
 
