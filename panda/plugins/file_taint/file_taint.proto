@@ -1,0 +1,9 @@
+message FileTaintMatch {
+    required string filename = 1;
+    required uint32 pid = 2;
+    required uint32 tid = 3;
+    required uint32 file_id = 4;
+}
+
+// Extend the main Panda LogEntry to include this
+optional FileTaintMatch file_taint_match = 1001;

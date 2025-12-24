@@ -36,6 +36,8 @@ PANDAENDCOMMENT */
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
+// For PANDA Logging
+#include "panda/plog.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -82,14 +84,43 @@ bool is_match(const std::string &filename) {
     return fnmatch(target_filename.c_str(), filename.c_str(), FNM_NOESCAPE) == 0;
 }
 
+// Helper function to write the match to the PANDA log
+void log_file_taint_match(const std::string &filename, uint64_t pid, uint64_t tid, uint64_t file_id) {
+    if (!pandalog) {
+        verbose_printf("file_taint No PANDA log found\n");
+        return;
+    }
+    else {
+        verbose_printf("file_taint logging match to PANDA log\n");
+    }
+
+    // 1. Initialize the specific message
+    Panda__FileTaintMatch * file_match = (Panda__FileTaintMatch *) malloc(sizeof(Panda__FileTaintMatch));
+    *file_match = PANDA__FILE_TAINT_MATCH__INIT;
+
+    // 2. Populate fields (strings must be duplicated as the log-writer frees them)
+    file_match->filename = strdup(filename.c_str());
+    file_match->pid = pid;
+    file_match->tid = tid;
+    file_match->file_id = file_id;
+
+    // 4. Write and Cleanup
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.file_taint_match = file_match;
+    pandalog_write_entry(&ple);
+
+    // Clean up: Protobuf-C requires manual freeing of nested allocated fields
+    free(file_match->filename);
+    free(file_match);
+}
+
 // A normalized read_enter function. Called by both Linux and Windows
 // specific calls.
 void read_enter(const std::string &filename, uint64_t file_id,
                 uint64_t position) {
     // Check if the filename matched, if not we don't have to do anything.
     if (!is_match(filename)) {
-        verbose_printf("file_taint read_enter: filename \"%s\" not matched\n",
-                       filename.c_str());
+        verbose_printf("file_taint read_enter: filename \"%s\" not matched\n", filename.c_str());
         return;
     }
     else {
@@ -101,8 +132,7 @@ void read_enter(const std::string &filename, uint64_t file_id,
     // to taint.
     if (!taint2_enabled()) {
         printf("file_taint read_enter: first time match of filename pattern \"%s\", "
-               "enabling taint\n",
-               target_filename.c_str());
+               "enabling taint\n", target_filename.c_str());
         taint2_enable_taint();
     }
 
@@ -116,6 +146,8 @@ void read_enter(const std::string &filename, uint64_t file_id,
     key.file_id = file_id;
     read_positions[key] = position;
 
+    log_file_taint_match(filename, key.process_id, key.thread_id, key.file_id);
+
     verbose_printf("file_taint read_enter matched: filename=\"%s\" pid=%lu "
                    "tid=%lu fid=%lu\n",
                    filename.c_str(), proc ? proc->pid : 0, thr->tid, file_id);
@@ -128,8 +160,7 @@ void read_enter(const std::string &filename, uint64_t file_id,
 // implementations.
 void read_return(uint64_t file_id, uint64_t bytes_read,
                  target_ulong buffer_addr) {
-    // Construct our read key (a tuple of PID, TID, and file ID (handle or
-    // descriptor).
+    // Construct our read key (a tuple of PID, TID, and file ID (handle or descriptor).
     ReadKey key;
     std::unique_ptr<OsiProc, decltype(free_osiproc)*> proc { get_current_process(first_cpu), free_osiproc };
     std::unique_ptr<OsiThread, decltype(free_osithread)*> thr { get_current_thread(first_cpu), free_osithread };
