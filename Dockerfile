@@ -51,8 +51,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # install libosi
 RUN cd /tmp && \
     BASE_IMAGE_VERSION=$(echo "$BASE_IMAGE" | awk -F':' '{print $2}') && \
-    LIBOSI_VERSION=$(curl -s https://api.github.com/repos/panda-re/libosi/releases/latest | jq -r .tag_name); \
-    curl -LJO https://github.com/panda-re/libosi/releases/download/${LIBOSI_VERSION}/libosi_${BASE_IMAGE_VERSION}.deb && \
+    curl -LJO https://github.com/panda-re/libosi/releases/latest/download/libosi_${BASE_IMAGE_VERSION}.deb && \
     dpkg -i /tmp/libosi_${BASE_IMAGE_VERSION}.deb && \
     rm -rf /tmp/libosi_${BASE_IMAGE_VERSION}.deb
 

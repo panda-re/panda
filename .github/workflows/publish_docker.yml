@@ -6,6 +6,13 @@ on:
       - dev
       - stable
 
+# Ensure sequential execution of workflows on the same branch.
+# If a workflow is already running, new pushes will wait in a queue
+# until the previous run completes, instead of cancelling it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
 env:
   PANDA_CONTAINER_UBUNTU_VERSION: '22.04'
 
@@ -117,7 +124,7 @@ jobs:
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
 
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 

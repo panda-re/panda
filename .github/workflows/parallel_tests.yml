@@ -71,7 +71,7 @@ jobs:
     if: github.repository  == 'panda-re/panda'
     runs-on: panda-arc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set up Docker Buildx
@@ -135,7 +135,7 @@ jobs:
   #           test_script: "all"
         
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v5
   #       with:
   #         fetch-depth: 0
   #     - name: Set up Docker Buildx
