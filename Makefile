@@ -654,6 +654,10 @@ endif
 
 install: all $(if $(BUILD_DOCS),install-doc) install-datadir install-localstatedir
 ifeq ($(newtoobig), false)
+# Ensure the base include directory exists
+	$(INSTALL_DIR) "$(DESTDIR)$(prefix)/include"
+# Recursively copy the contents (panda/ and fake_libc_include/) into /include/
+	cp -r $(SRC_PATH)/panda/include/* "$(DESTDIR)$(prefix)/include"
 ifneq ($(TOOLS),)
 	$(call install-prog,$(subst qemu-ga,qemu-ga$(EXESUF),$(TOOLS)),$(DESTDIR)$(bindir))
 endif

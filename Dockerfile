@@ -180,6 +180,7 @@ COPY --from=base /tmp/build_dep.txt /tmp
 
 # Set up /package-root with files from panda we'll package
 COPY --from=p /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
+COPY --from=p /usr/local/include/ /package-root/usr/include/
 COPY --from=p /usr/local/etc/panda /package-root/usr/local/etc/panda
 COPY --from=p /usr/local/lib/panda /package-root/usr/local/lib/panda
 COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda
