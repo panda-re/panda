@@ -13,37 +13,57 @@
  * See the COPYING file in the top-level directory.
  */
 #pragma once
-
 #ifndef __LAVA_HYPERCALL_STRUCT_H__
 #define __LAVA_HYPERCALL_STRUCT_H__
 
-// lavaint must be 32 bits for architecture compatibility (4 bytes)
-typedef unsigned int lavaint;
 #ifndef __cplusplus
 #define static_assert _Static_assert
 #endif
-static_assert(sizeof(lavaint) == 4, "lavaint size must be 4!");
 
-// Magic number used by the host to identify the hypercall as a legitimate
-// call intended for the taint2 plugin.
+static_assert(sizeof(unsigned int) == 4, "unsigned int must be 4 bytes");
+
 #define LAVA_MAGIC 0xabcd
 
-// CRITICAL: Ensure 1-byte packing so the structure size and field offsets
-// match exactly between the guest and the host (no compiler padding).
-#pragma pack(push,1)
-typedef struct panda_hypercall_struct {
-    lavaint magic;              // Must be LAVA_MAGIC
-    lavaint action;             // label / query / etc
-    lavaint buf;                // ptr to memory we want labeled or queried or ...
-    lavaint len;                // number of bytes to label or query or ...
-    lavaint label_num;          // if labeling, this is the label number.  if querying this should be zero
-    lavaint src_column;         // column on source line
-    lavaint src_filename;       // char * to filename.  
-    lavaint src_linenum;        // line number
-    lavaint src_ast_node_name;  // the name of the l-value queries 
-    lavaint info;               // general info
-    lavaint insertion_point;    // unused now.
+#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+  #pragma pack(push, 1)
+#else
+  #error "Unknown compiler: packing rules not defined"
+#endif
+
+typedef struct PandaHypercallStruct {
+    unsigned int magic;              //  0 - Must be LAVA_MAGIC
+    unsigned int action;             //  4 - label / query / etc
+    unsigned int buf;                //  8 - ptr to memory we want labeled or queried or ...
+    unsigned int len;                // 12 - number of bytes to label or query or ...
+    unsigned int label_num;          // 16 - if labeling, this is the label number.  if querying this should be zero
+    unsigned int src_column;         // 20 - column on source line
+    unsigned int src_filename;       // 24 - char * to filename.
+    unsigned int src_linenum;        // 28 - line number
+    unsigned int src_ast_node_name;  // 32 - the name of the l-value queries
+    unsigned int info;               // 36 - general info
+    unsigned int insertion_point;    // 40 - unused now 
 } PandaHypercallStruct;
-#pragma pack(pop)
+
+#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+  #pragma pack(pop)
+#endif
+
+/* =========================
+ *  ABI verification
+ * ========================= */
+static_assert(sizeof(PandaHypercallStruct) == 44, "PandaHypercallStruct size must be exactly 44 bytes");
+
+/* Offset checks — these catch silent packing drift */
+static_assert(__builtin_offsetof(PandaHypercallStruct, magic) == 0, "magic offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, action) == 4, "action offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, buf) == 8, "buf offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, len) == 12, "len offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, label_num) == 16, "label_num offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, src_column) == 20, "src_column offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, src_filename) == 24, "src_filename offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, src_linenum) == 28, "src_linenum offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, src_ast_node_name) == 32, "src_ast_node_name offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, info) == 36, "info offset");
+static_assert(__builtin_offsetof(PandaHypercallStruct, insertion_point) == 40, "insertion_point offset");
 
 #endif // __LAVA_HYPERCALL_STRUCT_H__

@@ -546,8 +546,8 @@ bool guest_hypercall_warning_callback(CPUState *cpu) {
         if((!ret) && pandalog) {
             // LAVA Hypercall
             target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
-            if ((int)addr != -1) {
-                lavaint magic;
+            if ((int) addr != -1) {
+                uint32_t magic;
                 if(-1 != panda_virtual_memory_rw(cpu, env->regs[R_EAX], (uint8_t *) &magic, sizeof(magic), false)) {
                     ret = magic == 0xabcd;
                 }

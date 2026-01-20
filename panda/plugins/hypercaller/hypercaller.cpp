@@ -22,22 +22,28 @@ void uninit_plugin(void *);
 bool hypercall(CPUState *cpu);
 #include "hypercaller.h"
 }
+bool debug = false;
+#define dprintf(...) if (debug) { printf(__VA_ARGS__); fflush(stdout); }
 
 std::unordered_map<target_ulong, hypercall_t> hypercalls;
 
-void register_hypercall(uint32_t magic, hypercall_t hyp){
-    if (hypercalls.find(magic) == hypercalls.end()){
+void register_hypercall(uint32_t magic, hypercall_t hyp) {
+    if (hypercalls.find(magic) == hypercalls.end()) {
         hypercalls[magic] = hyp;
-    }else{
-        assert(false && "Hypercall already registered");
+        dprintf("[hypercaller] registered hypercall with magic 0x%x\n", magic);
+    } else {
+        dprintf("[hypercaller] Hypercall already registered with magic 0x%x\n", magic);
+        assert(false);
     }
 }
 
-void unregister_hypercall(uint32_t magic){
+void unregister_hypercall(uint32_t magic) {
+    dprintf("[hypercaller] unregistered hypercall with magic 0x%x\n", magic);
     hypercalls.erase(magic);
 }
+
 // Use syscall notation
-uint32_t get_magic(CPUState *cpu){
+uint32_t get_magic(CPUState *cpu) {
     uint32_t magic;
     CPUArchState * env = (CPUArchState *)cpu->env_ptr;
 
@@ -45,7 +51,7 @@ uint32_t get_magic(CPUState *cpu){
     // r7
     magic = env->regs[7];
 #if defined(TARGET_AARCH64)
-    if (env->aarch64 != 0){
+    if (env->aarch64 != 0) {
         // XR
         magic = env->xregs[8];
     }
@@ -67,17 +73,24 @@ uint32_t get_magic(CPUState *cpu){
 
 bool guest_hypercall(CPUState *cpu) {
     uint32_t magic = get_magic(cpu);
-    if (hypercalls.find(magic) != hypercalls.end()){
+    dprintf("[hypercaller] recevied magic 0x%x\n", magic);
+    dprintf("[hypercaller] registered hypercalls size %lx\n", hypercalls.size());
+    if (hypercalls.find(magic) != hypercalls.end()) {
+        dprintf("[hypercaller] attempt to call registered hypercall with magic 0x%x\n", magic);
         hypercalls[magic](cpu);
+        dprintf("[hypercaller] attempt complete\n");
         return true;
     }
     return false;
 }
 
 bool init_plugin(void *self) {
-    panda_cb pcb = { .guest_hypercall = guest_hypercall};
+    panda_cb pcb = { .guest_hypercall = guest_hypercall };
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
+    dprintf("[hypercaller] init_plugin called\n");
     return true;
 }
 
-void uninit_plugin(void *self) {}
+void uninit_plugin(void *self) {
+    dprintf("[hypercaller] uninit_plugin called\n");
+}

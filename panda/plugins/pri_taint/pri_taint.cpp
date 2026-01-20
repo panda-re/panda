@@ -15,14 +15,13 @@
 #include "callstack_instr/callstack_instr.h"
 // needed for strstr
 #include <cstring>
+#include "panda/lava_hypercall_struct.h"
 
 extern "C" {
 #include <hypercaller/hypercaller.h>
 
 #include "panda/rr/rr_log.h"
 #include "panda/plog.h"
-
-#include "panda/lava_hypercall_struct.h"
 
 #include "pri/pri_types.h"
 #include "pri/pri_ext.h"
@@ -160,15 +159,20 @@ void lava_taint_query(CPUState *cpu, target_ulong buf, LocType loc_t, target_ulo
     extern ram_addr_t ram_size;
     target_ulong phys = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
 
-    if (phys == -1 || phys > ram_size) {
-        dprintf("[pri_taint] The physical address is invalid\n");
-        return;
-    }
-
     if (debug) {
         printf("[pri_taint] Querying \"%s\": " TARGET_FMT_lu " bytes @ 0x%lx phys 0x%lx, strnlen=%d\n", 
                 astnodename, buf_len, (unsigned long) buf, (unsigned long) phys, is_strnlen);
         print_membytes(cpu, buf, is_strnlen? 32 : buf_len);
+    }
+
+    if (phys == -1) {
+        dprintf("[pri_taint] The physical address is invalid\n");
+        return;
+    }
+
+    if (phys > ram_size) {
+        dprintf("[pri_taint] Physical address 0x" TARGET_FMT_lx " exceeds RAM size 0x" TARGET_FMT_lx "\n", phys, ram_size);
+        return;
     }
 
     uint8_t bytes[LAVA_TAINT_QUERY_MAX_LEN] = {0};
@@ -605,8 +609,6 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("pri_taint");
     hypercall_taint = panda_parse_bool_opt(args, "hypercall", "Register tainting on a panda hypercall callback");
     linechange_taint = panda_parse_bool_opt(args, "linechange", "Register tainting on every line change in the source code (default)");
-    // TODO: Future PR, we will aim to integrate LAVA to support chaff bugs and real bugs
-    // chaff_bugs = panda_parse_bool_opt(args, "chaff", "Record untainted extents for chaff bugs.");
     debug = panda_parse_bool_opt(args, "debug", "enable debug output");
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint) {
