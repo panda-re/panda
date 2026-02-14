@@ -62,7 +62,7 @@
         "arch": "aarch64",
         "os": "linux-64-ubuntu:5.4.0-58-generic-arm64",
         "prompt": "root@ubuntu-panda:.*# ",
-        "cdrom": null,
+        "cdrom": "cdrom0",
         "snapshot": "root",
         "url": "https://panda-re.mit.edu/qcows/linux/ubuntu/2004/aarch64/ubuntu20_04-aarch64.qcow",
         "alternate_urls": null,
@@ -71,7 +71,7 @@
         ],
         "qcow": null,
         "default_mem": "1G",
-        "extra_args": "-nographic -machine virt -cpu cortex-a57 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
+        "extra_args": "-nographic -machine virt -cpu cortex-a57 -device virtio-scsi-pci -drive if=none,id=cdrom0,media=cdrom -device scsi-cd,drive=cdrom0 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
         "hashes": null
     },
     "mips64": {
@@ -253,7 +253,7 @@
         "arch": "aarch64",
         "os": "linux-64-ubuntu:5.4.0-58-generic-arm64",
         "prompt": "root@ubuntu-panda:.*# ",
-        "cdrom": null,
+        "cdrom": "cdrom0",
         "snapshot": "root",
         "url": "https://panda-re.mit.edu/qcows/linux/ubuntu/2004/aarch64/ubuntu20_04-aarch64.qcow",
         "alternate_urls": null,
@@ -262,7 +262,7 @@
         ],
         "qcow": null,
         "default_mem": "1G",
-        "extra_args": "-nographic -machine virt -cpu cortex-a57 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
+        "extra_args": "-nographic -machine virt -cpu cortex-a57 -device virtio-scsi-pci -drive if=none,id=cdrom0,media=cdrom -device scsi-cd,drive=cdrom0 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
         "hashes": null
     },
     "mips": {
