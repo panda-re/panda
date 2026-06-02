@@ -2,8 +2,79 @@
 
 import sys
 import json
+import re
+import os
+from typing import Optional
 
-# dwarfdump -dil $PROG
+
+def resolve_real_path(dwarf_path: str, project_root: Optional[str]) -> str:
+    """
+    Heuristically resolves corrupted DWARF file paths caused by recursive build systems.
+
+    Build systems using commands like `make -C src` often duplicate directory names 
+    in the resulting DWARF DW_AT_comp_dir and DW_AT_name fields (e.g., creating 
+    phantom paths like `.../src/src/file.c`). This function detects these stutters 
+    and attempts to map them back to the physical file on disk.
+
+    Args:
+        dwarf_path (str): The absolute path extracted from the DWARF data.
+        project_root (str): The absolute, safe path to the root of the extracted 
+                            project folder. This portion of the path is strictly 
+                            protected from heuristic modifications.
+
+    Returns:
+        str: The corrected absolute file path if found on disk, otherwise 
+             returns the original unmodified dwarf_path.
+             
+    Raises:
+        TypeError: If either dwarf_path or project_root is not a string.
+    """
+    if not isinstance(dwarf_path, str):
+        raise TypeError(f"Expected dwarf_path to be a str, got {type(dwarf_path)}")
+
+    if project_root is None or project_root == "":
+        return dwarf_path
+
+    if not isinstance(project_root, str):
+        raise TypeError(f"Expected project_root to be a str or None, got {type(project_root)}")
+
+    # 1. If it already exists on disk, it's perfect. Return it immediately.
+    if os.path.isfile(dwarf_path):
+        return dwarf_path
+        
+    # Normalize paths to handle trailing slashes consistently
+    norm_root = os.path.normpath(project_root)
+    norm_dwarf = os.path.normpath(dwarf_path)
+    
+    # 2. THE REGEX FIX (Root-Protected)
+    try:
+        in_root = os.path.commonpath([norm_root, norm_dwarf]) == norm_root
+    except ValueError:
+        in_root = False
+
+    if in_root:
+        # Extract the unsafe downstream portion of the path
+        unsafe_suffix = norm_dwarf[len(norm_root):]
+
+        # Apply the stutter fix ONLY to the downstream portion
+        # Turns "/src/src/magic.c" into "/src/magic.c"
+        fixed_suffix = re.sub(r'(/[^/]+)\1/', r'\1/', unsafe_suffix)
+
+        # Recombine the strictly safe root with the healed suffix
+        # Using lstrip to prevent os.path.join from treating fixed_suffix as an absolute path
+        fixed_path = os.path.join(norm_root, fixed_suffix.lstrip('/\\'))
+    else:
+        # Fallback: if the dwarf_path somehow doesn't start with our project root,
+        # try to heal the whole string as a last resort.
+        fixed_path = re.sub(r'(/[^/]+)\1/', r'\1/', norm_dwarf)
+    
+    # 3. Check if our regex fix actually points to a real file!
+    if os.path.isfile(fixed_path):
+        return fixed_path
+        
+    # If even the fixed path doesn't exist, return the original and hope for the best
+    return dwarf_path
+
 
 def parse_die(ent):
     """
@@ -84,6 +155,25 @@ def reprocess_ops(ops):
             out.append(op)
     return out
 
+class TypeInfo(object):
+    """Base class for all DWARF type information."""
+    def __init__(self, name: str):
+        """
+        Initializes TypeInfo.
+
+        Args:
+            name (str): Type name.
+        """
+        self.name = name
+
+    def jsondump(self):
+        """
+        Prepares the base type info for JSON serialization.
+
+        Returns:
+            dict: A dictionary containing the type name.
+        """
+        return {'name': self.name}
 
 class TypeDB(object):
     """
@@ -94,7 +184,7 @@ class TypeDB(object):
         """Initializes an empty dictionary to store type data."""
         self.data = {}
 
-    def insert(self, cu, off, ty):
+    def insert(self, cu: int, off: int, ty: TypeInfo):
         """
         Inserts a TypeInfo object into the database.
 
@@ -130,7 +220,7 @@ class LineDB(object):
         """Initializes an empty dictionary to store line data."""
         self.data = {}
 
-    def _find_best_fit(self, srcfn, lno, addr):
+    def _find_best_fit(self, srcfn: str, lno: int, addr: int):
         """
         (Internal) Finds the best-fitting LineRange entry for a previous line number
         that should be extended to cover the current address range.
@@ -150,7 +240,7 @@ class LineDB(object):
                     r = [i, self.data[srcfn][i].highpc]
         return r[0]
 
-    def insert(self, srcfn, lno, col, addr, func=None):
+    def insert(self, srcfn: str, lno: int, col: int, addr: int, func: int = None):
         """
         Inserts or updates a code address to line number mapping.
 
@@ -161,6 +251,7 @@ class LineDB(object):
             addr (int): Start address of the line range.
             func (int, optional): Address of the enclosing function. Defaults to None.
         """
+        assert srcfn, "Source filename not found in line info"
         if srcfn not in self.data:
             self.data[srcfn] = []
 
@@ -180,7 +271,7 @@ class LineDB(object):
         if i != -1:
             self.data[srcfn][i].highpc = addr
 
-    def update_function(self, base_addr, end_addr, finfo):
+    def update_function(self, base_addr: int, end_addr: int, finfo):
         """
         Updates the function association for a range of line entries.
 
@@ -212,13 +303,8 @@ class LineDB(object):
         """
         jout = {}
         for srcfn in self.data:
-            key = srcfn
-            while srcfn[0] in ['"', "'"]:
-                srcfn = srcfn[1:]
-            while srcfn[-1] in ['"', "'"]:
-                srcfn = srcfn[:-1]
             jout[srcfn] = []
-            for lr in self.data[key]:
+            for lr in self.data[srcfn]:
                 jout[srcfn].append(lr.jsondump())
         return jout
 
@@ -290,7 +376,10 @@ class FunctionDB(object):
 
 
 class VarInfo(object):
-    """Stores DWARF information for a variable (local, global, or parameter)."""
+    """
+    Stores DWARF information for a variable (local, global, or parameter).
+    You will see this populate the _funcinfo.json
+    """
     def __init__(self, name, cu_off):
         """
         Initializes VarInfo.
@@ -323,7 +412,9 @@ class VarInfo(object):
                 'type': self.type}
 
 class FuncInfo(object):
-    """Stores DWARF information for a function (subprogram)."""
+    """
+    Stores DWARF information for a function (subprogram).
+    """
     def __init__(self, cu_off, name, scope, fb_op):
         """
         Initializes FuncInfo.
@@ -356,26 +447,6 @@ class FuncInfo(object):
                 'fn': self.fn,
                 'lno': self.lno,
                 'varlist': [v.jsondump() for v in self.varlist]}
-
-class TypeInfo(object):
-    """Base class for all DWARF type information."""
-    def __init__(self, name):
-        """
-        Initializes TypeInfo.
-
-        Args:
-            name (str): Type name.
-        """
-        self.name = name
-
-    def jsondump(self):
-        """
-        Prepares the base type info for JSON serialization.
-
-        Returns:
-            dict: A dictionary containing the type name.
-        """
-        return {'name': self.name}
 
 class StructType(TypeInfo):
     """Stores DWARF information for a structure or class."""
@@ -438,7 +509,7 @@ class BaseType(TypeInfo):
 
 class SugarType(TypeInfo):
     """Base class for types that are aliases or modifiers (e.g., typedef, const)."""
-    def __init__(self, name, cu_off):
+    def __init__(self, name: str, cu_off: int):
         """
         Initializes SugarType.
 
@@ -467,7 +538,7 @@ class SugarType(TypeInfo):
 
 class PointerType(SugarType):
     """Stores DWARF information for a pointer type."""
-    def __init__(self, name, cu_off, target):
+    def __init__(self, name: str, cu_off: int, target: int):
         """
         Initializes PointerType.
 
@@ -494,7 +565,7 @@ class PointerType(SugarType):
 
 class ArrayType(SugarType):
     """Stores DWARF information for an array type."""
-    def __init__(self, name, cu_off, elemty):
+    def __init__(self, name: str, cu_off: int, elemty: int):
         """
         Initializes ArrayType.
 
@@ -523,7 +594,7 @@ class ArrayType(SugarType):
 
 class ArrayRangeType(SugarType):
     """Stores DWARF information for the size or bounds of an array dimension."""
-    def __init__(self, name, cu_off, rtype, cnt):
+    def __init__(self, name: str, cu_off: int, rtype: int, cnt: int):
         """
         Initializes ArrayRangeType.
 
@@ -580,7 +651,7 @@ class EnumType(TypeInfo):
 
 class SubroutineType(TypeInfo):
     """Stores DWARF information for a function type (signature)."""
-    def __init__(self, name):
+    def __init__(self, name: str):
         """
         Initializes SubroutineType.
 
@@ -604,7 +675,7 @@ class SubroutineType(TypeInfo):
 
 class UnionType(TypeInfo):
     """Stores DWARF information for a union type."""
-    def __init__(self, name, cu_off, size):
+    def __init__(self, name: str, cu_off: int, size: int):
         """
         Initializes UnionType.
 
@@ -636,7 +707,7 @@ class UnionType(TypeInfo):
 
 class Scope(object):
     """Represents a code range (e.g., function body, lexical block)."""
-    def __init__(self, lopc, hipc):
+    def __init__(self, lopc: int, hipc: int):
         """
         Initializes Scope.
 
@@ -658,7 +729,7 @@ class Scope(object):
 
 class LineRange(object):
     """Represents a contiguous range of addresses corresponding to a source line."""
-    def __init__(self, lno, col, lopc, hipc, func):
+    def __init__(self, lno: int, col: int, lopc: int, hipc: int, func: int):
         """
         Initializes LineRange.
 
@@ -690,7 +761,7 @@ class LineRange(object):
                 'func': self.func,
                 }
 
-def parse_dwarfdump(input_data: str, prefix: str=""):
+def parse_dwarfdump(input_data: str, prefix: str="", project_root=None):
     """
     The main parsing routine. Reads dwarfdump output, processes both line info
     and debug info sections, and populates the databases of variables, functions,
@@ -699,6 +770,7 @@ def parse_dwarfdump(input_data: str, prefix: str=""):
     Args:
         input_data (str): The content of the dwarfdump output.
         prefix (str, optional): Prefix for the output JSON filenames. Defaults to "".
+        project_root (str, optional): The absolute path to the root of the extracted project folder, used for path resolution. Defaults to None.
     """
     reloc_base = 0
     line_info = LineDB()
@@ -712,16 +784,23 @@ def parse_dwarfdump(input_data: str, prefix: str=""):
         for line in data[tag]:
             if line is None:
                 continue
+            
             line = line.strip()
             if line.startswith("0x"):
                 addrstr, rest = line.split('[')
                 lnostr, info = rest.split(']')
-                if "uri:" in info:
-                    srcfn = info.split("uri:")[-1].strip()
-                assert srcfn, "Source filename not found in line info"
                 addr = int(addrstr.strip(), 16) + reloc_base
                 lno = int(lnostr.strip().split(',')[0])
                 col = int(lnostr.strip().split(',')[1])
+                if "uri:" in info:
+                    srcfn = info.split("uri:")[-1].strip()
+                    while srcfn and srcfn[0] in ['"', "'"]:
+                        srcfn = srcfn[1:]
+                    while srcfn and srcfn[-1] in ['"', "'"]:
+                        srcfn = srcfn[:-1]
+                    srcfn = resolve_real_path(srcfn, project_root=project_root)
+                # I genuninely have no idea why if line info goes inside the 'if' this scripts breaks...
+                # but don't touch it if it doesn't break any tests!
                 line_info.insert(srcfn, lno, col, addr)
 
     type_overlay = None
@@ -814,7 +893,8 @@ def parse_dwarfdump(input_data: str, prefix: str=""):
                 v.decl_lno = int(res['DW_AT_decl_line'], 16)
                 assert 'DW_AT_decl_file' in res, "DW_AT_decl_file missing in variable"
                 v.decl_fn = res['DW_AT_decl_file']
-                v.decl_fn = v.decl_fn[v.decl_fn.find(' ')+1:]
+                v.decl_fn = v.decl_fn[v.decl_fn.find(' ') + 1:]
+                v.decl_fn = resolve_real_path(v.decl_fn, project_root=project_root)
                 if 'DW_AT_location' not in res:
                     continue
                 for x in res['DW_AT_location'].split(':')[-1].strip().split('DW_OP_'):
@@ -842,7 +922,8 @@ def parse_dwarfdump(input_data: str, prefix: str=""):
                 v.decl_lno = int(res['DW_AT_decl_line'], 16)
                 assert 'DW_AT_decl_file' in res, "DW_AT_decl_file missing in formal parameter"
                 v.decl_fn = res['DW_AT_decl_file']
-                v.decl_fn = v.decl_fn[v.decl_fn.find(' ')+1:]
+                v.decl_fn = v.decl_fn[v.decl_fn.find(' ') + 1:]
+                v.decl_fn = resolve_real_path(v.decl_fn, project_root=project_root)
                 if 'DW_AT_location' not in res:
                     continue
                 for x in res['DW_AT_location'].split(':')[-1].strip().split('DW_OP_'):
@@ -879,6 +960,7 @@ def parse_dwarfdump(input_data: str, prefix: str=""):
                 f = FuncInfo(cu_off, name, scope, fb_op)
 
                 f.fn, f.lno = line_info.update_function(base_addr, end_addr, f)
+                f.fn = resolve_real_path(f.fn, project_root=project_root)
 
                 func_stack.append(f)
                 func_info.insert(cu_off, f)
@@ -1055,32 +1137,29 @@ def dump_json(j, info):
 
 
 if __name__ == '__main__':
-    """
-    Usage (File): python3 dwarfdump.py dump.txt my_prefix
-    Usage (Pipe): dwarfdump -dil bin | python3 dwarfdump.py my_prefix
-    """
-    import os
-
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <dwarfdump_output_file | output_prefix> [output_prefix_if_file_used]")
+        print(f"Usage: {sys.argv[0]} <dwarfdump_output_file | output_prefix> [output_prefix_if_file_used] [project_root]")
         sys.exit(1)
 
     dwarf_content = None
-    prefix = ""
+    prefix = "output"
+    project_root = os.environ.get("PROJECT_ROOT", None) # Can pass via env var
 
-    # Check if the first argument is an existing file
     if os.path.isfile(sys.argv[1]):
         with open(sys.argv[1], 'r', encoding='utf-8') as fd:
             print(f"[*] Reading dwarfdump output from file: {sys.argv[1]}")
             dwarf_content = fd.read()
-        # If a file is provided, prefix is usually the second argument
         prefix = sys.argv[2] if len(sys.argv) > 2 else "output"
+        # Grab project root if passed as 3rd CLI argument
+        if len(sys.argv) > 3:
+            project_root = sys.argv[3]
     else:
-        # If not a file, assume it's a prefix, and we are reading from a pipe
         prefix = sys.argv[1]
         print(f"[*] Reading dwarfdump data from stdin (pipe mode)...")
-        # Read from buffer to get bytes for the internal pandare .decode() call
         dwarf_content = sys.stdin.buffer.read().decode()
+        # Grab project root if passed as 2nd CLI argument in pipe mode
+        if len(sys.argv) > 2:
+            project_root = sys.argv[2]
 
     if not dwarf_content:
         print("[-] Error: No DWARF data found.")
@@ -1088,7 +1167,9 @@ if __name__ == '__main__':
 
     try:
         print(f"[*] Processing DWARF for prefix: {prefix}...")
-        parse_dwarfdump(dwarf_content, prefix)
+        print(f"[*] Using Project Root: {project_root if project_root else None}")
+        
+        parse_dwarfdump(dwarf_content, prefix, project_root=project_root)
         print(f"[+] Success! JSON files generated with prefix '{prefix}'")
     except AssertionError as e:
         print("[-] Error: DWARF parsing failed (AssertionError).")
