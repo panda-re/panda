@@ -5,6 +5,17 @@ on:
     branches:
       - dev
       - stable
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+        description: "Select the type of version bump for the release"
 
 # Ensure sequential execution of workflows on the same branch.
 # If a workflow is already running, new pushes will wait in a queue
@@ -31,6 +42,7 @@ jobs:
         with:
           release_branch: dev
           use_api: true
+          increment: ${{ github.event.inputs.bump_type || 'patch' }}
   
   build_docker:
     needs: get_version
@@ -38,13 +50,13 @@ jobs:
     if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     steps:
       - name: 'Login to Docker Registry'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: pandare
           password: ${{secrets.pandare_dockerhub}} 
       
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver-opts: |
             image=moby/buildkit:master
@@ -62,19 +74,19 @@ jobs:
           sudo update-ca-certificates
 
       - name: Log in to Rehosting Arc Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ secrets.PANDA_ARC_REGISTRY }}
           username: ${{ secrets.PANDA_ARC_REGISTRY_USER }}
           password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
       
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       
       - name: Build panda:latest
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           push: true
           context: ${{ github.workspace }}
@@ -91,7 +103,7 @@ jobs:
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
       - name: Build pandadev:latest
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           push: true
           context: ${{ github.workspace }}
@@ -129,7 +141,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver-opts: |
             image=moby/buildkit:master
@@ -151,14 +163,14 @@ jobs:
           VERSION=${VERSION#v}
           echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV      
       - name: Log in to Rehosting Arc Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ secrets.PANDA_ARC_REGISTRY }}
           username: ${{ secrets.PANDA_ARC_REGISTRY_USER }}
           password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
 
       - name: Build panda packager
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v7
         with:
           push: false
           load: true
@@ -266,5 +278,11 @@ jobs:
           git config --global user.email "panda-ci@panda-re.mit.edu"
           git config --global user.name "PANDA Bot"
           git add .
-          git commit -m "Documentation update for PANDA commit ${{ github.sha }} branch ${{ github.ref_name }}"
-          git push || true
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes found. Updating docs.panda.re."
+            git commit -m "Documentation update for PANDA commit ${{ github.sha }} branch ${{ github.ref_name }}"
+            git push || true
+          else
+            echo "No changes detected. Skipping push."
+          fi
+
