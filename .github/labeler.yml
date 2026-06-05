@@ -1,248 +1,327 @@
 Build:
-  - Dockerfile
-  - panda/build.sh
-  - panda/build-llvm.sh
-  - panda/Makefile.panda
-  - panda/Makefile.panda.target
-  - Makefile
-  - Makefile.objs
-  - Makefile.target
-  - configure
+  - changed-files:
+    - any-glob-to-any-file: Dockerfile
+    - any-glob-to-any-file: panda/build.sh
+    - any-glob-to-any-file: panda/build-llvm.sh
+    - any-glob-to-any-file: panda/Makefile.panda
+    - any-glob-to-any-file: panda/Makefile.panda.target
+    - any-glob-to-any-file: Makefile
+    - any-glob-to-any-file: Makefile.objs
+    - any-glob-to-any-file: Makefile.target
+    - any-glob-to-any-file: configure
 
 Documentation:
-  - '**/*.md'
+  - changed-files:
+    - any-glob-to-any-file: '**/*.md'
 
 Github-files:
-  - .github/**
+  - changed-files:
+    - any-glob-to-any-file: .github/**
 
 PyPanda:
-  - panda/python/**/*.py
-  - panda/python/**/*.h
+  - changed-files:
+    - any-glob-to-any-file: panda/python/**/*.py
+    - any-glob-to-any-file: panda/python/**/*.h
+    - any-glob-to-any-file: panda/python/**/*.json
 
 Debian:
-  - panda/debian/**
+  - changed-files:
+    - any-glob-to-any-file: panda/debian/**
 
 LLVM:
-  - panda/llvm/**
-  - panda/include/panda/tcg-llvm.h
+  - changed-files:
+    - any-glob-to-any-file: panda/llvm/**
+    - any-glob-to-any-file: panda/include/panda/tcg-llvm.h
 
 PANDA-Core:
-  - panda/src/**
+  - changed-files:
+    - any-glob-to-any-file: panda/src/**
 
 PANDA-Tests:
-  - panda/testing/**
-  - panda/plugins/taint2/tests/**
+  - changed-files:
+    - any-glob-to-any-file: panda/testing/**
+    - any-glob-to-any-file: panda/plugins/taint2/tests/**
 
 # All PANDA plug-in tags, used to call specific plug-in tests
 asid_instr_count:
-  - panda/plugins/asid_instr_count/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/asid_instr_count/**
 
 asidstory:
-  - panda/plugins/asidstory/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/asidstory/**
 
 callfunc:
-  - panda/plugins/callfunc/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/callfunc/**
 
 callstack_instr:
-  - panda/plugins/callstack_instr/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/callstack_instr/**
 
 callwitharg:
-  - panda/plugins/callwitharg/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/callwitharg/**
 
 checkpoint:
-  - panda/plugins/checkpoint/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/checkpoint/**
 
 collect_code:
-  - panda/plugins/collect_code/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/collect_code/**
 
 correlatetaps:
-  - panda/plugins/correlatetaps/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/correlatetaps/**
 
 cosi:
-  - panda/plugins/cosi/**
-  - panda/python/core/extras/cosi.py
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/cosi/**
+    - any-glob-to-any-file: panda/python/core/extras/cosi.py
 
 cosi_strace:
-  - panda/plugins/cosi_strace/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/cosi_strace/**
 
 coverage:
-  - panda/plugins/coverage/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/coverage/**
 
 dwarf2:
-  - panda/plugins/dwarf2/**
-  - panda/python/core/extras/dwarfdump.py
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/dwarf2/**
+    - any-glob-to-any-file: panda/python/core/extras/dwarfdump.py
 
 dynamic_symbols:
-  - panda/plugins/dynamic_symbols/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/dynamic_symbols/**
 
 edge_coverage:
-  - panda/plugins/edge_coverage/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/edge_coverage/**
 
 file_taint:
-  - panda/plugins/file_taint/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/file_taint/**
 
 filereadmon:
-  - panda/plugins/filereadmon/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/filereadmon/**
 
 findcall:
-  - panda/plugins/findcall/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/findcall/**
 
 forcedexec:
-  - panda/plugins/forcedexec/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/forcedexec/**
 
 func_stats:
-  - panda/plugins/func_stats/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/func_stats/**
 
 gdb:
-  - panda/plugins/gdb/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/gdb/**
 
 hooks:
-  - panda/plugins/hooks/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/hooks/**
 
 hooks2:
-  - panda/plugins/hooks2/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/hooks2/**
 
 hw_proc_id:
-  - panda/plugins/hw_proc_id/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/hw_proc_id/**
 
 hypercaller:
-  - panda/plugins/hypercaller/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/hypercaller/**
 
 ida_taint2:
-  - panda/plugins/ida_taint2/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/ida_taint2/**
 
 keyfind:
-  - panda/plugins/keyfind/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/keyfind/**
 
 libfi:
-  - panda/plugins/libfi/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/libfi/**
 
 lighthouse_coverage:
-  - panda/plugins/lighthouse_coverage/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/lighthouse_coverage/**
 
 loaded:
-  - panda/plugins/loaded/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/loaded/**
 
 loaded_libs:
-  - panda/plugins/loaded_libs/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/loaded_libs/**
 
 mem_hooks:
-  - panda/plugins/mem_hooks/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/mem_hooks/**
 
 memorymap:
-  - panda/plugins/memorymap/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/memorymap/**
 
 memsavep:
-  - panda/plugins/memsavep/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/memsavep/**
 
 mmio_trace:
-  - panda/plugins/mmio_trace/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/mmio_trace/**
 
 net:
-  - panda/plugins/net/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/net/**
 
 network:
-  - panda/plugins/network/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/network/**
 
 osi:
-  - panda/plugins/osi/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/osi/**
 
 osi_linux:
-  - panda/plugins/osi_linux/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/osi_linux/**
 
 osi_test:
-  - panda/plugins/osi_test/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/osi_test/**
 
 pc_search:
-  - panda/plugins/pc_search/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/pc_search/**
 
 pri_dwarf:
-  - panda/plugins/pri_dwarf/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/pri_dwarf/**
 
 pri_simple:
-  - panda/plugins/pri_simple/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/pri_simple/**
 
 pri_taint:
-  - panda/plugins/pri_taint/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/pri_taint/**
 
 pri_trace:
-  - panda/plugins/pri_trace/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/pri_trace/**
 
 proc_start_linux:
-  - panda/plugins/proc_start_linux/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/proc_start_linux/**
 
 proc_trace:
-  - panda/plugins/proc_trace/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/proc_trace/**
 
 query_file_writes:
-  - panda/plugins/query_file_writes/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/query_file_writes/**
 
 recctrl:
-  - panda/plugins/recctrl/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/recctrl/**
 
 replaymovie:
-  - panda/plugins/replaymovie/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/replaymovie/**
 
 scissors:
-  - panda/plugins/scissors/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/scissors/**
 
 serial_taint:
-  - panda/plugins/serial_taint/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/serial_taint/**
 
 signal:
-  - panda/plugins/signal/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/signal/**
 
 snake_hook:
-  - panda/plugins/snake_hook/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/snake_hook/**
 
 speedtest:
-  - panda/plugins/speedtest/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/speedtest/**
 
 stringsearch:
-  - panda/plugins/stringsearch/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/stringsearch/**
 
 syscalls_logger:
-  - panda/plugins/syscalls_logger/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/syscalls_logger/**
 
 syscalls2:
-  - panda/plugins/syscalls2/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/syscalls2/**
 
 taint2:
-  - panda/plugins/taint2/**
-  - panda/python/core/taint/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/taint2/**
+    - any-glob-to-any-file: panda/python/core/taint/**
 
 tainted_branch:
-  - panda/plugins/tainted_branch/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/tainted_branch/**
 
 tainted_instr:
-  - panda/plugins/tainted_instr/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/tainted_instr/**
 
 tainted_mmio:
-  - panda/plugins/tainted_mmio/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/tainted_mmio/**
 
 tainted_net:
-  - panda/plugins/tainted_net/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/tainted_net/**
 
 tapindex:
-  - panda/plugins/tapindex/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/tapindex/**
 
 targetcmp:
-  - panda/plugins/targetcmp/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/targetcmp/**
 
 textprinter:
-  - panda/plugins/textprinter/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/textprinter/**
 
 trace:
-  - panda/plugins/trace/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/trace/**
 
 track_intexc:
-  - panda/plugins/track_intexc/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/track_intexc/**
 
 tstringsearch:
-  - panda/plugins/tstringsearch/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/tstringsearch/**
 
 unigrams:
-  - panda/plugins/unigrams/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/unigrams/**
 
 wintrospection:
-  - panda/plugins/wintrospection/**
+  - changed-files:
+    - any-glob-to-any-file: panda/plugins/wintrospection/**
