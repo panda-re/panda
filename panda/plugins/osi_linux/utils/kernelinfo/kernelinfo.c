@@ -133,6 +133,11 @@ int init_module(void)
 	struct vfsmount *vfsmount__p;
 	struct qstr *qstr__p;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
+	struct pcpu_hot *pcpu_hot__p;
+#endif
+
+
 	task_struct__p = &init_task;
 	cred__p = &cred__s;
 	mm_struct__p = init_task.mm;
@@ -160,11 +165,26 @@ int init_module(void)
 #if defined __i386__ || defined __x86_64__
 	printk(KERN_INFO "task.per_cpu_offsets_addr = %llu\n", (u64)(uintptr_t)&__per_cpu_offset);
 	printk(KERN_INFO "task.per_cpu_offset_0_addr = %llu\n", (u64)(uintptr_t)__per_cpu_offset[0]);
+	
+	/**
+	 * In Linux Kernel versions higher than v6.2.0, 
+	 * the `current_task` variable has been moved into the `pcpu_hot` structure, 
+	 * so a new method is required to obtain its offset.
+	 */
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0))
 	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&current_task);
+	#else
+	PRINT_OFFSET(pcpu_hot__p, current_task, "task");
+	#endif
+	
 	printk(KERN_INFO "task.init_addr = %llu\n", (u64)(uintptr_t)(task_struct__p));
 	printk(KERN_INFO "#task.per_cpu_offsets_addr = %08llX\n", (u64)(uintptr_t)&__per_cpu_offset);
 	printk(KERN_INFO "#task.per_cpu_offset_0_addr = 0x%08llX\n", (u64)(uintptr_t)__per_cpu_offset[0]);
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0))
 	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&current_task);
+	#else
+	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)((void*)&pcpu_hot__p->current_task - (void*)pcpu_hot__p));
+	#endif
 	printk(KERN_INFO "#task.init_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
 
 #else
@@ -202,7 +222,18 @@ int init_module(void)
 	PRINT_OFFSET(cred__p,				egid,			"cred");
 
 	PRINT_SIZE(*init_task.mm,			"size",			"mm");
+	
+	/**
+	 * Similarly, in Linux Kernel versions higher than v6.2.0, 
+	 * the `mmap` member of `mm_struct` has been renamed to `mmap_base`, 
+	 * so modifications are needed here.
+	 */
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0))
 	PRINT_OFFSET(mm_struct__p,			mmap,			"mm");
+	#else
+	PRINT_OFFSET(mm_struct__p,			mmap_base,			"mm");
+	#endif
+
 	PRINT_OFFSET(mm_struct__p,			pgd,			"mm");
 	PRINT_OFFSET(mm_struct__p,			arg_start,		"mm");
 	PRINT_OFFSET(mm_struct__p,			start_brk,		"mm");
@@ -213,7 +244,16 @@ int init_module(void)
 	PRINT_OFFSET(vm_area_struct__p,		vm_mm,			"vma");
 	PRINT_OFFSET(vm_area_struct__p,		vm_start,		"vma");
 	PRINT_OFFSET(vm_area_struct__p,		vm_end,			"vma");
+
+	/**
+	 * In Linux Kernel versions higher than v6.1.0, 
+	 * the `vm_next` member of `vm_area_struct` has been removed.
+	 */
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
 	PRINT_OFFSET(vm_area_struct__p,		vm_next,		"vma");
+	#else
+	printk(KERN_INFO "# vma.vm_next_offset = (null)\n");
+	#endif
 	PRINT_OFFSET(vm_area_struct__p,		vm_flags,		"vma");
 	PRINT_OFFSET(vm_area_struct__p,		vm_file,		"vma");
 
