@@ -2015,7 +2015,7 @@ bool main_exec_initialized = false;
 bool ensure_main_exec_initialized(CPUState *cpu) {
     char fname[260] = {};
     OsiProc * p = get_current_process(cpu);
-    printf("[ensure_main_exec_initialized] looking at libraries from the following program %s\n", p->name);
+    dprintf("[ensure_main_exec_initialized] looking at libraries from the following program %s\n", p->name);
     if (strncmp(p->name, proc_to_monitor, strlen(p->name)) != 0) {
         dprintf("[ensure_main_exec_initialized] Incorrect process to get mappings for: %s\n", p->name);
         return false;
