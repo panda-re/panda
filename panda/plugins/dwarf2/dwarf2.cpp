@@ -246,7 +246,7 @@ static std::map<std::string, int> dwarf_regmap = {
     {"x15", 15}, {"x16", 16}, {"x17", 17}, {"x18", 18}, {"x19", 19}, 
     {"x20", 20}, {"x21", 21}, {"x22", 22}, {"x23", 23}, {"x24", 24}, 
     {"x25", 25}, {"x26", 26}, {"x27", 27}, {"x28", 28}, {"x29", 29},
-    {"x30", 30}, {"x31", 31},
+    {"x30", 30}, {"x31", 31}, {"sp", 31} // have sp and x31 point to the same register since they are the same in AARCH64
 };
 #define CPU_NB_REGS 32
 #endif
@@ -842,14 +842,16 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
 
             case DW_OP_dup:
                 if (stack_elt < 1) {
-                    assert (1==0);
+                    printf("[dwarf2] ERROR: DW_OP_dup attempted on empty stack. Malformed DWARF expression. Returning LocErr.\n");
+                    return LocErr;
                 }
                 result = stack[stack_elt - 1];
                 break;
 
             case DW_OP_drop:
                 if (--stack_elt < 0) {
-                    assert (1==0);
+                    printf("[dwarf2] ERROR: DW_OP_drop attempted on empty stack. Malformed DWARF expression. Returning LocErr.\n");
+                    return LocErr;
                 }
                 goto no_push;
 
@@ -1278,7 +1280,7 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
             initialized_plt_addr = true;
         }
         else if (strcmp(".strtab", &shstrtable[shdr[i].sh_name]) == 0) {
-            strtable= (char *) malloc(shdr[i].sh_size);
+            strtable = (char *) malloc(shdr[i].sh_size);
             fseek(f, shdr[i].sh_offset, SEEK_SET);
             if (shdr[i].sh_size != fread(strtable, 1, shdr[i].sh_size, f)) {
                 printf("Wasn't able to successfully populate the strtable\n");
@@ -1321,8 +1323,8 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     }
 
     if (!initialized_plt_addr) {
-        printf("Wasn't able to successfully identify plt_addr\n");
-        abort();
+        dprintf("[dwarf2] WARNING: No .plt section found. Assuming pure static binary.\n");
+        // DO NOT abort. Let it fall through to the NULL checks below.
     }
     /* Find the maximum size of the image and allocate an appropriate
        amount of memory to handle that.  */
