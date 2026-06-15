@@ -62,10 +62,12 @@ fi
 # You need this if you are in a proxy environment
 HTTP_PROXY="${HTTP_PROXY:-}"
 HTTPS_PROXY="${HTTPS_PROXY:-}"
+DOCKER_NETWORK="${DOCKER_BUILD_NETWORK:-host}"
 
 # Finish building main panda container for the target ubuntu version
 # For local testing, feel free to reduce the TARGET_LIST to a smaller set of targets for faster compiling.
 DOCKER_BUILDKIT=1 docker build \
+	--network="${DOCKER_NETWORK}" \
     --target whlpackager \
     -t packager \
     --build-arg HTTP_PROXY="${HTTP_PROXY}" \
