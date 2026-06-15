@@ -81,7 +81,7 @@ jobs:
           password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
       
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       
@@ -136,7 +136,7 @@ jobs:
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
 
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -195,7 +195,7 @@ jobs:
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${{ matrix.ubuntu_version }}.deb
       - name: Upload deb packages as artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: pandare_${{ matrix.ubuntu_version }}
           path: panda/debian/pandare*.deb
@@ -203,7 +203,7 @@ jobs:
 
       - name: Upload whl package as artifact
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: pypanda
           path: panda/debian/pandare*.whl
@@ -225,12 +225,12 @@ jobs:
 
     steps:
     - name: Download all the artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         pattern: pandare_*
         path: debs/
     - name: Download all the artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: pypanda
         path: dist/
@@ -240,7 +240,7 @@ jobs:
         verbose: true
       
     - name: Upload wheel package to release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
