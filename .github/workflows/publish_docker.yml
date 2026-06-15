@@ -37,7 +37,7 @@ jobs:
       - name: Install git
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
       - name: Get next version
-        uses: reecetech/version-increment@2024.10.1
+        uses: reecetech/version-increment@2026.8.4
         id: version
         with:
           release_branch: dev
@@ -81,7 +81,7 @@ jobs:
           password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
       
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
@@ -136,7 +136,7 @@ jobs:
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
 
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -194,7 +194,7 @@ jobs:
           docker run --rm -v $(pwd):/out packager bash -c "cp /*.whl /pandare.deb /out"
           mv pandare.deb pandare_${{ matrix.ubuntu_version }}.deb
       - name: Upload deb packages as artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: pandare_${{ matrix.ubuntu_version }}
           path: panda/debian/pandare*.deb
@@ -202,13 +202,13 @@ jobs:
 
       - name: Upload whl package as artifact
         if: ${{ matrix.ubuntu_version == env.PANDA_CONTAINER_UBUNTU_VERSION }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: pypanda
           path: panda/debian/pandare*.whl
           if-no-files-found: error
       
-  publish-to-pypi-and-release:
+  publish-to-pypi:
     name: Publish Python 🐍 distribution 📦 to PyPI and Make Release
     if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs:
@@ -223,34 +223,58 @@ jobs:
       contents: write  # IMPORTANT: mandatory for creating releases
 
     steps:
-    - name: Download all the artifacts
-      uses: actions/download-artifact@v5
-      with:
-        pattern: pandare_*
-        path: debs/
-    - name: Download all the artifacts
-      uses: actions/download-artifact@v5
-      with:
-        name: pypanda
-        path: dist/
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        verbose: true
-      
-    - name: Upload wheel package to release
-      uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ needs.get_version.outputs.v-version }}
-        draft: false
-        generate_release_notes: true
-        prerelease: false
-        name: ${{ needs.get_version.outputs.v-version }} @ ${{ github.ref }}
-        files: |
-          dist/*
-          debs/**/*.deb
+      - name: Download whl artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: pypanda
+          path: dist/
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+    
+  # Runs on forks too!
+  create_github_release:
+    name: Create GitHub Release
+    needs:
+      - get_version
+      - build_release_assets
+      - publish-to-pypi
+      # Override default skip behavior: Run if we are on dev AND the required 
+      # build steps succeeded AND PyPI either succeeded (main repo) or was skipped (forks).
+    if: |
+        always() &&
+        needs.get_version.result == 'success' &&
+        needs.build_release_assets.result == 'success' &&
+        (needs['publish-to-pypi'].result == 'success' || needs['publish-to-pypi'].result == 'skipped') &&
+        github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  
+    steps:
+      - name: Download deb artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: pandare_*
+          path: debs/
+      - name: Download whl artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: pypanda
+          path: dist/
+      - name: Upload packages to release
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.get_version.outputs.v-version }}
+          draft: false
+          generate_release_notes: true
+          prerelease: false
+          name: ${{ needs.get_version.outputs.v-version }} @ ${{ github.ref }}
+          files: |
+            dist/*
+            debs/**/*.deb
 
   documentation:
     if: github.repository == 'panda-re/panda'
