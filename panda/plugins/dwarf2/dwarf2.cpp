@@ -780,7 +780,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
             case DW_OP_reg31:
                 register_name = dwarf_regnames[op - DW_OP_reg0];
                 result = dwarf_regmap[register_name];
-                dprintf("[dwarf2][execute_stack_op] register name: %s and result %ld\n", register_name.c_str(), result);
+                dprintf("[dwarf2][execute_stack_op] register name: %s and result " TARGET_FMT_ld "\n", register_name.c_str(), result);
                 inReg = true;
                 break;
             case DW_OP_regx:
@@ -829,7 +829,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
                 offset = ops[loc_idx].asInt64();
                 loc_idx++;
                 // frame pointer
-                dprintf("[dwarf2][execute_stack_op] fp [0x%lx] + offset: %ld\n", frame_ptr, offset);
+                dprintf("[dwarf2][execute_stack_op] fp [0x" TARGET_FMT_lx "] + offset: " TARGET_FMT_ld "\n", frame_ptr, offset);
                 result = frame_ptr + offset;
                 break;
             case DW_OP_bregx:
@@ -2382,7 +2382,7 @@ void dwarf_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
     __livevar_iter(cpu, pc, global_var_list, f, args, 0);
 }
 void dwarf_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
-    dprintf("iterating through live vars\n");
+    // dprintf("iterating through live vars\n");
     if (inExecutableSource) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1) {
