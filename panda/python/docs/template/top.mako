@@ -8,6 +8,9 @@
       <li class="nav-item">
         <a class="nav-link" target="_new" href="https://github.com/panda-re/panda">Github</a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link" target="_new" rel="me" href="https://pypi.org/project/pandare/">PyPI</a>
+      </li>
       <li class="nav-item ">
         <a class="nav-link" href="//panda.re/blog/">Blog</a>
       </li>
