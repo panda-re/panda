@@ -58,8 +58,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
+          version: latest
           driver-opts: |
-            image=moby/buildkit:master
             network=host
           buildkitd-config-inline: |
             [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
@@ -143,8 +143,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
+          version: latest
           driver-opts: |
-            image=moby/buildkit:master
             network=host
           buildkitd-config-inline: |
             [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
