@@ -1,4 +1,4 @@
-#syntax=docker/dockerfile:1.17-labs
+#syntax=docker/dockerfile:1
 ARG REGISTRY="docker.io"
 ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
@@ -139,7 +139,7 @@ RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
         SARCH=`echo $arch | cut -d'-' -f 1`; \
         rm $ARCHP/libpanda-$SARCH.so $ARCHP/llvm-helpers-$SARCH.bc; \
         ln -s ${INSTALL_PREFIX}/share/panda/llvm-helpers-$SARCH.bc $ARCHP/llvm-helpers-$SARCH.bc1; \
-        ln -s ${INSTALL_PREFIX}/bin/libpanda-$SARCH.so $ARCHP/libpanda-$SARCH.so; \ 
+        ln -s ${INSTALL_PREFIX}/bin/libpanda-$SARCH.so $ARCHP/libpanda-$SARCH.so; \
         rm -rf $ARCHP/panda/plugins; \
         ln -s ${INSTALL_PREFIX}/lib/panda/$SARCH/ $ARCHP/panda/plugins; \
     done
