@@ -1137,7 +1137,7 @@ def dump_json(j, info):
     json.dump(info.jsondump(), j, cls=DwarfJsonEncoder, indent=4)
 
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <dwarfdump_output_file | output_prefix> [output_prefix_if_file_used] [project_root]")
         sys.exit(1)
@@ -1178,3 +1178,7 @@ if __name__ == '__main__':
         print(f"   Full stack trace: {e}")
     except Exception as e:
         print(f"[-] An unexpected error occurred: {e}")
+
+
+if __name__ == '__main__':
+    main()
