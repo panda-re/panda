@@ -85,7 +85,8 @@ version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
 
 [project.scripts]
-dwarfdump = "pandare.extras.dwarfdump:main"
+pandare-dwarfdump = "pandare.extras.dwarfdump:main"
+plog-reader = "pandare.plog_reader:main"
 
 [project.urls]
 Homepage = "https://github.com/panda-re/panda"
