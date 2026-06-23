@@ -1717,7 +1717,7 @@ class Panda():
         family_num = self.libpanda.panda_os_familyno
         family_name = self.ffi.string(self.ffi.cast("PandaOsFamily", family_num))
         return family_name
-    
+
     def get_file_name(self, cpu, fd):
         '''
         Get the name of a file from a file descriptor.
@@ -1735,7 +1735,7 @@ class Panda():
             return None
         if fname_ptr == self.ffi.NULL:
             return None
-        return self.ffi.string(fname_ptr)
+        return self.ffi.string(fname_ptr).decode('utf8', 'ignore')
 
     def get_current_process(self, cpu):
         '''
@@ -1859,7 +1859,7 @@ class Panda():
             return None
 
         procname = self.ffi.string(proc.name).decode('utf8', 'ignore')
-        return self.ffi.string(proc.name).decode('utf8', 'ignore')
+        return procname
 
 
     ################## PYPERIPHERAL FUNCTIONS #####################
