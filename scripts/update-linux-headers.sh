@@ -38,6 +38,7 @@ cp_portable() {
                                      -e 'linux/if_ether' \
                                      -e 'input-event-codes' \
                                      -e 'sys/' \
+                                     -e 'drm.h' \
                                      > /dev/null
     then
         echo "Unexpected #include in input file $f".
@@ -54,6 +55,7 @@ cp_portable() {
         -e 's/__bitwise//' \
         -e 's/__attribute__((packed))/QEMU_PACKED/' \
         -e 's/__inline__/inline/' \
+        -e '/\"drm.h\"/d' \
         -e '/sys\/ioctl.h/d' \
         -e 's/SW_MAX/SW_MAX_/' \
         "$f" > "$to/$header";
@@ -145,6 +147,9 @@ for i in "$tmpdir"/include/linux/*virtio*.h "$tmpdir/include/linux/input.h" \
          "$tmpdir/include/linux/pci_regs.h"; do
     cp_portable "$i" "$output/include/standard-headers/linux"
 done
+mkdir -p "$output/include/standard-headers/drm"
+cp_portable "$tmpdir/include/drm/drm_fourcc.h" \
+            "$output/include/standard-headers/drm"
 
 cat <<EOF >$output/include/standard-headers/linux/types.h
 /* For QEMU all types are already defined via osdep.h, so this
