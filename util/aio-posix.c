@@ -575,6 +575,13 @@ bool aio_poll(AioContext *ctx, bool blocking)
     int64_t timeout;
     int64_t start = 0;
 
+    /*
+     * There cannot be two concurrent aio_poll calls for the same AioContext (or
+     * an aio_poll concurrent with a GSource prepare/check/dispatch callback).
+     * We rely on this below to avoid slow locked accesses to ctx->notify_me.
+     */
+    assert(aio_context_in_iothread(ctx));
+
     /* aio_notify can avoid the expensive event_notifier_set if
      * everything (file descriptors, bottom halves, timers) will
      * be re-evaluated before the next blocking poll().  This is
@@ -583,7 +590,13 @@ bool aio_poll(AioContext *ctx, bool blocking)
      * so disable the optimization now.
      */
     if (blocking) {
-        atomic_add(&ctx->notify_me, 2);
+        atomic_set(&ctx->notify_me, atomic_read(&ctx->notify_me) + 2);
+        /*
+         * Write ctx->notify_me before computing the timeout
+         * (reading bottom half flags, etc.).  Pairs with
+         * smp_mb in aio_notify().
+         */
+        smp_mb();
     }
 
     qemu_lockcnt_inc(&ctx->list_lock);
@@ -624,7 +637,9 @@ bool aio_poll(AioContext *ctx, bool blocking)
     }
 
     if (blocking) {
-        atomic_sub(&ctx->notify_me, 2);
+        /* Finish the poll before clearing the flag.  */
+        atomic_store_release(&ctx->notify_me, atomic_read(&ctx->notify_me) - 2);
+        aio_notify_accept(ctx);
     }
 
     /* Adjust polling time */

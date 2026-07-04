@@ -1182,6 +1182,7 @@ static int tcg_cpu_exec(CPUState *cpu)
 #ifdef CONFIG_PROFILER
     ti = profile_getclock();
 #endif
+    qemu_mutex_unlock_iothread();
     if (use_icount) {
         int64_t count;
         int decr;
@@ -1199,6 +1200,7 @@ static int tcg_cpu_exec(CPUState *cpu)
     cpu_exec_start(cpu);
     ret = cpu_exec(cpu);
     cpu_exec_end(cpu);
+    qemu_mutex_lock_iothread();
 #ifdef CONFIG_PROFILER
     tcg_time += profile_getclock() - ti;
 #endif
@@ -1445,6 +1447,7 @@ bool qemu_mutex_iothread_locked(void)
 
 void qemu_mutex_lock_iothread(void)
 {
+    g_assert(!qemu_mutex_iothread_locked());
     atomic_inc(&iothread_requesting_mutex);
     /* In the simple case there is no need to bump the VCPU thread out of
      * TCG code execution.
@@ -1466,6 +1469,7 @@ void qemu_mutex_lock_iothread(void)
 
 void qemu_mutex_unlock_iothread(void)
 {
+    g_assert(qemu_mutex_iothread_locked());
     iothread_locked = false;
     qemu_mutex_unlock(&qemu_global_mutex);
 }
