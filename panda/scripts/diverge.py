@@ -14,6 +14,7 @@ from errno import EAGAIN, EWOULDBLOCK
 from multiprocessing.pool import ThreadPool
 from os.path import join
 from subprocess import check_call, CalledProcessError
+from time import sleep
 
 from expect import Expect, TimeoutExpired
 from tempdir import TempDir
@@ -255,19 +256,19 @@ class RRInstance(object):
     def ram_ptr(self):
         return self.get_value(
             "memory_region_find(" +
-                "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+                "get_system_memory(), 0x2000000, 1).mr->ram_block->host")
 
     def crc32_ram(self, low, size):
         step = 1 << 31 if size > (1 << 31) else size
         crc32s = 0
         for start in range(low, low + size, step):
-            crc32s ^= self.get_value("crc32(0, {} + {}, {})".format(
-                            hex(self.ram_ptr), hex(start), hex(step)))
+            crc32s ^= self.get_value("(unsigned long) crc32(0, {} +{}, {})".format(
+                        hex(self.ram_ptr), hex(start), hex(step)))
         return crc32s
 
     @cached_property
     def ram_size(self):
-        return self.get_value('ram_size')
+        return self.get_value('memory_region_find(get_system_memory(), 0x2000000, 1).mr->ram_block.used_length')
 
     @cached_property
     def reg_size(self):
@@ -670,11 +671,12 @@ class Diverge(object):
         self.both.gdb("set pagination off")
 
         check_call(['tmux', 'select-layout', 'even-horizontal'])
-
+        self.both.breakpoint("_start")
+        self.both.gdb("c")
+        sleep(1)
         self.both.breakpoint("rr_do_begin_record")
         self.both.breakpoint("rr_do_begin_replay")
         self.both.breakpoint("cpu_loop_exec_tb")
-
         try:
             self.both.breakpoint("debug_counter")
         except RuntimeError:

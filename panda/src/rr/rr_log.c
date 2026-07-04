@@ -949,29 +949,29 @@ static inline RR_log_entry* get_next_entry(void) {
 // same as above. make sure to consume after.
 static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
         RR_callsite_id call_site, bool check_callsite) {
-    RR_log_entry *entry = get_next_entry();
-    if (!entry) return NULL;
+        RR_log_entry *entry = get_next_entry();
+        if (!entry) return NULL;
 
-    RR_header header = entry->header;
-    // XXX FIXME this is a temporary hack to get around the fact that we
-    // cannot currently do a tb_flush and a savevm in the same instant.
-    if (header.prog_point.guest_instr_count == 0) {
-        // We'll process this one beacuse it's the start of the log
-    } else if (rr_prog_point_compare(rr_prog_point(),
-                header.prog_point, kind) != 0) {
-        // mz rr_prog_point_compare will fail if we're ahead of the log
-        return NULL;
-    }
+        RR_header header = entry->header;
+        // XXX FIXME this is a temporary hack to get around the fact that we
+        // cannot currently do a tb_flush and a savevm in the same instant.
+        if (header.prog_point.guest_instr_count == 0) {
+            // We'll process this one beacuse it's the start of the log
+        } else if (rr_prog_point_compare(rr_prog_point(),
+                    header.prog_point, kind) != 0) {
+            // mz rr_prog_point_compare will fail if we're ahead of the log
+            return NULL;
+        }
 
-    if (header.kind != kind) {
-        return NULL;
-    }
+        if (header.kind != kind) {
+            return NULL;
+        }
 
-    if (check_callsite && header.callsite_loc != call_site) {
-        return NULL;
-    }
+        if (check_callsite && header.callsite_loc != call_site) {
+            return NULL;
+        }
 
-    return entry;
+        return entry;
 }
 
 // mz replay 1-byte input to the CPU
@@ -1100,11 +1100,15 @@ static MemoryRegion * rr_memory_region_find_parent(MemoryRegion *root, MemoryReg
 // RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION
 // XXX call_site parameter no longer used...
 // bdg 07.2012: Adding RR_SKIPPED_CALL_CPU_MEM_UNMAP
+bool no_recursion = 0;
 void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
 {
 #ifdef CONFIG_SOFTMMU
     uint8_t replay_done = 0;
+    if(no_recursion)
+        return;
     do {
+        no_recursion = 1;
         RR_log_entry* current_item =
             get_next_entry_checked(RR_SKIPPED_CALL, call_site, false);
         if (current_item == NULL) {
@@ -1205,6 +1209,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             rr_queue_pop_front();
         }
     } while (!replay_done);
+    no_recursion = 0;
 #endif
 }
 
@@ -1949,6 +1954,14 @@ uint32_t rr_checksum_regs(void) {
 #elif defined(TARGET_ARM)
     crc = crc32(crc, (unsigned char *)&env->pc, sizeof(env->pc));
 #endif
+    return crc;
+}
+uint32_t rr_checksum_timers(int index) {
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    #if defined(TARGET_ARM)
+    CPUARMState *env = (CPUArchState *)first_cpu->env_ptr;
+    crc = crc32(crc, (unsigned char *)&env->cp15.c14_timer[index], sizeof(env->cp15.c14_timer[index]));
+    #endif
     return crc;
 }
 
