@@ -67,11 +67,36 @@ jobs:
   #   - name: Run install_ubuntu.sh
   #     run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
 
+  build_test_fork:
+    name: Build and Test (Fork)
+    # Only run if this is NOT the main panda-re/panda repository
+    if: github.repository != 'panda-re/panda'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build PANDA container locally
+        uses: docker/build-push-action@v7
+        with:
+          push: false
+          load: true # Ensures the built image is available to the local Docker daemon for testing
+          context: ${{ github.workspace }}
+          target: panda
+          tags: pandare/panda:fork-test
+          # Use standard GitHub Actions caching instead of a private registry
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   build_container:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository == 'panda-re/panda'
     runs-on: panda-arc
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set up Docker Buildx
