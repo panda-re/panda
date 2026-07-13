@@ -10,9 +10,9 @@ on:
 
 jobs:
   local_build_container:
-    runs-on: panda-arc
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Build docker container from project root
       run: echo $GITHUB_WORKSPACE; cd $GITHUB_WORKSPACE && DOCKER_BUILDKIT=1 docker build --progress=plain --target developer -t panda_local:${{ github.sha }} .
