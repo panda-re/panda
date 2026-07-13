@@ -180,6 +180,7 @@ def _find_build_dir(arch_name, find_executable=False):
     Internal function to return the build directory for the specified architecture
     '''
 
+    debian_build = "/usr/bin/"
     system_build = "/usr/local/bin/"
     python_package = pjoin(*[dirname(__file__), "data"])
     local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
@@ -190,9 +191,12 @@ def _find_build_dir(arch_name, find_executable=False):
                 f"libpanda-{arch_name}.so"
 
     # system path could have panda-system-X or libpanda-X.so. Others would have an arch_name - softmmu directory
-    pot_paths = [system_build,
-                 pjoin(python_package, arch_dir),
-                 pjoin(local_build, arch_dir)]
+    pot_paths = [
+                    system_build,
+                    debian_build,
+                    pjoin(python_package, arch_dir),
+                    pjoin(local_build, arch_dir)
+                ]
 
     if find_executable and 'PATH' in environ:
         # If we're looking for the panda executable, also search the user's path

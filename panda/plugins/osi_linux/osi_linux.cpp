@@ -1241,6 +1241,13 @@ bool init_plugin(void *self) {
             if (kconf_file != NULL) g_free(kconf_file);
             const char* panda_dir = g_getenv("PANDA_DIR");
             kconf_file = g_strdup_printf("%s%s", panda_dir, KERNEL_CONF);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", 3, kconf_file);
+            kconffile_canon = realpath(kconf_file, NULL);
+        }
+        if (kconffile_canon == NULL) { // from /etc, the standard place for Debian packages to put config files
+            if (kconf_file != NULL) g_free(kconf_file);
+            kconf_file = g_build_filename("/etc", "panda", "osi_linux", "kernelinfo.conf", NULL);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", 4, kconf_file);
             kconffile_canon = realpath(kconf_file, NULL);
         }
 

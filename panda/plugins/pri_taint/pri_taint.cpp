@@ -467,6 +467,8 @@ void lava_hypercall(CPUState *cpu) {
             // if the phs action is a pri_query point, see
             // lava/include/pirate_mark_lava.h
             if (phs.action == 13) {
+                // NOTE: If PANDA crashes here, you messed up your hypercalls, via mismatch on what's on registers
+                // See https://github.com/panda-re/lava/commit/7c488e5ed8bcc49a4fe8efad6764bea24a2f07b6
                 target_ulong pc = panda_current_pc(cpu);
                 // Calls 'pri_get_pc_source_info' in pri.c, which calls 'on_get_pc_source_info'
                 // In Dwarf2, the function 'on_get_pc_source_info' is mapped to 'dwarf_get_pc_source_info'
