@@ -29,8 +29,8 @@ env:
 
 jobs:
   get_version:
-    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
-    runs-on: panda-arc
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
     outputs:
       v-version: ${{ steps.version.outputs.v-version }}
     steps:
@@ -65,7 +65,6 @@ jobs:
             [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
               insecure = true
               http = true
-      
 
       - name: Trust Harbor's self-signed certificate
         run: |
@@ -123,9 +122,9 @@ jobs:
 
 
   build_release_assets:
-    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/dev'
     needs: get_version
-    runs-on: panda-arc
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         ubuntu_version:
@@ -146,12 +145,9 @@ jobs:
           version: latest
           driver-opts: |
             network=host
-          buildkitd-config-inline: |
-            [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
-              insecure = true
-              http = true
 
       - name: Trust Harbor's self-signed certificate
+        if: github.repository == 'panda-re/panda'
         run: |
           echo "Fetching certificate from registry"
           openssl s_client -showcerts -connect ${{ secrets.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
@@ -161,8 +157,9 @@ jobs:
         run: |
           VERSION=${{ needs.get_version.outputs.v-version }}
           VERSION=${VERSION#v}
-          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV      
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
       - name: Log in to Rehosting Arc Registry
+        if: github.repository == 'panda-re/panda'
         uses: docker/login-action@v4
         with:
           registry: ${{ secrets.PANDA_ARC_REGISTRY }}
@@ -178,15 +175,12 @@ jobs:
           context: ${{ github.workspace }}
           tags: |
             packager
-          cache-from: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
-          cache-to: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           build-args: |
-            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
             BASE_IMAGE=ubuntu:${{ matrix.ubuntu_version }}
             PACKAGE_VERSION=${{ env.RELEASE_VERSION }}
+          # Use standard GitHub Actions caching instead of a private registry
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build package
         working-directory: panda/debian
@@ -207,21 +201,20 @@ jobs:
           name: pypanda
           path: panda/debian/pandare*.whl
           if-no-files-found: error
-      
+
   publish-to-pypi:
-    name: Publish Python 🐍 distribution 📦 to PyPI and Make Release
+    name: Publish Python 🐍 distribution 📦 to PyPI
     if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs:
-    - get_version
-    - build_release_assets
+      - get_version
+      - build_release_assets
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/pandare  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/pandare  
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-      contents: write  # IMPORTANT: mandatory for creating releases
-
+      id-token: write
+      contents: write
     steps:
       - name: Download whl artifact
         uses: actions/download-artifact@v8
@@ -246,7 +239,7 @@ jobs:
         always() &&
         needs.get_version.result == 'success' &&
         needs.build_release_assets.result == 'success' &&
-        (needs['publish-to-pypi'].result == 'success' || needs['publish-to-pypi'].result == 'skipped') &&
+        (needs.publish-to-pypi.result == 'success' || needs.publish-to-pypi.result == 'skipped') &&
         github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     permissions:
@@ -278,7 +271,8 @@ jobs:
 
   documentation:
     if: github.repository == 'panda-re/panda'
-    needs: build_release_assets
+    needs: 
+      - publish-to-pypi
     runs-on: panda-arc
     steps:
       - name: Checkout docs and reset
@@ -309,4 +303,3 @@ jobs:
           else
             echo "No changes detected. Skipping push."
           fi
-
