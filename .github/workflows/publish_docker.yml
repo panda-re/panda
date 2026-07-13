@@ -29,7 +29,7 @@ env:
 
 jobs:
   get_version:
-    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/dev'
     runs-on: panda-arc
     outputs:
       v-version: ${{ steps.version.outputs.v-version }}
@@ -65,7 +65,6 @@ jobs:
             [registry."${{ secrets.PANDA_ARC_REGISTRY }}"]
               insecure = true
               http = true
-      
 
       - name: Trust Harbor's self-signed certificate
         run: |
@@ -81,7 +80,7 @@ jobs:
           password: ${{ secrets.PANDA_ARC_REGISTRY_PASSWORD }}
       
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       
@@ -120,10 +119,8 @@ jobs:
           build-args: |
             REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
 
-
-
   build_release_assets:
-    if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/dev'
     needs: get_version
     runs-on: panda-arc
     strategy:
@@ -136,7 +133,7 @@ jobs:
         run: sudo apt-get -qq update -y && sudo apt-get -qq install git curl jq -y
 
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -152,6 +149,7 @@ jobs:
               http = true
 
       - name: Trust Harbor's self-signed certificate
+        if: github.repository == 'panda-re/panda'
         run: |
           echo "Fetching certificate from registry"
           openssl s_client -showcerts -connect ${{ secrets.PANDA_ARC_REGISTRY }}:443 < /dev/null 2>/dev/null | openssl x509 -outform PEM | sudo tee /usr/local/share/ca-certificates/harbor.crt > /dev/null
@@ -161,8 +159,9 @@ jobs:
         run: |
           VERSION=${{ needs.get_version.outputs.v-version }}
           VERSION=${VERSION#v}
-          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV      
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
       - name: Log in to Rehosting Arc Registry
+        if: github.repository == 'panda-re/panda'
         uses: docker/login-action@v4
         with:
           registry: ${{ secrets.PANDA_ARC_REGISTRY }}
@@ -178,13 +177,7 @@ jobs:
           context: ${{ github.workspace }}
           tags: |
             packager
-          cache-from: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:cache,mode=max
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
-          cache-to: |
-            type=registry,ref=${{secrets.PANDA_ARC_REGISTRY}}/pandare/panda:packagecache,mode=max
           build-args: |
-            REGISTRY=${{ secrets.PANDA_ARC_REGISTRY }}/proxy
             BASE_IMAGE=ubuntu:${{ matrix.ubuntu_version }}
             PACKAGE_VERSION=${{ env.RELEASE_VERSION }}
 
@@ -207,54 +200,68 @@ jobs:
           name: pypanda
           path: panda/debian/pandare*.whl
           if-no-files-found: error
-      
-  publish-to-pypi-and-release:
-    name: Publish Python 🐍 distribution 📦 to PyPI and Make Release
+
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
     if: github.repository == 'panda-re/panda' && github.ref == 'refs/heads/dev'
     needs:
-    - get_version
-    - build_release_assets
+      - get_version
+      - build_release_assets
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/pandare  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/pandare  
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-      contents: write  # IMPORTANT: mandatory for creating releases
-
+      id-token: write  
     steps:
-    - name: Download all the artifacts
-      uses: actions/download-artifact@v5
-      with:
-        pattern: pandare_*
-        path: debs/
-    - name: Download all the artifacts
-      uses: actions/download-artifact@v5
-      with:
-        name: pypanda
-        path: dist/
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        verbose: true
-      
-    - name: Upload wheel package to release
-      uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ needs.get_version.outputs.v-version }}
-        draft: false
-        generate_release_notes: true
-        prerelease: false
-        name: ${{ needs.get_version.outputs.v-version }} @ ${{ github.ref }}
-        files: |
-          dist/*
-          debs/**/*.deb
+      - name: Download whl artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: pypanda
+          path: dist/
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+    
+  create_github_release:
+    name: Create GitHub Release
+    if: github.ref == 'refs/heads/dev' # Runs on forks too!
+    needs:
+      - get_version
+      - build_release_assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  
+    steps:
+      - name: Download deb artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: pandare_*
+          path: debs/
+      - name: Download whl artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: pypanda
+          path: dist/
+      - name: Upload packages to release
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.get_version.outputs.v-version }}
+          draft: false
+          generate_release_notes: true
+          prerelease: false
+          name: ${{ needs.get_version.outputs.v-version }} @ ${{ github.ref }}
+          files: |
+            dist/*
+            debs/**/*.deb
 
   documentation:
     if: github.repository == 'panda-re/panda'
-    needs: build_release_assets
+    needs: 
+      - publish-to-pypi
     runs-on: panda-arc
     steps:
       - name: Checkout docs and reset
@@ -285,4 +292,3 @@ jobs:
           else
             echo "No changes detected. Skipping push."
           fi
-
