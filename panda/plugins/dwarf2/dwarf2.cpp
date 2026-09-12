@@ -246,7 +246,7 @@ static std::map<std::string, int> dwarf_regmap = {
     {"x15", 15}, {"x16", 16}, {"x17", 17}, {"x18", 18}, {"x19", 19}, 
     {"x20", 20}, {"x21", 21}, {"x22", 22}, {"x23", 23}, {"x24", 24}, 
     {"x25", 25}, {"x26", 26}, {"x27", 27}, {"x28", 28}, {"x29", 29},
-    {"x30", 30}, {"x31", 31},
+    {"x30", 30}, {"x31", 31}, {"sp", 31} // have sp and x31 point to the same register since they are the same in AARCH64
 };
 #define CPU_NB_REGS 32
 #endif
@@ -780,7 +780,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
             case DW_OP_reg31:
                 register_name = dwarf_regnames[op - DW_OP_reg0];
                 result = dwarf_regmap[register_name];
-                dprintf("[dwarf2][execute_stack_op] register name: %s and result %ld\n", register_name.c_str(), result);
+                dprintf("[dwarf2][execute_stack_op] register name: %s and result " TARGET_FMT_ld "\n", register_name.c_str(), result);
                 inReg = true;
                 break;
             case DW_OP_regx:
@@ -829,7 +829,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
                 offset = ops[loc_idx].asInt64();
                 loc_idx++;
                 // frame pointer
-                dprintf("[dwarf2][execute_stack_op] fp [0x%lx] + offset: %ld\n", frame_ptr, offset);
+                dprintf("[dwarf2][execute_stack_op] fp [0x" TARGET_FMT_lx "] + offset: " TARGET_FMT_ld "\n", frame_ptr, offset);
                 result = frame_ptr + offset;
                 break;
             case DW_OP_bregx:
@@ -842,14 +842,16 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Json::Value ops,
 
             case DW_OP_dup:
                 if (stack_elt < 1) {
-                    assert (1==0);
+                    printf("[dwarf2] ERROR: DW_OP_dup attempted on empty stack. Malformed DWARF expression. Returning LocErr.\n");
+                    return LocErr;
                 }
                 result = stack[stack_elt - 1];
                 break;
 
             case DW_OP_drop:
                 if (--stack_elt < 0) {
-                    assert (1==0);
+                    printf("[dwarf2] ERROR: DW_OP_drop attempted on empty stack. Malformed DWARF expression. Returning LocErr.\n");
+                    return LocErr;
                 }
                 goto no_push;
 
@@ -1278,7 +1280,7 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
             initialized_plt_addr = true;
         }
         else if (strcmp(".strtab", &shstrtable[shdr[i].sh_name]) == 0) {
-            strtable= (char *) malloc(shdr[i].sh_size);
+            strtable = (char *) malloc(shdr[i].sh_size);
             fseek(f, shdr[i].sh_offset, SEEK_SET);
             if (shdr[i].sh_size != fread(strtable, 1, shdr[i].sh_size, f)) {
                 printf("Wasn't able to successfully populate the strtable\n");
@@ -1321,8 +1323,8 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     }
 
     if (!initialized_plt_addr) {
-        printf("Wasn't able to successfully identify plt_addr\n");
-        abort();
+        dprintf("[dwarf2] WARNING: No .plt section found. Assuming pure static binary.\n");
+        // DO NOT abort. Let it fall through to the NULL checks below.
     }
     /* Find the maximum size of the image and allocate an appropriate
        amount of memory to handle that.  */
@@ -2015,7 +2017,7 @@ bool main_exec_initialized = false;
 bool ensure_main_exec_initialized(CPUState *cpu) {
     char fname[260] = {};
     OsiProc * p = get_current_process(cpu);
-    printf("[ensure_main_exec_initialized] looking at libraries from the following program %s\n", p->name);
+    dprintf("[ensure_main_exec_initialized] looking at libraries from the following program %s\n", p->name);
     if (strncmp(p->name, proc_to_monitor, strlen(p->name)) != 0) {
         dprintf("[ensure_main_exec_initialized] Incorrect process to get mappings for: %s\n", p->name);
         return false;
@@ -2380,7 +2382,7 @@ void dwarf_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
     __livevar_iter(cpu, pc, global_var_list, f, args, 0);
 }
 void dwarf_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
-    dprintf("iterating through live vars\n");
+    // dprintf("iterating through live vars\n");
     if (inExecutableSource) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1) {
