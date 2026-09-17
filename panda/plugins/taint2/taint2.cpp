@@ -328,7 +328,7 @@ void taint2_enable_taint(void) {
     
     panda_enable_precise_pc(); //before_block_exec requires precise_pc for panda_current_asid
 
-    if (!execute_llvm){
+    if (!execute_llvm) {
         panda_enable_llvm();
     }
     panda_enable_llvm_helpers();
