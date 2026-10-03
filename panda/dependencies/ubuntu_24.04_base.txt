@@ -15,9 +15,6 @@ python3
 python3-pip
 wget
 
-# Get Ubuntu Version
-lsb-release
-
 # pyperipheral (only needed for armel)
 libpython3-dev
 
