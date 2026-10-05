@@ -2364,8 +2364,22 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
     *rc = 0;
     return;
 }
+// Point cur_function at the function that contains pc, and report whether pc is in the target's
+// own (DWARF-described) code. Live-variable iteration must use the query's own pc: cur_function and
+// inExecutableSource are globals updated by the call/ret/exec callbacks, and when one of those
+// transitions is missed they still describe another function, so PRI reported that function's
+// variables (names, types and frame offsets) at this query point.
+static bool sync_function_to_pc(target_ulong pc) {
+    std::vector<LineRange>::iterator it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    if (it == line_range_list.end() || pc < it->lowpc || it->lowpc == it->highpc) {
+        return false;
+    }
+    cur_function = it->function_addr;
+    return true;
+}
+
 void dwarf_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
-    if (inExecutableSource) {
+    if (sync_function_to_pc(pc)) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1) {
             printf("Error: was not able to get the Frame Pointer for the function %s at @ 0x" TARGET_FMT_lx "\n",
@@ -2383,7 +2397,7 @@ void dwarf_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
 }
 void dwarf_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
     // dprintf("iterating through live vars\n");
-    if (inExecutableSource) {
+    if (sync_function_to_pc(pc)) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1) {
             printf("Error: was not able to get the Frame Pointer for the function %s at @ 0x" TARGET_FMT_lx "\n",
