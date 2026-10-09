@@ -1,4 +1,4 @@
-#syntax=docker/dockerfile:1.17-labs
+#syntax=docker/dockerfile:1
 ARG REGISTRY="docker.io"
 ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
@@ -26,12 +26,12 @@ RUN apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
     apt-get clean && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
-    UBUNTU_VERSION=$(lsb_release -rs) && \
+    UBUNTU_VERSION=$(. /etc/os-release && echo "$VERSION_ID") && \
     if dpkg --compare-versions "$UBUNTU_VERSION" ge "23.04"; then \
         python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" --break-system-packages && \
         python3 -m pip install --upgrade --no-cache-dir "capstone" --break-system-packages; \
-        python3 -m pip install setuptools_scm --break-system-packages && \
-        python3 -m pip install build --break-system-packages; \
+        python3 -m pip install --ignore-installed setuptools_scm --break-system-packages && \
+        python3 -m pip install --ignore-installed build --break-system-packages; \
     else \
         python3 -m pip install --upgrade --no-cache-dir pip && \
         python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
@@ -112,8 +112,8 @@ RUN  make -C /panda/build install && \
 # Build wheel and install pypanda
 RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel . && \
-    UBUNTU_VERSION=$(lsb_release -rs) && \
+    PRETEND_VERSION=${PACKAGE_VERSION} python3 -m build --wheel . && \
+    UBUNTU_VERSION=$(. /etc/os-release && echo "$VERSION_ID") && \
     if dpkg --compare-versions "$UBUNTU_VERSION" ge "23.04"; then \
         python3 -m pip install dist/*.whl --break-system-packages; \
     else \
