@@ -2486,10 +2486,10 @@ class Panda():
             cmd = cmd.encode('utf8')
         self.serial_console.send(cmd) # send, not sendline
 
-    def finish_serial_cmd(self):
-        result = self.serial_console.send_eol()
-        result = self.serial_console.expect()
-        return result
+    def finish_serial_cmd(self, timeout=30):
+        """Press Enter and wait for the guest prompt; None disables the timeout."""
+        self.serial_console.send_eol()
+        return self.serial_console.expect(timeout=timeout)
 
     @blocking
     def run_monitor_cmd(self, cmd):
@@ -2612,7 +2612,7 @@ class Panda():
             progress(f"[Setup command]: {setup_result}")
 
     @blocking
-    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
+    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False, timeout=30):
         '''
         Take a recording as follows:
             0) Revert to the specified snapshot name if one is set. By default 'root'. Set to `None` if you have already set up the guest and are ready to record with no revert
@@ -2622,6 +2622,9 @@ class Panda():
             4) Begin the recording (name controlled by recording_name)
             5) Press enter in the guest to begin the command. Wait until it finishes.
             6) End the recording
+
+        timeout: seconds to wait for the recorded command to finish (default 30).
+            None waits indefinitely. Does not affect setup or monitor commands.
         '''
         # 0) Revert to the specified snapshot
         if snap_name is not None:
@@ -2645,7 +2648,7 @@ class Panda():
         self.run_monitor_cmd("begin_record {}".format(recording_name))
 
         # 5) finish command
-        result = self.finish_serial_cmd()
+        result = self.finish_serial_cmd(timeout=timeout)
 
         if debug:
             progress("Result of `{}`:".format(guest_command))
