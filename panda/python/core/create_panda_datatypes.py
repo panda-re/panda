@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 import argparse
+import subprocess
 if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
 
@@ -17,8 +18,7 @@ if sys.version_info[0] < 3:
 # fairly clean if we are to be able to make sense of them with this script
 # which isn't terribly clever.
 
-# Also copy all the generated plog_pb2.py's into pandare/plog_pb/
-# XXX: WIP if we do this this file should be renamed
+# Regenerate Python bindings so cached build artifacts cannot package old descriptors.
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 build_root = os.path.join(root_dir, "build")
 lib_dir = os.path.join("pandare", "data")
@@ -26,12 +26,13 @@ lib_dir = os.path.join("pandare", "data")
 arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64', 'mips64el']
 for arch in arches:
     softmmu = arch+"-softmmu"
-    plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
+    plog = os.path.join(*[build_root, softmmu, "plog.proto"])
     if os.path.isfile(plog):
-        shutil.copy(plog, os.path.join(*["pandare", "plog_pb2.py"]))
+        subprocess.check_call(["protoc", "--proto_path=" + os.path.dirname(plog),
+                               "--python_out=" + os.path.join(os.path.dirname(__file__), "pandare"), plog])
         break
 else:
-    raise RuntimeError("Unable to find any plog_pb2.py files in build directory")
+    raise RuntimeError("Unable to find any plog.proto files in build directory")
 
 OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "autogen"]))                # panda-git/panda/python/core/pandare/autogen
 PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
