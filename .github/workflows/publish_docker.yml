@@ -283,7 +283,6 @@ jobs:
       - name: Update PYPANDA docs in container
         run: |
           docker run --rm \
-          -e PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
           -v ${GITHUB_WORKSPACE}/auto_pydoc:/out \
           pandare/pandadev:latest /bin/sh -c "\
           pip3 install pdoc3==0.10.0; \
