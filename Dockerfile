@@ -40,6 +40,11 @@ RUN apt-get -qq update && \
         python3 -m pip install build; \
     fi
 
+# Use the same pinned protobuf toolchain as source installations.
+COPY ./panda/dependencies/install_protobuf.sh /tmp/install_protobuf.sh
+RUN bash /tmp/install_protobuf.sh && rm /tmp/install_protobuf.sh
+ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+
 # Then install capstone debian package
 RUN cd /tmp && \
     curl -LJO https://github.com/capstone-engine/capstone/releases/download/${CAPSTONE_VERSION}/libcapstone-dev_${CAPSTONE_VERSION}_amd64.deb && \
@@ -124,8 +129,11 @@ RUN cd /panda/panda/python/core && \
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
 RUN bash -c "ls $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/panda_{aarch64_64,arm_32,mips64_64,mips_32,mipsel_32,ppc_32,ppc_64,x86_64_64,i386_32}.py"
 
-# this layer is used to strip shared objects and change python data to be
-# symlinks to the installed panda data directory
+# Fail the image build if packaged bindings regress to the old descriptor API.
+RUN cd /tmp && PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb python3 -c \
+    'from pandare.plog_pb2 import LogEntry; from google.protobuf.internal import api_implementation; assert api_implementation.Type() == "upb"; m = LogEntry(pc=1, instr=2); assert LogEntry.FromString(m.SerializeToString()).instr == 2'
+
+# Strip shared objects and link Python data to the installed PANDA data.
 FROM installer AS cleanup
 RUN find /usr/local/lib/panda -name "*.so" -exec strip {} \;
 RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
@@ -179,7 +187,9 @@ COPY --from=base /tmp/build_dep.txt /tmp
 
 # Set up /package-root with files from panda we'll package
 COPY --from=p /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
-COPY --from=p /usr/local/include/ /package-root/usr/include/
+# Package PANDA headers only; build-toolchain headers belong to their own packages.
+COPY --from=p /usr/local/include/panda/ /package-root/usr/include/panda/
+COPY --from=p /usr/local/include/fake_libc_include/ /package-root/usr/include/fake_libc_include/
 COPY --from=p /usr/local/etc/panda /package-root/usr/local/etc/panda
 COPY --from=p /usr/local/lib/panda /package-root/usr/local/lib/panda
 COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda

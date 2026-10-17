@@ -82,6 +82,11 @@ else
   exit 1
 fi
 
+progress "Installing protobuf 3.21.12..."
+$SUDO bash ./panda/dependencies/install_protobuf.sh
+export PATH="/usr/local/bin:$PATH"
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+
 progress "Installing Rust..."
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 
