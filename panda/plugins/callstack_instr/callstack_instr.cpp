@@ -122,8 +122,9 @@ target_ulong cached_asid = 0;
 std::map<stackid, std::vector<stack_entry>> callstacks;
 // stackid -> function entry points
 std::map<stackid, std::vector<target_ulong>> function_stacks;
-// EIP -> instr_type
-std::map<target_ulong, instr_type> call_cache;
+// Cache per translated block: the same PC can have different block lengths
+// and address-space/mode variants. Translation refreshes reused TB pointers.
+std::map<const TranslationBlock *, instr_type> call_cache;
 // stackid -> address of Stopped block
 std::map<stackid, target_ulong> stoppedInfo;
 // stackid -> (stack entry pc -> binary)
@@ -350,7 +351,7 @@ done2:
 void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
 
-    call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
+    call_cache[tb] = disas_block(env, tb->pc, tb->size);
 
     return;
 }
@@ -392,19 +393,17 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     // Search up to 10 down
     for (int i = v.size() - 1; i > ((int)(v.size() - 10)) && i >= 0; i--) {
       if (tb->pc == v[i].pc) {
-        // printf("Matched at depth %d\n", v.size()-i);
-        // v.erase(v.begin()+i, v.end());
-
-        PPP_RUN_CB(on_ret, cpu, w[i]);
-
-        if(include_binary_info) {
-          for (std::vector<stack_entry>::iterator it = v.begin() + i; it != v.end(); ++it) {
-            binary_info_stack->erase(it->pc);
+        // Notify consumers before removing each frame, so get_callers() in
+        // the callback sees that frame's return address. A single callback
+        // followed by a bulk erase leaves consumers' shadow stacks stale.
+        while (v.size() > static_cast<size_t>(i)) {
+          PPP_RUN_CB(on_ret, cpu, w.back());
+          if (include_binary_info) {
+            binary_info_stack->erase(v.back().pc);
           }
+          v.pop_back();
+          w.pop_back();
         }
-
-        v.erase(v.begin() + i, v.end());
-        w.erase(w.begin() + i, w.end());
 
         break;
       }
@@ -441,7 +440,7 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
     uint32_t flags = 0x0;
 
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    instr_type tb_type = call_cache[tb->pc];
+    instr_type tb_type = call_cache[tb];
     stackid curStackid = get_stackid(cpu);
 
     // sometimes an attempt to run a block is interrupted, but this callback is

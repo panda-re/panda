@@ -761,7 +761,7 @@ class LineRange(object):
                 'func': self.func,
                 }
 
-def parse_dwarfdump(input_data: str, prefix: str="", project_root=None):
+def parse_dwarfdump(input_data: str, prefix: str="", project_root=None, debug: bool = False):
     """
     The main parsing routine. Reads dwarfdump output, processes both line info
     and debug info sections, and populates the databases of variables, functions,
@@ -813,7 +813,8 @@ def parse_dwarfdump(input_data: str, prefix: str="", project_root=None):
     if tag in data:
         for line in data[tag]:
             line = line.strip()
-            print(line)
+            if debug:
+                print(line)
             if not line:
                 continue
             if not line.startswith('<'):
@@ -1136,7 +1137,7 @@ def dump_json(j, info):
     json.dump(info.jsondump(), j, cls=DwarfJsonEncoder, indent=4)
 
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <dwarfdump_output_file | output_prefix> [output_prefix_if_file_used] [project_root]")
         sys.exit(1)
@@ -1169,7 +1170,7 @@ if __name__ == '__main__':
         print(f"[*] Processing DWARF for prefix: {prefix}...")
         print(f"[*] Using Project Root: {project_root if project_root else None}")
         
-        parse_dwarfdump(dwarf_content, prefix, project_root=project_root)
+        parse_dwarfdump(dwarf_content, prefix, project_root=project_root, debug=True)
         print(f"[+] Success! JSON files generated with prefix '{prefix}'")
     except AssertionError as e:
         print("[-] Error: DWARF parsing failed (AssertionError).")
@@ -1177,3 +1178,7 @@ if __name__ == '__main__':
         print(f"   Full stack trace: {e}")
     except Exception as e:
         print(f"[-] An unexpected error occurred: {e}")
+
+
+if __name__ == '__main__':
+    main()

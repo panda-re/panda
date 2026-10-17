@@ -1,4 +1,4 @@
-#syntax=docker/dockerfile:1.17-labs
+#syntax=docker/dockerfile:1
 ARG REGISTRY="docker.io"
 ARG BASE_IMAGE="ubuntu:22.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu,mips64el-softmmu"
@@ -26,12 +26,12 @@ RUN apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/build_dep.txt | grep -o '^[^#]*') && \
     apt-get clean && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
-    UBUNTU_VERSION=$(lsb_release -rs) && \
+    UBUNTU_VERSION=$(. /etc/os-release && echo "$VERSION_ID") && \
     if dpkg --compare-versions "$UBUNTU_VERSION" ge "23.04"; then \
         python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" --break-system-packages && \
         python3 -m pip install --upgrade --no-cache-dir "capstone" --break-system-packages; \
-        python3 -m pip install setuptools_scm --break-system-packages && \
-        python3 -m pip install build --break-system-packages; \
+        python3 -m pip install --ignore-installed setuptools_scm --break-system-packages && \
+        python3 -m pip install --ignore-installed build --break-system-packages; \
     else \
         python3 -m pip install --upgrade --no-cache-dir pip && \
         python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
@@ -39,6 +39,11 @@ RUN apt-get -qq update && \
         python3 -m pip install setuptools_scm && \
         python3 -m pip install build; \
     fi
+
+# Use the same pinned protobuf toolchain as source installations.
+COPY ./panda/dependencies/install_protobuf.sh /tmp/install_protobuf.sh
+RUN bash /tmp/install_protobuf.sh && rm /tmp/install_protobuf.sh
+ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
 
 # Then install capstone debian package
 RUN cd /tmp && \
@@ -112,8 +117,8 @@ RUN  make -C /panda/build install && \
 # Build wheel and install pypanda
 RUN cd /panda/panda/python/core && \
     python3 create_panda_datatypes.py --install && \
-    PRETEND_VERSION=$(cat /tmp/savedversion) python3 -m build --wheel . && \
-    UBUNTU_VERSION=$(lsb_release -rs) && \
+    PRETEND_VERSION=${PACKAGE_VERSION} python3 -m build --wheel . && \
+    UBUNTU_VERSION=$(. /etc/os-release && echo "$VERSION_ID") && \
     if dpkg --compare-versions "$UBUNTU_VERSION" ge "23.04"; then \
         python3 -m pip install dist/*.whl --break-system-packages; \
     else \
@@ -124,8 +129,11 @@ RUN cd /panda/panda/python/core && \
 RUN ls -alt $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/
 RUN bash -c "ls $(pip show pandare | grep Location: | awk '{print $2}')/pandare/autogen/panda_{aarch64_64,arm_32,mips64_64,mips_32,mipsel_32,ppc_32,ppc_64,x86_64_64,i386_32}.py"
 
-# this layer is used to strip shared objects and change python data to be
-# symlinks to the installed panda data directory
+# Fail the image build if packaged bindings regress to the old descriptor API.
+RUN cd /tmp && PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb python3 -c \
+    'from pandare.plog_pb2 import LogEntry; from google.protobuf.internal import api_implementation; assert api_implementation.Type() == "upb"; m = LogEntry(pc=1, instr=2); assert LogEntry.FromString(m.SerializeToString()).instr == 2'
+
+# Strip shared objects and link Python data to the installed PANDA data.
 FROM installer AS cleanup
 RUN find /usr/local/lib/panda -name "*.so" -exec strip {} \;
 RUN PKG=`pip show pandare | grep Location: | awk '{print $2}'`/pandare/data; \
@@ -179,7 +187,9 @@ COPY --from=base /tmp/build_dep.txt /tmp
 
 # Set up /package-root with files from panda we'll package
 COPY --from=p /usr/local/bin/panda* /usr/local/bin/libpanda* /usr/local/bin/qemu-img /package-root/usr/local/bin/
-COPY --from=p /usr/local/include/ /package-root/usr/include/
+# Package PANDA headers only; build-toolchain headers belong to their own packages.
+COPY --from=p /usr/local/include/panda/ /package-root/usr/include/panda/
+COPY --from=p /usr/local/include/fake_libc_include/ /package-root/usr/include/fake_libc_include/
 COPY --from=p /usr/local/etc/panda /package-root/usr/local/etc/panda
 COPY --from=p /usr/local/lib/panda /package-root/usr/local/lib/panda
 COPY --from=p /usr/local/share/panda /package-root/usr/local/share/panda

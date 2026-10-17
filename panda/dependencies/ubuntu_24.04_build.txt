@@ -1,3 +1,4 @@
+# protoc and libprotobuf are installed by panda/dependencies/install_protobuf.sh.
 libc++-dev
 libelf-dev
 libtool-bin
@@ -12,10 +13,8 @@ chrpath
 clang-14
 gcc
 libdwarf-dev
-libprotoc-dev
 llvm-14-dev
 protobuf-c-compiler
-protobuf-compiler
 python3-dev
 libpixman-1-dev
 zip
