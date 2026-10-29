@@ -11288,6 +11288,13 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+    if (rr_in_replay()) {
+        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        if (max_insns > until_interrupt) {
+            max_insns = until_interrupt;
+        }
+    }
+
     gen_tb_start(tb);
 
     tcg_clear_temp_count();
