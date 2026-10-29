@@ -11,7 +11,9 @@
         "qcow": "wheezy_panda2.qcow2",
         "default_mem": "128M",
         "extra_args": "-display none",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_x86.qcow": "1a944531ba019541a1242b9c2b450daf72518206"
+        }
     },
     "x86_64_wheezy": {
         "arch": "x86_64",
@@ -25,7 +27,9 @@
         "qcow": "wheezy_x64.qcow2",
         "default_mem": "128M",
         "extra_args": "-display none",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_x86_64.qcow" : "b4686b985b7b4ee49354ca5d34c2da9fda05e17b"
+        }
     },
     "ppc_wheezy": {
         "arch": "ppc",
@@ -39,7 +43,9 @@
         "qcow": "ppc_wheezy.qcow2",
         "default_mem": "128M",
         "extra_args": "-display none",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_ppc.qcow" : "6b03b212a4e82c67611d9b39df0755e29fc59602"
+        }
     },
     "arm_wheezy": {
         "arch": "arm",
@@ -56,7 +62,11 @@
         "qcow": "arm_wheezy.qcow",
         "default_mem": "128M",
         "extra_args": "-display none -M versatilepb -append \"root=/dev/sda1\" -kernel ~/.panda/vmlinuz-3.2.0-4-versatile -initrd ~/.panda/initrd.img-3.2.0-4-versatile",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_arm.qcow" : "6171a46f2d56c3887db4aa98c3c0785c137061f5",
+            "vmlinuz-3.2.0-4-versatile" : "b6941464189e046ced94d14e14a27f414840f9b5",
+            "initrd.img-3.2.0-4-versatile" : "c08fc3d4a749ae794028a6374c1a59e5de9e7537"
+        }
     },
     "aarch64_focal": {
         "arch": "aarch64",
@@ -72,7 +82,10 @@
         "qcow": null,
         "default_mem": "1G",
         "extra_args": "-nographic -machine virt -cpu cortex-a57 -device virtio-scsi-pci -drive if=none,id=cdrom0,media=cdrom -device scsi-cd,drive=cdrom0 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
-        "hashes": null
+        "hashes": {
+            "ubuntu20_04-aarch64.qcow" : "017f1c7b56431cd74f7387ee270e2fbe4ed4f345",
+            "ubuntu20_04-aarch64-flash0.qcow" : "913466d24bf81a7c5e9ecd04327abe7723920b98"
+        }
     },
     "mips64": {
         "arch": "mips64",
@@ -89,7 +102,11 @@
         "qcow": null,
         "default_mem": "2g",
         "extra_args": "-M malta -cpu MIPS64R2-generic -append \"root=/dev/vda console=ttyS0 mem=2048m net.ifnames=0 nokaslr\" -netdev user,id=user.0 -device virtio-net,netdev=user.0 -device usb-kbd -device usb-tablet -kernel ~/.panda/vmlinux-4.14.0-3-5kc-malta.mips.buster -initrd ~/.panda/initrd.img-4.14.0-3-5kc-malta.mips.buster -nographic",
-        "hashes": null
+        "hashes": {
+            "debian-buster-mips.qcow2" : "e47459a5927c12549fef79a3a8a0e73ba8385cb6",
+            "vmlinux-4.14.0-3-5kc-malta.mips.buster": "d4fd7084a32756825717dca012ac9d438a3674ec",
+            "initrd.img-4.14.0-3-5kc-malta.mips.buster": "c2d6448dc8315105b1fe60f5190c67077216d752"
+        }
     },
     "mips_wheezy": {
         "arch": "mips",
@@ -105,7 +122,10 @@
         "qcow": null,
         "default_mem": "1g",
         "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta -append \"root=/dev/sda1\" -nographic",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_mips.qcow" : "32ecaf11a8e89452516ad3dba378d78f1381afc6",
+            "vmlinux-3.2.0-4-4kc-malta": "592e384a4edc16dade52a6cd5c785c637bcbc9ad"
+        }
     },
     "mipsel_wheezy": {
         "arch": "mipsel",
@@ -122,8 +142,8 @@
         "default_mem": "1g",
         "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta.mipsel -append \"root=/dev/sda1\" -nographic",
         "hashes": {
-            "vmlinux-3.2.0-4-4kc-malta": "592e384a4edc16dade52a6cd5c785c637bcbc9ad",
-            "debian_7.3_mipsel.qcow": "eeb5de0128a95c5f0d76c4f2161afd1bb320d85b"
+            "debian_7.3_mipsel.qcow": "eeb5de0128a95c5f0d76c4f2161afd1bb320d85b",
+            "vmlinux-3.2.0-4-4kc-malta.mipsel": "592e384a4edc16dade52a6cd5c785c637bcbc9ad"
         }
     },
     "mips_buildroot5": {
@@ -140,7 +160,10 @@
         "qcow": null,
         "default_mem": "1g",
         "extra_args": "-M malta -kernel ~/.panda/mips32_vmlinux-5.10.7-4kc-malta -net nic,model=pcnet -net user -append \"root=/dev/hda\" -nographic",
-        "hashes": null
+        "hashes": {
+            "mips32_buildroot.qcow": "4fbfc2d82a5bc59b5d575c7879822a701c0dd81c",
+            "mips32_vmlinux-5.10.7-4kc-malta": "ad3b07669e1e1fdc7782948d37e70b739c09ddfd"
+        }
     },
     "mipsel_buildroot5": {
         "arch": "mipsel",
@@ -156,7 +179,10 @@
         "qcow": null,
         "default_mem": "1g",
         "extra_args": "-M malta -kernel ~/.panda/mipsel32_vmlinux-5.10.7-4kc-malta-el -net nic,model=pcnet -net user -append \"root=/dev/hda\" -nographic",
-        "hashes": null
+        "hashes": {
+            "mipsel32_buildroot.qcow": "9552209d1a8190455625845a654be3f0c70adcd6",
+            "mipsel32_vmlinux-5.10.7-4kc-malta-el": "f006faaf6340b73fdc765152e468219bd2755e1c"
+        }
     },
     "i386_ubuntu_1604": {
         "arch": "i386",
@@ -170,7 +196,9 @@
         "qcow": null,
         "default_mem": "1024",
         "extra_args": "-display none",
-        "hashes": null
+        "hashes": {
+            "ubuntu_1604_x86.qcow": "6c5412373de920111e4a405b0654fb6bfc21182d"
+        }
     },
     "x86_64_ubuntu_1804": {
         "arch": "x86_64",
@@ -216,7 +244,9 @@
         "qcow": null,
         "default_mem": "1024",
         "extra_args": "-display none",
-        "hashes": null
+        "hashes": {
+            "ubuntu_1604_x86.qcow" : "6c5412373de920111e4a405b0654fb6bfc21182d"
+        }
     },
     "ppc": {
         "arch": "ppc",
@@ -230,7 +260,9 @@
         "qcow": "ppc_wheezy.qcow2",
         "default_mem": "128M",
         "extra_args": "-display none",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_ppc.qcow" : "6b03b212a4e82c67611d9b39df0755e29fc59602"
+        }
     },
     "arm": {
         "arch": "arm",
@@ -247,7 +279,11 @@
         "qcow": "arm_wheezy.qcow",
         "default_mem": "128M",
         "extra_args": "-display none -M versatilepb -append \"root=/dev/sda1\" -kernel ~/.panda/vmlinuz-3.2.0-4-versatile -initrd ~/.panda/initrd.img-3.2.0-4-versatile",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_arm.qcow" : "6171a46f2d56c3887db4aa98c3c0785c137061f5",
+            "vmlinuz-3.2.0-4-versatile" : "b6941464189e046ced94d14e14a27f414840f9b5",
+            "initrd.img-3.2.0-4-versatile" : "c08fc3d4a749ae794028a6374c1a59e5de9e7537"
+        }
     },
     "aarch64": {
         "arch": "aarch64",
@@ -263,7 +299,10 @@
         "qcow": null,
         "default_mem": "1G",
         "extra_args": "-nographic -machine virt -cpu cortex-a57 -device virtio-scsi-pci -drive if=none,id=cdrom0,media=cdrom -device scsi-cd,drive=cdrom0 -drive file=~/.panda/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on",
-        "hashes": null
+        "hashes": {
+            "ubuntu20_04-aarch64.qcow": "017f1c7b56431cd74f7387ee270e2fbe4ed4f345",
+            "ubuntu20_04-aarch64-flash0.qcow": "913466d24bf81a7c5e9ecd04327abe7723920b98"
+        }
     },
     "mips": {
         "arch": "mips",
@@ -279,7 +318,10 @@
         "qcow": null,
         "default_mem": "1g",
         "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta -append \"root=/dev/sda1\" -nographic",
-        "hashes": null
+        "hashes": {
+            "debian_7.3_mips.qcow": "32ecaf11a8e89452516ad3dba378d78f1381afc6",
+            "vmlinux-3.2.0-4-4kc-malta": "592e384a4edc16dade52a6cd5c785c637bcbc9ad"
+        }
     },
     "mipsel": {
         "arch": "mipsel",
@@ -296,8 +338,8 @@
         "default_mem": "1g",
         "extra_args": "-M malta -kernel ~/.panda/vmlinux-3.2.0-4-4kc-malta.mipsel -append \"root=/dev/sda1\" -nographic",
         "hashes": {
-            "vmlinux-3.2.0-4-4kc-malta": "592e384a4edc16dade52a6cd5c785c637bcbc9ad",
-            "debian_7.3_mipsel.qcow": "eeb5de0128a95c5f0d76c4f2161afd1bb320d85b"
+            "debian_7.3_mipsel.qcow": "eeb5de0128a95c5f0d76c4f2161afd1bb320d85b",
+            "vmlinux-3.2.0-4-4kc-malta.mipsel": "592e384a4edc16dade52a6cd5c785c637bcbc9ad"
         }
     }
 }
