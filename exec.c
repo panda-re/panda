@@ -3432,7 +3432,20 @@ void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
         if (is_write) {
             //bdg Save addr1,access_len,buffer contents
             if (rr_in_record()) {
+#ifdef TARGET_AARCH64
+                RR_MapList *region;
+
+                QLIST_FOREACH(region, &rr_map_list, link) {
+                    if (region->ptr == buffer && region->len == len) {
+                        break;
+                    }
+                }
+                assert(region != NULL);
+                rr_device_mem_unmap_call_record(region->addr, buffer,
+                                                access_len, is_write);
+#else
                 rr_device_mem_unmap_call_record(addr1, buffer, access_len, is_write);
+#endif
             }
             invalidate_and_set_dirty(mr, addr1, access_len);
         }
@@ -3487,6 +3500,7 @@ void cpu_physical_memory_unmap(void *buffer, hwaddr len,
 #define ARG1                     as
 #define SUFFIX
 #define TRANSLATE(...)           address_space_translate(as, __VA_ARGS__)
+#define RR_ADDRESS(addr)        (addr)
 #define IS_DIRECT(mr, is_write)  memory_access_is_direct(mr, is_write)
 #define MAP_RAM(mr, ofs)         qemu_map_ram_ptr((mr)->ram_block, ofs)
 #define INVALIDATE(mr, ofs, len) invalidate_and_set_dirty(mr, ofs, len)
@@ -3520,6 +3534,7 @@ void address_space_cache_destroy(MemoryRegionCache *cache)
 #define ARG1_DECL                MemoryRegionCache *cache
 #define ARG1                     cache
 #define SUFFIX                   _cached
+#define RR_ADDRESS(addr)        (cache->xlat + (addr))
 #define TRANSLATE(addr, ...)     \
     address_space_translate(cache->as, cache->xlat + (addr), __VA_ARGS__)
 #define IS_DIRECT(mr, is_write)  true

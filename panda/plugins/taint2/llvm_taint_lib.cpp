@@ -254,6 +254,12 @@ PandaTaintVisitor::PandaTaintVisitor(ShadowState *shad,
     mixF = TaintOpsFunction("taint_mix", (void *) &taint_mix,
         argTys, voidT, true, ES, symbols);
 
+#ifdef TARGET_AARCH64
+    argTys = { shadP, int64T, int64T, int64T, int64T, int64T };
+    intrinsicF = TaintOpsFunction("taint_mix_intrinsic",
+        (void *) &taint_mix_intrinsic, argTys, voidT, false, ES, symbols);
+#endif
+
     argTys = { shadP, int64T, shadP, int64T,
         int64T, shadP, int64T, int64T, int64T };
 
@@ -813,6 +819,19 @@ void PandaTaintVisitor::insertTaintPointer(Instruction &I,
     inlineCall(popCI);
 }
 
+
+#ifdef TARGET_AARCH64
+void PandaTaintVisitor::insertTaintIntrinsic(CallInst &I, unsigned operands) {
+    assert(operands >= 1 && operands <= 3);
+    vector<Value *> args { llvConst, constSlot(&I),
+        const_uint64(getValueSize(&I)), maxConst, maxConst, maxConst };
+    for (unsigned i = 0; i < operands; ++i) {
+        assert(getValueSize(I.getArgOperand(i)) == getValueSize(&I));
+        args[3 + i] = constWeakSlot(I.getArgOperand(i));
+    }
+    insertCallAfter(I, intrinsicF, args);
+}
+#endif
 
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
     insertTaintMix(I, &I, src);
@@ -1673,6 +1692,10 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             case Intrinsic::usub_sat:
                 insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
                 return;
+#ifdef TARGET_AARCH64
+            case Intrinsic::ctpop:
+            case Intrinsic::bitreverse:
+#endif
             case Intrinsic::bswap:
             case Intrinsic::ceil:
             case Intrinsic::ctlz:
@@ -1691,12 +1714,30 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 // This needs to be eliminated before we can generate code!
                 //assert(false && "Have to eliminate debug statements!");
                 return;
+#ifdef TARGET_AARCH64
+            case Intrinsic::abs:
+                insertTaintIntrinsic(I, 1);
+                return;
+            case Intrinsic::smax:
+            case Intrinsic::smin:
+            case Intrinsic::umax:
+            case Intrinsic::umin:
+                insertTaintIntrinsic(I, 2);
+                return;
+            case Intrinsic::fmuladd:
+            case Intrinsic::fma:
+            case Intrinsic::fshl:
+            case Intrinsic::fshr:
+                insertTaintIntrinsic(I, 3);
+                return;
+#else
             case Intrinsic::abs:
             case Intrinsic::fmuladd:
             case Intrinsic::fshl:
             case Intrinsic::fshr:
             case Intrinsic::smax:
             case Intrinsic::smin:
+#endif
                 // TODO:  could probably implement taint propagation for these
                 // if had more time to find test cases and enhance framework
                 return;
