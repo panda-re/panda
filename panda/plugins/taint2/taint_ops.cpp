@@ -659,6 +659,34 @@ static inline bool bulk_set(Shad *shad, uint64_t addr, uint64_t size,
     return change;
 }
 
+#ifdef TARGET_AARCH64
+void taint_mix_intrinsic(Shad *shad, uint64_t dest, uint64_t size,
+        uint64_t src1, uint64_t src2, uint64_t src3)
+{
+    uint64_t sources[] = { src1, src2, src3 };
+    TaintData td;
+    for (uint64_t src : sources) {
+        if (src != UINT64_MAX) {
+            td = TaintData::make_union(td,
+                mixed_labels(shad, src, size, false), false);
+        }
+    }
+    td.increment_tcn();
+    td.cb_mask = td.ls ? 0xff : 0;
+    bulk_set(shad, dest, size, td);
+
+    for (uint64_t src : sources) {
+        if (src != UINT64_MAX) {
+            Addr src_addr = get_addr_from_shad(shad, src);
+            for (uint64_t i = 0; i < size; ++i) {
+                Addr dest_addr = get_addr_from_shad(shad, dest + i);
+                PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
+            }
+        }
+    }
+}
+#endif
+
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
         uint64_t result_unused, uint64_t val1, uint64_t val2, uint64_t pred)

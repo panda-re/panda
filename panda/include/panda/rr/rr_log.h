@@ -193,11 +193,29 @@ static inline void rr_maybe_progress(void) {
 }
 
 extern void rr_fill_queue(void);
+#ifdef TARGET_AARCH64
+extern RR_log_entry *rr_queue_head;
+#endif
 extern RR_log_entry *rr_queue_tail;
 static inline uint64_t rr_num_instr_before_next_interrupt(void) {
     if (!rr_queue_tail) rr_fill_queue();
     if (!rr_queue_tail) return -1;
 
+#ifdef TARGET_AARCH64
+    if (rr_queue_head) {
+        switch (rr_queue_head->header.kind) {
+            case RR_INPUT_1:
+            case RR_INPUT_2:
+            case RR_INPUT_4:
+            case RR_INPUT_8:
+                return rr_queue_head->header.prog_point.guest_instr_count -
+                    rr_get_guest_instr_count();
+            default:
+                break;
+        }
+    }
+
+#endif
     RR_header last_header = rr_queue_tail->header;
     switch (last_header.kind) {
         case RR_SKIPPED_CALL:

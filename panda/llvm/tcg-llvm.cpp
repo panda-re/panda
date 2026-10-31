@@ -829,6 +829,9 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     __EXT_OP(INDEX_op_ext8u_i32,   8, 32, Z)
     __EXT_OP(INDEX_op_ext16s_i32, 16, 32, S)
     __EXT_OP(INDEX_op_ext16u_i32, 16, 32, Z)
+#ifdef TARGET_AARCH64
+    __EXT_OP(INDEX_op_ext_i32_i64, 32, 64, S)
+#endif
     __EXT_OP(INDEX_op_extu_i32_i64, 32, 64, Z)
 
 #if TCG_TARGET_REG_BITS == 64
@@ -918,6 +921,35 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
         setValue(args[0], out);                                     \
     } break;
 
+#ifdef TARGET_AARCH64
+#define __ARITH_OP_DIV2(opc_name, signE, extend, bits)                      \
+    case opc_name: {                                                  \
+        assert(getValue(args[2])->getType() == intType(bits));      \
+        assert(getValue(args[3])->getType() == intType(bits));      \
+        assert(getValue(args[4])->getType() == intType(bits));      \
+        v = m_builder.CreateShl(                                    \
+                m_builder.CreateZExt(                               \
+                    getValue(args[3]), intType(bits*2)),            \
+                m_builder.CreateZExt(                               \
+                    constInt(bits, bits),                           \
+                    intType(bits * 2)));                            \
+        v = m_builder.CreateOr(v,                                   \
+                m_builder.CreateZExt(                               \
+                    getValue(args[2]), intType(bits*2)));           \
+        Value *divisor = m_builder.Create ## extend(                \
+                getValue(args[4]), intType(bits*2));                \
+        setValue(args[0], m_builder.CreateTrunc(                    \
+                m_builder.Create ## signE ## Div(                   \
+                v, divisor                                         \
+                ),                                                  \
+                intType(bits)));                                    \
+        setValue(args[1], m_builder.CreateTrunc(                    \
+                m_builder.Create ## signE ## Rem(                   \
+                v, divisor                                         \
+                        ),                                          \
+                        intType(bits)));                            \
+    } break;
+#else
 #define __ARITH_OP_DIV2(opc_name, signE, bits)                      \
     case opc_name:                                                  \
         assert(getValue(args[2])->getType() == intType(bits));      \
@@ -945,7 +977,23 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
                         ),                                          \
                         intType(bits)));                            \
         break;
+#endif
 
+#ifdef TARGET_AARCH64
+#define __ARITH_OP_ROT(opc_name, op1, op2, bits)                    \
+    case opc_name:                                                  \
+        assert(getValue(args[1])->getType() == intType(bits));      \
+        assert(getValue(args[2])->getType() == intType(bits));      \
+        v = m_builder.CreateAnd(                                    \
+                m_builder.CreateSub(constInt(bits, bits),            \
+                    getValue(args[2])), constInt(bits, bits - 1));   \
+        setValue(args[0], m_builder.CreateOr(                       \
+                m_builder.Create ## op1 (                           \
+                    getValue(args[1]), getValue(args[2])),          \
+                m_builder.Create ## op2 (                           \
+                    getValue(args[1]), v)));                        \
+        break;
+#else
 #define __ARITH_OP_ROT(opc_name, op1, op2, bits)                    \
     case opc_name:                                                  \
         assert(getValue(args[1])->getType() == intType(bits));      \
@@ -959,6 +1007,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
                 m_builder.Create ## op2 (                           \
                     getValue(args[1]), v)));                        \
         break;
+#endif
 
 #define __ARITH_OP_I(opc_name, op, i, bits)                         \
     case opc_name:                                                  \
@@ -1047,8 +1096,13 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP(INDEX_op_rem_i32,  SRem, 32)
     __ARITH_OP(INDEX_op_remu_i32, URem, 32)
 #endif
+#ifdef TARGET_AARCH64
+    __ARITH_OP_DIV2(INDEX_op_div2_i32, S, SExt, 32)
+    __ARITH_OP_DIV2(INDEX_op_divu2_i32, U, ZExt, 32)
+#else
     __ARITH_OP_DIV2(INDEX_op_div2_i32,  S, 32)
     __ARITH_OP_DIV2(INDEX_op_divu2_i32, U, 32)
+#endif
 
     __ARITH_OP(INDEX_op_and_i32, And, 32)
     __ARITH_OP(INDEX_op_or_i32,   Or, 32)
@@ -1090,6 +1144,13 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP(INDEX_op_sub_i64, Sub, 64)
     __ARITH_OP(INDEX_op_mul_i64, Mul, 64)
 
+#ifdef TARGET_AARCH64
+#ifdef TCG_TARGET_HAS_add2_i64
+    __ARITH_OP_DECOMPOSE_2(INDEX_op_add2_i64, Add, 64)
+    __ARITH_OP_DECOMPOSE_2(INDEX_op_sub2_i64, Sub, 64)
+#endif
+#endif
+
 #ifdef TCG_TARGET_HAS_mulu2_i64
     __ARITH_OP_DECOMPOSE(INDEX_op_mulu2_i64, Mul, ZExt, 64)
 #endif
@@ -1097,6 +1158,17 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP_DECOMPOSE(INDEX_op_muls2_i64, Mul, SExt, 64)
 #endif
 
+#ifdef TARGET_AARCH64
+#if TCG_TARGET_HAS_div_i64
+    __ARITH_OP(INDEX_op_div_i64,  SDiv, 64)
+    __ARITH_OP(INDEX_op_divu_i64, UDiv, 64)
+    __ARITH_OP(INDEX_op_rem_i64,  SRem, 64)
+    __ARITH_OP(INDEX_op_remu_i64, URem, 64)
+#else
+    __ARITH_OP_DIV2(INDEX_op_div2_i64, S, SExt, 64)
+    __ARITH_OP_DIV2(INDEX_op_divu2_i64, U, ZExt, 64)
+#endif
+#else
 #ifdef TCG_TARGET_HAS_div_i64
     __ARITH_OP(INDEX_op_div_i64,  SDiv, 64)
     __ARITH_OP(INDEX_op_divu_i64, UDiv, 64)
@@ -1105,6 +1177,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
 #else
     __ARITH_OP_DIV2(INDEX_op_div2_i64,  S, 64)
     __ARITH_OP_DIV2(INDEX_op_divu2_i64, U, 64)
+#endif
 #endif
 
     __ARITH_OP(INDEX_op_and_i64, And, 64)
@@ -1258,6 +1331,15 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     }
     break;
 
+#ifdef TARGET_AARCH64
+    case INDEX_op_ctpop_i32:
+    case INDEX_op_ctpop_i64: {
+        Function *intrinsic = Intrinsic::getDeclaration(m_module.get(),
+                Intrinsic::ctpop, { intType(op_size) });
+        setValue(args[0], m_builder.CreateCall(intrinsic, getValue(args[1])));
+    } break;
+
+#endif
     case INDEX_op_ctz_i32:
     case INDEX_op_ctz_i64:
     case INDEX_op_clz_i32:

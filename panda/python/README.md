@@ -22,23 +22,23 @@ Note CFFI is a build dependency for pypanda and your protobuf version needs to m
 3) Build and install the `pandare` Python package
 ```
 $ cd panda/panda/python/core
-$ python setup.py install
+$ pip install .
 ```
 
 ### Technical details
 See detailed installation, usage and example programs [here](./docs/USAGE.md).
 
-Also, given the major protobuf update, you may see this message.
-```
-TypeError: Descriptors cannot be created directly.
-If this call came from a _pb2.py file, your generated code is out of date and must be regenerated with protoc >= 3.19.0.
-If you cannot immediately regenerate your protos, some other possible workarounds are:
- 1. Downgrade the protobuf package to 3.20.x or lower.
- 2. Set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python (but this will use pure-Python parsing and will be much slower).
+PANDA installs protobuf 3.21.12 through `panda/dependencies/install_protobuf.sh`
+for both source and Docker builds. This supplies a consistent `protoc` and C++
+library; `protobuf-c` remains a separate apt dependency. PyPANDA's Python runtime
+is installed through pip (`protobuf>=4.25.1`).
 
-More information: https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
-```
-Using `export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` so far was the easiest work around and the performance was still reasonable.
+After upgrading protobuf, use a fresh PANDA build directory so C/C++ generated
+files are rebuilt too. `create_panda_datatypes.py` regenerates Python bindings
+from the built schema before packaging. Do not set
+`PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python` for routine log conversion: it
+forces slow decoding instead of the native backend. Existing recordings and
+pandalogs remain usable; the schema and wire format are unchanged.
 
 ## Examples
 Examples are provided in the [examples directory](./examples/).

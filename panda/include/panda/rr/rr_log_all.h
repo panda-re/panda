@@ -50,6 +50,7 @@ void rr_create_replay_log(const char* filename);
 void rr_create_record_log(const char* filename);
 void rr_destroy_log(void);
 uint8_t rr_replay_finished(void);
+bool rr_replay_gic_acknowledge(uint64_t *value);
 void rr_fseek_cur(size_t size);
 
 // used from monitor.c
@@ -208,6 +209,8 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
         ACTION(RR_CALLSITE_E1000_START_XMIT),                                  \
         ACTION(RR_CALLSITE_SERIAL_RECEIVE), ACTION(RR_CALLSITE_SERIAL_READ),   \
         ACTION(RR_CALLSITE_SERIAL_SEND), ACTION(RR_CALLSITE_SERIAL_WRITE),     \
+        ACTION(RR_CALLSITE_ARM_CNTPCT), ACTION(RR_CALLSITE_ARM_CNTVCT),         \
+        ACTION(RR_CALLSITE_ARM_TIMER_CTL),                                    \
         ACTION(RR_CALLSITE_LAST)
 
 typedef enum {

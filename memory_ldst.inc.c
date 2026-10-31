@@ -460,7 +460,11 @@ static inline void glue(address_space_stl_internal, SUFFIX)(ARG1_DECL,
             break;
         }
         if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+#ifdef TARGET_AARCH64
+            rr_device_mem_rw_call_record(RR_ADDRESS(addr), ptr, 4, /*is_write*/1);
+#else
             rr_device_mem_rw_call_record(addr1, ptr, l, /*is_write*/1);
+#endif
         }
         INVALIDATE(mr, addr1, 4);
         r = MEMTX_OK;
@@ -537,6 +541,11 @@ void glue(address_space_stb, SUFFIX)(ARG1_DECL,
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);
         stb_p(ptr, val);
+#ifdef TARGET_AARCH64
+        if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+            rr_device_mem_rw_call_record(RR_ADDRESS(addr), ptr, 1, 1);
+        }
+#endif
         INVALIDATE(mr, addr1, 1);
         r = MEMTX_OK;
     }
@@ -602,6 +611,11 @@ static inline void glue(address_space_stw_internal, SUFFIX)(ARG1_DECL,
             stw_p(ptr, val);
             break;
         }
+#ifdef TARGET_AARCH64
+        if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+            rr_device_mem_rw_call_record(RR_ADDRESS(addr), ptr, 2, 1);
+        }
+#endif
         INVALIDATE(mr, addr1, 2);
         r = MEMTX_OK;
     }
@@ -699,6 +713,11 @@ static void glue(address_space_stq_internal, SUFFIX)(ARG1_DECL,
             stq_p(ptr, val);
             break;
         }
+#ifdef TARGET_AARCH64
+        if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+            rr_device_mem_rw_call_record(RR_ADDRESS(addr), ptr, 8, 1);
+        }
+#endif
         INVALIDATE(mr, addr1, 8);
         r = MEMTX_OK;
     }
@@ -754,6 +773,7 @@ void glue(stq_be_phys, SUFFIX)(ARG1_DECL, hwaddr addr, uint64_t val)
 #undef ARG1
 #undef SUFFIX
 #undef TRANSLATE
+#undef RR_ADDRESS
 #undef IS_DIRECT
 #undef MAP_RAM
 #undef INVALIDATE
