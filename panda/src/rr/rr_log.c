@@ -904,6 +904,17 @@ static RR_log_entry *rr_read_item(void) {
 }
 
 // mz fill the queue of log entries from the file
+bool rr_replay_gic_acknowledge(uint64_t *value)
+{
+#ifdef TARGET_AARCH64
+    if (rr_in_replay()) {
+        rr_input_8(value);
+        return true;
+    }
+#endif
+    return false;
+}
+
 void rr_fill_queue(void) {
     unsigned long long num_entries = 0;
 
@@ -918,7 +929,14 @@ void rr_fill_queue(void) {
 
         if ((header.kind == RR_SKIPPED_CALL
                     && header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT)
-                || header.kind == RR_INTERRUPT_REQUEST) {
+                || header.kind == RR_INTERRUPT_REQUEST
+#ifdef TARGET_AARCH64
+                || header.kind == RR_INPUT_1
+                || header.kind == RR_INPUT_2
+                || header.kind == RR_INPUT_4
+                || header.kind == RR_INPUT_8
+#endif
+                ) {
             // Cut off queue so we don't run out of memory on long runs of
             // non-interrupts
             break;
@@ -1147,6 +1165,10 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                 host_buf = cpu_physical_memory_map(
                     args.variant.cpu_mem_unmap.addr, &plen,
                     /*is_write=*/1);
+#ifdef TARGET_AARCH64
+                rr_assert(host_buf != NULL);
+                rr_assert(plen >= args.variant.cpu_mem_unmap.len);
+#endif
                 memcpy(host_buf, args.variant.cpu_mem_unmap.buf,
                        args.variant.cpu_mem_unmap.len);
                 cpu_physical_memory_unmap(host_buf, plen,

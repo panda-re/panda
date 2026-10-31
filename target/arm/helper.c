@@ -16,6 +16,10 @@
 #include "exec/semihost.h"
 #include "sysemu/kvm.h"
 
+#if defined(TARGET_AARCH64) && !defined(CONFIG_USER_ONLY)
+#include "panda/rr/rr_log_all.h"
+#endif
+
 #define ARM_CPU_FREQ 1000000000 /* FIXME: 1 GHz, should be configurable */
 
 #ifndef CONFIG_USER_ONLY
@@ -1696,12 +1700,36 @@ static void gt_timer_reset(CPUARMState *env, const ARMCPRegInfo *ri,
 
 static uint64_t gt_cnt_read(CPUARMState *env, const ARMCPRegInfo *ri)
 {
+#ifdef TARGET_AARCH64
+    uint64_t value;
+
+    RR_DO_RECORD_OR_REPLAY(
+        value = gt_get_countervalue(env),
+        rr_input_8(&value),
+        rr_input_8(&value),
+        RR_CALLSITE_ARM_CNTPCT);
+
+    return value;
+#else
     return gt_get_countervalue(env);
+#endif
 }
 
 static uint64_t gt_virt_cnt_read(CPUARMState *env, const ARMCPRegInfo *ri)
 {
+#ifdef TARGET_AARCH64
+    uint64_t value;
+
+    RR_DO_RECORD_OR_REPLAY(
+        value = gt_get_countervalue(env) - env->cp15.cntvoff_el2,
+        rr_input_8(&value),
+        rr_input_8(&value),
+        RR_CALLSITE_ARM_CNTVCT);
+
+    return value;
+#else
     return gt_get_countervalue(env) - env->cp15.cntvoff_el2;
+#endif
 }
 
 static void gt_cval_write(CPUARMState *env, const ARMCPRegInfo *ri,
@@ -1713,6 +1741,21 @@ static void gt_cval_write(CPUARMState *env, const ARMCPRegInfo *ri,
     gt_recalc_timer(arm_env_get_cpu(env), timeridx);
 }
 
+#ifdef TARGET_AARCH64
+static uint64_t gt_ctl_read(CPUARMState *env, const ARMCPRegInfo *ri)
+{
+    uint64_t value;
+
+    RR_DO_RECORD_OR_REPLAY(
+        value = raw_read(env, ri),
+        rr_input_8(&value),
+        rr_input_8(&value),
+        RR_CALLSITE_ARM_TIMER_CTL);
+
+    return value;
+}
+
+#endif
 static uint64_t gt_tval_read(CPUARMState *env, const ARMCPRegInfo *ri,
                              int timeridx)
 {
@@ -1937,6 +1980,9 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_ptimer_access,
       .fieldoffset = offsetoflow32(CPUARMState,
                                    cp15.c14_timer[GTIMER_PHYS].ctl),
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_phys_ctl_write, .raw_writefn = raw_write,
     },
     { .name = "CNTP_CTL(S)",
@@ -1946,6 +1992,9 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_ptimer_access,
       .fieldoffset = offsetoflow32(CPUARMState,
                                    cp15.c14_timer[GTIMER_SEC].ctl),
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_sec_ctl_write, .raw_writefn = raw_write,
     },
     { .name = "CNTP_CTL_EL0", .state = ARM_CP_STATE_AA64,
@@ -1954,6 +2003,9 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_ptimer_access,
       .fieldoffset = offsetof(CPUARMState, cp15.c14_timer[GTIMER_PHYS].ctl),
       .resetvalue = 0,
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_phys_ctl_write, .raw_writefn = raw_write,
     },
     { .name = "CNTV_CTL", .cp = 15, .crn = 14, .crm = 3, .opc1 = 0, .opc2 = 1,
@@ -1961,6 +2013,9 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_vtimer_access,
       .fieldoffset = offsetoflow32(CPUARMState,
                                    cp15.c14_timer[GTIMER_VIRT].ctl),
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_virt_ctl_write, .raw_writefn = raw_write,
     },
     { .name = "CNTV_CTL_EL0", .state = ARM_CP_STATE_AA64,
@@ -1969,6 +2024,9 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_vtimer_access,
       .fieldoffset = offsetof(CPUARMState, cp15.c14_timer[GTIMER_VIRT].ctl),
       .resetvalue = 0,
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_virt_ctl_write, .raw_writefn = raw_write,
     },
     /* TimerValue views: a 32 bit downcounting view of the underlying state */
@@ -2080,6 +2138,9 @@ static const ARMCPRegInfo generic_timer_cp_reginfo[] = {
       .accessfn = gt_stimer_access,
       .fieldoffset = offsetof(CPUARMState, cp15.c14_timer[GTIMER_SEC].ctl),
       .resetvalue = 0,
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_sec_ctl_write, .raw_writefn = raw_write,
     },
     { .name = "CNTPS_CVAL_EL1", .state = ARM_CP_STATE_AA64,
@@ -3952,6 +4013,9 @@ static const ARMCPRegInfo el2_cp_reginfo[] = {
       .access = PL2_RW,
       .fieldoffset = offsetof(CPUARMState, cp15.c14_timer[GTIMER_HYP].ctl),
       .resetvalue = 0,
+#ifdef TARGET_AARCH64
+      .readfn = gt_ctl_read, .raw_readfn = raw_read,
+#endif
       .writefn = gt_hyp_ctl_write, .raw_writefn = raw_write },
 #endif
     /* The only field of MDCR_EL2 that has a defined architectural reset value

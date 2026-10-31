@@ -807,12 +807,29 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         return val;
     }
 
+#ifdef TARGET_AARCH64
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */
+        memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs),
+        /* record= */ rr_input_8(&val),
+        /* replay= */ do {
+            if (mr->name && !strcmp(mr->name, "gic_cpu")
+                    && (physaddr & 0xff) == 0x0c) {
+                memory_region_dispatch_read(mr, physaddr, &val, size,
+                                             iotlbentry->attrs);
+            } else {
+                rr_input_8(&val);
+            }
+        } while (0),
+        /* location= */ RR_CALLSITE_IO_READ_ALL);
+#else
     RR_DO_RECORD_OR_REPLAY(
         /* action= */
         memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs),
         /* record= */ rr_input_8(&val),
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
+#endif
 
     panda_callbacks_mmio_after_read(cpu, physaddr, addr, size, &val);
 
