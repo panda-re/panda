@@ -131,14 +131,16 @@ read_8s (CPUState *cpu, target_ulong guest_addr) {
 }
 
 /* Get the value of register REG as saved in CONTEXT.  */
-
-    inline target_ulong
-getReg (CPUState *cpu, int index)
-{
+inline target_ulong getReg (CPUState *cpu, int index) {
     /* This will segfault if the register hasn't been saved.  */
     /* not sure if we dereference register or simply get value  */
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-#if defined(TARGET_I386) || defined(TARGET_ARM)
+#if defined(TARGET_AARCH64)
+    if (env->aarch64) {
+        return index >= 0 && index < 32 ? env->xregs[index] : (target_ulong) - 1;
+    }
+    return index >= 0 && index < 16 ? env->regs[index] : (target_ulong) - 1;
+#elif defined(TARGET_I386) || defined(TARGET_ARM)
     return env->regs[index];
 #elif defined(TARGET_PPC)
     return env->gpr[index];

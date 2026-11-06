@@ -148,11 +148,23 @@ bool detaint_cb0_bytes = false;
  * accesses are captured by IR instrumentation.
  */
 void phys_mem_write_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf) {
+#ifdef TARGET_AARCH64
+    ram_addr_t ram_offset;
+    if (PandaPhysicalAddressToRamOffset(&ram_offset, addr, true) == MEMTX_OK) {
+        addr = ram_offset;
+    }
+#endif
     taint_memlog_push(&taint_memlog, addr);
     return;
 }
 
 void phys_mem_read_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size) {
+#ifdef TARGET_AARCH64
+    ram_addr_t ram_offset;
+    if (PandaPhysicalAddressToRamOffset(&ram_offset, addr, false) == MEMTX_OK) {
+        addr = ram_offset;
+    }
+#endif
     taint_memlog_push(&taint_memlog, addr);
     return;
 }

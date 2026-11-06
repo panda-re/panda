@@ -165,10 +165,20 @@ void lava_taint_query(CPUState *cpu, target_ulong buf, LocType loc_t, target_ulo
         return;
     }
 
+#ifdef TARGET_AARCH64
+    if (loc_t == LocMem) {
+        ram_addr_t ram_offset = RAM_ADDR_INVALID;
+        if (PandaPhysicalAddressToRamOffset(&ram_offset, phys, false) != MEMTX_OK) {
+            dprintf("[pri_taint] Physical address 0x" TARGET_FMT_lx " is not RAM\n", phys);
+            return;
+        }
+    }
+#else
     if (phys > ram_size) {
         dprintf("[pri_taint] Physical address 0x" TARGET_FMT_lx " exceeds RAM size 0x%lx\n", phys, (unsigned long) ram_size);
         return;
     }
+#endif
 
     uint8_t bytes[LAVA_TAINT_QUERY_MAX_LEN] = {0};
     target_ulong len = std::min(buf_len, LAVA_TAINT_QUERY_MAX_LEN);

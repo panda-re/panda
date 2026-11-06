@@ -2074,12 +2074,18 @@ target_ulong dwarf2_get_cur_fp(CPUState *cpu, target_ulong pc) {
         printf("loc_cnt: Could not properly determine fp\n");
         return -1;
     }
+#ifndef TARGET_AARCH64
     CPUArchState *env = (CPUArchState*) cpu->env_ptr;
+#endif
     target_ulong fp_loc;
     LocType loc_type = execute_stack_op(cpu,pc, ops, 0, &fp_loc);
     switch (loc_type) {
         case LocReg:
+#ifdef TARGET_AARCH64
+            return getReg(cpu, fp_loc);
+#else
             return env->regs[fp_loc];
+#endif
         case LocMem:
             return fp_loc;
         case LocConst:
@@ -2229,6 +2235,9 @@ void __livevar_iter(CPUState *cpu, target_ulong pc,
         void *args, target_ulong fp) {
     //printf("size of vars: %ld\n", vars.size());
     for (auto it : vars) {
+        if (it.highpc > it.lowpc && (pc < it.lowpc || pc >= it.highpc)) {
+            continue;
+        }
         std::string var_name = it.var_name;
         DwarfVarType var_type {type_map[it.fname][it.cu][it.var_type], it.dec_line, var_name};
         target_ulong var_loc;
@@ -2375,6 +2384,7 @@ static bool sync_function_to_pc(target_ulong pc) {
         return false;
     }
     cur_function = it->function_addr;
+    cur_line = it->line_number;
     return true;
 }
 
@@ -2397,7 +2407,7 @@ void dwarf_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
 }
 void dwarf_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args) {
     // dprintf("iterating through live vars\n");
-    if (sync_function_to_pc(pc)) {
+    if (correct_asid(cpu) && sync_function_to_pc(pc)) {
         target_ulong fp = dwarf2_get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1) {
             printf("Error: was not able to get the Frame Pointer for the function %s at @ 0x" TARGET_FMT_lx "\n",
