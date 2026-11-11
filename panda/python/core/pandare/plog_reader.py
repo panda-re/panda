@@ -5,6 +5,7 @@ Module for reading and writing PANDAlog (plog) files from Python.
 
 import zlib
 import struct
+import sys
 try:
     import pandare.plog_pb2
 except (TypeError,FileNotFoundError):
@@ -90,12 +91,20 @@ class PLogReader:
 
         return msg
 
-if __name__ == "__main__":
-    import sys
+
+def main():
     from google.protobuf.json_format import MessageToJson
+    if len(sys.argv) != 2:
+        print("Usage: python3 -m pandare.plog_reader [input.plog]", file=sys.stderr)
+        sys.exit(1)
+
     print('[')
     with PLogReader(sys.argv[1]) as plr:
         for i, m in enumerate(plr):
             if i > 0: print(',')
             print(MessageToJson(m), end='')
     print('\n]')
+
+
+if __name__ == "__main__":
+    main()

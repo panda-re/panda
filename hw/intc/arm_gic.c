@@ -25,6 +25,7 @@
 #include "qom/cpu.h"
 #include "qemu/log.h"
 #include "trace.h"
+#include "panda/rr/rr_log_all.h"
 
 /* #define DEBUG_GIC */
 
@@ -392,6 +393,32 @@ uint32_t gic_acknowledge_irq(GICState *s, int cpu, MemTxAttrs attrs)
     gic_update(s);
     DPRINTF("ACK %d\n", irq);
     return ret;
+}
+
+static uint32_t gic_replay_acknowledge_irq(GICState *s, int cpu,
+                                           uint32_t recorded)
+{
+    int irq = recorded & 0x3ff;
+    int cm = 1 << cpu;
+
+    if (irq >= GIC_MAXIRQ) {
+        return recorded;
+    }
+
+    if (irq < GIC_NR_SGIS) {
+        int src = (recorded >> 10) & 0x7;
+
+        s->sgi_pending[irq][cpu] &= ~(1 << src);
+        if (s->sgi_pending[irq][cpu] == 0) {
+            GIC_CLEAR_PENDING(irq, GIC_TEST_MODEL(irq) ? ALL_CPU_MASK : cm);
+        }
+    } else {
+        GIC_CLEAR_PENDING(irq, GIC_TEST_MODEL(irq) ? ALL_CPU_MASK : cm);
+    }
+
+    gic_activate_irq(s, cpu, irq);
+    gic_update(s);
+    return recorded;
 }
 
 void gic_set_priority(GICState *s, int cpu, int irq, uint8_t val,
@@ -1211,7 +1238,11 @@ static MemTxResult gic_cpu_read(GICState *s, int cpu, int offset,
         }
         break;
     case 0x0c: /* Acknowledge */
-        *data = gic_acknowledge_irq(s, cpu, attrs);
+        if (rr_replay_gic_acknowledge(data)) {
+            *data = gic_replay_acknowledge_irq(s, cpu, *data);
+        } else {
+            *data = gic_acknowledge_irq(s, cpu, attrs);
+        }
         break;
     case 0x14: /* Running Priority */
         *data = gic_get_running_priority(s, cpu, attrs);

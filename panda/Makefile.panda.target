@@ -185,10 +185,10 @@ llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers-arm.bc
 
-AARCH64_HELPERS = op_helper.bc2 helper-a64.bc2 neon_helper.bc2 iwmmxt_helper.bc2
+AARCH64_HELPERS = op_helper.bc2 helper.bc2 helper-a64.bc2 neon_helper.bc2 iwmmxt_helper.bc2
 AARCH64_HELPERS += crypto_helper.bc2
 
-llvm-$(TARGET_AARCH64) += fpu/softfloat.bc2
+llvm-$(TARGET_AARCH64) += fpu/softfloat.bc2 tcg-runtime.bc2
 llvm-$(TARGET_AARCH64) += $(addprefix target/arm/,$(AARCH64_HELPERS))
 llvmmorph-$(TARGET_AARCH64) += llvm-helpers-aarch64.bc
 

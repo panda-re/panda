@@ -78,6 +78,11 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t opcode, uint64_t result_unused, uint64_t val1,
                        uint64_t val2, uint64_t pred);
 
+#ifdef TARGET_AARCH64
+void taint_mix_intrinsic(Shad *shad, uint64_t dest, uint64_t size,
+        uint64_t src1, uint64_t src2, uint64_t src3);
+#endif
+
 //for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t arg1_lo,
